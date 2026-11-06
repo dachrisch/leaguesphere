@@ -142,14 +142,13 @@ def test_s04_killed_phone_restarts_offline_then_returns(phones, club_game, repor
     assert_invariants(club_game, [a], queued)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="F1: an offline undo removes the turnover but leaves its possession flip queued",
-)
 def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, report):
     a, _ = phones
     started_game(a, club_game)
     start_possession = server_state(club_game).in_possession
+    # The server stores the side (`home`), the switch shows the team name; keep
+    # the phone's own starting label to compare like with like.
+    phone_start = a.possession()
 
     a.offline()
     a.tap_turnover()
@@ -159,21 +158,18 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
     report.observe("S05", "badge_after_undo", a.badge())
     report.observe("S05", "pending_after_undo", len(a.queue()))
     report.observe("S05", "start_possession", start_possession)
-    report.finding(
-        "F1",
-        "Offline undo leaves the possession flip queued",
-        "After undoing an offline Turnover the queue still held one "
-        "`possession` op; on reconnect the server moved the ball to the other "
-        "team even though the turnover row was gone.",
-    )
-    if a.badge() != f"Offline · {len(a.queue())}":
-        report.finding(
-            "F2",
-            "Badge count is stale after undoing a queued op",
-            f"After the undo the queue held {len(a.queue())} op(s) but the "
-            f"badge read {a.badge()!r}; removing an outbox row did not notify "
-            "the sync engine's counts.",
-        )
+    report.observe("S05", "phone_possession_after_undo", a.possession())
+    # The badge is read after the undo, not after the next drain: removing an
+    # outbox row has to update the count immediately.
+    queued = a.queue()
+    expected_badge = f"Offline · {len(queued)}" if queued else "Offline"
+    assert a.badge() == expected_badge
+
+    # Nothing may reach the server while the queue is empty: both the entry
+    # and the flip it wrote are gone.
+    assert queued == []
+    assert phone_start is not None
+    assert a.possession() == phone_start
 
     a.online()
     a.wait_queue(0)
@@ -185,6 +181,88 @@ def test_s05_offline_undo_removes_the_entry_and_its_effect(phones, club_game, re
 
     assert not [event for event in state.events if event.code == "turnover"]
     assert state.in_possession == start_possession
+    assert_invariants(club_game, [a], set())
+
+
+def test_s05b_online_undo_removes_the_entry_and_its_effect(phones, club_game, report):
+    """The same undo with a connection: the row reached the server already.
+
+    This is the path that had no queued op to drop: the correction removes the
+    Turnover row and the possession restore must put the ball back, on the
+    server and on the phone.
+    """
+
+    a, _ = phones
+    started_game(a, club_game)
+    start_possession = server_state(club_game).in_possession
+    phone_start = a.possession()
+
+    a.tap_turnover()
+    a.wait_queue(0)
+    written = server_state(club_game)
+    report.observe(
+        "S05b",
+        "turnover_before_undo",
+        [event.seq for event in written.events if event.code == "turnover"],
+    )
+    report.observe("S05b", "possession_before_undo", written.in_possession)
+    assert written.in_possession != start_possession
+
+    # The row is already on the server, so undo strikes it through instead of
+    # removing it from the log.
+    a.undo_last(removed=False)
+    a.wait_queue(0)
+    # The correction and the restore are two writes. Wait on the screen first:
+    # the deleted row appears when the correction landed, the marker when the
+    # restore did, and only then is the server idle enough for a SQLite read.
+    assert phone_start is not None
+    a.wait_possession(phone_start)
+    state = server_state(club_game)
+
+    turnover = next((event for event in state.events if event.code == "turnover"), None)
+    undo = next(
+        (
+            event
+            for event in state.events
+            if event.type == "correction"
+            and event.undo_of_id is not None
+            and turnover is not None
+            and event.undo_of_id == turnover.pk
+        ),
+        None,
+    )
+    turnover_row = next(
+        (
+            row
+            for row in state.team_log
+            if turnover is not None and row.pk == turnover.team_log_id
+        ),
+        None,
+    )
+
+    report.observe("S05b", "possession_after_undo", state.in_possession)
+    report.observe("S05b", "phone_possession_after_undo", a.possession())
+    report.observe(
+        "S05b",
+        "turnover_events_after",
+        [event.seq for event in state.events if event.code == "turnover"],
+    )
+    report.observe("S05b", "undo_event_seq", None if undo is None else undo.seq)
+    report.observe(
+        "S05b",
+        "turnover_row_deleted",
+        None if turnover_row is None else turnover_row.isDeleted,
+    )
+    report.observe("S05b", "phone_deleted_turnover_rows", a.deleted_turnover_rows())
+
+    # The store is append-only: the Turnover event stays, a later correction
+    # names it, and the row it wrote is marked deleted.
+    assert turnover is not None
+    assert undo is not None and undo.seq > turnover.seq
+    assert turnover_row is not None and turnover_row.isDeleted
+    assert a.deleted_turnover_rows() == 1
+    assert state.in_possession == start_possession
+    assert a.possession() == phone_start
     assert_invariants(club_game, [a], set())
 
 

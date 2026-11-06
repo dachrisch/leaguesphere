@@ -15,6 +15,7 @@ import EventLog, {
   formatLogTime,
   isMarker,
   logRows,
+  offlineAttribution,
   undoBody,
   type LogRow,
 } from "./EventLog";
@@ -414,7 +415,51 @@ describe("formatLogTime", () => {
   });
 });
 
+describe("offlineAttribution", () => {
+  it("names the recorder and the sender when they differ", () => {
+    expect(
+      offlineAttribution(
+        row({
+          payload: {
+            offline_recorded_by: "anna",
+            offline_sent_by: "bernd",
+          },
+        }),
+      ),
+    ).toBe("erfasst von anna, gesendet von bernd");
+  });
+
+  it("names only the recorder when the sender is not part of the payload", () => {
+    expect(
+      offlineAttribution(row({ payload: { offline_recorded_by: "anna" } })),
+    ).toBe("erfasst von anna");
+  });
+
+  it("adds nothing to an ordinary row", () => {
+    expect(offlineAttribution(row())).toBeNull();
+  });
+});
+
 describe("EventLog", () => {
+  it("shows who recorded a replayed entry next to who sent it", () => {
+    render(
+      <EventLog
+        rows={[
+          row({
+            payload: {
+              offline_recorded_by: "anna",
+              offline_sent_by: "bernd",
+            },
+          }),
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText("erfasst von anna, gesendet von bernd"),
+    ).toBeInTheDocument();
+  });
+
   it("marks an entry that has not reached the server yet as waiting", () => {
     render(
       <EventLog

@@ -3718,13 +3718,27 @@ describe("SyncStrip", () => {
 
   it("stays out of the way while everything is sent", () => {
     const { container } = render(
-      <SyncStrip drained={false} onResume={vi.fn()} status={status()} />,
+      <SyncStrip
+        deviceLog={makeLog()}
+        drained={false}
+        onResume={vi.fn()}
+        serverLog={makeLog()}
+        status={status()}
+      />,
     );
     expect(container).toBeEmptyDOMElement();
   });
 
   it("confirms a drained queue for a moment", () => {
-    render(<SyncStrip drained onResume={vi.fn()} status={status()} />);
+    render(
+      <SyncStrip
+        deviceLog={makeLog()}
+        drained
+        onResume={vi.fn()}
+        serverLog={makeLog()}
+        status={status()}
+      />,
+    );
     expect(screen.getByRole("status", { name: "Übertragung" })).toHaveTextContent(
       "✓ Alles gesendet",
     );
@@ -3732,7 +3746,13 @@ describe("SyncStrip", () => {
 
   it("names the provisional score while entries are on their way", () => {
     render(
-      <SyncStrip drained={false} onResume={vi.fn()} status={status({ pending: 1 })} />,
+      <SyncStrip
+        deviceLog={makeLog()}
+        drained={false}
+        onResume={vi.fn()}
+        serverLog={makeLog()}
+        status={status({ pending: 1 })}
+      />,
     );
     expect(screen.getByRole("status", { name: "Übertragung" })).toHaveTextContent(
       "Spielstand vorläufig · 1 Eintrag noch nicht übertragen",
@@ -3742,13 +3762,34 @@ describe("SyncStrip", () => {
   it("says offline even with nothing waiting", () => {
     render(
       <SyncStrip
+        deviceLog={makeLog()}
         drained={false}
         onResume={vi.fn()}
+        serverLog={makeLog()}
         status={status({ online: false })}
       />,
     );
     expect(screen.getByRole("status", { name: "Übertragung" })).toHaveTextContent(
       "Offline · Einträge werden hier gespeichert",
     );
+  });
+
+  it("names the stranded entries after the lock was lost", () => {
+    render(
+      <SyncStrip
+        deviceLog={makeLog({ home: team({ score: 13 }) })}
+        drained={false}
+        onResume={vi.fn()}
+        serverLog={makeLog({ home: team({ score: 7 }) })}
+        status={status({ paused: "device", pending: 2 })}
+      />,
+    );
+
+    const strip = screen.getByRole("status", { name: "Übertragung" });
+    expect(strip).toHaveTextContent(
+      "2 Einträge nicht übertragen – nicht im offiziellen Spielbericht.",
+    );
+    expect(strip).toHaveTextContent("13:0");
+    expect(strip).toHaveTextContent("nicht offiziell");
   });
 });

@@ -46,11 +46,6 @@ function isGameLog(value: unknown): value is GameLog {
   );
 }
 
-/** The header override of an op; `null` means "send none" (old app). */
-function deviceOption(op: PendingOp): { deviceId: string | null } | undefined {
-  return op.deviceId === undefined ? undefined : { deviceId: op.deviceId };
-}
-
 /**
  * Append one queued op and read back the log it produced.
  *
@@ -62,9 +57,18 @@ export async function appendEvents(
   gameId: number,
   events: unknown[],
   clientId: string,
-  options?: { deviceId?: string | null },
+  options?: { deviceId?: string | null; recordedBy?: string | null },
 ): Promise<GameLog> {
-  await apiPost(eventsPath(gameId), { events, client_id: clientId }, options);
+  const body: Record<string, unknown> = {
+    events,
+    client_id: clientId,
+  };
+  // An old outbox row has no recordedBy; the server treats the sender as the
+  // recorder, exactly as before.
+  if (options?.recordedBy !== undefined && options.recordedBy !== null) {
+    body.offline_recorded_by = options.recordedBy;
+  }
+  await apiPost(eventsPath(gameId), body, options);
   return apiGet<GameLog>(logPath(gameId), options);
 }
 
@@ -73,7 +77,22 @@ export function createTransport(
 ): Transport {
   return {
     async send(op: PendingOp): Promise<unknown> {
-      const options = deviceOption(op);
+      let options: {
+        deviceId?: string | null;
+        recordedBy?: string | null;
+      } | undefined;
+      if (
+        op.deviceId !== undefined ||
+        (op.recordedBy !== undefined && op.recordedBy !== null)
+      ) {
+        options = {};
+        if (op.deviceId !== undefined) {
+          options.deviceId = op.deviceId;
+        }
+        if (op.recordedBy !== undefined && op.recordedBy !== null) {
+          options.recordedBy = op.recordedBy;
+        }
+      }
 
       if (op.kind === "delete") {
         // Legacy rows only (no event `seq`): the pre-slice-2 per-row undo.

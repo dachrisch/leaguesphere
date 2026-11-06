@@ -35,9 +35,7 @@ class EventEnvelopeSerializer(serializers.Serializer):
     )
     period = serializers.IntegerField(required=False, min_value=1)
     payload = serializers.DictField(required=False, default=dict)
-    client_id = serializers.CharField(
-        required=False, allow_blank=True, max_length=64
-    )
+    client_id = serializers.CharField(required=False, allow_blank=True, max_length=64)
     seq = serializers.IntegerField(required=False, min_value=1)
 
 
@@ -52,6 +50,23 @@ class EventRequest:
     team: Optional[str] = None
     half: Optional[int] = None
     game_id: Optional[int] = None
+    # The username the device says recorded the queued entries. A claim only:
+    # the view stores it in the event payload and never as the author.
+    offline_recorded_by: Optional[str] = None
+
+
+def _offline_recorded_by(data) -> Optional[str]:
+    raw = data.get("offline_recorded_by")
+    if raw in (None, ""):
+        return None
+    if not isinstance(raw, str):
+        raise ValidationError({"offline_recorded_by": "must be a string"})
+    claimed = raw.strip()
+    if not claimed:
+        return None
+    if len(claimed) > 150:
+        raise ValidationError({"offline_recorded_by": "must be at most 150 characters"})
+    return claimed
 
 
 def _game_id(data) -> Optional[int]:
@@ -80,6 +95,7 @@ def parse_event_request(data) -> EventRequest:
 
     client_id = normalise_client_id(data.get("client_id"))
     game_id = _game_id(data)
+    offline_recorded_by = _offline_recorded_by(data)
 
     if has_legacy:
         # The canonical endpoint accepts the app's payload unchanged, so it
@@ -96,6 +112,7 @@ def parse_event_request(data) -> EventRequest:
             team=data.get("team"),
             half=data["half"],
             game_id=game_id,
+            offline_recorded_by=offline_recorded_by,
         )
 
     raw = data["events"]
@@ -128,4 +145,5 @@ def parse_event_request(data) -> EventRequest:
         client_id=client_id or str(uuid.uuid4()),
         events=events,
         game_id=game_id,
+        offline_recorded_by=offline_recorded_by,
     )

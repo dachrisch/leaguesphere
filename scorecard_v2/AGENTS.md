@@ -34,6 +34,25 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   existing light, sun and dark theme tokens. Responsive rules are at the end of
   `src/styles/app.css`.
 
+## Offline writes
+
+- A queued op can name the op whose action it completes (`originId`). A
+  turnover/touchdown/interception writes the visible entry and then its
+  possession flip; undo removes the entry and exactly that flip, never a
+  manual possession change. The flip's `originId` is set at enqueue time from
+  `GameSession.lastOpId()`.
+- A queued op also remembers the signed-in username (`recordedBy`,
+  `session/actor.ts`). The server keeps `request.user` as the author and stores
+  a differing name as the unverified `offline_recorded_by` (plus the verified
+  `offline_sent_by`) in the event payload; the log row shows
+  "erfasst von X, gesendet von Y".
+- A phone that lost the lock while holding entries is *stranded*: the strip
+  names the count and says they are not in the official record, the list opens
+  in one tap (`components/StrandedEntries.tsx`, kept on the device), and the
+  main score is the server's while the device's own number is labelled as not
+  official (`session/stranded.ts`). This is display only — delivering, retrying
+  or dropping stranded entries is the open Q4 take-over decision.
+
 ## Offline scenario tests
 
 `tests/e2e_scenarios/` drives two independent Chromium processes (own profile,

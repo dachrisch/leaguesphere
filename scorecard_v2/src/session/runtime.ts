@@ -77,6 +77,10 @@ export function createRuntime(deps: RuntimeDeps = {}): Runtime {
     ),
     () => notify(),
   );
+  // The queue is mutated by the session (undo) and the badge (drop) as well as
+  // by the engine; every write refreshes the counts so no screen shows a
+  // stale "one entry waiting" after the row is gone.
+  const stopOutbox = outbox.subscribe(() => sync.refresh());
 
   function publishLog(
     gameId: number,
@@ -145,6 +149,7 @@ export function createRuntime(deps: RuntimeDeps = {}): Runtime {
 
     dispose(): void {
       disposed = true;
+      stopOutbox();
       sync.dispose();
       listeners.clear();
       logListeners.clear();

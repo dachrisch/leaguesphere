@@ -73,3 +73,22 @@ def test_a_row_without_an_event_has_no_payload(client):
     # Nothing was appended: the events list is empty, and the scoring entries
     # fall back to the old payload shape.
     assert event_payloads(client, game) == []
+
+
+@pytest.mark.django_db
+def test_a_claiming_row_reads_without_a_query_per_row(
+    client, django_assert_num_queries
+):
+    """The claim is part of the payload already read, not a second lookup."""
+
+    game, _home, _away = make_game("payload-claim")
+    login(client)
+    for n in (1, 2, 3):
+        body = play(n)
+        body["offline_recorded_by"] = "original-official"
+        assert post_events(client, game, body).status_code == 201
+
+    with django_assert_num_queries(9):
+        rows = event_payloads(client, game)
+
+    assert all(row[1]["offline_recorded_by"] == "original-official" for row in rows)

@@ -9,6 +9,7 @@ import { ApiError, apiDelete, apiGet, apiPost } from "../api/client";
 import type { GameLog, GameLogTeam } from "../api/types";
 import { createOutbox, type Outbox } from "../offline/outbox";
 import { resetSnapshotStore } from "../offline/snapshot";
+import { setActorUsername } from "./actor";
 import { createGameSession, type GameSession } from "./gameSession";
 import { createRuntime, type Runtime } from "./runtime";
 
@@ -60,6 +61,13 @@ const WRITE = {
   ],
 };
 
+const TURNOVER_WRITE = {
+  gameId: 42,
+  team: "Ravens",
+  half: 1 as const,
+  event: [{ name: "Turnover" }],
+};
+
 function setOnline(online: boolean): void {
   vi.spyOn(globalThis.navigator, "onLine", "get").mockReturnValue(online);
 }
@@ -79,6 +87,7 @@ function makeSession(initialLog: GameLog = serverLog()): GameSession {
 beforeEach(() => {
   vi.stubGlobal("indexedDB", new IDBFactory());
   resetSnapshotStore();
+  setActorUsername(null);
   apiGetMock.mockReset();
   apiPostMock.mockReset();
   apiDeleteMock.mockReset();
@@ -128,6 +137,122 @@ describe("offline writes", () => {
     await expect(outbox.pending(42)).resolves.toEqual([]);
     expect(reverted.home.score).toBe(0);
     expect(reverted.events).toEqual([]);
+  });
+
+  it("stores the signed-in username on a queued op", async () => {
+    setActorUsername("anna");
+    await session.writeEvent(TURNOVER_WRITE);
+
+    const [queued] = await outbox.pending(42);
+    // The outbox must remember who recorded it: the delivering session may
+    // belong to another user by the time it goes out.
+    expect(queued.recordedBy).toBe("anna");
+  });
+
+  it("removes the linked possession flip with the queued entry", async () => {
+    // A turnover writes the row and, because the ball changes hands, a second
+    // possession op. Undo must take both, not just the row the official sees.
+    const shown = await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId();
+    expect(origin).not.toBeNull();
+    await session.setPossession("Wolves", origin ?? undefined);
+    const localId = shown.events?.[0].id ?? 0;
+
+    const pendingBefore = await outbox.pending(42);
+    expect(pendingBefore.map((entry) => entry.kind)).toEqual([
+      "event",
+      "possession",
+    ]);
+    expect(pendingBefore[1].originId).toBe(origin);
+
+    const reverted = await session.undo({ undo_of: 1 }, localId);
+
+    await expect(outbox.pending(42)).resolves.toEqual([]);
+    expect(reverted.inPossession).toBe("Ravens");
+    expect(apiPostMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the server log separate from the optimistic one", async () => {
+    const shown = await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId() ?? undefined;
+    await session.setPossession("Wolves", origin);
+
+    expect(shown.inPossession).toBe("Ravens");
+    expect(session.getLog().inPossession).toBe("Wolves");
+    // The read-only view shows the official score, not the queued delta.
+    expect(session.getServerLog().inPossession).toBe("Ravens");
+    expect(session.getServerLog().events).toEqual([]);
+  });
+
+  it("keeps a manual possession change made after the entry", async () => {
+    const shown = await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId() ?? undefined;
+    await session.setPossession("Wolves", origin);
+    // The official corrects the side by hand before undoing the turnover.
+    await session.setPossession("Ravens");
+    const waiting = await outbox.pending(42);
+    const manual = waiting[waiting.length - 1];
+    expect(manual?.kind).toBe("possession");
+    expect(manual?.originId).toBeNull();
+
+    const localId = shown.events?.[0].id ?? 0;
+    await session.undo({ undo_of: 1 }, localId);
+
+    const left = await outbox.pending(42);
+    expect(left.map((entry) => entry.id)).toEqual([manual?.id]);
+    expect(left[0].kind).toBe("possession");
+    expect(session.getLog().inPossession).toBe("Ravens");
+  });
+
+  it("queues a possession restore after a delivered turnover's flip", async () => {
+    // Drain stopped between the entry and its flip: the row is on the server,
+    // the flip is still queued. Undoing the row must correct the entry *and*
+    // leave the ball where the entry found it, after the queued flip runs.
+    const entry = serverLog({
+      inPossession: "Wolves",
+      events: [
+        {
+          id: 11,
+          sequence: 1,
+          seq: 4,
+          team: "Ravens",
+          event: "Turnover",
+          player: null,
+          input: null,
+          half: 1,
+          cop: true,
+          isDeleted: false,
+          time: "2026-11-05T10:00:00Z",
+        },
+      ],
+    });
+    session.dispose();
+    session = makeSession(entry);
+
+    await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId() ?? undefined;
+    await session.setPossession("Wolves", origin);
+    // Only the entry left the outbox; the flip is still waiting.
+    if (origin !== undefined) {
+      await outbox.remove(origin);
+    }
+    expect((await outbox.pending(42)).map((op) => op.kind)).toEqual([
+      "possession",
+    ]);
+
+    const reverted = await session.undo(
+      { undo_of: 4 },
+      undefined,
+      { restorePossessionTo: "Ravens" },
+    );
+
+    const pending = await outbox.pending(42);
+    expect(pending.map((op) => op.kind)).toEqual([
+      "possession",
+      "correction",
+      "possession",
+    ]);
+    expect(reverted.inPossession).toBe("Ravens");
   });
 
   it("queues possession and half-time as events", async () => {
@@ -254,6 +379,46 @@ describe("online writes", () => {
       "anderen Gerät",
     );
     expect(runtime.sync.stateFor(42).paused).toBe("device");
+  });
+
+  it("sends the correction and the possession restore for a stored turnover", async () => {
+    const row = {
+      id: 11,
+      sequence: 1,
+      seq: 4,
+      team: "Ravens",
+      event: "Turnover",
+      player: null,
+      input: null,
+      half: 1,
+      cop: true,
+      isDeleted: false,
+      time: "2026-11-05T10:00:00Z",
+    };
+    apiGetMock
+      .mockResolvedValueOnce(
+        serverLog({ inPossession: "Wolves", events: [row] }),
+      )
+      .mockResolvedValueOnce(
+        serverLog({ inPossession: "Ravens", events: [{ ...row, isDeleted: true }] }),
+      );
+
+    await session.undo(
+      { undo_of: 4 },
+      undefined,
+      { restorePossessionTo: "Ravens" },
+    );
+
+    expect(apiPostMock).toHaveBeenCalledTimes(2);
+    expect(apiPostMock).toHaveBeenNthCalledWith(1, "/api/game/42/events", {
+      events: [{ type: "correction", code: "undo", payload: { undo_of: 4 } }],
+      client_id: expect.any(String),
+    });
+    expect(apiPostMock).toHaveBeenNthCalledWith(2, "/api/game/42/events", {
+      events: [{ type: "possession", code: "home", side: "home" }],
+      client_id: expect.any(String),
+    });
+    expect(session.getLog().inPossession).toBe("Ravens");
   });
 
   it("re-reads the log through the snapshot-backed refresh", async () => {

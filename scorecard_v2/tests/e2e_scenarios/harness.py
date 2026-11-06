@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from django.contrib.auth import get_user_model
-from django.db import connection
+from django.db import OperationalError, connection
 from playwright.sync_api import (
     BrowserContext,
     Error as PlaywrightError,
@@ -88,6 +88,11 @@ TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')
 TOUCHDOWN_ROW_JS = """() => [...document.querySelectorAll('.logrows .rowprimary')]
   .filter((el) => el.textContent.trim().startsWith('Touchdown ')).length"""
 
+# A row a server-side undo struck through: it stays in the log, unlike a queued
+# row the phone simply removes.
+DELETED_TURNOVER_ROW_JS = """() => [...document.querySelectorAll('.logrows .row.deleted .rowprimary')]
+  .filter((el) => el.textContent.trim().startsWith('Turnover ')).length"""
+
 
 # --------------------------------------------------------------------------- #
 # Server-side facts
@@ -113,6 +118,25 @@ class ServerState:
 
 
 def server_state(game: Gameinfo) -> ServerState:
+    """Read the game's server state, waiting out SQLite's table lock.
+
+    On SQLite the single-threaded live server and this process share one
+    in-memory database. A read that lands exactly while the phone's write is
+    committing gets ``database table is locked``; retry only that, never any
+    other error, and give up after a short, bounded wait.
+    """
+
+    deadline = time.monotonic() + 10
+    while True:
+        try:
+            return _server_state_once(game)
+        except OperationalError as error:
+            if "locked" not in str(error).lower() or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)
+
+
+def _server_state_once(game: Gameinfo) -> ServerState:
     state = GameState.objects.filter(game=game).first()
     setup = GameSetup.objects.filter(gameinfo=game).order_by("pk").first()
     return ServerState(
@@ -218,6 +242,7 @@ class QueuedOp:
     failed_reason: str | None
     game_id: int | None = None
     payload: dict[str, Any] | None = None
+    recorded_by: str | None = None
 
     @classmethod
     def from_row(cls, row: dict[str, Any]) -> "QueuedOp":
@@ -229,6 +254,7 @@ class QueuedOp:
             failed_reason=row.get("failedReason"),
             game_id=row.get("gameId"),
             payload=row.get("payload"),
+            recorded_by=row.get("recordedBy"),
         )
 
 
@@ -753,12 +779,39 @@ class Phone:
             for match in re.finditer(
                 r"(\d+)\s+(?:Eintr(?:ag|äge)|warten|abgelehnt|nicht übertragen)",
                 text,
+                flags=re.IGNORECASE,
             ):
                 shown = max(shown, int(match.group(1)))
             offline = re.search(r"Offline\s*·\s*(\d+)", text)
             if offline is not None:
                 shown = max(shown, int(offline.group(1)))
         return shown
+
+    def possession(self) -> str | None:
+        """The team the screen's possession switch marks as holding the ball."""
+
+        page = self._require_page()
+        return page.evaluate("""() => {
+              const button = document.querySelector(
+                '.possswitch button[aria-pressed="true"]'
+              );
+              return button ? button.textContent.trim() : null;
+            }""")
+
+    def wait_possession(self, team: str, timeout_ms: int = 15000) -> None:
+        """Wait until the possession switch shows ``team``."""
+
+        page = self._require_page()
+        page.wait_for_function(
+            """(expected) => {
+              const button = document.querySelector(
+                '.possswitch button[aria-pressed="true"]'
+              );
+              return button ? button.textContent.trim() === expected : false;
+            }""",
+            arg=team,
+            timeout=timeout_ms,
+        )
 
     def online_state(self) -> bool:
         page = self._require_page()
@@ -774,15 +827,23 @@ class Phone:
         return note.inner_text().strip()
 
     def open_stranded(self) -> list[str]:
-        """Reveal the stranded entries in one tap and return their rows."""
+        """Reveal the stranded entries in one tap and return their rows.
+
+        Idempotent: a second call must not toggle the list closed again.
+        """
 
         page = self._require_page()
         details = page.locator("details.syncstranded").first
         if details.count() == 0:
             return []
-        summary = details.locator("summary").first
-        if summary.count() > 0:
-            summary.click()
+        if not details.evaluate("(el) => el.open"):
+            summary = details.locator("summary").first
+            if summary.count() > 0:
+                summary.click()
+            page.wait_for_function(
+                "() => document.querySelector('details.syncstranded')?.open === true",
+                timeout=5000,
+            )
         return [
             text.strip()
             for text in page.locator(".syncstranded-list li").all_inner_texts()
@@ -833,16 +894,40 @@ class Phone:
         # the in-flight guard.
         expect(tile).to_be_enabled(timeout=20000)
 
-    def undo_last(self) -> None:
+    def deleted_turnover_rows(self) -> int:
+        """How many Turnover rows the current log shows as struck through."""
+
+        return self._row_count(DELETED_TURNOVER_ROW_JS)
+
+    def undo_last(self, *, removed: bool = True) -> None:
+        """Undo the newest Turnover.
+
+        A queued row disappears when its op is dropped (`removed=True`); a row
+        that already reached the server stays in the log struck through, so its
+        undo is waited for as a deleted row, not as a shorter list.
+        """
+
         page = self._require_page()
         button = page.get_by_role("button", name="Rückgängig", exact=True)
         expect(button).to_be_visible(timeout=10000)
-        before = self._row_count(TURNOVER_ROW_JS)
+        before = self._row_count(
+            TURNOVER_ROW_JS if removed else DELETED_TURNOVER_ROW_JS
+        )
         button.click()
+        if removed:
+            page.wait_for_function(
+                "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
+                ".filter((el) => el.textContent.trim().startsWith('Turnover '))"
+                ".length < expected",
+                arg=before,
+                timeout=15000,
+            )
+            return
         page.wait_for_function(
-            "expected => [...document.querySelectorAll('.logrows .rowprimary')]"
+            "expected => [...document.querySelectorAll("
+            "'.logrows .row.deleted .rowprimary')]"
             ".filter((el) => el.textContent.trim().startsWith('Turnover '))"
-            ".length < expected",
+            ".length > expected",
             arg=before,
             timeout=15000,
         )

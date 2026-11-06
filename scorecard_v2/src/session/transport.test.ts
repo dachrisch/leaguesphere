@@ -91,6 +91,21 @@ describe("send", () => {
     expect(apiGetMock).toHaveBeenCalledWith("/api/gamelog/42", undefined);
   });
 
+  it("sends the recorder's name with a queued op", async () => {
+    const transport = createTransport(() => undefined);
+
+    await transport.send(op({ recordedBy: "anna" }));
+
+    expect(apiPostMock).toHaveBeenCalledWith(
+      "/api/game/42/events",
+      expect.objectContaining({
+        client_id: "op-1",
+        offline_recorded_by: "anna",
+      }),
+      { deviceId: "device-a", recordedBy: "anna" },
+    );
+  });
+
   it("appends a possession event like any other event", async () => {
     const transport = createTransport(() => undefined);
 

@@ -1461,6 +1461,7 @@ describe("broken stores and subscribers", () => {
       retry: async () => undefined,
       clear: async () => undefined,
       clearAll: async () => undefined,
+      subscribe: () => () => undefined,
       ...overrides,
     };
   }

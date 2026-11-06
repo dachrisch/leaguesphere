@@ -41,6 +41,7 @@ delegated: one lock and one refusal message for both write paths, so a stale
 tab is refused the same way whichever endpoint it hits.
 """
 
+from dataclasses import replace
 from http import HTTPStatus
 
 from django.http import HttpResponseNotModified
@@ -66,6 +67,49 @@ from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.projector import GameEventValue, GameStateValue, InvalidEnvelope
 from gamedays.models import Gameinfo, Team
 from gamedays.service.game_service import GameService
+
+
+def offline_claim(values, claimed, user):
+    """Record who a device says queued an entry, without trusting it.
+
+    ``author`` stays ``request.user``: the sender is the one provable actor, so
+    a client can never attribute a write to someone else. When the device's
+    claim names a different user, it travels in the event payload as
+    ``offline_recorded_by`` together with the verified sender, and a reader can
+    show it as a claim ("erfasst von X, gesendet von Y"). A claim that matches
+    the sender adds nothing, and any claim a client smuggled into the envelope
+    payload is removed first.
+    """
+
+    sender = (
+        user.get_username()
+        if user is not None and getattr(user, "is_authenticated", False)
+        else ""
+    )
+    cleaned = [
+        replace(
+            value,
+            payload={
+                key: entry
+                for key, entry in (value.payload or {}).items()
+                if key not in ("offline_recorded_by", "offline_sent_by")
+            },
+        )
+        for value in values
+    ]
+    if not claimed or claimed == sender:
+        return cleaned
+    return [
+        replace(
+            value,
+            payload={
+                **(value.payload or {}),
+                "offline_recorded_by": claimed,
+                "offline_sent_by": sender,
+            },
+        )
+        for value in cleaned
+    ]
 
 
 def device_lock_response(request, game_id, data=None):
@@ -208,6 +252,7 @@ class GameEventsAPIView(APIView):
 
         try:
             values = self._values(game, parsed)
+            values = offline_claim(values, parsed.offline_recorded_by, request.user)
             outcome = append_submission(
                 game,
                 values,

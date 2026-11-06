@@ -39,6 +39,21 @@ export interface PendingOp {
    * to another game. `null`/absent sends no header (the old app's behaviour).
    */
   deviceId?: string | null;
+  /**
+   * The op whose user action this op completes, when the action wrote two
+   * ops. A turnover, a touchdown or an interception writes the visible entry
+   * and then a possession flip; the flip names the entry's op here, so undoing
+   * the entry removes exactly its flip and never a manual possession change.
+   * Absent on independent actions and on rows written before this field.
+   */
+  originId?: string | null;
+  /**
+   * The username signed in when the op was queued. If another user's session
+   * later delivers it, the server stores this as `offline_recorded_by` on the
+   * event payload (an unverified claim) while the event's author stays the
+   * sender. `null`/absent for rows written before this field.
+   */
+  recordedBy?: string | null;
 }
 
 /**

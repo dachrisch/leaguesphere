@@ -68,7 +68,10 @@ wie die bisherige Scorecard
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    **Spielzeit** und **Auszeit** die Spielzeit); am großen Bildschirm geht das
-   Zurücknehmen auch mit **Strg Z**. **Nur Punkte** blendet alles aus, was keine
+   Zurücknehmen auch mit **Strg Z**. Ein Eintrag, der den Ballbesitz gedreht
+   hat (**Turnover**, **Touchdown**, **Interception**, **Safety**), nimmt
+   dabei auch diese Drehung zurück – auch wenn er noch nicht gesendet wurde.
+   **Nur Punkte** blendet alles aus, was keine
    Punkte gebracht hat, damit ein falscher Spielstand schnell zu finden ist.
    **Halbzeit**
    fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim
@@ -135,13 +138,20 @@ hat. Das Ergebnis lässt sich erst senden, wenn die Warteschlange leer ist.
 Oben in der Leiste zeigt dir der Punkt den Stand der Übertragung: **Synchron**,
 **N warten** oder **Offline**; ein Tipp versucht es sofort erneut. Abgelehnte
 Einträge erscheinen darunter und lassen sich dort erneut versuchen oder
-verwerfen.
+verwerfen. Meldet sich vor dem Senden ein anderer Nutzer an, bleibt am Eintrag
+stehen, wer ihn erfasst hat: **erfasst von X, gesendet von Y**.
 
 ## Zweites Gerät
 
 Das Spiel gehört dem Gerät, das es gestartet hat. Ein zweites Gerät öffnet es
 nur lesend und sagt dir auch, warum. Staff kann die Sperre freigeben, wenn ein
 Gerät verloren geht.
+
+Nimmt ein anderes Gerät das Spiel, zeigt dein Gerät den offiziellen
+Spielstand. Eigene, noch nicht übertragene Einträge stehen darunter mit
+Anzahl und lassen sich mit einem Tipp anzeigen; sie sind **nicht im
+offiziellen Spielbericht**. Ob und wie sie noch übertragen werden, entscheidet
+die Turnierleitung.
 
 ## Häufige Fragen
 

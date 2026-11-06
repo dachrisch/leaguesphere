@@ -45,6 +45,7 @@ import EventLog, {
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
 import GameInfo from "../components/GameInfo";
 import SnapshotHint from "../components/SnapshotHint";
+import StrandedEntries from "../components/StrandedEntries";
 import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
@@ -87,6 +88,8 @@ import {
 import { getDeviceId } from "../device";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
+import { undoPossessionTeam } from "../session/possessionUndo";
+import { isStranded, strandedNotice } from "../session/stranded";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 import { useArmed } from "./useArmed";
 import { useTrackingShortcuts } from "./useTrackingShortcuts";
@@ -361,12 +364,17 @@ export function SyncStrip({
   status,
   drained,
   onResume,
+  serverLog,
+  deviceLog,
   canRelease = false,
   onTakeOver,
 }: {
   status: SyncStatus;
   drained: boolean;
   onResume: () => void;
+  /** The official log and the device's optimistic one (stranded note). */
+  serverLog: GameLog;
+  deviceLog: GameLog;
   /** Staff: offer "Spiel übernehmen" for a game another device holds. */
   canRelease?: boolean;
   onTakeOver?: () => Promise<void>;
@@ -387,6 +395,11 @@ export function SyncStrip({
           {status.paused === "device"
             ? "Nur lesen – das Spiel läuft auf einem anderen Gerät."
             : "Schreiben gesperrt – bitte neu anmelden."}
+          {status.paused === "device" && status.pending > 0 ? (
+            <span className="syncstrip-sub syncstranded-head">
+              {strandedNotice(status.pending)}
+            </span>
+          ) : null}
           {status.paused === "device" && confirming ? (
             <span className="syncstrip-sub">
               Das andere Gerät kann danach nicht mehr schreiben. Nur
@@ -403,6 +416,13 @@ export function SyncStrip({
             </span>
           )}
         </p>
+        {status.paused === "device" && status.pending > 0 ? (
+          <StrandedEntries
+            deviceLog={deviceLog}
+            serverLog={serverLog}
+            status={status}
+          />
+        ) : null}
         {status.paused === "device" && canRelease && onTakeOver !== undefined ? (
           <span className="syncstrip-actions">
             <button className="syncstrip-btn" onClick={onResume} type="button">
@@ -640,6 +660,10 @@ export default function TrackingScreen({
   );
   const finished = game.status.trim().toLowerCase() === "beendet";
   const status = useSyncStatus(game.id);
+  // A phone that lost the lock still holds its entries. Its main score is the
+  // server's; the device's own number is labelled separately in the strip.
+  const stranded = isStranded(status);
+  const officialLog = stranded ? session.getServerLog() : log;
   // The server said this device may not write (another device holds the game,
   // or the session expired). Read-only with the reason, not a silent failure.
   const readOnly = status.paused === "device" || status.paused === "auth";
@@ -783,7 +807,10 @@ export default function TrackingScreen({
     }
   };
 
-  const takePossession = async (teamName: string): Promise<void> => {
+  const takePossession = async (
+    teamName: string,
+    originId?: string,
+  ): Promise<void> => {
     if (possessionInFlight.current || teamName === possession || readOnly) {
       return;
     }
@@ -796,7 +823,7 @@ export default function TrackingScreen({
     try {
       // Online this is a `PUT`; offline (or after a lost answer) the session
       // queues it and resolves, so the marker stays where the tap put it.
-      await session.setPossession(teamName);
+      await session.setPossession(teamName, originId);
     } catch (failure) {
       // Show the correction at once (no flicker), then let the server decide:
       // the `PUT` may have been rejected after it was applied.
@@ -814,7 +841,10 @@ export default function TrackingScreen({
     }
   };
 
-  const undo = async (row: LogRow): Promise<void> => {
+  const undo = async (
+    row: LogRow,
+    { keepPossession = false }: { keepPossession?: boolean } = {},
+  ): Promise<void> => {
     if (undoInFlight.current || halftimePending || readOnly) {
       return;
     }
@@ -829,7 +859,25 @@ export default function TrackingScreen({
         row.teamLogId !== null && row.teamLogId < 0
           ? row.teamLogId
           : undefined;
-      await session.undo(undoBody(row), local);
+      // Only a stored, event-sourced row needs the ball put back by the
+      // server; a queued row takes its linked flip with it, and an in-place
+      // correction already decided where the ball belongs.
+      const restore =
+        local === undefined && !keepPossession && row.seq !== null
+          ? undoPossessionTeam(row, log)
+          : null;
+      await session.undo(
+        undoBody(row),
+        local,
+        restore === null ? undefined : { restorePossessionTo: restore },
+      );
+      if (local !== undefined) {
+        // Removing the entry (and its flip) replayed the server's marker: show
+        // that, not the side the now-undone tap had set.
+        setPossession(session.getLog().inPossession ?? null);
+      } else if (restore !== null) {
+        setPossession(restore);
+      }
     } catch (failure) {
       setUndoError(
         errorMessage(
@@ -888,7 +936,8 @@ export default function TrackingScreen({
         half: row.half === 2 ? 2 : 1,
         event: [event],
       });
-      await undo(row);
+      // The replacement already carries the ball's current side.
+      await undo(row, { keepPossession: true });
     } finally {
       postInFlight.current = false;
       setPosting(false);
@@ -1020,6 +1069,9 @@ export default function TrackingScreen({
       // The log read after the append is the whole log, so it replaces what is
       // on screen.
       await session.writeEvent(body);
+      // The flip written below belongs to this entry, so undoing the row can
+      // take exactly that op with it.
+      const origin = session.lastOpId() ?? undefined;
       const qb = events.find((event) => typeof event.payload?.qb === "number")
         ?.payload?.qb;
       if (typeof qb === "number" && possessionSide !== null) {
@@ -1028,7 +1080,7 @@ export default function TrackingScreen({
       confirmTap();
       setConfirmation(describeSaved(events));
       if (!keepBall && flipsPossession(events) && opponentName !== null) {
-        await takePossession(opponentName);
+        await takePossession(opponentName, origin);
       }
     } finally {
       postInFlight.current = false;
@@ -1315,7 +1367,8 @@ export default function TrackingScreen({
     await submit(events, previous?.team ?? undefined, previous !== null);
     if (previous !== null) {
       setReplacing(null);
-      await undo(previous);
+      // The replacement kept the ball where the replaced row left it.
+      await undo(previous, { keepPossession: true });
     }
   };
 
@@ -1414,12 +1467,14 @@ export default function TrackingScreen({
       <SnapshotHint updatedAt={staleSince} />
       <SyncStrip
         canRelease={canRelease}
+        deviceLog={log}
         drained={drained}
         onResume={() => void status.resume()}
         onTakeOver={async () => {
           await takeOver(game.id);
           await status.resume();
         }}
+        serverLog={officialLog}
         status={status}
       />
       <main aria-label="Spiel erfassen" className="tracking-layout">
@@ -1433,10 +1488,10 @@ export default function TrackingScreen({
         />
         <div className="tracking-controls">
       <ScoreHeader
-        away={log.away}
+        away={officialLog.away}
         disabled={possessionPending || halftimePending || readOnly}
-        home={log.home}
-        isFirstHalf={log.isFirstHalf}
+        home={officialLog.home}
+        isFirstHalf={officialLog.isFirstHalf}
         possession={possession}
       />
       <div aria-label="Ballbesitz" className="possswitch" role="group">

@@ -33,6 +33,7 @@ import {
   type EventEnvelope,
 } from "./events";
 import { newOpId } from "./ids";
+import { getActorUsername } from "./actor";
 import { replayOps } from "./optimistic";
 import { eventsPath, logPath } from "./transport";
 import { getRuntime, type Runtime } from "./runtime";
@@ -52,6 +53,12 @@ export interface GameSession {
   /** The log to render: last server payload plus queued ops. */
   getLog(): GameLog;
   /**
+   * The last server payload alone, without the queued ops. A phone that lost
+   * the lock shows this score as the official one while its own queued
+   * entries are listed separately.
+   */
+  getServerLog(): GameLog;
+  /**
    * `refresh` means the log is authoritative about the game's own state (a
    * re-read, a flush answer, the replayed queue); `write` is this screen's
    * optimistic view, whose `inPossession` still describes the state *before*
@@ -65,12 +72,24 @@ export interface GameSession {
   writeEvent(body: GameLogWrite): Promise<GameLog>;
   /**
    * Undo one log row. `localEventId` is the synthetic (negative) id of a row
-   * that came from the queue; it removes that op instead of calling DELETE.
-   * Rejects while the engine is sending that op (the row is about to exist
-   * server-side), and resolves without a request when the op is gone.
+   * that came from the queue; it removes that op (and the ops written with
+   * it) instead of calling DELETE. `restorePossessionTo` puts the ball back
+   * after undoing an entry that handed it over. Rejects while the engine is
+   * sending that op (the row is about to exist server-side), and resolves
+   * without a request when the op is gone.
    */
-  undo(payload: UndoPayload, localEventId?: number): Promise<GameLog>;
-  setPossession(team: string): Promise<void>;
+  undo(
+    payload: UndoPayload,
+    localEventId?: number,
+    options?: { restorePossessionTo?: string | null },
+  ): Promise<GameLog>;
+  setPossession(team: string, originId?: string): Promise<void>;
+  /**
+   * The op id of the most recent {@link writeEvent}. Its linked possession
+   * flip needs it at enqueue time; the screen reads it right after the write,
+   * while the in-flight guard still rules out a second write.
+   */
+  lastOpId(): string | null;
   halftime(): Promise<void>;
   /** Re-read the log. Offline it resolves with the local view. */
   refresh(): Promise<GameLog>;
@@ -120,6 +139,8 @@ export function createGameSession({
   let current = base;
   let opByEventId = new Map<number, string>();
   let disposed = false;
+  /** The op the last `writeEvent` used, for its linked possession flip. */
+  let lastOp: string | null = null;
   // Attached on the first subscriber, detached with the last one: a StrictMode
   // remount (or a screen that comes back) re-subscribes without leaking a
   // listener per mount.
@@ -219,6 +240,7 @@ export function createGameSession({
     payload: unknown,
     id: string = newOpId(),
     attempts = 0,
+    originId?: string,
   ): Promise<void> {
     const op: PendingOp = {
       id,
@@ -230,6 +252,8 @@ export function createGameSession({
       // The lock the op was admitted under; a later hand-over must not make
       // the replay look like a second device.
       deviceId: getDeviceId(),
+      originId: originId ?? null,
+      recordedBy: getActorUsername(),
     };
     await runtime.outbox.enqueue(op);
     await loadPending();
@@ -267,9 +291,11 @@ export function createGameSession({
     kind: OpKind,
     envelopes: EventEnvelope[],
     opId: string = newOpId(),
+    originId?: string,
   ): Promise<GameLog> {
+    lastOp = opId;
     if (offline()) {
-      await enqueue(kind, { events: envelopes }, opId);
+      await enqueue(kind, { events: envelopes }, opId, 0, originId);
       return current;
     }
     try {
@@ -279,7 +305,7 @@ export function createGameSession({
       });
     } catch (error) {
       if (statusOf(error) === 0) {
-        await enqueue(kind, { events: envelopes }, opId, 1);
+        await enqueue(kind, { events: envelopes }, opId, 1, originId);
         return current;
       }
       noteFailure(error);
@@ -292,7 +318,7 @@ export function createGameSession({
       // The append was applied; only its log answer was lost. Queue it under
       // the id the server already knows, so the replay cannot apply it twice.
       try {
-        await enqueue(kind, { events: envelopes }, opId, 1);
+        await enqueue(kind, { events: envelopes }, opId, 1, originId);
       } catch {
         // No queue to fall back on (private mode, full quota). The write still
         // landed: reporting it as failed would invite the official to tap
@@ -303,11 +329,36 @@ export function createGameSession({
     return current;
   }
 
+  /**
+   * Put the ball back after undoing a stored entry that handed it over.
+   *
+   * The flip is its own op, so it may still be queued (a drain stopped between
+   * the entry and the flip). Enqueueing the restore behind it keeps the order
+   * the server sees: flip, correction, restore. Only a completely drained
+   * queue can send the restore directly.
+   */
+  async function putBackPossession(team: string): Promise<void> {
+    const side = sideOfName(team, current);
+    if (side === null) {
+      return;
+    }
+    const waiting = await runtime.outbox.pending(gameId);
+    if (offline() || waiting.length > 0) {
+      await enqueue("possession", { events: [possessionEnvelope(side)] });
+      return;
+    }
+    await append("possession", [possessionEnvelope(side)]);
+  }
+
   return {
     gameId,
 
     getLog(): GameLog {
       return current;
+    },
+
+    getServerLog(): GameLog {
+      return base;
     },
 
     subscribe(
@@ -333,20 +384,39 @@ export function createGameSession({
       return append("event", envelopes);
     },
 
-    async undo(payload: UndoPayload, localEventId?: number): Promise<GameLog> {
+    async undo(
+      payload: UndoPayload,
+      localEventId?: number,
+      options?: { restorePossessionTo?: string | null },
+    ): Promise<GameLog> {
       if (localEventId !== undefined) {
         const queuedId = opByEventId.get(localEventId);
         if (queuedId !== undefined) {
-          if (runtime.sync.sendingOp(gameId) === queuedId) {
-            // The engine is sending this very op. Removing it now would hide a
-            // row the server is about to create; queueing a correction is no
-            // better, because the row's event `seq` is not known yet.
+          // A turnover/touchdown/interception writes two ops: the visible row
+          // and the possession flip. The flip names the entry's op, so undo
+          // takes exactly that pair and leaves a later manual change alone.
+          const rows = [
+            ...(await runtime.outbox.pending(gameId)),
+            ...(await runtime.outbox.failed(gameId)),
+          ];
+          const ids = [
+            queuedId,
+            ...rows
+              .filter((op) => op.originId === queuedId)
+              .map((op) => op.id),
+          ];
+          const sending = runtime.sync.sendingOp(gameId);
+          if (sending !== null && ids.includes(sending)) {
+            // The engine is sending one of these ops. Removing it now would
+            // hide a row (or a flip) the server is about to create.
             throw new Error(
               "Der Eintrag wird gerade übertragen. Bitte gleich noch einmal versuchen.",
             );
           }
-          // Never reached the server: drop the op and rebuild the view.
-          await runtime.outbox.remove(queuedId);
+          // Never reached the server: drop the ops and rebuild the view.
+          for (const id of ids) {
+            await runtime.outbox.remove(id);
+          }
           await loadPending();
           return current;
         }
@@ -359,21 +429,33 @@ export function createGameSession({
         // A stored row: a correction event names the target's event `seq`, and
         // the projector removes the whole submission group (a touchdown and
         // its conversion together).
-        return append("correction", [correctionEnvelope(payload.undo_of)]);
+        await append("correction", [correctionEnvelope(payload.undo_of)]);
+        // The entry's own effect: a row that handed the ball over moved it
+        // with a second op. That flip may already have landed or still be
+        // queued, so put the ball back *after* everything already waiting.
+        const restore = options?.restorePossessionTo;
+        if (restore !== undefined && restore !== null) {
+          await putBackPossession(restore);
+        }
+        return current;
       }
       // A row of a game the old app wrote: no event produced it, so only the
       // legacy per-row/sequence DELETE can undo it.
       return undoLegacy(payload);
     },
 
-    async setPossession(team: string): Promise<void> {
+    async setPossession(team: string, originId?: string): Promise<void> {
       const side = sideOfName(team, current);
       if (side === null) {
         throw new Error(
           `Das Team „${team}“ gehört nicht zu diesem Spiel.`,
         );
       }
-      await append("possession", [possessionEnvelope(side)]);
+      await append("possession", [possessionEnvelope(side)], undefined, originId);
+    },
+
+    lastOpId(): string | null {
+      return lastOp;
     },
 
     async halftime(): Promise<void> {
