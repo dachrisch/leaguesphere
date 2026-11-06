@@ -4106,3 +4106,22 @@ describe("the team timeout on a game that is over", () => {
     expect(screen.getByRole("button", { name: "Auszeit Wolves" })).toBeDisabled();
   });
 });
+
+describe("a side without a name", () => {
+  it("offers no timeout for a team the log cannot name", () => {
+    // A bracket placeholder has no team yet: there is nobody to charge it to.
+    renderTracking({
+      log: makeLog({
+        inPossession: "Ravens",
+        away: team({ id: 2, name: null }),
+      }),
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Auszeit Ravens" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Auszeit $/ })).toBeNull();
+    // the unnamed side's possession button is disabled, so no timeout either
+    expect(screen.getByRole("button", { name: "–" })).toBeDisabled();
+  });
+});
