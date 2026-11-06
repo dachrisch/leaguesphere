@@ -337,6 +337,20 @@ describe("the touchdown is the play's result", () => {
     ]);
   });
 
+  it("takes the touchdown back when the official changes their mind", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
+    await user.click(screen.getByRole("button", { name: "Touchdown" }));
+    await user.click(screen.getByRole("button", { name: "Kein Touchdown" }));
+    await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ name: "Pass" }),
+    ]);
+  });
+
   it("offers no touchdown for a sack or an incomplete pass", async () => {
     const user = userEvent.setup();
     renderSheet({});
