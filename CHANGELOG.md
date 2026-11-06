@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.12.2](https://github.com/dachrisch/leaguesphere/compare/v5.12.1...v5.12.2) (2026-11-06)
+
+
+### Bug Fixes
+
+* **scorecard-v2:** show the interception's detail on its row ([58f3c8d](https://github.com/dachrisch/leaguesphere/commit/58f3c8d455d3b515f611d9ce4394259151a625c0))
+* **scorecard-v2:** show the interception's detail on its row ([6dd6175](https://github.com/dachrisch/leaguesphere/commit/6dd6175ac498f49fddd7dd8c52b31fcaa02b5df0))
+
 ## [5.12.1](https://github.com/dachrisch/leaguesphere/compare/v5.12.0...v5.12.1) (2026-11-06)
 
 
