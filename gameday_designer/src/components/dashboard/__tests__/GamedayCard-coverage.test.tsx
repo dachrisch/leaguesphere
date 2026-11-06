@@ -57,6 +57,7 @@ describe('GamedayCard Coverage', () => {
     expect(card!.style.transform).toBe('translateY(-5px)');
     
     fireEvent.mouseLeave(card!);
-    expect(card!.style.transform).toBe('translateY(0)');
+    // jsdom/cssstyle may serialize a unitless zero in `transform` as `0px`.
+    expect(card!.style.transform).toMatch(/^translateY\(0(?:px)?\)$/);
   });
 });
