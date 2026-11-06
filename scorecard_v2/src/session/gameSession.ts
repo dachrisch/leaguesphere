@@ -53,6 +53,12 @@ export interface GameSession {
   /** The log to render: last server payload plus queued ops. */
   getLog(): GameLog;
   /**
+   * The last server payload alone, without the queued ops. A phone that lost
+   * the lock shows this score as the official one while its own queued
+   * entries are listed separately.
+   */
+  getServerLog(): GameLog;
+  /**
    * `refresh` means the log is authoritative about the game's own state (a
    * re-read, a flush answer, the replayed queue); `write` is this screen's
    * optimistic view, whose `inPossession` still describes the state *before*
@@ -349,6 +355,10 @@ export function createGameSession({
 
     getLog(): GameLog {
       return current;
+    },
+
+    getServerLog(): GameLog {
+      return base;
     },
 
     subscribe(

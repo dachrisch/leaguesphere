@@ -172,6 +172,18 @@ describe("offline writes", () => {
     expect(apiPostMock).not.toHaveBeenCalled();
   });
 
+  it("keeps the server log separate from the optimistic one", async () => {
+    const shown = await session.writeEvent(TURNOVER_WRITE);
+    const origin = session.lastOpId() ?? undefined;
+    await session.setPossession("Wolves", origin);
+
+    expect(shown.inPossession).toBe("Ravens");
+    expect(session.getLog().inPossession).toBe("Wolves");
+    // The read-only view shows the official score, not the queued delta.
+    expect(session.getServerLog().inPossession).toBe("Ravens");
+    expect(session.getServerLog().events).toEqual([]);
+  });
+
   it("keeps a manual possession change made after the entry", async () => {
     const shown = await session.writeEvent(TURNOVER_WRITE);
     const origin = session.lastOpId() ?? undefined;

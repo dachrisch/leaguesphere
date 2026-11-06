@@ -45,6 +45,7 @@ import EventLog, {
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
 import GameInfo from "../components/GameInfo";
 import SnapshotHint from "../components/SnapshotHint";
+import StrandedEntries from "../components/StrandedEntries";
 import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
@@ -88,6 +89,7 @@ import { getDeviceId } from "../device";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { getRuntime } from "../session/runtime";
 import { undoPossessionTeam } from "../session/possessionUndo";
+import { isStranded, strandedNotice } from "../session/stranded";
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 import { useArmed } from "./useArmed";
 import { useTrackingShortcuts } from "./useTrackingShortcuts";
@@ -362,12 +364,17 @@ export function SyncStrip({
   status,
   drained,
   onResume,
+  serverLog,
+  deviceLog,
   canRelease = false,
   onTakeOver,
 }: {
   status: SyncStatus;
   drained: boolean;
   onResume: () => void;
+  /** The official log and the device's optimistic one (stranded note). */
+  serverLog: GameLog;
+  deviceLog: GameLog;
   /** Staff: offer "Spiel übernehmen" for a game another device holds. */
   canRelease?: boolean;
   onTakeOver?: () => Promise<void>;
@@ -388,6 +395,11 @@ export function SyncStrip({
           {status.paused === "device"
             ? "Nur lesen – das Spiel läuft auf einem anderen Gerät."
             : "Schreiben gesperrt – bitte neu anmelden."}
+          {status.paused === "device" && status.pending > 0 ? (
+            <span className="syncstrip-sub syncstranded-head">
+              {strandedNotice(status.pending)}
+            </span>
+          ) : null}
           {status.paused === "device" && confirming ? (
             <span className="syncstrip-sub">
               Das andere Gerät kann danach nicht mehr schreiben. Nur
@@ -404,6 +416,13 @@ export function SyncStrip({
             </span>
           )}
         </p>
+        {status.paused === "device" && status.pending > 0 ? (
+          <StrandedEntries
+            deviceLog={deviceLog}
+            serverLog={serverLog}
+            status={status}
+          />
+        ) : null}
         {status.paused === "device" && canRelease && onTakeOver !== undefined ? (
           <span className="syncstrip-actions">
             <button className="syncstrip-btn" onClick={onResume} type="button">
@@ -641,6 +660,10 @@ export default function TrackingScreen({
   );
   const finished = game.status.trim().toLowerCase() === "beendet";
   const status = useSyncStatus(game.id);
+  // A phone that lost the lock still holds its entries. Its main score is the
+  // server's; the device's own number is labelled separately in the strip.
+  const stranded = isStranded(status);
+  const officialLog = stranded ? session.getServerLog() : log;
   // The server said this device may not write (another device holds the game,
   // or the session expired). Read-only with the reason, not a silent failure.
   const readOnly = status.paused === "device" || status.paused === "auth";
@@ -1444,12 +1467,14 @@ export default function TrackingScreen({
       <SnapshotHint updatedAt={staleSince} />
       <SyncStrip
         canRelease={canRelease}
+        deviceLog={log}
         drained={drained}
         onResume={() => void status.resume()}
         onTakeOver={async () => {
           await takeOver(game.id);
           await status.resume();
         }}
+        serverLog={officialLog}
         status={status}
       />
       <main aria-label="Spiel erfassen" className="tracking-layout">
@@ -1463,10 +1488,10 @@ export default function TrackingScreen({
         />
         <div className="tracking-controls">
       <ScoreHeader
-        away={log.away}
+        away={officialLog.away}
         disabled={possessionPending || halftimePending || readOnly}
-        home={log.home}
-        isFirstHalf={log.isFirstHalf}
+        home={officialLog.home}
+        isFirstHalf={officialLog.isFirstHalf}
         possession={possession}
       />
       <div aria-label="Ballbesitz" className="possswitch" role="group">

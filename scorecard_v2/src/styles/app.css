@@ -4274,6 +4274,32 @@ button.syncbadge {
   gap: var(--space-2);
 }
 
+/* A read-only phone still holds entries: the list lives in the strip, one tap
+   away, and the device's own score is labelled next to the official one. */
+.syncstranded {
+  flex: 1 1 100%;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+
+.syncstranded summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.syncstranded-list {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
+.syncstranded-note {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  opacity: 0.9;
+}
+
 .syncstrip-btn-strong {
   color: var(--action);
   background: var(--on-action);

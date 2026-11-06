@@ -46,6 +46,12 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   a differing name as the unverified `offline_recorded_by` (plus the verified
   `offline_sent_by`) in the event payload; the log row shows
   "erfasst von X, gesendet von Y".
+- A phone that lost the lock while holding entries is *stranded*: the strip
+  names the count and says they are not in the official record, the list opens
+  in one tap (`components/StrandedEntries.tsx`, kept on the device), and the
+  main score is the server's while the device's own number is labelled as not
+  official (`session/stranded.ts`). This is display only — delivering, retrying
+  or dropping stranded entries is the open Q4 take-over decision.
 
 ## Offline scenario tests
 

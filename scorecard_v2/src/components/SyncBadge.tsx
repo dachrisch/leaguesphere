@@ -22,6 +22,7 @@
 import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
 import { getRuntime } from "../session/runtime";
 import type { PauseReason } from "../offline/sync";
+import { opLabel } from "../offline/opLabel";
 import type { StoredOp } from "../offline/types";
 
 interface SyncBadgeProps {
@@ -125,14 +126,6 @@ export function hasDetails(status: SyncStatus): boolean {
   return reason !== null || droppable.length > 0 || status.failed > 0;
 }
 
-const OP_LABEL: Record<StoredOp["kind"], string> = {
-  event: "Eintrag",
-  delete: "Rückgängig",
-  correction: "Rückgängig",
-  possession: "Ballbesitz",
-  halftime: "Halbzeit",
-};
-
 /** The dot plus one word: the whole sync state at a glance. */
 function Chip({ status, inline }: { status: SyncStatus; inline: boolean }) {
   const { label, tone, actionable } = badgeState(status);
@@ -201,7 +194,7 @@ function Details({
           <ul className="syncfailed-list">
             {droppable.map((op) => (
               <li className="syncfailed-row" key={op.id}>
-                <span className="syncfailed-op">{OP_LABEL[op.kind]}</span>
+                <span className="syncfailed-op">{opLabel(op.kind)}</span>
                 <span className="syncfailed-reason">
                   Wird erst nach der Anmeldung gesendet
                 </span>
@@ -226,7 +219,7 @@ function Details({
           <ul className="syncfailed-list">
             {status.failedOps.map((op) => (
               <li className="syncfailed-row" key={op.id}>
-                <span className="syncfailed-op">{OP_LABEL[op.kind]}</span>
+                <span className="syncfailed-op">{opLabel(op.kind)}</span>
                 <span className="syncfailed-reason">
                   {op.failedReason ?? "Unbekannter Fehler"}
                 </span>

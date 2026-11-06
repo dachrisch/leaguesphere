@@ -147,6 +147,12 @@ Das Spiel gehört dem Gerät, das es gestartet hat. Ein zweites Gerät öffnet e
 nur lesend und sagt dir auch, warum. Staff kann die Sperre freigeben, wenn ein
 Gerät verloren geht.
 
+Nimmt ein anderes Gerät das Spiel, zeigt dein Gerät den offiziellen
+Spielstand. Eigene, noch nicht übertragene Einträge stehen darunter mit
+Anzahl und lassen sich mit einem Tipp anzeigen; sie sind **nicht im
+offiziellen Spielbericht**. Ob und wie sie noch übertragen werden, entscheidet
+die Turnierleitung.
+
 ## Häufige Fragen
 
 **Wo ist die alte Scorecard hin?**
