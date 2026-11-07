@@ -33,6 +33,7 @@ from passcheck.tests.setup_factories.factories_passcheck import (
     PlayerlistFactory,
     PlayerlistGamedayFactory,
 )
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 
 
 class TestRetrieveUpdateOfficials(WebTest):
@@ -591,6 +592,7 @@ class TestGameLog(WebTest):
         # 7 = the log's own queries plus the two reads of the event store that
         # publish each row's `seq` and `payload` (gameevents.service.
         # log_payload). Still flat: one query per request, never one per row.
+        pin_request_path_caches()
         with self.assertNumQueries(7):
             assert self.app.get(url).status_code == HTTPStatus.OK
 
@@ -609,6 +611,7 @@ class TestGameLog(WebTest):
                     author=author,
                 )
 
+        pin_request_path_caches()
         with self.assertNumQueries(7):
             response = self.app.get(url)
         assert len(response.json["events"]) >= 4
@@ -1267,6 +1270,7 @@ class TestGameLogQueryCounts(APITestCase):
         #      flag's SELECT + INSERT (each in a savepoint). This row is a
         #      sequence-0 penalty no event produced, so the log admits it
         #      cannot represent the undo instead of inventing history.
+        pin_request_path_caches()
         with self.assertNumQueries(54):
             response = self.client.delete(
                 reverse(API_GAMELOG, kwargs={"id": game.pk}),
@@ -1737,6 +1741,7 @@ class TestGameRosterAPIView(APITestCase):
     def test_game_roster_query_count_is_flat(self):
         url = reverse("api-game-roster", kwargs={"pk": self.game.pk})
 
+        pin_request_path_caches()
         with self.assertNumQueries(3):
             response = self.client.get(url)
         assert response.status_code == HTTPStatus.OK
@@ -1744,6 +1749,7 @@ class TestGameRosterAPIView(APITestCase):
         for jersey in range(1, 41):
             self._add_player(self.home, jersey, f"Spieler{jersey}")
 
+        pin_request_path_caches()
         with self.assertNumQueries(3):
             response = self.client.get(url)
         assert len(response.data) == 40
