@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.12.3](https://github.com/dachrisch/leaguesphere/compare/v5.12.2...v5.12.3) (2026-11-07)
+
+
+### Documentation
+
+* **skill:** demo feature review with screenshots and a DocStash artifact ([6c91c2d](https://github.com/dachrisch/leaguesphere/commit/6c91c2da97c8e71999370df7b6d651b3f0fc576d))
+
 ## [5.12.2](https://github.com/dachrisch/leaguesphere/compare/v5.12.1...v5.12.2) (2026-11-06)
 
 
