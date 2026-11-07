@@ -31,8 +31,9 @@ import TeamLogo from "../components/TeamLogo";
 import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
 import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
-import { cachedGet, snapshotKey } from "../offline/snapshot";
+import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
 import { newOpId } from "../session/ids";
+import { lockFrom } from "../session/lock";
 import { formatGameTime } from "./GameList";
 
 interface GameSetupScreenProps {
@@ -174,22 +175,6 @@ function slotsFromCrew(
   }
 
   return slots;
-}
-
-/**
- * The id of the device that holds this game's lock, when another one does.
- *
- * `PUT /setup` assigns the lock, so its presence means *somebody* started the
- * game. A different id than this device's is the warning the officials missed
- * before kickoff (meeting 2026-11-05, 14:47): two people prepared the same
- * game and only found out on the first write.
- */
-export function foreignDevice(setup: GameSetupPayload): string | null {
-  const stored = setup.device_id?.trim();
-  if (stored === undefined || stored === "") {
-    return null;
-  }
-  return stored === getDeviceId() ? null : stored;
 }
 
 /** `{}` means "not prepared yet"; a single filled field makes it a resume. */
@@ -374,8 +359,16 @@ export default function GameSetupScreen({
   const [teamError, setTeamError] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [hasSetup, setHasSetup] = useState(false);
-  /** Set when another device already holds the game's lock. */
-  const [otherDevice, setOtherDevice] = useState<string | null>(null);
+  /**
+   * Another device holds the game's lock, as the live setup read answered.
+   *
+   * The warning the officials missed before kickoff (meeting 2026-11-05,
+   * 14:47): two people prepared the same game and only found out on the first
+   * write. The server compares the request's device header itself — the stored
+   * id is write-only and never comes back — so this is read from
+   * `locked_elsewhere`, never from a stored payload.
+   */
+  const [lockedElsewhere, setLockedElsewhere] = useState(false);
 
   const [toss, setToss] = useState<Side | null>(null);
   const [possession, setPossession] = useState<Side | null>(null);
@@ -403,15 +396,18 @@ export default function GameSetupScreen({
    */
   const load = useCallback(async () => {
     try {
-      const [crew, team, setup, positions] = await Promise.all([
+      const [crew, team, cachedSetup, positions] = await Promise.all([
         apiGet<Official[]>(crewPath),
         apiGet<TeamOfficial[]>(teamPath).catch(() => {
           setTeamError(true);
           return [];
         }),
         // Preloaded: a device that reloads with no network still shows what
-        // was agreed on the coin toss.
-        cachedGet<GameSetupPayload>(snapshotKey.setup(id), setupPath),
+        // was agreed on the coin toss. The read names this device so the
+        // server can answer `locked_elsewhere` in the same request.
+        cachedGetMeta<GameSetupPayload>(snapshotKey.setup(id), setupPath, {
+          deviceId: getDeviceId(),
+        }),
         // The league's slots are configuration, not game state, so the last
         // answer is preloaded: if *this* request alone fails (5xx, aborted),
         // the stored slots keep labels and order right. The crew itself is a
@@ -428,9 +424,13 @@ export default function GameSetupScreen({
       }
       setSlots(slotsFromCrew(crew ?? [], positions));
       setTeamOfficials(team ?? []);
+      const setup = cachedSetup.value;
       const saved = hasSavedSetup(setup ?? {});
       setHasSetup(saved);
-      setOtherDevice(saved ? foreignDevice(setup ?? {}) : null);
+      // A lock is live state: a payload read back from the snapshot is as old
+      // as the snapshot, so only a fresh answer may raise the warning.
+      const lock = cachedSetup.updatedAt === null ? lockFrom(setup) : null;
+      setLockedElsewhere(saved && lock?.lockedElsewhere === true);
       if (saved) {
         setToss(normaliseToss(setup.ctResult, home, away));
         setPossession(normaliseSide(setup.fhPossession, home, away));
@@ -923,7 +923,7 @@ export default function GameSetupScreen({
             </p>
           ) : null}
 
-          {otherDevice === null ? null : (
+          {lockedElsewhere ? (
             // Deliberately not `.seterror`: that class marks a *failed start*
             // (the harness and the officials read it that way), and this is a
             // warning shown before anyone taps.
@@ -934,7 +934,7 @@ export default function GameSetupScreen({
                 freigibt – oder dieses Gerät das Spiel übernimmt.
               </p>
             </div>
-          )}
+          ) : null}
 
           <div className="prepgrid">
             <section aria-labelledby={officialsSectionId} className="block">
