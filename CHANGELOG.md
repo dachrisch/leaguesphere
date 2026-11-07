@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.13.0](https://github.com/dachrisch/leaguesphere/compare/v5.12.4...v5.13.0) (2026-11-07)
+
+
+### Features
+
+* **demo:** seed 2026 finals gamedays 888 and 890 ([7aef86e](https://github.com/dachrisch/leaguesphere/commit/7aef86e037f3f91508f3e22deb6130cb7472972a))
+* **demo:** seed 2026 finals gamedays 888 and 890 ([9ca0443](https://github.com/dachrisch/leaguesphere/commit/9ca0443d7a36ba9220aab4380c1bbcf6500c3f7f))
+
 ## [5.12.4](https://github.com/dachrisch/leaguesphere/compare/v5.12.3...v5.12.4) (2026-11-07)
 
 
