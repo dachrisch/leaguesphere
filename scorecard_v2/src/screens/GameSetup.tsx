@@ -864,6 +864,16 @@ export default function GameSetupScreen({
             lines: blockers,
           };
 
+  // The banner can scroll under the sticky start bar, so the bar repeats the
+  // first open item: the reason the start is refused is never out of view.
+  const openItems = !readOnly && !offline ? blockers : [];
+  const startWhy =
+    openItems.length === 0
+      ? null
+      : `Noch offen: ${openItems[0]}${
+          openItems.length > 1 ? ` (+${openItems.length - 1} weitere)` : ""
+        }`;
+
   return (
     <Screen
       onBack={onBack}
@@ -1253,7 +1263,13 @@ export default function GameSetupScreen({
               </div>
 
               <div className="setupfoot">
+                {startWhy === null ? null : (
+                  <p className="setupfoot-why" id="start-why">
+                    {startWhy}
+                  </p>
+                )}
                 <button
+                  aria-describedby={startWhy === null ? undefined : "start-why"}
                   className="startbtn"
                   disabled={saving || readOnly || offline}
                   onClick={openConfirmation}

@@ -423,13 +423,28 @@ button.game-row:active {
 }
 
 .game-sub {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
   margin-top: 2px;
-  overflow: hidden;
   font-size: var(--fs-xs);
   color: var(--muted);
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The officials give way first; the passcheck chip always shows whole. */
+.game-officials {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+
+.game-sub > .chip-ok,
+.game-sub > .chip-miss {
+  flex: 0 0 auto;
 }
 
 .game-right {
@@ -1751,11 +1766,29 @@ button.game-row:active {
   overflow-wrap: anywhere;
 }
 
+/* Time, edit and undo share one line: stacked, the two 44px buttons made every
+   row ~119px tall and a short phone showed one entry or none. Side by side a
+   row is one touch target high. */
 .rowright {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px var(--space-1);
+}
+
+.rowright .rowtime {
+  margin-right: 2px;
+}
+
+/* No room for the time beside both buttons: it moves above them, so the
+   entry text keeps its width. */
+@media (max-width: 359px) {
+  .rowright .rowtime {
+    flex: 1 0 100%;
+    margin-right: 0;
+    text-align: right;
+  }
 }
 
 .rowtime {
@@ -1998,15 +2031,13 @@ button.game-row:active {
   min-height: 0;
 }
 
+/* The saved strip sits below the log, in the flow: floating over the log it
+   covered the newest rows' actions (48px of a short phone's whole log). The
+   log gives up the strip's height while it is shown. */
 .logwrap > .trackok,
 .logwrap > .trackerror {
-  position: absolute;
-  right: var(--page-gutter);
-  bottom: var(--space-2);
-  left: var(--page-gutter);
-  z-index: 2;
-  margin: 0;
-  box-shadow: var(--shadow-card);
+  flex: 0 0 auto;
+  margin: var(--space-2) var(--page-gutter) 0;
 }
 
 .trackok {
@@ -3209,6 +3240,7 @@ button.game-row:active {
   .ev {
     width: 30px;
   }
+
 }
 
 /* --------------------------------------------------------- flow chrome -- */
@@ -4011,6 +4043,36 @@ button.syncbadge {
   }
 }
 
+/* A long form's two columns: transparent below the desktop breakpoint, so the
+   sheet body keeps its single flex column there. */
+.penaltygrid,
+.penaltycol {
+  display: contents;
+}
+
+/* Desktop: a long form (`Sheet wide`) gets the room the screen has. At 680px
+   the penalty form was 953px tall in a 774px dialog; side by side it fits. */
+@media (min-width: 1280px) {
+  .sheet.sheet-wide {
+    width: min(960px, 100%);
+    max-width: 960px;
+  }
+
+  .sheet-wide .penaltygrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-2) var(--space-6);
+    align-items: start;
+  }
+
+  .sheet-wide .penaltycol {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -4341,7 +4403,9 @@ button.syncbadge {
    tiles at their own size and yields only on a short window, row six the end
    buttons right below them. Row seven takes the free height, so a tall screen
    leaves room under the controls instead of stretching the tiles. */
-@media (min-width: 900px) {
+/* A phone on its side (short landscape) gets the two-pane layout too: it has
+   the width, and stacked it has no room for the controls at all. */
+@media (min-width: 900px), (min-width: 640px) and (max-height: 520px) and (orientation: landscape) {
   .app-shell.tracking {
     max-width: var(--shell-width-track);
   }
@@ -4443,9 +4507,7 @@ button.syncbadge {
 
   .tracking-log > .trackok,
   .tracking-log > .trackerror {
-    right: var(--space-4);
-    bottom: var(--space-8);
-    left: var(--space-4);
+    margin: 0 var(--space-4) var(--space-4);
   }
 
   .tracking .actions {
@@ -4656,7 +4718,8 @@ button.syncbadge {
 
 /* Short landscape windows keep every control reachable without introducing a
    page scroll: the tiles yield first, then these dimensions compact. */
-@media (min-width: 900px) and (max-height: 700px) {
+@media (min-width: 900px) and (max-height: 700px),
+  (min-width: 640px) and (max-height: 520px) and (orientation: landscape) {
   .tracking-layout {
     --track-row-gap: var(--space-3);
     column-gap: var(--space-5);
@@ -4758,7 +4821,11 @@ button.syncbadge {
 
 /* ------------------------------------------------------- wide game list -- */
 
-@media (min-width: 900px) {
+/* The sidebar (380px) and a two-field plan (88px time + 2 × 220px fields +
+   gaps = 568px) fit side by side from 1040px; narrower windows keep the
+   one-column list instead of hiding Feld 2 behind a sideways scroll. Keep in
+   step with `WIDE_LIST_QUERY` in GameList.tsx. */
+@media (min-width: 1040px) {
   .app-shell-games {
     max-width: var(--shell-width-wide);
   }
@@ -4889,6 +4956,17 @@ button.syncbadge {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
+  }
+
+  /* A plan with more fields than fit scrolls sideways; the time column stays
+     put so every card keeps its kick-off. */
+  .timetable-corner,
+  .timetable-time {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    align-self: stretch;
+    background: var(--bg);
   }
 
   .timetable-time {
@@ -5047,4 +5125,261 @@ button.syncbadge {
 .timeoutbtn.is-used {
   color: var(--home-text);
   border-style: solid;
+}
+
+/* ------------------------------------------------ short screens: tracking -- */
+
+/* A phone on its side: the read-out (board, possession, drive) stacks above
+   the log on the left, every control on the right. The saved strip leaves the
+   log and closes the controls column, so the log keeps its rows while it is
+   shown. Wider windows of this height keep the desktop arrangement. */
+@media (min-width: 640px) and (max-width: 1279px) and (max-height: 520px) and (orientation: landscape) {
+  .tracking-layout {
+    /* The log side is a little wider so an entry stays on one line. */
+    grid-template-columns: minmax(0, 7fr) minmax(0, 6fr);
+    grid-template-rows: repeat(4, auto) minmax(0, 1fr) repeat(2, auto);
+    --track-row-gap: var(--space-2);
+    column-gap: var(--space-4);
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .tracking .board {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+  }
+
+  .tracking .score {
+    font-size: 36px;
+  }
+
+  .tracking .teamlogo-crest {
+    width: 32px;
+    height: 36px;
+  }
+
+  .tracking .possswitch,
+  .tracking .possbtn {
+    min-height: var(--touch);
+  }
+
+  .tracking .possswitch {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .tracking .drivebar {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .tracking-controls > .trackerror,
+  .tracking-controls > .finishednote,
+  .tracking-controls > .trackhint {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  /* The log's card moves from the wrapper to the log itself, so the strip
+     and its error can be placed in the other column. */
+  .tracking .tracking-log {
+    display: contents;
+  }
+
+  .tracking-log .logblock {
+    grid-column: 1;
+    grid-row: 5 / -1;
+    min-height: 0;
+    margin: var(--track-row-gap) 0 0;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .tracking-log .loghead {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .tracking-log .logfoot {
+    display: none;
+  }
+
+  .tracking .actions {
+    grid-column: 2;
+    grid-row: 1 / 6;
+    align-self: start;
+    gap: var(--space-2);
+    margin: 0;
+  }
+
+  .tracking-log > .trackok,
+  .tracking-log > .trackerror {
+    grid-column: 2;
+    grid-row: 6;
+    margin: var(--track-row-gap) 0 0;
+  }
+
+  .tracking .tracking-end {
+    grid-column: 2;
+    grid-row: 7;
+  }
+
+  .tracking .tdbtn {
+    flex-basis: 48px;
+    min-height: 48px;
+    font-size: var(--fs-xl);
+  }
+
+  .tracking .playbtn {
+    min-height: var(--touch);
+  }
+
+  /* One touch target per tile row: the column has no height to share out. */
+  .tracking .action-grid {
+    --action-tile: var(--touch);
+    gap: var(--space-2);
+  }
+
+  .tracking .tracking-end {
+    --end-button: var(--touch);
+  }
+}
+
+/* A short phone held upright: the read-out and the controls compact, and
+   Halbzeit shares the dock row with Spiel beenden, so the log keeps at least
+   two entries. Below that the screen scrolls as a whole instead of clipping
+   the controls under the bottom edge. */
+@media (max-width: 899px) and (max-height: 760px) and (orientation: portrait),
+  (max-width: 639px) and (max-height: 760px) {
+  .tracking .board {
+    padding: var(--space-1) var(--space-3);
+  }
+
+  .tracking .score {
+    font-size: 36px;
+  }
+
+  .tracking .teamlogo-crest {
+    width: 32px;
+    height: 36px;
+  }
+
+  .tracking .tdbtn {
+    min-height: 48px;
+  }
+
+  .tracking .playbtn,
+  .tracking .action {
+    min-height: var(--touch);
+  }
+
+  .tracking .actions {
+    gap: 6px;
+    padding-bottom: var(--space-2);
+  }
+
+  .tracking .tracking-end {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--page-gutter) var(--bottom-safe);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+
+  .tracking-end > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .tracking-end > .breakpanel {
+    flex-basis: 100%;
+  }
+
+  .tracking-end .halfblock,
+  .tracking-end.home .halfblock,
+  .tracking-end.away .halfblock {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .tracking-end .trackfoot {
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .tracking-end .halfbtn,
+  .tracking-end .startbtn {
+    min-height: var(--touch);
+    padding-block: var(--space-1);
+    white-space: nowrap;
+  }
+
+  .tracking-end .startbtn {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 899px) {
+  /* The log never shrinks below two entries; when the controls need the rest,
+     the shell scrolls rather than clipping them. */
+  .app-shell.tracking {
+    overflow-y: auto;
+  }
+
+  /* Head (~40px) plus two one-line entries; the saved strip below the log
+     adds its own height instead of taking it from the entries. */
+  .tracking {
+    --log-min: calc(40px + 2 * (var(--touch) + 2 * var(--space-2) + 1px));
+  }
+
+  .tracking .logwrap {
+    min-height: var(--log-min);
+  }
+
+  .tracking .logwrap:has(> .trackok, > .trackerror) {
+    min-height: calc(var(--log-min) + 48px + var(--space-2));
+  }
+}
+
+/* Below 360px an entry's time sits above its buttons: two taller rows. */
+@media (max-width: 359px) {
+  .tracking {
+    --log-min: calc(40px + 2 * (var(--touch) + 2 * var(--space-2) + 30px));
+  }
+}
+
+/* A narrow phone gives each possession button ~100px: the team name takes a
+   second line at a smaller size instead of shrinking to "Demo E…". */
+@media (max-width: 380px) {
+  .possbtn {
+    white-space: normal;
+  }
+
+  .possname {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    font-size: 17px;
+    line-height: 1.05;
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+}
+
+/* The sticky start bar repeats why the start is refused: the readiness banner
+   above it can sit under the bar until the page is scrolled. */
+.setupfoot-why {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--amber);
 }

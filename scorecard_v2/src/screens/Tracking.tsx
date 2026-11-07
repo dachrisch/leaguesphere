@@ -1651,6 +1651,7 @@ export default function TrackingScreen({
                     void takePossession(name);
                   }
                 }}
+                title={name ?? undefined}
                 type="button"
               >
                 <span className="possname">{name ?? "–"}</span>
@@ -1713,8 +1714,8 @@ export default function TrackingScreen({
         <p className="trackhint">Ballbesitz wählen, um Einträge zu erfassen.</p>
       ) : null}
         </div>
-      {/* The log owns the free height; the saved toast floats over its foot
-          instead of pushing it out of view. */}
+      {/* The log owns the free height; the saved strip takes its own line
+          below the log instead of covering the newest rows. */}
       <div className="logwrap tracking-log">
         <EventLog
           disabled={halftimePending || readOnly || finished}

@@ -37,6 +37,12 @@ export interface SheetProps {
   error?: string | null;
   /** Sticky footer, one full-width primary action per sheet. */
   footer?: ReactNode;
+  /**
+   * A long form that should use a desktop's width: from 1280px the dialog is
+   * ~960px wide instead of 680px, and the sheet lays its content out in two
+   * columns. Phones and tablets are unaffected.
+   */
+  wide?: boolean;
   children: ReactNode;
 }
 
@@ -64,6 +70,7 @@ export default function Sheet({
   busy = false,
   error = null,
   footer,
+  wide = false,
   children,
 }: SheetProps) {
   const titleId = useId();
@@ -143,7 +150,7 @@ export default function Sheet({
         aria-busy={busy}
         aria-labelledby={titleId}
         aria-modal="true"
-        className="sheet"
+        className={wide ? "sheet sheet-wide" : "sheet"}
         onKeyDown={onKeyDown}
         ref={sheet}
         role="dialog"

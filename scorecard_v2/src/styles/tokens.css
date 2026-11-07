@@ -301,6 +301,13 @@
   }
 }
 
+/* A phone on its side tracks in two panes and needs its whole width. */
+@media (min-width: 640px) and (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --shell-width-track: 1100px;
+  }
+}
+
 @media (min-width: 1280px) {
   :root {
     --shell-width-track: var(--shell-width-wide);
