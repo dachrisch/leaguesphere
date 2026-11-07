@@ -517,245 +517,253 @@ export default function PenaltySheet({
       }
       onClose={onClose}
       title="Strafe"
+      wide
     >
-      <h3 className="sheetsection">Strafe suchen</h3>
-      <input
-        aria-label="Strafe suchen"
-        autoComplete="off"
-        className="sheetinput"
-        disabled={posting}
-        onChange={(event) => {
-          setSearch(event.target.value);
-          setExpanded(false);
-        }}
-        placeholder="Strafe eingeben …"
-        type="search"
-        value={search}
-      />
-      {loading ? (
-        <p className="sheetnote" role="status">
-          Strafen laden …
-        </p>
-      ) : loadError !== null ? (
-        <p className="sheetwarn" role="alert">
-          {loadError}
-        </p>
-      ) : matches.length === 0 ? (
-        <p className="sheetnote" role="status">
-          Keine Strafe gefunden.
-        </p>
-      ) : (
-        <div aria-label="Strafen" className="penaltylist" role="group">
-          {visible.map((penalty) => {
-            const chosen = selected !== null && selected.name === penalty.name;
-            return (
-              <button
-                aria-pressed={chosen}
-                className={chosen ? "penalty sel" : "penalty"}
-                disabled={posting}
-                key={penalty.name}
-                onClick={() => pickPenalty(penalty)}
-                type="button"
-              >
-                <span className="penaltyname">{penalty.name}</span>
-                <span className="penaltysub">{penalty.subtext}</span>
-              </button>
-            );
-          })}
-          {hidden > 0 ? (
+      {/* One column on a phone; on a desktop the choice sits beside the
+          details, so the whole form fits without scrolling. */}
+      <div className="penaltygrid">
+        <div className="penaltycol">
+          <h3 className="sheetsection">Strafe suchen</h3>
+          <input
+            aria-label="Strafe suchen"
+            autoComplete="off"
+            className="sheetinput"
+            disabled={posting}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setExpanded(false);
+            }}
+            placeholder="Strafe eingeben …"
+            type="search"
+            value={search}
+          />
+          {loading ? (
+            <p className="sheetnote" role="status">
+              Strafen laden …
+            </p>
+          ) : loadError !== null ? (
+            <p className="sheetwarn" role="alert">
+              {loadError}
+            </p>
+          ) : matches.length === 0 ? (
+            <p className="sheetnote" role="status">
+              Keine Strafe gefunden.
+            </p>
+          ) : (
+            <div aria-label="Strafen" className="penaltylist" role="group">
+              {visible.map((penalty) => {
+                const chosen = selected !== null && selected.name === penalty.name;
+                return (
+                  <button
+                    aria-pressed={chosen}
+                    className={chosen ? "penalty sel" : "penalty"}
+                    disabled={posting}
+                    key={penalty.name}
+                    onClick={() => pickPenalty(penalty)}
+                    type="button"
+                  >
+                    <span className="penaltyname">{penalty.name}</span>
+                    <span className="penaltysub">{penalty.subtext}</span>
+                  </button>
+                );
+              })}
+              {hidden > 0 ? (
+                <button
+                  className="penaltymore"
+                  disabled={posting}
+                  onClick={() => setExpanded(true)}
+                  type="button"
+                >
+                  Alle {matches.length} Strafen anzeigen
+                </button>
+              ) : null}
+            </div>
+          )}
+        </div>
+        <div className="penaltycol">
+          <h3 className="sheetsection">Gegen wen?</h3>
+          <div aria-label="Gegen wen?" className="teampick" role="group">
             <button
-              className="penaltymore"
+              aria-pressed={team === teamName}
+              className={team === teamName ? "teampickbtn sel" : "teampickbtn"}
               disabled={posting}
-              onClick={() => setExpanded(true)}
+              onClick={() => pickTeam(teamName)}
               type="button"
             >
-              Alle {matches.length} Strafen anzeigen
+              {teamName}
             </button>
-          ) : null}
-        </div>
-      )}
+            <button
+              aria-pressed={team === opponentName}
+              className={team === opponentName ? "teampickbtn sel" : "teampickbtn"}
+              disabled={posting}
+              onClick={() => pickTeam(opponentName)}
+              type="button"
+            >
+              {opponentName}
+            </button>
+          </div>
 
-      <h3 className="sheetsection">Gegen wen?</h3>
-      <div aria-label="Gegen wen?" className="teampick" role="group">
-        <button
-          aria-pressed={team === teamName}
-          className={team === teamName ? "teampickbtn sel" : "teampickbtn"}
-          disabled={posting}
-          onClick={() => pickTeam(teamName)}
-          type="button"
-        >
-          {teamName}
-        </button>
-        <button
-          aria-pressed={team === opponentName}
-          className={team === opponentName ? "teampickbtn sel" : "teampickbtn"}
-          disabled={posting}
-          onClick={() => pickTeam(opponentName)}
-          type="button"
-        >
-          {opponentName}
-        </button>
-      </div>
-
-      <h3 className="sheetsection">Raumgewinn der Strafe (Yards)</h3>
-      <div aria-label="Raumrichtung" className="seg" role="group">
-        <button
-          aria-pressed={!yardageLoss}
-          className={!yardageLoss ? "sel" : undefined}
-          disabled={posting}
-          onClick={() => setYardageLoss(false)}
-          type="button"
-        >
-          Gewinn
-        </button>
-        <button
-          aria-pressed={yardageLoss}
-          className={yardageLoss ? "sel" : undefined}
-          disabled={posting}
-          onClick={() => setYardageLoss(true)}
-          type="button"
-        >
-          Verlust
-        </button>
-      </div>
-      <div className="sheetfield">
-        <label className="sheetlabel" htmlFor="penalty-yards">
-          Yardage (0–{geometry.fieldLength})
-        </label>
-        <input
-          autoComplete="off"
-          className="sheetinput sheetinput-num"
-          disabled={posting}
-          id="penalty-yards"
-          inputMode="numeric"
-          onChange={(event) => changeYardage(event.target.value)}
-          pattern="[0-9]*"
-          type="text"
-          value={yardageText}
-        />
-      </div>
-      {yardageTooLong ? (
-        <p className="sheetwarn" role="alert">
-          Die Strafe kann höchstens {geometry.fieldLength} Yards betragen.
-        </p>
-      ) : spotAfter === null ? null : (
-        <p className="sheetnote">
-          Nach der Strafe: {spotAfter}
-          {yardage !== null && Math.abs(yardage) > 0
-            ? ` (Halbierung greift, wenn die Distanz kürzer ist)`
-            : ""}
-        </p>
-      )}
-
-      <h3 className="sheetsection">Nächster Versuch</h3>
-      <div aria-label="Nächster Versuch" className="seg seg-three" role="group">
-        {(Object.keys(NEXT_DOWN_LABELS) as PenaltyNextDown[]).map((value) => (
-          <button
-            aria-pressed={nextDown === value}
-            className={nextDown === value ? "sel" : undefined}
-            disabled={posting}
-            key={value}
-            onClick={() => setNextDown(value)}
-            type="button"
-          >
-            {NEXT_DOWN_LABELS[value]}
-          </button>
-        ))}
-      </div>
-
-      {kind === "unsportsmanlike" ? (
-        <>
-          <h3 className="sheetsection">Trikotnummer(n) (optional)</h3>
+          <h3 className="sheetsection">Raumgewinn der Strafe (Yards)</h3>
+          <div aria-label="Raumrichtung" className="seg" role="group">
+            <button
+              aria-pressed={!yardageLoss}
+              className={!yardageLoss ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setYardageLoss(false)}
+              type="button"
+            >
+              Gewinn
+            </button>
+            <button
+              aria-pressed={yardageLoss}
+              className={yardageLoss ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setYardageLoss(true)}
+              type="button"
+            >
+              Verlust
+            </button>
+          </div>
           <div className="sheetfield">
-            <label className="sheetlabel" htmlFor="penalty-unsportsmanlike">
-              Nummern als Freitext
+            <label className="sheetlabel" htmlFor="penalty-yards">
+              Yardage (0–{geometry.fieldLength})
             </label>
             <input
               autoComplete="off"
-              className="sheetinput"
+              className="sheetinput sheetinput-num"
               disabled={posting}
-              id="penalty-unsportsmanlike"
-              onChange={(event) => setUnsportsmanlike(event.target.value)}
-              placeholder="z. B. 12, 7 oder 12 7"
+              id="penalty-yards"
+              inputMode="numeric"
+              onChange={(event) => changeYardage(event.target.value)}
+              pattern="[0-9]*"
               type="text"
-              value={unsportsmanlike}
+              value={yardageText}
             />
           </div>
-          <p className="sheetnote">
-            Mehrere Nummern mit Komma oder Leerzeichen. Zwei UNV derselben
-            Nummer bedeuten automatisch Disqualifikation.
-          </p>
-          {team === null ? null : teamHistory.length === 0 ? (
-            <p className="sheetnote">
-              Noch kein Unsportliches Verhalten für {team} erfasst.
-            </p>
-          ) : (
-            <div className="unsportlist">
-              <h4 className="unsportlist-title">Bisher für {team}</h4>
-              <ul>
-                {teamHistory.map((entry, index) => (
-                  <li key={`${entry.half}-${index}`}>
-                    Halbzeit {entry.half}:{" "}
-                    {entry.text === "" ? "ohne Nummer" : `Nr. ${entry.text}`}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {repeatedUnsportsmanlike.length === 0 ? null : (
+          {yardageTooLong ? (
             <p className="sheetwarn" role="alert">
-              {repeatedUnsportsmanlike
-                .map(
-                  (entry) =>
-                    `Nr. ${entry.number} hat bereits ${entry.prior} UNV – dieser Eintrag wäre der ${entry.prior + 1}.`,
-                )
-                .join(" ")}{" "}
-              Damit ist die Person automatisch disqualifiziert.
+              Die Strafe kann höchstens {geometry.fieldLength} Yards betragen.
+            </p>
+          ) : spotAfter === null ? null : (
+            <p className="sheetnote">
+              Nach der Strafe: {spotAfter}
+              {yardage !== null && Math.abs(yardage) > 0
+                ? ` (Halbierung greift, wenn die Distanz kürzer ist)`
+                : ""}
             </p>
           )}
-        </>
-      ) : (
-        <>
-          <h3 className="sheetsection">
-            {kind === "disqualification"
-              ? "Trikotnummer (Pflicht)"
-              : "Trikotnummer (optional)"}
-          </h3>
-          {missingJersey ? (
-            <p className="sheetwarn" role="alert">
-              Bei einer Disqualifikation ist die Trikotnummer Pflicht.
-            </p>
-          ) : null}
-          {roster === null && kind !== "disqualification" ? (
-            <p className="sheetnote" role="status">
-              Kader lädt …
-            </p>
-          ) : roster !== null &&
-            options.length === 0 &&
-            kind !== "disqualification" ? (
-            <p className="sheetnote">
-              Kein Kader geladen – die Strafe wird für das ganze Team
-              gespeichert.
-            </p>
+
+          <h3 className="sheetsection">Nächster Versuch</h3>
+          <div aria-label="Nächster Versuch" className="seg seg-three" role="group">
+            {(Object.keys(NEXT_DOWN_LABELS) as PenaltyNextDown[]).map((value) => (
+              <button
+                aria-pressed={nextDown === value}
+                className={nextDown === value ? "sel" : undefined}
+                disabled={posting}
+                key={value}
+                onClick={() => setNextDown(value)}
+                type="button"
+              >
+                {NEXT_DOWN_LABELS[value]}
+              </button>
+            ))}
+          </div>
+
+          {kind === "unsportsmanlike" ? (
+            <>
+              <h3 className="sheetsection">Trikotnummer(n) (optional)</h3>
+              <div className="sheetfield">
+                <label className="sheetlabel" htmlFor="penalty-unsportsmanlike">
+                  Nummern als Freitext
+                </label>
+                <input
+                  autoComplete="off"
+                  className="sheetinput"
+                  disabled={posting}
+                  id="penalty-unsportsmanlike"
+                  onChange={(event) => setUnsportsmanlike(event.target.value)}
+                  placeholder="z. B. 12, 7 oder 12 7"
+                  type="text"
+                  value={unsportsmanlike}
+                />
+              </div>
+              <p className="sheetnote">
+                Mehrere Nummern mit Komma oder Leerzeichen. Zwei UNV derselben
+                Nummer bedeuten automatisch Disqualifikation.
+              </p>
+              {team === null ? null : teamHistory.length === 0 ? (
+                <p className="sheetnote">
+                  Noch kein Unsportliches Verhalten für {team} erfasst.
+                </p>
+              ) : (
+                <div className="unsportlist">
+                  <h4 className="unsportlist-title">Bisher für {team}</h4>
+                  <ul>
+                    {teamHistory.map((entry, index) => (
+                      <li key={`${entry.half}-${index}`}>
+                        Halbzeit {entry.half}:{" "}
+                        {entry.text === "" ? "ohne Nummer" : `Nr. ${entry.text}`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {repeatedUnsportsmanlike.length === 0 ? null : (
+                <p className="sheetwarn" role="alert">
+                  {repeatedUnsportsmanlike
+                    .map(
+                      (entry) =>
+                        `Nr. ${entry.number} hat bereits ${entry.prior} UNV – dieser Eintrag wäre der ${entry.prior + 1}.`,
+                    )
+                    .join(" ")}{" "}
+                  Damit ist die Person automatisch disqualifiziert.
+                </p>
+              )}
+            </>
           ) : (
-            <JerseyPicker
-              disabled={posting}
-              groupLabel={
-                kind === "disqualification"
+            <>
+              <h3 className="sheetsection">
+                {kind === "disqualification"
                   ? "Trikotnummer (Pflicht)"
-                  : "Trikotnummer (optional)"
-              }
-              label="Trikot"
-              onChange={setJersey}
-              optionalLabel={
-                kind === "disqualification" ? undefined : "Ganzes Team"
-              }
-              players={players}
-              value={jersey}
-            />
+                  : "Trikotnummer (optional)"}
+              </h3>
+              {missingJersey ? (
+                <p className="sheetwarn" role="alert">
+                  Bei einer Disqualifikation ist die Trikotnummer Pflicht.
+                </p>
+              ) : null}
+              {roster === null && kind !== "disqualification" ? (
+                <p className="sheetnote" role="status">
+                  Kader lädt …
+                </p>
+              ) : roster !== null &&
+                options.length === 0 &&
+                kind !== "disqualification" ? (
+                <p className="sheetnote">
+                  Kein Kader geladen – die Strafe wird für das ganze Team
+                  gespeichert.
+                </p>
+              ) : (
+                <JerseyPicker
+                  disabled={posting}
+                  groupLabel={
+                    kind === "disqualification"
+                      ? "Trikotnummer (Pflicht)"
+                      : "Trikotnummer (optional)"
+                  }
+                  label="Trikot"
+                  onChange={setJersey}
+                  optionalLabel={
+                    kind === "disqualification" ? undefined : "Ganzes Team"
+                  }
+                  players={players}
+                  value={jersey}
+                />
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
+      </div>
 
       <p className="sheetnote">
         {selected === null

@@ -292,6 +292,27 @@ describe("PenaltySheet", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("opens as the wide dialog with the choice beside the details", async () => {
+    renderSheet();
+
+    await screen.findByRole("group", { name: "Strafen" });
+    const dialog = screen.getByRole("dialog", { name: "Strafe" });
+    expect(dialog).toHaveClass("sheet-wide");
+    // Two columns on a desktop: what (search + list) | for whom and how far.
+    const columns = Array.from(dialog.querySelectorAll(".penaltycol"));
+    expect(columns).toHaveLength(2);
+    const [choice, details] = columns;
+    expect(choice).toContainElement(
+      screen.getByRole("group", { name: "Strafen" }),
+    );
+    expect(details).toContainElement(
+      screen.getByRole("group", { name: "Gegen wen?" }),
+    );
+    expect(details).toContainElement(
+      screen.getByRole("group", { name: "Nächster Versuch" }),
+    );
+  });
+
   it("shows the yardage next to each penalty", async () => {
     renderSheet();
 

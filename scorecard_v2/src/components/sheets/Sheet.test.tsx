@@ -52,6 +52,22 @@ describe("Sheet", () => {
     });
   });
 
+  it("keeps the default width unless a sheet asks for the wide dialog", () => {
+    const { rerender } = render(
+      <Sheet onClose={vi.fn()} title="Schmal">
+        <p>Inhalt</p>
+      </Sheet>,
+    );
+    expect(screen.getByRole("dialog")).not.toHaveClass("sheet-wide");
+
+    rerender(
+      <Sheet onClose={vi.fn()} title="Breit" wide>
+        <p>Inhalt</p>
+      </Sheet>,
+    );
+    expect(screen.getByRole("dialog")).toHaveClass("sheet", "sheet-wide");
+  });
+
   it("moves focus into the sheet and returns it to the opener", async () => {
     const onClose = vi.fn();
     render(<Opener onClose={onClose} />);
