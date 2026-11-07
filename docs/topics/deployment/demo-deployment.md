@@ -172,7 +172,10 @@ database..." or the entrypoint exits non-zero:
 
 ## Security Notes
 
-- All demo data is synthetic with no real PII
+- All demo person data is synthetic with no real PII. The finals gamedays
+  (888/890) keep their real team names, schedules, results and jersey numbers,
+  but every player/official name, year of birth and pass number is replaced by
+  a generated value (see `_finals_demo_data.py`).
 - Demo credentials are intentionally weak and public
 - Demo database is isolated from production via separate network
 - CSRF and CORS are configured for demo domain only

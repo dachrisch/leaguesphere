@@ -12,15 +12,23 @@ from gamedays.models import (
     GameOfficial,
     Gameresult,
     Person,
+    ResourceUrl,
 )
+from league_manager.management.commands._finals_demo_data import FINALS_GAMEDAYS
 from officials.models import Official, OfficialLicense, OfficialLicenseHistory
-from passcheck.models import Player, Playerlist, PlayerlistGameday
+from passcheck.models import (
+    PasscheckVerification,
+    Player,
+    Playerlist,
+    PlayerlistGameday,
+)
 from league_table.models import LeagueGroup
 import random
-from datetime import datetime, timedelta, date
+from datetime import datetime, time, timedelta, date
 
 OFFICIALS_TEAM_NAME = "Demo Officials"
 OFFICIAL_POSITIONS = ["Referee", "Down Judge", "Field Judge", "Side Judge"]
+FINALS_PASSCHECK_OFFICIAL = "Demo Passcheck"
 
 
 # Every demo player joined before any seeded gameday, whenever it was dated.
@@ -65,9 +73,16 @@ class Command(BaseCommand):
         gamedays_count = self.create_gamedays(seasons, leagues, teams)
         self.stdout.write(f"✓ Created {gamedays_count} gamedays with sample games")
 
+        # The two real 2026 finals gamedays (an anonymised snapshot) give the
+        # demo actual championship games with their passcheck rosters.
+        finals_gamedays = self.create_finals_gamedays(associations)
+        self.stdout.write(
+            f"✓ Created {len(finals_gamedays)} finals gamedays with passcheck rosters"
+        )
+
         # Check the players in for every seeded gameday (the passcheck
         # snapshot), so the scorecard's jersey picker has a roster to offer.
-        gamedays = list(Gameday.objects.filter(season=seasons[-1])) if seasons else []
+        gamedays = list(Gameday.objects.filter(season=seasons[-1])) + finals_gamedays
         rostered = self.create_gameday_rosters(gamedays)
         self.stdout.write(f"✓ Checked in {rostered} players for their gamedays")
 
@@ -430,6 +445,154 @@ class Command(BaseCommand):
                         self.create_game_result(gameinfo, home_team, away_team)
 
                     game_counter += 1
+
+    def create_finals_gamedays(self, associations):
+        """Create the two 2026 DFFL finals gamedays from the static snapshot.
+
+        The snapshot (``_finals_demo_data.FINALS_GAMEDAYS``) is an anonymised
+        export of the real "Final 8" and "Final 4" gamedays: teams, schedule,
+        scores and jersey numbers are real, every person is fictional. The
+        ``passcheck`` entries are the source for the roster - each one becomes
+        a Playerlist entry plus its gameday check-in, which is what the
+        scorecard's jersey picker and the matchreport read.
+
+        Gameday and game pks are fixed so the demo links stay stable across the
+        nightly rebuild. This command is demo-only.
+        """
+        admin_user = User.objects.filter(username="admin@demo.local").first()
+        if not admin_user:
+            return []
+
+        officials_team, _ = Team.objects.get_or_create(
+            name=OFFICIALS_TEAM_NAME,
+            defaults={
+                "description": "Officiating crew for the demo environment",
+                "location": "Demo City",
+                "association": random.choice(associations) if associations else None,
+            },
+        )
+
+        gamedays = []
+        for snapshot in FINALS_GAMEDAYS:
+            season, _ = Season.objects.get_or_create(name=snapshot["season"])
+            league, _ = League.objects.get_or_create(name=snapshot["league"])
+            gameday, _ = Gameday.objects.update_or_create(
+                pk=snapshot["pk"],
+                defaults={
+                    "name": snapshot["name"],
+                    "season": season,
+                    "league": league,
+                    "date": date.fromisoformat(snapshot["date"]),
+                    "start": time.fromisoformat(snapshot["start"]),
+                    "format": snapshot["format"],
+                    "address": snapshot["address"],
+                    "status": Gameday.STATUS_PUBLISHED,
+                    "author": admin_user,
+                    "published_at": timezone.now(),
+                },
+            )
+            season_league, _ = SeasonLeagueTeam.objects.get_or_create(
+                season=season, league=league
+            )
+            for resource in snapshot["resource_urls"]:
+                ResourceUrl.objects.update_or_create(
+                    gameday=gameday,
+                    description=resource["description"],
+                    defaults={"url": resource["url"], "tournament": None},
+                )
+
+            teams = {}
+            for team_name, team_data in snapshot["teams"].items():
+                association, _ = Association.objects.get_or_create(
+                    abbr=team_data["association"]["abbr"],
+                    defaults={"name": team_data["association"]["name"]},
+                )
+                team, _ = Team.objects.update_or_create(
+                    name=team_name,
+                    defaults={
+                        "description": team_data["description"],
+                        "location": team_data["location"],
+                        "association": association,
+                    },
+                )
+                teams[team_name] = team
+                season_league.teams.add(team)
+
+                self._create_finals_roster(team, gameday, team_data["passcheck"])
+                PasscheckVerification.objects.update_or_create(
+                    gameday=gameday,
+                    team=team,
+                    defaults={
+                        "user": admin_user,
+                        "official_name": FINALS_PASSCHECK_OFFICIAL,
+                        "note": "Übertrag von Tag 1",
+                    },
+                )
+
+            for game_data in snapshot["games"]:
+                gameinfo, _ = Gameinfo.objects.update_or_create(
+                    pk=game_data["pk"],
+                    defaults={
+                        "gameday": gameday,
+                        "scheduled": time.fromisoformat(game_data["scheduled"]),
+                        "field": game_data["field"],
+                        "status": game_data["status"],
+                        "stage": game_data["stage"],
+                        "standing": game_data["standing"],
+                        "stage_category": game_data["stage_category"],
+                        "league_group": None,
+                        "officials": officials_team,
+                    },
+                )
+                for is_home, side in ((True, "home"), (False, "away")):
+                    result = game_data[side]
+                    Gameresult.objects.update_or_create(
+                        gameinfo=gameinfo,
+                        isHome=is_home,
+                        defaults={
+                            "team": teams[result["team"]],
+                            "fh": result["fh"],
+                            "sh": result["sh"],
+                            "pa": result["pa"],
+                        },
+                    )
+
+            gamedays.append(gameday)
+
+        return gamedays
+
+    def _create_finals_roster(self, team, gameday, passcheck):
+        """Derive a team's roster from its gameday passcheck entries."""
+        for entry in passcheck:
+            person, _ = Person.objects.get_or_create(
+                first_name=entry["first_name"],
+                last_name=entry["last_name"],
+                defaults={
+                    "sex": entry["sex"],
+                    "year_of_birth": entry["year_of_birth"],
+                },
+            )
+            player, _ = Player.objects.get_or_create(
+                person=person,
+                defaults={"pass_number": entry["pass_number"]},
+            )
+            # Look the team roster up by jersey, not by player: a changed
+            # snapshot renames the fictional person, and the active
+            # (team, jersey) pair is the row the database makes unique.
+            playerlist, _ = Playerlist.objects.update_or_create(
+                team=team,
+                jersey_number=entry["jersey"],
+                left_on=None,
+                defaults={
+                    "player": player,
+                    "joined_on": DEMO_JOINED_ON,
+                },
+            )
+            PlayerlistGameday.objects.update_or_create(
+                playerlist=playerlist,
+                gameday=gameday,
+                defaults={"gameday_jersey": entry["jersey"]},
+            )
 
     def create_gameday_rosters(self, gamedays):
         """Check every team playing on a gameday in with its whole player list."""
