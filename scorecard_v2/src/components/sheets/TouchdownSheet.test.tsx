@@ -72,6 +72,17 @@ describe("TouchdownSheet", () => {
     ]);
   });
 
+  it("saves a team touchdown when nobody is picked", async () => {
+    const { onSubmit } = renderSheet();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Ohne Nummer" }));
+    await user.click(saveButton());
+
+    // Same rule as the play sheet: six points for the team, no scorer needed.
+    expect(onSubmit).toHaveBeenCalledWith([{ name: "Touchdown" }]);
+  });
+
   it("asks who scored and offers only the possession team's roster", () => {
     renderSheet();
 
@@ -89,15 +100,21 @@ describe("TouchdownSheet", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps save disabled until a jersey is picked", async () => {
+  it("saves without a jersey, but a picked one still counts", async () => {
     renderSheet();
 
-    expect(saveButton()).toHaveTextContent("Spieler wählen");
-    expect(saveButton()).toBeDisabled();
+    // The score is the team's (IFAF R 8-1-1): "Ohne Nummer" is a valid entry.
+    expect(saveButton()).toHaveTextContent("Speichern");
+    expect(saveButton()).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Ohne Nummer" }),
+    ).toHaveAttribute("aria-pressed", "true");
 
     await pick(23);
 
-    expect(saveButton()).toHaveTextContent("Speichern");
+    expect(
+      screen.getByRole("button", { name: "Ohne Nummer" }),
+    ).toHaveAttribute("aria-pressed", "false");
     expect(saveButton()).toBeEnabled();
   });
 
@@ -246,7 +263,7 @@ describe("TouchdownSheet", () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it("clamps a typed number to two digits and disables save when cleared", () => {
+  it("clamps a typed number to two digits, and clearing it means no number", () => {
     renderSheet({ roster: [] });
     const input = screen.getByRole("textbox", { name: /Trikotnummer/ });
 
@@ -254,8 +271,9 @@ describe("TouchdownSheet", () => {
     expect(input).toHaveValue("10");
     expect(saveButton()).toBeEnabled();
 
+    // Clearing goes back to "Ohne Nummer" — a team score, still saveable.
     fireEvent.change(input, { target: { value: "" } });
-    expect(saveButton()).toBeDisabled();
+    expect(saveButton()).toBeEnabled();
   });
 
   it("keeps the picked jersey and the sheet open after a failure", async () => {
