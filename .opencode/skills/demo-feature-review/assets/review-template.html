@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+  Demo review — page scaffold for DocStash create_pdf.
+
+  Copy this file, replace the {{...}} placeholders, and pass the whole HTML as
+  `content` to `tools.docstash.create_pdf`. One continuous document: the cover is
+  a fixed `pdf-canvas`, everything else flows and paginates itself.
+
+  Images: direct https URLs only (see SKILL.md "Host the images"). A phone shot
+  is 390x844; at 210 px wide in a two-up strip it is ~454 px tall, which is what
+  keeps a feature card on one page.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#152019; --ink-2:#2e4036; --muted:#6b776f;
+  --green:#1c7a4b; --green-dk:#0e3b25; --amber:#b26a12;
+  --line:#dde3dd; --paper:#fbfaf6;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;font-size:13px;line-height:1.58;color:var(--ink)}
+
+/* Running header/footer. The engine keeps them off the cover automatically. */
+@page{
+  background:var(--paper);
+  @top-right{content:"{{REVIEW TITLE}}";font-family:Inter,sans-serif;font-size:8.5px;
+    letter-spacing:.13em;text-transform:uppercase;color:#9aa49c;vertical-align:bottom;padding-bottom:8px}
+  @bottom-left{content:"demo.leaguesphere.app · Release {{VERSION}}";font-family:Inter,sans-serif;
+    font-size:8.5px;color:#9aa49c}
+  @bottom-right{content:counter(page) " / " counter(pages);font-family:"Barlow Condensed",sans-serif;
+    font-size:10px;color:#7d8880}
+}
+
+/* --- type ---------------------------------------------------------------- */
+h1,h2,h3,.kicker,.cov-title{font-family:"Barlow Condensed","Inter",sans-serif}
+h2{font-size:28px;line-height:1.08;font-weight:700;margin:2px 0 12px}
+h3{font-size:14px;font-weight:600;text-transform:uppercase;color:var(--green-dk);margin:16px 0 4px}
+p{margin:0 0 9px}
+.lede{font-size:14px;color:var(--ink-2)}
+.kicker{font-family:Inter,sans-serif;font-weight:600;font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--green);display:block;margin-bottom:2px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:#eef2ee;border-radius:3px;padding:1px 4px}
+
+/* --- cover (fixed one-page canvas) -------------------------------------- */
+.cover{position:relative;overflow:hidden;height:100%;
+  background:linear-gradient(155deg,#0d2417 0%,#123020 52%,#0a1a12 100%);color:#f3f7f2}
+.cover .inner{position:absolute;left:64px;right:64px;top:86px}
+.cover .brand{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:.2em;
+  text-transform:uppercase;color:#8fd0ad;font-weight:600}
+.cover .brand .bar{display:block;width:34px;height:2px;background:#2ea366}
+.cov-title{font-size:74px;line-height:.92;font-weight:700;margin:30px 0 22px}
+.cov-title em{font-style:normal;color:#5dc48f}
+.cov-sub{font-size:15px;color:#c9d8ce;max-width:430px;margin:0 0 34px}
+.cov-meta{display:flex;gap:34px;border-top:1px solid rgba(255,255,255,.16);padding-top:16px;max-width:560px}
+.cov-meta span{display:block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#7fb294}
+.cov-tag{position:absolute;right:64px;bottom:60px;text-align:right}
+.cov-tag .n{font-family:"Barlow Condensed",sans-serif;font-size:86px;line-height:.8;font-weight:700;color:#5dc48f}
+
+/* --- tables -------------------------------------------------------------- */
+table{width:100%;border-collapse:collapse;font-size:10.5px;line-height:1.36}
+th{text-align:left;font-family:Inter,sans-serif;font-weight:600;font-size:8.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);border-bottom:1.6px solid var(--ink);padding:0 8px 6px 0}
+td{padding:4px 8px 4px 0;border-bottom:1px solid var(--line);vertical-align:top}
+td.id{font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:12px;color:var(--green);white-space:nowrap;width:34px}
+td.pr{white-space:nowrap;color:var(--muted);font-size:10px;width:56px}
+tr.off td{color:#98a29a}
+
+/* --- feature card -------------------------------------------------------- */
+.feature{margin:0 0 22px}
+.strip{display:grid;grid-template-columns:210px 210px;gap:26px;justify-content:center;margin-top:6px}
+.split{display:grid;grid-template-columns:1fr 246px;gap:26px;align-items:start}
+figure{margin:0}
+figure img{display:block;width:100%;border-radius:14px;border:1px solid #c9d3ca;
+  box-shadow:0 8px 22px rgba(18,36,26,.12);background:#fff}
+figcaption{font-size:9.5px;line-height:1.35;color:var(--muted);margin-top:6px}
+.evidence{margin:10px 0 0;padding:9px 12px;border-left:3px solid var(--green);background:#fff;
+  font-size:11.5px;line-height:1.5;color:var(--ink-2)}
+.evidence b{color:var(--green-dk)}
+.evidence.note{border-left-color:var(--amber);background:#fffaf1}
+.evidence.note b{color:#8a4f0a}
+</style>
+</head>
+<body>
+
+<section class="pdf-canvas cover">
+  <div class="inner">
+    <div class="brand"><span class="bar"></span>{{PRODUCT · AREA}}</div>
+    <h1 class="cov-title">Was aus dem<br>{{MEETING}} <em>geworden</em> ist</h1>
+    <p class="cov-sub">{{One sentence: what this review covers and where it was verified.}}</p>
+    <div class="cov-meta">
+      <div><span>Stand</span>{{DATE}}</div>
+      <div><span>Umfang</span>{{N}} Pull Requests</div>
+      <div><span>Demo</span>demo.leaguesphere.app</div>
+    </div>
+  </div>
+  <div class="cov-tag"><div class="n">{{VERSION}}</div></div>
+</section>
+
+<!-- Heading + intro + table are kept together: a table that just fits can
+     otherwise jump to the next page and strand the heading. -->
+<section class="block pdf-keep">
+  <span class="kicker">Bilanz</span>
+  <h2>{{Headline of the balance page}}</h2>
+  <p class="lede">{{Two or three sentences: what was reviewed, what shipped.}}</p>
+  <table>
+    <thead><tr><th>ID</th><th>Aus dem Meeting</th><th>Was jetzt passiert</th><th>PR</th></tr></thead>
+    <tbody>
+      <tr><td class="id">A5</td><td>{{Asked}}</td><td>{{Shipped}}</td><td class="pr">#0000</td></tr>
+      <tr class="off"><td class="id">B3</td><td>{{Asked}}</td><td>nicht gebaut — {{why}}</td><td class="pr">—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- One page per feature: two phone shots, text above, evidence below. -->
+<section class="feature pdf-keep">
+  <div class="head">
+    <span class="kicker">A5 · {{Feature}}</span>
+    <h2>{{What changed, as a sentence}}</h2>
+  </div>
+  <p class="lede">{{The meeting's complaint, in the club's words.}}</p>
+  <p>{{How it works now — the flow the official actually performs.}}</p>
+  <div class="strip">
+    <figure><img src="https://demo.leaguesphere.app/static/docstash/04-interception-sheet.jpeg" alt="{{alt}}"><figcaption>{{What this screen shows.}}</figcaption></figure>
+    <figure><img src="https://demo.leaguesphere.app/static/docstash/07-interception-row.jpeg" alt="{{alt}}"><figcaption>{{What this screen shows.}}</figcaption></figure>
+  </div>
+  <div class="evidence"><b>Belegt auf {{VERSION}}:</b> {{typed → result, with the real values from the run}}</div>
+</section>
+
+<!-- A single phone beside text. -->
+<section class="feature pdf-keep">
+  <div class="head"><span class="kicker">R5 · Zeit</span><h2>{{Headline}}</h2></div>
+  <div class="split">
+    <div class="text">
+      <p class="lede">{{…}}</p>
+      <p>{{…}}</p>
+      <div class="evidence"><b>Belegt auf {{VERSION}}:</b> {{…}}</div>
+    </div>
+    <figure><img src="https://demo.leaguesphere.app/static/docstash/10-halftime-break.jpeg" alt="{{alt}}"><figcaption>{{…}}</figcaption></figure>
+  </div>
+</section>
+
+</body>
+</html>
