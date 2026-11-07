@@ -1263,7 +1263,8 @@ describe("GameSetup — start sequence", () => {
 
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
 
-    expect(getDeviceIdMock).toHaveBeenCalledTimes(1);
+    // The setup read names the device too, so `getDeviceId` runs more than
+    // once; what matters here is that the start claims the lock exactly once.
     expect(setDeviceIdMock).toHaveBeenCalledTimes(1);
     expect(setDeviceIdMock).toHaveBeenCalledWith("device-1");
     expect(apiPutMock).toHaveBeenCalledTimes(1);
@@ -2317,7 +2318,10 @@ describe("a game another device already took", () => {
       ctResult: "home",
       direction: "Nord",
       fhPossession: "home",
-      device_id: "device-2",
+      // What GET /game/<id>/setup really answers: the server compares the
+      // request's device header itself and never sends the stored id back.
+      locked_elsewhere: true,
+      can_release_lock: true,
     };
 
     await renderSetup();
@@ -2334,13 +2338,43 @@ describe("a game another device already took", () => {
     expect(screen.getByRole("button", { name: "Fortsetzen" })).toBeEnabled();
   });
 
+  it("asks the setup read with this device's id", async () => {
+    crew = completeCrew();
+    setup = { ctResult: "home", direction: "Nord", fhPossession: "home" };
+
+    await renderSetup();
+
+    // Without the id the server cannot compare, and the warning is dead code.
+    expect(apiGetMock).toHaveBeenCalledWith(SETUP_PATH, {
+      deviceId: "device-1",
+    });
+  });
+
   it("stays quiet for a game this device started", async () => {
     crew = completeCrew();
     setup = {
       ctResult: "home",
       direction: "Nord",
       fhPossession: "home",
-      device_id: "device-1",
+      locked_elsewhere: false,
+      can_release_lock: true,
+    };
+
+    await renderSetup();
+
+    expect(
+      screen.queryByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeNull();
+  });
+
+  it("ignores a device_id in the payload", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      // A GET never carries this; a payload that does must not fake a warning.
+      device_id: "device-2",
     };
 
     await renderSetup();
@@ -2351,16 +2385,10 @@ describe("a game another device already took", () => {
   });
 });
 
-describe("a setup without a usable device id", () => {
-  it("shows no warning for a blank id", async () => {
+describe("a setup read the server cannot judge", () => {
+  it("shows no warning when the answer carries no lock flag", async () => {
     crew = completeCrew();
-    setup = {
-      ctResult: "home",
-      direction: "Nord",
-      fhPossession: "home",
-      // an older server stored whitespace rather than nothing
-      device_id: "   ",
-    };
+    setup = { ctResult: "home", direction: "Nord", fhPossession: "home" };
 
     await renderSetup();
 
