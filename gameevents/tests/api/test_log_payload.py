@@ -13,6 +13,7 @@ from rest_framework.reverse import reverse
 
 from gameevents.tests.api.support import login, make_game, post_events, sub_id
 from gamedays.constants import API_GAMELOG
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 
 
 def play(n):
@@ -88,6 +89,7 @@ def test_a_claiming_row_reads_without_a_query_per_row(
         body["offline_recorded_by"] = "original-official"
         assert post_events(client, game, body).status_code == 201
 
+    pin_request_path_caches()
     with django_assert_num_queries(9):
         rows = event_payloads(client, game)
 

@@ -64,6 +64,7 @@ from officials.views import (
     GameOfficialImportConfirmView,
 )
 from officials.service.remember_me import RememberMeService
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 
 
 class TestOfficialListView(WebTest):
@@ -178,6 +179,7 @@ class TestOfficiatedGamesSection(TestCase):
         # under parallel (xdist) runs.
         self.client.get(url)
 
+        pin_request_path_caches()
         with self.assertNumQueries(5):
             response = self.client.get(url)
 
