@@ -337,6 +337,22 @@ describe("the touchdown is the play's result", () => {
     ]);
   });
 
+  it("keeps the touchdown when no number is picked — a team score", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Run" }));
+    await user.click(screen.getByRole("button", { name: "Touchdown" }));
+    await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
+
+    // IFAF R 8-1-1: the points are the team's, the jersey is detail. The old
+    // rule dropped the touchdown row and silently cost the team six points.
+    expect(onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ name: "Run" }),
+      { name: "Touchdown" },
+    ]);
+  });
+
   it("takes the touchdown back when the official changes their mind", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });

@@ -13,10 +13,15 @@ import { yardsText, yardsValue } from "./yards";
  * happen.
  */
 export function touchdownEvents(
-  jersey: number,
+  jersey: number | null,
   yards: number | null = null,
 ): GameLogEventInput[] {
-  const event: GameLogEventInput = { name: "Touchdown", player: jersey };
+  // A touchdown without a number is a team score (IFAF R 8-1-1): the row
+  // names nobody rather than losing the six points.
+  const event: GameLogEventInput = { name: "Touchdown" };
+  if (jersey !== null) {
+    event.player = jersey;
+  }
   if (yards !== null) {
     // The distance is the play's detail; the score is the jersey's.
     event.payload = { yards };
@@ -73,15 +78,19 @@ export default function TouchdownSheet({
   const players =
     roster === null ? [] : roster.filter((player) => player.side === side);
   const loading = roster === null;
+  // "Ohne Nummer" is a valid entry: the score is the team's, the number is
+  // the detail. A picked number still has to be on a confirmed roster.
   const ready =
-    jerseyAllowed(players, jersey, passcheck) && !posting && !loading;
+    (jersey === null || jerseyAllowed(players, jersey, passcheck)) &&
+    !posting &&
+    !loading;
   const names = new Map(
     jerseyOptions(players).map((option) => [option.jersey, option.name]),
   );
   const chips = recent.filter((number) => !passcheck || names.has(number)).slice(0, 4);
 
   const save = async (): Promise<void> => {
-    if (saving.current || !ready || jersey === null) {
+    if (saving.current || !ready) {
       return;
     }
     saving.current = true;
@@ -113,7 +122,7 @@ export default function TouchdownSheet({
           onClick={() => void save()}
           type="button"
         >
-          {posting ? "Speichern …" : jersey === null ? "Spieler wählen" : "Speichern"}
+          {posting ? "Speichern …" : "Speichern"}
         </button>
       }
       onClose={onClose}
@@ -167,6 +176,7 @@ export default function TouchdownSheet({
         <JerseyPicker
           disabled={posting}
           onChange={setJersey}
+          optionalLabel="Ohne Nummer"
           players={players}
           strict={passcheck}
           value={jersey}

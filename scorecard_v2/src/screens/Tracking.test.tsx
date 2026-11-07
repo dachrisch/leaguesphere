@@ -2057,6 +2057,39 @@ describe("Tracking extra point after the try", () => {
     return screen.findByRole("group", { name: "Extrapunkt Ravens" });
   }
 
+  it("asks the extra point for a touchdown nobody scored", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Spielzug \(Pass\/Run\/Sack\)$/);
+    await user.click(screen.getByRole("button", { name: "Run" }));
+    await user.click(screen.getByRole("button", { name: "Touchdown" }));
+    await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
+
+    // The six points stand without a name, so the try must still be asked —
+    // with no scorer to pre-select.
+    const pat = await screen.findByRole("group", { name: "Extrapunkt Ravens" });
+    expect(within(pat).getByText(/ohne Nummer/)).toBeInTheDocument();
+
+    await user.click(within(pat).getByRole("button", { name: "+1" }));
+    const sheet = screen.getByRole("dialog", { name: "Extrapunkt Ravens" });
+    expect(
+      within(sheet).getByRole("button", { name: "Ohne Nummer" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await user.click(within(sheet).getByRole("button", { name: "Speichern" }));
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/api/game/42/events", {
+        events: [
+          { type: "score", code: "pat1", side: "home", player: null, period: 1 },
+        ],
+        client_id: expect.any(String),
+      }),
+    );
+  });
+
   it("asks for the extra point once the touchdown is saved, nothing pre-selected", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
@@ -2376,9 +2409,8 @@ describe("Tracking entry lifecycle", () => {
     expect(tile).toBeEnabled();
     await user.click(tile);
 
-    expect(
-      screen.getByRole("button", { name: "Spieler wählen" }),
-    ).toBeDisabled();
+    // "Ohne Nummer" is a valid entry now, so the save is ready immediately.
+    expect(screen.getByRole("button", { name: "Speichern" })).toBeEnabled();
     await pickJersey(user, 11);
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
@@ -4049,33 +4081,6 @@ describe("undoing a scoring play", () => {
       type: "possession",
       code: "home",
     });
-  });
-});
-
-describe("a scoring play without a number", () => {
-  it("records the touchdown and asks no try question without a scorer", async () => {
-    apiGetMock.mockResolvedValue(ROSTER);
-    answerAppend(makeLog({ inPossession: "Ravens" }));
-    // a remembered thrower makes the pass sheet ready without a jersey pick
-    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "7");
-    renderTracking();
-    const user = userEvent.setup();
-
-    await user.click(
-      screen.getByRole("button", { name: "Spielzug (Pass/Run/Sack)" }),
-    );
-    const sheet = screen.getByRole("dialog", { name: "Spielzug · Ravens" });
-    await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
-    await user.click(
-      within(sheet).getByRole("button", { name: "Spielzug speichern" }),
-    );
-
-    // the team scored; nobody is named, so there is no jersey to pre-ask for
-    await waitFor(() => expect(apiPostMock).toHaveBeenCalled());
-    expect(
-      screen.queryByRole("group", { name: /^Extrapunkt / }),
-    ).toBeNull();
-    expect(await screen.findByText("Touchdown Ravens")).toBeInTheDocument();
   });
 });
 
