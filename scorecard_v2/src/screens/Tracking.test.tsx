@@ -4146,6 +4146,8 @@ describe("a team's row", () => {
     expect(timeout).toHaveTextContent("0/2");
     // the name has its own element so a long one can ellipsise in place
     expect(possession.querySelector(".possname")).toHaveTextContent("Ravens");
+    // a shortened name is still readable in full on hover
+    expect(possession).toHaveAttribute("title", "Ravens");
     // the keyboard hint survives the extra markup
     expect(possession.querySelector('kbd[data-key="B"]')).not.toBeNull();
   });

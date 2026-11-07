@@ -159,8 +159,14 @@ function RowBody({ game, tag }: { game: Game; tag: GameTag }) {
         </span>
         {officials !== "" || hasChip ? (
           <span className="game-sub">
-            {officials}
-            {officials !== "" && hasChip ? " · " : null}
+            {officials === "" ? null : (
+              // Only this part shortens: the passcheck status beside it must
+              // survive a narrow row.
+              <span className="game-officials">
+                {officials}
+                {hasChip ? " · " : null}
+              </span>
+            )}
             {passcheck === true ? (
               <span className="chip-ok">Passcheck</span>
             ) : null}
@@ -292,18 +298,25 @@ function Timetable({
   );
 }
 
+/**
+ * From this width the list becomes sidebar + field plan. It must match the
+ * wide game list media query in app.css: below it a two-field plan has no room
+ * beside the 380px sidebar.
+ */
+export const WIDE_LIST_QUERY = "(min-width: 1040px)";
+
 /** CSS owns the appearance; this query only chooses which markup is present. */
 function useWideLayout(): boolean {
   const [wide, setWide] = useState(
     () =>
       typeof window.matchMedia === "function" &&
-      window.matchMedia("(min-width: 900px)").matches,
+      window.matchMedia(WIDE_LIST_QUERY).matches,
   );
   useEffect(() => {
     if (typeof window.matchMedia !== "function") {
       return;
     }
-    const query = window.matchMedia("(min-width: 900px)");
+    const query = window.matchMedia(WIDE_LIST_QUERY);
     const onChange = () => setWide(query.matches);
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);

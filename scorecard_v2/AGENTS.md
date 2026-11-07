@@ -5,10 +5,25 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
 
 ## Wide layouts
 
-- Below `900px`, Tracking and GameList keep the original single-column layout.
+- Below `900px`, Tracking keeps the original single-column layout; GameList
+  keeps it below `1040px` (`WIDE_LIST_QUERY`).
 - At `900px`, Tracking uses a two-pane log/controls grid capped by
-  `--shell-width-track` (`1100px`); GameList uses its sidebar/timetable layout
-  capped by `--shell-width-wide` (`1376px`). A one-field day keeps the plain list.
+  `--shell-width-track` (`1100px`). At `1040px` GameList uses its
+  sidebar/timetable layout capped by `--shell-width-wide` (`1376px`): the 380px
+  sidebar plus a two-field plan (568px) need that width. A one-field day keeps
+  the plain list. The plan's time column is sticky when more fields scroll.
+- Height is a breakpoint too. A phone on its side (`min-width: 640px`,
+  `max-height: 520px`, landscape) gets the two-pane Tracking grid: board,
+  possession and log on the left, every control plus the saved strip on the
+  right. A short upright phone (`max-height: 760px`) compacts the board and
+  tiles and puts Halbzeit beside Spiel beenden. Below `900px` the log never
+  shrinks under two entries (`--log-min`); if the controls need the rest, the
+  shell scrolls instead of clipping them.
+- A log row is one touch target high: time, edit and undo sit on one line
+  (the time moves above the buttons below `360px`). The saved strip sits below
+  the log in the flow, never over its rows.
+- `Sheet wide` (the penalty form) opens ~960px wide in two columns from
+  `1280px`; every other dialog stays 680px.
 - At `1280px`, Tracking adds the Spielinfo column and moves the log to the
   right. Fine-pointer desktops also show keyboard hints: **T**, **1–8**, **B**
   and **Ctrl/Cmd+Z**. `useTrackingShortcuts` guards dialogs, form fields and
