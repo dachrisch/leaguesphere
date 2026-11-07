@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.12.4](https://github.com/dachrisch/leaguesphere/compare/v5.12.3...v5.12.4) (2026-11-07)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v27 ([#2319](https://github.com/dachrisch/leaguesphere/issues/2319)) ([1979e41](https://github.com/dachrisch/leaguesphere/commit/1979e41f25e8c241ef3177782007f1c3d32ec73d))
+* **deps:** update dependency i18next to v27.0.1 ([#2322](https://github.com/dachrisch/leaguesphere/issues/2322)) ([00295a4](https://github.com/dachrisch/leaguesphere/commit/00295a4d629155575734f1ab4d4e8d4a30f7c00b))
+* **deps:** update dependency react-i18next to v18 ([#2320](https://github.com/dachrisch/leaguesphere/issues/2320)) ([d5485e8](https://github.com/dachrisch/leaguesphere/commit/d5485e8713f6fe2742df009f8a6459daf7c80b78))
+* **gameday_designer:** pass i18next options so typecheck passes on v27 ([c4732be](https://github.com/dachrisch/leaguesphere/commit/c4732be7035de8680fca38f1d831f702837b1efa))
+* **gameday_designer:** pass i18next options so typecheck passes on v27 ([e557cbb](https://github.com/dachrisch/leaguesphere/commit/e557cbb1dd72c679c29d6ced5aced972dc3012f1))
+* **scorecard_v2:** fix layout and responsiveness findings from UI review ([a68b1b6](https://github.com/dachrisch/leaguesphere/commit/a68b1b619562d689e84d016015b8befc870c4b9e))
+* **scorecard_v2:** fix layout and responsiveness findings from UI review ([7cf4749](https://github.com/dachrisch/leaguesphere/commit/7cf4749ff69e0a3712b7e5c01c59f78ce390dae7))
+* **scorecard:** a team touchdown needs no jersey number ([ca6fea7](https://github.com/dachrisch/leaguesphere/commit/ca6fea7cb501ab894cde87489d759ff26fe6b61b))
+* **scorecard:** a team touchdown needs no jersey number ([842a411](https://github.com/dachrisch/leaguesphere/commit/842a411e54de7101a1c12eb833ba8471e6defe5e))
+* **scorecard:** warn about a foreign device lock before the start ([9c31df3](https://github.com/dachrisch/leaguesphere/commit/9c31df380a93a97d2ed3d2b531374976403d1e05))
+* **scorecard:** warn about a foreign device lock before the start ([ddcb396](https://github.com/dachrisch/leaguesphere/commit/ddcb396961980da68dab44593dad57dcd6adcc2c))
+
 ## [5.12.3](https://github.com/dachrisch/leaguesphere/compare/v5.12.2...v5.12.3) (2026-11-07)
 
 
