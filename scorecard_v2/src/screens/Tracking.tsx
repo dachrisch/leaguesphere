@@ -562,11 +562,12 @@ export default function TrackingScreen({
   const [quickError, setQuickError] = useState<string | null>(null);
   /**
    * The touchdown whose extra point is still open: asked once the try has
-   * been played, credited to the scoring team with the scorer's jersey.
+   * been played, credited to the scoring team with the scorer's jersey (or
+   * nobody, when the touchdown was entered without a number).
    */
   const [pendingPat, setPendingPat] = useState<{
     team: string;
-    jersey: number;
+    jersey: number | null;
   } | null>(null);
   /**
    * The try being answered: its team, its points and the default jersey (the
@@ -1276,12 +1277,19 @@ export default function TrackingScreen({
   };
 
   /** The touchdown sheet's write; on success the extra point is asked next. */
+  /**
+   * The touchdown sheet's write; on success the extra point is asked next —
+   * also for a team touchdown entered without a number (IFAF R 8-1-1).
+   */
   const submitTouchdown = async (events: GameLogEventInput[]): Promise<void> => {
     const team = possessionName;
     await submit(events);
     const jersey = events[0]?.player;
-    if (team !== null && typeof jersey === "number") {
-      setPendingPat({ team, jersey });
+    if (team !== null) {
+      setPendingPat({
+        team,
+        jersey: typeof jersey === "number" ? jersey : null,
+      });
       setPatTry(null);
       setPatJersey(null);
       setPatError(null);
@@ -1297,23 +1305,21 @@ export default function TrackingScreen({
     setFinishBlocked(false);
   };
 
-  /** Write the conversion for the chosen jersey. */
-  const writePat = async (jersey: number): Promise<void> => {
+  /** Write the conversion for the chosen jersey, or for nobody. */
+  const writePat = async (jersey: number | null): Promise<void> => {
     if (patTry === null || patBusy) {
       return;
     }
     setPatBusy(true);
     setPatError(null);
     try {
-      await submit(
-        [
-          {
-            name: patTry.points === 1 ? "1-Extra-Punkt" : "2-Extra-Punkte",
-            player: jersey,
-          },
-        ],
-        patTry.team,
-      );
+      const event: GameLogEventInput = {
+        name: patTry.points === 1 ? "1-Extra-Punkt" : "2-Extra-Punkte",
+      };
+      if (jersey !== null) {
+        event.player = jersey;
+      }
+      await submit([event], patTry.team);
       closePat();
     } catch (failure) {
       setPatError(
@@ -1448,18 +1454,20 @@ export default function TrackingScreen({
       await takePossession(opponentName);
     }
     // A play that scored carries its own touchdown row, so the try is asked
-    // right away - the same prompt a touchdown tile produces.
+    // right away - the same prompt a touchdown tile produces. A team score
+    // without a number still asks: the six points stand (IFAF R 8-1-1).
     const scored = rest.find((event) => event.name === "Touchdown");
     if (scored !== undefined && scoringTeam !== null) {
       const jersey =
         typeof scored.player === "number" ? scored.player : play.player;
-      if (typeof jersey === "number") {
-        setPendingPat({ team: scoringTeam, jersey });
-        setPatTry(null);
-        setPatJersey(null);
-        setPatError(null);
-        setFinishBlocked(false);
-      }
+      setPendingPat({
+        team: scoringTeam,
+        jersey: typeof jersey === "number" ? jersey : null,
+      });
+      setPatTry(null);
+      setPatJersey(null);
+      setPatError(null);
+      setFinishBlocked(false);
     }
   };
 
@@ -1760,8 +1768,11 @@ export default function TrackingScreen({
               role="group"
             >
               <p className="patbar-q">
-                Extrapunkt {pendingPat.team} · #{pendingPat.jersey} – Ergebnis des
-                Versuchs?
+                Extrapunkt {pendingPat.team} ·{" "}
+                {pendingPat.jersey === null
+                  ? "ohne Nummer"
+                  : `#${pendingPat.jersey}`}{" "}
+                – Ergebnis des Versuchs?
               </p>
               <div className="patbar-opts">
                 {(
@@ -1989,11 +2000,9 @@ export default function TrackingScreen({
           footer={
             <button
               className="startbtn"
-              disabled={patBusy || patJersey === null || readOnly}
+              disabled={patBusy || readOnly}
               onClick={() => {
-                if (patJersey !== null) {
-                  void writePat(patJersey);
-                }
+                void writePat(patJersey);
               }}
               type="button"
             >
@@ -2016,6 +2025,7 @@ export default function TrackingScreen({
             groupLabel="Trikotnummer Extrapunkt"
             label="Trikot"
             onChange={setPatJersey}
+            optionalLabel="Ohne Nummer"
             players={patPlayers}
             strict={game.passcheck === true}
             value={patJersey}
