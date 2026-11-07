@@ -7,8 +7,12 @@
 
 import type { ProgressionFinding } from '../types/progression';
 
-/** Minimal shape of `useTypedTranslation`'s `t` this helper actually needs. */
-type Translate = (key: string, options?: Record<string, unknown>) => string;
+/**
+ * Minimal shape of `useTypedTranslation`'s `t` this helper actually needs.
+ * The options are always passed: i18next 27 types `t` without an
+ * `undefined` options argument.
+ */
+type Translate = (key: string, options: Record<string, unknown>) => string;
 
 /**
  * Resolves a finding's display text: the translated string for its
@@ -23,7 +27,7 @@ type Translate = (key: string, options?: Record<string, unknown>) => string;
  */
 export function getProgressionFindingMessage(finding: ProgressionFinding, t: Translate): string {
   if (finding.messageKey) {
-    return t(`validation:${finding.messageKey}`, finding.messageParams);
+    return t(`validation:${finding.messageKey}`, finding.messageParams ?? {});
   }
   console.warn(
     `[ProgressionFinding] "${finding.id}" (${finding.type}) has no messageKey — falling back to its untranslated dev-only message. This should not happen for findings produced by progressionSimulator.ts.`
