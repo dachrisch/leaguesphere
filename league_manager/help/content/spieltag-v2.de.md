@@ -43,6 +43,8 @@ wie die bisherige Scorecard
    oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
    **Interception**, **Strafe**, **Safety**, **Overtime** und **Spielzeit**;
    bei **Touchdown** und **1st Down** kannst du den Raumgewinn mit eintragen.
+   Ein Touchdown zählt fürs Team auch **ohne Trikotnummer** (**Ohne Nummer**) –
+   die Nummer ist Statistik, nicht die Bedingung für die sechs Punkte.
    Eine **Auszeit** nimmst du direkt beim Team: neben dem Ballbesitz-Knopf
    steht für jedes Team sein eigenes Auszeit-Feld mit dem Stand (z. B. 1/2) –
    ein Tipp genügt, unabhängig davon, wer den Ball hat. **Overtime** startet die Verlängerung (zweiter Tipp
@@ -53,7 +55,8 @@ wie die bisherige Scorecard
    innerhalb von 10 Sekunden noch einmal tippst (**Nr. ergänzen**). Nach einem
    Touchdown sind die Kacheln gesperrt, bis der Extrapunkt eingetragen ist:
    **+1** oder **+2** öffnet die Trikotwahl – der Touchdown-Schütze ist
-   vorausgewählt, du kannst aber den tatsächlichen Verwandler wählen;
+   vorausgewählt, du kannst aber den tatsächlichen Verwandler wählen (ohne
+   eingetragenen Schützen wählst du frei);
    **nicht verwandelt** schließt die Abfrage ohne Eintrag.
 
    Bei **Strafe** stehen die fünf häufigsten oben, der Rest alphabetisch.

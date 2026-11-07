@@ -10,7 +10,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Game } from "../api/types";
 import { TeamLogosProvider } from "../app/teamLogos";
 import { gameTag } from "../components/tag";
-import GameList, { formatGameScore, formatGameTime } from "./GameList";
+import GameList, {
+  WIDE_LIST_QUERY,
+  formatGameScore,
+  formatGameTime,
+} from "./GameList";
 import { daySummary, groupGamesByFieldAndTime } from "./gameTimetable";
 
 /**
@@ -76,7 +80,7 @@ function desktop(): void {
   vi.stubGlobal(
     "matchMedia",
     vi.fn((query: string) => ({
-      matches: query === "(min-width: 900px)",
+      matches: query === WIDE_LIST_QUERY,
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -200,6 +204,40 @@ describe("GameList", () => {
     expect(rowFor("Ravens – Wolves")).toHaveTextContent(
       "M. Klein · Passcheck",
     );
+  });
+
+  it("shortens only the officials, never the passcheck chip", () => {
+    renderList([
+      makeGame({ officials: "Ein sehr langer Offiziellen-Name", passcheck: true }),
+    ]);
+
+    const sub = rowFor("Ravens – Wolves").querySelector(".game-sub");
+    const officials = sub?.querySelector(".game-officials");
+    // The ellipsis lives on the officials text; the chip is its sibling, so a
+    // narrow row cuts the name and keeps the status.
+    expect(officials).toHaveTextContent("Ein sehr langer Offiziellen-Name ·");
+    expect(officials).not.toContainElement(screen.getByText("Passcheck"));
+    expect(screen.getByText("Passcheck").parentElement).toBe(sub);
+  });
+
+  it("keeps the one-column list below the field plan's width", () => {
+    // 900px used to switch to the plan, which then hid Feld 2 off-screen.
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 900px)",
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+    renderList([
+      makeGame({ id: 1, field: 1 }),
+      makeGame({ id: 2, field: 2 }),
+    ]);
+
+    expect(screen.queryByRole("region", { name: "Feldplan" })).toBeNull();
+    expect(WIDE_LIST_QUERY).toBe("(min-width: 1040px)");
   });
 
   it("marks a missing passcheck with the miss chip", () => {

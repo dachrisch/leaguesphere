@@ -1194,6 +1194,29 @@ describe("GameSetup — configuration and readiness", () => {
     expect(screen.queryByText("Angaben fehlen")).toBeNull();
   });
 
+  it("names the first open item beside the start button", async () => {
+    // The banner can sit under the sticky start bar; the bar itself must say
+    // why the start is refused.
+    crew = completeCrew();
+    await renderSetup();
+
+    const start = screen.getByRole("button", { name: /^Spiel starten/ });
+    const why = document.querySelector(".setupfoot .setupfoot-why");
+    expect(why).toHaveTextContent(
+      "Noch offen: Münzwurf gewonnen von: keine Mannschaft gewählt. (+2 weitere)",
+    );
+    expect(start).toHaveAccessibleDescription(
+      "Noch offen: Münzwurf gewonnen von: keine Mannschaft gewählt. (+2 weitere)",
+    );
+
+    await chooseDefaults();
+
+    expect(document.querySelector(".setupfoot-why")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /^Spiel starten/ }),
+    ).not.toHaveAttribute("aria-describedby");
+  });
+
   it("lists exactly the missing required fields in the banner", async () => {
     crew = completeCrew();
     await renderSetup();

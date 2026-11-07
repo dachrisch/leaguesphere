@@ -30,7 +30,7 @@ const PublishConfirmationModal: React.FC<PublishConfirmationModalProps> = ({
 
   const getMessage = (item: FlowValidationError | FlowValidationWarning) => {
     if (item.messageKey) {
-      return t(`validation:${item.messageKey}` as const, item.messageParams);
+      return t(`validation:${item.messageKey}` as const, item.messageParams ?? {});
     }
     return item.message;
   };

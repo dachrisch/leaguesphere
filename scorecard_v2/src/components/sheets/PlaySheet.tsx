@@ -117,6 +117,9 @@ export function playEvent({
  * one `TeamLog.sequence`: the statistics keep the scoring play (type, yards,
  * quarterback) and the score keeps its six points. The try stays its own
  * event, which is what lets a penalty on the touchdown be recorded before it.
+ *
+ * A touchdown counts without a number (IFAF R 8-1-1: the points are the
+ * team's, the jersey is detail) — the row then simply names nobody.
  */
 export function playEvents(options: {
   type: PlayType;
@@ -129,10 +132,15 @@ export function playEvents(options: {
   touchdown?: boolean;
 }): GameLogEventInput[] {
   const play = playEvent(options);
-  if (options.touchdown !== true || options.player === null) {
+  if (options.touchdown !== true) {
     return [play];
   }
-  return [play, { name: "Touchdown", player: options.player }];
+  return [
+    play,
+    options.player === null
+      ? { name: "Touchdown" }
+      : { name: "Touchdown", player: options.player },
+  ];
 }
 
 interface PlaySheetProps {

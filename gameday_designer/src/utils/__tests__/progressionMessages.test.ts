@@ -22,6 +22,23 @@ describe('getProgressionFindingMessage', () => {
     expect(t).toHaveBeenCalledWith('validation:dangling_reference', { game: 'G1' });
   });
 
+  it('passes empty options when a translated finding has no messageParams', () => {
+    // i18next 27 types `t` without an undefined options argument.
+    const t = vi.fn((key: string) => `translated:${key}`);
+    const finding: ProgressionFinding = {
+      id: 'f3',
+      type: 'unresolved_cycle',
+      message: 'raw fallback',
+      messageKey: 'unresolved_cycle',
+      affectedNodes: [],
+    };
+
+    const result = getProgressionFindingMessage(finding, t);
+
+    expect(result).toBe('translated:validation:unresolved_cycle');
+    expect(t).toHaveBeenCalledWith('validation:unresolved_cycle', {});
+  });
+
   it('falls back to the raw message and logs a warning when messageKey is missing', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const t = vi.fn((key: string) => key);
