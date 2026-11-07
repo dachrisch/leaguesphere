@@ -2361,6 +2361,46 @@ describe("a game another device already took", () => {
     expect(screen.getByRole("button", { name: "Fortsetzen" })).toBeEnabled();
   });
 
+  it("does not trust a lock read back from the offline snapshot", async () => {
+    crew = completeCrew();
+    setup = {
+      ctResult: "home",
+      direction: "Nord",
+      fhPossession: "home",
+      locked_elsewhere: true,
+      can_release_lock: true,
+    };
+
+    // Online: the live answer warns, and the read stores the setup.
+    const first = await renderSetup();
+    expect(
+      await screen.findByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeInTheDocument();
+    await expect(
+      readSnapshot(snapshotKey.setup(42)),
+    ).resolves.toMatchObject({ value: { locked_elsewhere: true } });
+    first.unmount();
+
+    // Reload while the setup read fails: the screen restores the stored copy,
+    // but a lock is live state, so that copy must not raise the warning.
+    const online = apiGetMock.getMockImplementation();
+    apiGetMock.mockImplementation(async (path: string, ...rest: unknown[]) => {
+      if (path === SETUP_PATH) {
+        throw new TypeError("Failed to fetch");
+      }
+      return online?.(path, ...rest);
+    });
+    await renderSetup();
+
+    expect(
+      screen.getByRole("group", { name: "Spielrichtung" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/hat ein anderes Gerät bereits übernommen/),
+    ).toBeNull();
+    expect(document.querySelector(".devicewarn")).toBeNull();
+  });
+
   it("asks the setup read with this device's id", async () => {
     crew = completeCrew();
     setup = { ctResult: "home", direction: "Nord", fhPossession: "home" };
