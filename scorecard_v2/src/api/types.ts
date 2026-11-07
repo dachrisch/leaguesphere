@@ -143,8 +143,19 @@ export interface GameSetup {
   ctResult?: string;
   direction?: string;
   fhPossession?: string;
-  /** Added by the device lock (Task 16); ignored by older servers. */
+  /**
+   * The device lock (Task 16). Write-only: `PUT` names the device that takes
+   * the lock, `GET` never sends it back. A read that names its own device
+   * learns the answer from {@link locked_elsewhere} instead.
+   */
   device_id?: string;
+  /**
+   * Answered by a `GET` that carries this device's id: another device already
+   * holds the game. Absent from a server that does not know the flag.
+   */
+  locked_elsewhere?: boolean;
+  /** Staff may lift the lock (`DELETE /api/game/<id>/device`). */
+  can_release_lock?: boolean;
 }
 
 /**
