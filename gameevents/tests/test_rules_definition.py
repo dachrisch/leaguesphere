@@ -138,6 +138,7 @@ def test_field_and_series_geometry_is_the_50_yard_field():
     assert series["start"] == 5
     assert series["interception_spot"] == "dead_ball"
     assert series["first_down_at_middle"] == "once"
+    assert series["middle_reached"] == "on"
 
 
 def test_scoring_matches_rule_8_1_1():
@@ -285,6 +286,10 @@ def _set(path, value):
         (_set(("field", "middle"), 20), "field.middle must be half"),
         (_set(("series", "downs"), 3), "series.downs must be 4"),
         (_set(("series", "start"), 4), "series.start and field.no_run_zone"),
+        (
+            _set(("series", "middle_reached"), "sometimes"),
+            'series.middle_reached must be "on" or "beyond"',
+        ),
         (
             _set(("periods", "intermission_minutes"), None),
             "periods.intermission_minutes must be a number",

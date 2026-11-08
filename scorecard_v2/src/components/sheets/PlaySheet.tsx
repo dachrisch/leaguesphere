@@ -1,13 +1,34 @@
 import { useRef, useState } from "react";
 
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
+import {
+  advance,
+  DEFAULT_GEOMETRY,
+  driveText,
+  FIELD_LENGTH,
+  MIDFIELD,
+  type DriveState,
+  type Geometry,
+  spotText,
+} from "../../app/drive";
 import JerseyPicker from "../JerseyPicker";
+import QuarterbackPick from "../QuarterbackPick";
 import { errorMessage } from "./errors";
+import { interceptionEvent } from "./SeriesSheet";
+import { spotValue } from "./FieldPositionSheet";
 import Sheet from "./Sheet";
 import { yardsText, yardsValue } from "./yards";
 
 /** The three scrimmage plays the scorecard records. */
 export type PlayType = "pass" | "run" | "sack";
+
+/** What the play produced; the wizard's second step. */
+export type PlayResult =
+  | "gain"
+  | "incomplete"
+  | "touchdown"
+  | "safety"
+  | "interception";
 
 const TITLES: Record<PlayType, string> = {
   pass: "Pass",
@@ -109,14 +130,26 @@ export function playEvent({
   return event;
 }
 
+/** An interception as the result of a play, with its return details. */
+export interface PlayInterception {
+  /** Where the return ended (own-goal-based 0–50), or `null` for a touchback. */
+  deadBall: number | null;
+  /** Return yards, statistics only. */
+  returnYards: number | null;
+  /** The defender carried it back for a touchdown. */
+  pickSix: boolean;
+}
+
 /**
- * The events of one play: the play itself and, when it scored, its touchdown.
+ * The events of one play: the play itself and, when it scored or changed
+ * hands, its result row.
  *
  * The touchdown is the **result of the play entry**, not a separate step
  * (meeting 2026-11-05, 53:05). Both rows go in one submission, so they share
- * one `TeamLog.sequence`: the statistics keep the scoring play (type, yards,
- * quarterback) and the score keeps its six points. The try stays its own
- * event, which is what lets a penalty on the touchdown be recorded before it.
+ * one `TeamLog.sequence`. A safety and an interception are credited to the
+ * **defence**, so they carry `payload.defense: true`; the screen writes them
+ * for the opponent (the play itself stays with the offence). A pick six adds
+ * the defending team's touchdown.
  *
  * A touchdown counts without a number (IFAF R 8-1-1: the points are the
  * team's, the jersey is detail) — the row then simply names nobody.
@@ -130,8 +163,36 @@ export function playEvents(options: {
   defender?: number | null;
   deflection?: boolean;
   touchdown?: boolean;
+  safety?: boolean;
+  interception?: PlayInterception | null;
 }): GameLogEventInput[] {
   const play = playEvent(options);
+  if (options.interception !== undefined && options.interception !== null) {
+    const { deadBall, returnYards, pickSix } = options.interception;
+    const interception = interceptionEvent(
+      options.defender ?? null,
+      deadBall,
+      returnYards,
+    );
+    interception.payload = {
+      ...(interception.payload ?? {}),
+      defense: true,
+    };
+    const events = [play, interception];
+    if (pickSix) {
+      events.push({
+        name: "Touchdown",
+        ...(options.defender === null || options.defender === undefined
+          ? {}
+          : { player: options.defender }),
+        payload: { defense: true },
+      });
+    }
+    return events;
+  }
+  if (options.safety === true) {
+    return [play, { name: "Safety (+2)", payload: { defense: true } }];
+  }
   if (options.touchdown !== true) {
     return [play];
   }
@@ -141,6 +202,78 @@ export function playEvents(options: {
       ? { name: "Touchdown" }
       : { name: "Touchdown", player: options.player },
   ];
+}
+
+/** The results a play type can produce, in the wizard's order. */
+export function resultOptions(type: PlayType): {
+  value: PlayResult;
+  label: string;
+}[] {
+  if (type === "pass") {
+    return [
+      { value: "gain", label: "Complete" },
+      { value: "incomplete", label: "Incomplete" },
+      { value: "touchdown", label: "Touchdown" },
+      { value: "interception", label: "Interception" },
+    ];
+  }
+  if (type === "run") {
+    return [
+      { value: "gain", label: "Raumgewinn" },
+      { value: "touchdown", label: "Touchdown" },
+      { value: "safety", label: "Safety" },
+    ];
+  }
+  return [
+    { value: "gain", label: "Sack" },
+    { value: "safety", label: "Safety" },
+  ];
+}
+
+/** One step of the wizard; sections that do not apply are skipped. */
+type Step =
+  | "type"
+  | "result"
+  | "distance"
+  | "qb"
+  | "player"
+  | "defender"
+  | "interception";
+
+export function stepsFor(type: PlayType, result: PlayResult): Step[] {
+  const steps: Step[] = ["type", "result"];
+  if (result === "gain" || result === "touchdown" || result === "safety") {
+    steps.push("distance");
+  }
+  if (type === "pass") {
+    steps.push("qb");
+  }
+  if (result === "interception") {
+    steps.push("interception");
+  } else {
+    steps.push("player");
+    if (type !== "sack") {
+      steps.push("defender");
+    }
+  }
+  return steps;
+}
+
+/** The play's result text for the summary line under the progress dots. */
+function resultLabel(type: PlayType, result: PlayResult): string {
+  return (
+    resultOptions(type).find((option) => option.value === result)?.label ??
+    result
+  );
+}
+
+/** `A12` / `B4,5` for a spot; the wizard's live preview uses `spotText`. */
+function spotFrom(side: "A" | "B", raw: string): number | null {
+  const distance = spotValue(raw);
+  if (distance === null || distance < 0 || distance > MIDFIELD) {
+    return null;
+  }
+  return side === "A" ? distance : FIELD_LENGTH - distance;
 }
 
 interface PlaySheetProps {
@@ -154,13 +287,28 @@ interface PlaySheetProps {
   opponentName?: string;
   /** The last quarterback of this side, pre-selected on a pass. */
   lastQuarterback?: number | null;
+  /** The series the play runs from, for the end spot and the preview. */
+  drive?: DriveState | null;
+  /** The field the preview calculates with. */
+  geometry?: Geometry;
+  /** Type preselected by the board tile that opened the wizard (L5). */
+  initialType?: PlayType;
+  /** Result preselected by an Interception tile (L5). */
+  initialResult?: PlayResult;
   onSubmit: (events: GameLogEventInput[]) => Promise<void>;
   onClose: () => void;
 }
 
 /**
- * The play-by-play entry: pass, run or sack with the player, the yards gained
- * or lost and — for a pass — the thrower and whether it was caught.
+ * The play-by-play entry as a wizard: **type → result → distance → QB →
+ * receiver/runner → tackler**, each step only when it applies.
+ *
+ * The distance can be typed as yards or as the end spot (A/B + yard line), and
+ * the sheet previews the resulting down & distance from the same `advance`
+ * the board uses. A touchdown prefills the distance to the goal line and hides
+ * the loss switch; a safety prefills the run to the own goal line. An
+ * interception asks for the defender, the dead-ball spot and an optional pick
+ * six.
  */
 export default function PlaySheet({
   teamName,
@@ -168,18 +316,29 @@ export default function PlaySheet({
   roster,
   opponentName = "Gegner",
   lastQuarterback = null,
+  drive = null,
+  geometry = DEFAULT_GEOMETRY,
+  initialType = "pass",
+  initialResult = "gain",
   onSubmit,
   onClose,
 }: PlaySheetProps) {
-  const [type, setType] = useState<PlayType>("pass");
-  const [complete, setComplete] = useState(true);
-  const [touchdown, setTouchdown] = useState(false);
+  const [type, setType] = useState<PlayType>(initialType);
+  const [result, setResult] = useState<PlayResult>(initialResult);
+  const [stepIndex, setStepIndex] = useState(0);
   const [jersey, setJersey] = useState<number | null>(null);
   const [qb, setQb] = useState<number | null>(lastQuarterback);
   const [defender, setDefender] = useState<number | null>(null);
   const [deflection, setDeflection] = useState(false);
   const [yardsText, setYardsText] = useState("0");
   const [loss, setLoss] = useState(false);
+  const [distanceMode, setDistanceMode] = useState<"yards" | "end">("yards");
+  const [endSide, setEndSide] = useState<"A" | "B">("A");
+  const [endYards, setEndYards] = useState("");
+  const [deadBallSide, setDeadBallSide] = useState<"A" | "B">("A");
+  const [deadBallYards, setDeadBallYards] = useState("");
+  const [returnYards, setReturnYards] = useState("");
+  const [pickSix, setPickSix] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Two synchronous taps must not both write a play.
@@ -189,15 +348,76 @@ export default function PlaySheet({
     roster === null ? [] : roster.filter((player) => player.side === side);
   const defenders =
     roster === null ? [] : roster.filter((player) => player.side !== side);
-  const magnitude = yardsValue(yardsText) ?? 0;
-  const yards = loss ? -Math.abs(magnitude) : magnitude;
-  const qbMissing = type === "pass" && qb === null;
-  const ready = !posting && !qbMissing;
+  const steps = stepsFor(type, result);
+  const index = Math.min(stepIndex, steps.length - 1);
+  const step = steps[index];
 
-  /**
-   * A typed minus also marks a loss, so a hardware keyboard and the touch
-   * switch produce the same signed yards.
-   */
+  const magnitude = Math.abs(yardsValue(yardsText) ?? 0);
+  const endSpot = spotFrom(endSide, endYards);
+  const typedSpot =
+    distanceMode === "end" && endSpot !== null && drive?.ballOn != null
+      ? endSpot - drive.ballOn
+      : null;
+  let playYards =
+    typedSpot ?? (loss || type === "sack" ? -magnitude : magnitude);
+  if (result === "touchdown") {
+    playYards = Math.abs(playYards);
+  }
+  if (result === "safety") {
+    playYards = -Math.abs(playYards);
+  }
+  const deadBall = spotFrom(deadBallSide, deadBallYards);
+  const distanceMissing =
+    distanceMode === "end"
+      ? endSpot === null || drive?.ballOn == null
+      : yardsValue(yardsText) === null;
+  const qbMissing = type === "pass" && qb === null;
+
+  const next = drive === null ? null : advance(drive, playYards, geometry);
+  const preview =
+    result === "touchdown"
+      ? "→ Touchdown"
+      : result === "safety"
+        ? "→ Safety"
+        : next === null
+          ? null
+          : `→ ${driveText(next)}${
+              spotText(next.ballOn, geometry) === null
+                ? ""
+                : ` · ${spotText(next.ballOn, geometry)}`
+            }`;
+
+  const stepReady =
+    step === "distance"
+      ? !distanceMissing
+      : step === "qb"
+        ? !qbMissing
+        : true;
+
+  const changeType = (option: PlayType): void => {
+    setType(option);
+    const allowed = resultOptions(option).map((entry) => entry.value);
+    if (!allowed.includes(result)) {
+      setResult("gain");
+      setYardsText("0");
+    }
+  };
+
+  const chooseResult = (option: PlayResult): void => {
+    setResult(option);
+    setLoss(false);
+    if (option === "touchdown" && drive?.ballOn != null) {
+      // The distance to the goal line is the play's gain (T5).
+      setDistanceMode("yards");
+      setYardsText(String(geometry.fieldLength - drive.ballOn));
+    } else if (option === "safety" && drive?.ballOn != null) {
+      setDistanceMode("yards");
+      setYardsText(String(drive.ballOn));
+    } else if (option === "gain") {
+      setYardsText("0");
+    }
+  };
+
   const changeYards = (raw: string): void => {
     if (raw.includes("-")) {
       setLoss(true);
@@ -206,27 +426,29 @@ export default function PlaySheet({
   };
 
   const save = async (): Promise<void> => {
-    if (saving.current || !ready) {
+    if (saving.current || !stepReady || posting) {
       return;
     }
     saving.current = true;
     setPosting(true);
     setError(null);
     try {
+      const interception =
+        result === "interception"
+          ? { deadBall, returnYards: yardsValue(returnYards), pickSix }
+          : null;
       await onSubmit(
         playEvents({
           type,
-          complete,
-          yards,
+          complete: result !== "incomplete" && result !== "interception",
+          yards: playYards,
           qb,
-          player: jersey,
-          // A deflection only exists on an incomplete pass; a sack has no
-          // tackle to record (the sacked quarterback is the play's player).
+          player: result === "interception" ? null : jersey,
           defender: type === "sack" ? null : defender,
-          deflection: type === "pass" && !complete && deflection,
-          // A sack never scores; an incomplete pass never scores.
-          touchdown:
-            touchdown && type !== "sack" && (type !== "pass" || complete),
+          deflection: type === "pass" && result === "incomplete" && deflection,
+          touchdown: result === "touchdown",
+          safety: result === "safety",
+          interception,
         }),
       );
       onClose();
@@ -242,152 +464,225 @@ export default function PlaySheet({
     }
   };
 
-  return (
-    <Sheet
-      busy={posting}
-      error={error}
-      footer={
+  const last = index === steps.length - 1;
+  const footer = (
+    <div className="sheetfootrow">
+      {index === 0 ? null : (
+        <button
+          className="sheetback"
+          disabled={posting}
+          onClick={() => setStepIndex(index - 1)}
+          type="button"
+        >
+          Zurück
+        </button>
+      )}
+      {last ? (
         <button
           className="startbtn"
-          disabled={!ready}
+          disabled={posting || !stepReady}
           onClick={() => void save()}
           type="button"
         >
           {posting ? "Speichern …" : "Spielzug speichern"}
         </button>
-      }
+      ) : (
+        <button
+          className="startbtn"
+          disabled={!stepReady}
+          onClick={() => setStepIndex(index + 1)}
+          type="button"
+        >
+          Weiter
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <Sheet
+      busy={posting}
+      error={error}
+      footer={footer}
       onClose={onClose}
       title={`Spielzug · ${teamName}`}
     >
-      <div aria-label="Spielzug" className="seg" role="group">
-        {(Object.keys(TITLES) as PlayType[]).map((option) => (
-          <button
-            aria-pressed={type === option}
-            className={type === option ? "sel" : undefined}
-            disabled={posting}
-            key={option}
-            onClick={() => setType(option)}
-            type="button"
-          >
-            {TITLES[option]}
-          </button>
-        ))}
-      </div>
+      <p className="sheetnote">
+        Schritt {index + 1} von {steps.length} · {TITLES[type]} ·{" "}
+        {resultLabel(type, result)}
+      </p>
 
-      {type === "pass" ? (
-        <div aria-label="Pass" className="seg" role="group">
-          <button
-            aria-pressed={complete}
-            className={complete ? "sel" : undefined}
-            disabled={posting}
-            onClick={() => setComplete(true)}
-            type="button"
-          >
-            Complete
-          </button>
-          <button
-            aria-pressed={!complete}
-            className={!complete ? "sel" : undefined}
-            disabled={posting}
-            onClick={() => setComplete(false)}
-            type="button"
-          >
-            Incomplete
-          </button>
-        </div>
+      {step === "type" ? (
+        <>
+          <h3 className="sheetsection">Spielzug</h3>
+          <div aria-label="Spielzug" className="seg" role="group">
+            {(Object.keys(TITLES) as PlayType[]).map((option) => (
+              <button
+                aria-pressed={type === option}
+                className={type === option ? "sel" : undefined}
+                disabled={posting}
+                key={option}
+                onClick={() => changeType(option)}
+                type="button"
+              >
+                {TITLES[option]}
+              </button>
+            ))}
+          </div>
+        </>
       ) : null}
 
-      {type === "sack" || (type === "pass" && !complete) ? null : (
+      {step === "result" ? (
         <>
           <h3 className="sheetsection">Ergebnis</h3>
           <div aria-label="Ergebnis" className="seg" role="group">
-            <button
-              aria-pressed={!touchdown}
-              className={!touchdown ? "sel" : undefined}
-              disabled={posting}
-              onClick={() => setTouchdown(false)}
-              type="button"
-            >
-              Kein Touchdown
-            </button>
-            <button
-              aria-pressed={touchdown}
-              className={touchdown ? "sel" : undefined}
-              disabled={posting}
-              onClick={() => setTouchdown(true)}
-              type="button"
-            >
-              Touchdown
-            </button>
+            {resultOptions(type).map((option) => (
+              <button
+                aria-pressed={result === option.value}
+                className={result === option.value ? "sel" : undefined}
+                disabled={posting}
+                key={option.value}
+                onClick={() => chooseResult(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </>
-      )}
+      ) : null}
 
-      {type === "sack" ? null : (
-        <div aria-label="Raumrichtung" className="seg" role="group">
-          <button
-            aria-pressed={!loss}
-            className={!loss ? "sel" : undefined}
-            disabled={posting}
-            onClick={() => setLoss(false)}
-            type="button"
-          >
-            Gewinn
-          </button>
-          <button
-            aria-pressed={loss}
-            className={loss ? "sel" : undefined}
-            disabled={posting}
-            onClick={() => setLoss(true)}
-            type="button"
-          >
-            Verlust
-          </button>
-        </div>
-      )}
+      {step === "distance" ? (
+        <>
+          <h3 className="sheetsection">
+            {result === "safety"
+              ? "Raumverlust bis zur eigenen Endzone"
+              : result === "touchdown"
+                ? "Raumgewinn bis zur Endzone"
+                : type === "sack"
+                  ? "Raumverlust"
+                  : "Raumgewinn / Verlust"}
+          </h3>
+          <div aria-label="Distanz" className="seg" role="group">
+            <button
+              aria-pressed={distanceMode === "yards"}
+              className={distanceMode === "yards" ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setDistanceMode("yards")}
+              type="button"
+            >
+              Yards
+            </button>
+            <button
+              aria-pressed={distanceMode === "end"}
+              className={distanceMode === "end" ? "sel" : undefined}
+              disabled={posting || result !== "gain"}
+              onClick={() => setDistanceMode("end")}
+              type="button"
+            >
+              Endpunkt
+            </button>
+          </div>
 
-      <div className="sheetfield">
-        <label className="sheetlabel" htmlFor="play-yards">
-          {type === "sack"
-            ? "Raumverlust (Yards)"
-            : "Raumgewinn / Verlust (Yards)"}
-        </label>
-        <input
-          autoComplete="off"
-          className="sheetinput sheetinput-num"
-          disabled={posting}
-          id="play-yards"
-          inputMode="numeric"
-          onChange={(event) => changeYards(event.target.value)}
-          pattern="[0-9]*"
-          type="text"
-          value={yardsText}
-        />
-      </div>
+          {distanceMode === "yards" ? (
+            <div className="sheetfield">
+              <label className="sheetlabel" htmlFor="play-yards">
+                {type === "sack" || result === "safety"
+                  ? "Raumverlust (Yards)"
+                  : "Raumgewinn / Verlust (Yards)"}
+              </label>
+              <input
+                autoComplete="off"
+                className="sheetinput sheetinput-num"
+                disabled={posting}
+                id="play-yards"
+                inputMode="numeric"
+                onChange={(event) => changeYards(event.target.value)}
+                pattern="[0-9]*"
+                type="text"
+                value={yardsText}
+              />
+            </div>
+          ) : (
+            <>
+              <div aria-label="Feldhälfte" className="seg" role="group">
+                <button
+                  aria-pressed={endSide === "A"}
+                  className={endSide === "A" ? "sel" : undefined}
+                  disabled={posting}
+                  onClick={() => setEndSide("A")}
+                  type="button"
+                >
+                  A · eigene
+                </button>
+                <button
+                  aria-pressed={endSide === "B"}
+                  className={endSide === "B" ? "sel" : undefined}
+                  disabled={posting}
+                  onClick={() => setEndSide("B")}
+                  type="button"
+                >
+                  B · gegnerische
+                </button>
+              </div>
+              <div className="sheetfield">
+                <label className="sheetlabel" htmlFor="play-end">
+                  Endpunkt (0–25)
+                </label>
+                <input
+                  autoComplete="off"
+                  className="sheetinput sheetinput-num"
+                  disabled={posting}
+                  id="play-end"
+                  inputMode="decimal"
+                  onChange={(event) => setEndYards(event.target.value)}
+                  pattern="[0-9.,]*"
+                  type="text"
+                  value={endYards}
+                />
+              </div>
+            </>
+          )}
 
-      <h3 className="sheetsection">
-        {type === "sack" ? "Trikotnummer (Sack)" : "Trikotnummer (optional)"}
-      </h3>
-      <JerseyPicker
-        disabled={posting}
-        groupLabel="Trikotnummer"
-        label="Trikot"
-        onChange={setJersey}
-        optionalLabel="Ohne Nummer"
-        players={players}
-        value={jersey}
-      />
+          {result === "gain" && type !== "sack" ? (
+            <div aria-label="Raumrichtung" className="seg" role="group">
+              <button
+                aria-pressed={!loss}
+                className={!loss ? "sel" : undefined}
+                disabled={posting}
+                onClick={() => setLoss(false)}
+                type="button"
+              >
+                Gewinn
+              </button>
+              <button
+                aria-pressed={loss}
+                className={loss ? "sel" : undefined}
+                disabled={posting}
+                onClick={() => setLoss(true)}
+                type="button"
+              >
+                Verlust
+              </button>
+            </div>
+          ) : null}
 
-      {type === "pass" ? (
+          {preview === null ? null : (
+            <p aria-live="polite" className="playpreview" role="status">
+              {preview}
+            </p>
+          )}
+        </>
+      ) : null}
+
+      {step === "qb" ? (
         <>
           <h3 className="sheetsection">Quarterback</h3>
-          <JerseyPicker
-            compact
+          <QuarterbackPick
             disabled={posting}
-            groupLabel="Trikotnummer Quarterback"
-            label="QB"
             onChange={setQb}
-            players={players}
+            roster={roster}
+            side={side}
             value={qb}
           />
           {qbMissing ? (
@@ -398,9 +693,26 @@ export default function PlaySheet({
         </>
       ) : null}
 
-      {type !== "sack" ? (
+      {step === "player" ? (
         <>
-          {type === "pass" && !complete ? (
+          <h3 className="sheetsection">
+            {type === "sack" ? "Trikotnummer (Sack)" : "Trikotnummer (optional)"}
+          </h3>
+          <JerseyPicker
+            disabled={posting}
+            groupLabel="Trikotnummer"
+            label="Trikot"
+            onChange={setJersey}
+            optionalLabel="Ohne Nummer"
+            players={players}
+            value={jersey}
+          />
+        </>
+      ) : null}
+
+      {step === "defender" ? (
+        <>
+          {type === "pass" && result === "incomplete" ? (
             <div aria-label="Deflection" className="seg" role="group">
               <button
                 aria-pressed={deflection}
@@ -413,24 +725,115 @@ export default function PlaySheet({
               </button>
             </div>
           ) : null}
-          {type === "pass" && !complete && !deflection ? null : (
-            <>
-              <h3 className="sheetsection">
-                {type === "pass" && !complete
-                  ? `Deflection ${opponentName} (optional)`
-                  : `Tackle ${opponentName} (optional)`}
-              </h3>
-              <JerseyPicker
-                disabled={posting}
-                groupLabel="Trikotnummer Defense"
-                label="Defense"
-                onChange={setDefender}
-                optionalLabel="Ohne Nummer"
-                players={defenders}
-                value={defender}
-              />
-            </>
+          <h3 className="sheetsection">
+            {type === "pass" && result === "incomplete" && deflection
+              ? `Deflection ${opponentName} (optional)`
+              : `Tackle ${opponentName} (optional)`}
+          </h3>
+          <JerseyPicker
+            disabled={posting}
+            groupLabel="Trikotnummer Defense"
+            label="Defense"
+            onChange={setDefender}
+            optionalLabel="Ohne Nummer"
+            players={defenders}
+            value={defender}
+          />
+        </>
+      ) : null}
+
+      {step === "interception" ? (
+        <>
+          <h3 className="sheetsection">
+            Trikotnummer Verteidiger (optional)
+          </h3>
+          <JerseyPicker
+            disabled={posting}
+            groupLabel="Trikotnummer Verteidiger"
+            label="Defense"
+            onChange={setDefender}
+            optionalLabel="Ohne Nummer"
+            players={defenders}
+            value={defender}
+          />
+          <h3 className="sheetsection">Ballbesitz ab (optional)</h3>
+          <div aria-label="Feldhälfte" className="seg" role="group">
+            <button
+              aria-pressed={deadBallSide === "A"}
+              className={deadBallSide === "A" ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setDeadBallSide("A")}
+              type="button"
+            >
+              A · eigene
+            </button>
+            <button
+              aria-pressed={deadBallSide === "B"}
+              className={deadBallSide === "B" ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setDeadBallSide("B")}
+              type="button"
+            >
+              B · gegnerische
+            </button>
+          </div>
+          <div className="sheetfield">
+            <label className="sheetlabel" htmlFor="interception-spot">
+              Yardlinie, wo der Return endete (0–25)
+            </label>
+            <input
+              autoComplete="off"
+              className="sheetinput sheetinput-num"
+              disabled={posting}
+              id="interception-spot"
+              inputMode="decimal"
+              onChange={(event) => setDeadBallYards(event.target.value)}
+              pattern="[0-9.,]*"
+              type="text"
+              value={deadBallYards}
+            />
+          </div>
+          {deadBallYards !== "" && deadBall === null ? (
+            <p className="sheetwarn" role="alert">
+              Die Yardlinie liegt zwischen 0 und 25.
+            </p>
+          ) : (
+            <p className="sheetnote">
+              Ohne Angabe beginnt der neue Angriff an der eigenen 5 (Touchback).
+              {deadBall === null ? "" : ` Ballbesitz ab ${spotText(deadBall)}.`}
+            </p>
           )}
+          <div className="sheetfield">
+            <label className="sheetlabel" htmlFor="interception-return">
+              Return-Yards (optional, nur Statistik)
+            </label>
+            <input
+              autoComplete="off"
+              className="sheetinput sheetinput-num"
+              disabled={posting}
+              id="interception-return"
+              inputMode="numeric"
+              onChange={(event) => setReturnYards(event.target.value)}
+              pattern="[0-9]*"
+              type="text"
+              value={returnYards}
+            />
+          </div>
+          <div aria-label="Pick six" className="seg" role="group">
+            <button
+              aria-pressed={pickSix}
+              className={pickSix ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setPickSix((current) => !current)}
+              type="button"
+            >
+              Pick six (Touchdown)
+            </button>
+          </div>
+          <p className="sheetnote">
+            Interception durch {opponentName}. Der Ballbesitz wechselt im
+            Spielverlauf zu {opponentName}.
+          </p>
         </>
       ) : null}
     </Sheet>

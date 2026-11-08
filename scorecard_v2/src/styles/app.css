@@ -1097,6 +1097,52 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
+/* The quarterback row: the number and "ändern", the grid only on demand. */
+.qbpick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.qbpick-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.qbpick-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.qbpick-change {
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--amber);
+  cursor: pointer;
+}
+
+.qbsetup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.qbsetup-team {
+  margin: 0;
+  font-weight: 600;
+}
+
 /* The direction arrow is drawn: the self-hosted latin fonts have no U+2192. */
 .dirarrow {
   width: 15px;
@@ -1289,6 +1335,49 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
+/* A wizard footer: back beside the primary action. */
+.sheetfootrow {
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.sheetfootrow .startbtn {
+  flex: 1 1 auto;
+}
+
+.sheetback {
+  flex: 0 0 auto;
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.sheetback:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The live "→ 3rd & M · A18" line of the play wizard. */
+.playpreview {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--fg);
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
 /* ------------------------------------------------------------- tracking -- */
 
 .tracking {
@@ -1431,6 +1520,56 @@ button.game-row:active {
 .team:disabled {
   cursor: default;
   opacity: 0.7;
+}
+
+/* The team row's possession button: the crest and name, the wrapper owns the
+   border and the timeout circles sit beside it (a button may not nest). */
+.teampick {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: var(--touch);
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.team.away .teampick {
+  flex-direction: row-reverse;
+}
+
+.teampick:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* `●●` → `●○` → `○○`: a filled circle is a timeout still available. */
+.timeoutdots {
+  flex: 0 0 auto;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0 var(--space-1);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.12em;
+  color: var(--fg);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.timeoutdots.is-used {
+  color: var(--muted);
+}
+
+.timeoutdots:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 /* Team logos, and the initials disc they fall back to. Every variant takes the

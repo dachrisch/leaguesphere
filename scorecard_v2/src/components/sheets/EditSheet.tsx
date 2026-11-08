@@ -141,7 +141,11 @@ export function editEvent(
     case "clock":
       return {
         name: event,
-        input: `${minutes.padStart(2, "0")}:${seconds.padStart(2, "0")}`,
+        input: `${(minutes === "" ? "0" : minutes).padStart(2, "0")}:${(
+          seconds === ""
+            ? "0"
+            : seconds
+        ).padStart(2, "0")}`,
       };
     case "text": {
       const note = (text ?? input ?? "").trim();
@@ -160,18 +164,26 @@ export function editEvent(
       const signed = event === "Sack" ? -Math.abs(value) : value;
       const previous = playPayload(payload);
       const complete = previous.complete;
-      const nextPayload: Record<string, unknown> = { ...(payload ?? {}), yards: signed };
+      const text = playInput({
+        type: playTypeOf(event),
+        complete,
+        yards: signed,
+        qb: previous.qb,
+        defender: previous.defender,
+        deflection: previous.deflection,
+      });
+      // The envelope builder folds `input` *into* the payload, and the
+      // projector prefers `payload.input`; a corrected play must therefore
+      // carry the new text there too, or the old "0 Yards" survives the edit.
+      const nextPayload: Record<string, unknown> = {
+        ...(payload ?? {}),
+        yards: signed,
+        input: text,
+      };
       return {
         name: event,
         player: jersey ?? undefined,
-        input: playInput({
-          type: playTypeOf(event),
-          complete,
-          yards: signed,
-          qb: previous.qb,
-          defender: previous.defender,
-          deflection: previous.deflection,
-        }),
+        input: text,
         payload: nextPayload,
       };
     }
@@ -258,7 +270,7 @@ export default function EditSheet({
     roster === null ? [] : roster.filter((player) => player.side === side);
   const options = jerseyOptions(players);
   const required = field === "jersey" && jerseyRequired();
-  const clockMissing = field === "clock" && (minutes === "" || seconds === "");
+  const clockMissing = field === "clock" && minutes === "" && seconds === "";
   const spotValueNumber = spotValue(spotText);
   const spotMissing = field === "fieldpos" && spotValueNumber === null;
   const spotOutOfRange =

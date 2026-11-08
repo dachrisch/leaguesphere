@@ -98,9 +98,39 @@ class TestGameSetup(WebTest):
         )
         assert len(GameSetup.objects.all()) == 1
         assert response.status_code == HTTPStatus.OK
-        assert response.json == gamesetup
+        assert response.json == {**gamesetup, "qbHome": None, "qbAway": None}
         first_game: Gameinfo = Gameinfo.objects.last()
         assert first_game.status == "1. Halbzeit"
+
+    def test_game_setup_stores_the_quarterbacks(self):
+        DBSetup().g62_status_empty()
+        game = Gameinfo.objects.last()
+        payload = {
+            "ctResult": "won",
+            "direction": "arrow_forward",
+            "fhPossession": "HOME",
+            "qbHome": 7,
+            "qbAway": 12,
+        }
+
+        response = self.app.put_json(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            payload,
+            headers=DBSetup().get_token_header(),
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json == payload
+        setup = GameSetup.objects.get(gameinfo=game)
+        assert setup.qbHome == 7
+        assert setup.qbAway == 12
+        # A later device reads them with the rest of the setup.
+        read = self.app.get(
+            reverse(API_GAME_SETUP, kwargs={"pk": game.pk}),
+            headers=DBSetup().get_token_header(),
+        )
+        assert read.json["qbHome"] == 7
+        assert read.json["qbAway"] == 12
 
     def test_game_setup_update(self):
         DBSetup().g62_status_empty()
@@ -123,7 +153,7 @@ class TestGameSetup(WebTest):
         )
         assert len(GameSetup.objects.all()) == 1
         assert response.status_code == HTTPStatus.OK
-        assert response.json == gamesetup
+        assert response.json == {**gamesetup, "qbHome": None, "qbAway": None}
         first_game: Gameinfo = Gameinfo.objects.last()
         assert first_game.status == "2. Halbzeit"
         assert str(first_game.gameStarted) == "11:00:00"
@@ -162,6 +192,8 @@ class TestGameSetup(WebTest):
             "ctResult": "",
             "direction": "",
             "fhPossession": "",
+            "qbHome": None,
+            "qbAway": None,
         }
         setup = GameSetup.objects.get(gameinfo=game)
         assert setup.ctResult == ""
@@ -204,6 +236,8 @@ class TestGameSetup(WebTest):
             "ctResult": "won",
             "direction": "arrow_forward",
             "fhPossession": "AWAY",
+            "qbHome": None,
+            "qbAway": None,
         }
 
     def test_game_setup_not_found_(self):
@@ -281,6 +315,8 @@ class TestGameSetup(WebTest):
             "ctResult": "won",
             "direction": "arrow_forward",
             "fhPossession": "HOME",
+            "qbHome": None,
+            "qbAway": None,
         }
         get_response = self.app.get(reverse(API_GAME_SETUP, kwargs={"pk": game.pk}))
         assert "device_id" not in get_response.json

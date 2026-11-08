@@ -67,6 +67,35 @@ describe("undoPossessionTeam", () => {
     ).toBe("Wolves");
   });
 
+  it("puts the ball back with the opponent of a pick-six touchdown", () => {
+    // The touchdown is credited to the defence (Wolves); before the pick the
+    // ball was with Ravens.
+    expect(
+      undoPossessionTeam(
+        row({ event: "Touchdown", team: "Wolves", payload: { defense: true } }),
+        log(),
+      ),
+    ).toBe("Ravens");
+  });
+
+  it("puts the ball back with the try's team after a conversion", () => {
+    expect(
+      undoPossessionTeam(row({ event: "1-Extra-Punkt" }), log()),
+    ).toBe("Ravens");
+    // A defensive two-point try is credited to the defence; the scoring team
+    // had the ball during the try.
+    expect(
+      undoPossessionTeam(
+        row({
+          event: "2-Extra-Punkte",
+          team: "Wolves",
+          payload: { try_defense: true },
+        }),
+        log(),
+      ),
+    ).toBe("Ravens");
+  });
+
   it("changes nothing for an entry that keeps the ball", () => {
     expect(undoPossessionTeam(row({ event: "Pass" }), log())).toBeNull();
   });

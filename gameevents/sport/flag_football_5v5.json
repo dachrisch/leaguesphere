@@ -18,6 +18,7 @@
       "goal"
     ],
     "first_down_at_middle": "once",
+    "middle_reached": "on",
     "turnover_on_downs_spot": 5,
     "interception_spot": "dead_ball"
   },

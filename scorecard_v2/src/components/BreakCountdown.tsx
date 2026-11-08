@@ -22,7 +22,20 @@ export default function BreakCountdown({
   startedAt,
   totalSeconds = HALFTIME_BREAK_SECONDS,
   onDone,
-}: BreakCountdownProps) {
+  label = "Pause",
+  panelLabel = "Halbzeitpause",
+  doneLabel,
+  durationNote,
+}: BreakCountdownProps & {
+  /** The countdown's visible name ("Pause", "Auszeit"). */
+  label?: string;
+  /** The section's accessible name. */
+  panelLabel?: string;
+  /** The button that ends it early; defaults to "Pause beenden". */
+  doneLabel?: string;
+  /** Screen-reader note about the full duration. */
+  durationNote?: string;
+}) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -34,11 +47,11 @@ export default function BreakCountdown({
   const over = left === 0;
 
   return (
-    <section aria-label="Halbzeitpause" className="breakpanel">
+    <section aria-label={panelLabel} className="breakpanel">
       <p className="breaktext">
-        <span className="breaklabel">Pause</span>
+        <span className="breaklabel">{label}</span>
         <span
-          aria-label={over ? "Pause vorbei" : "Restliche Pause"}
+          aria-label={over ? `${label} vorbei` : `Restliche ${label}`}
           className={over ? "breaktime over" : "breaktime"}
           role="timer"
         >
@@ -46,10 +59,11 @@ export default function BreakCountdown({
         </span>
       </p>
       <button className="breakskip" onClick={onDone} type="button">
-        {over ? "Weiter" : "Pause beenden"}
+        {over ? "Weiter" : (doneLabel ?? `${label} beenden`)}
       </button>
       <span className="sr-only">
-        {`Die Pause dauert ${Math.round(HALFTIME_BREAK_SECONDS / 60)} Minuten.`}
+        {durationNote ??
+          `Die Pause dauert ${Math.round(totalSeconds / 60)} Minuten.`}
       </span>
     </section>
   );

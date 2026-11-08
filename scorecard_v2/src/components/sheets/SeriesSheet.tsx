@@ -49,9 +49,10 @@ export function clockDigits(value: string): string {
 /**
  * Validation for the two time fields, in the sheet's language.
  *
- * Both fields are required: an empty minutes field is not "0 minutes" but an
- * unfinished entry, and the server would store the empty text as the row's
- * input.
+ * An empty field is a zero: an official who enters only minutes means
+ * "mm:00", and one who enters only seconds means "00:ss" (the operator's call
+ * on game 9316). Only both fields empty is an unfinished entry — the server
+ * would otherwise store an empty text as the row's input.
  */
 export function timeError(
   mode: SeriesMode,
@@ -60,12 +61,6 @@ export function timeError(
 ): string | null {
   if (minutes === "" && seconds === "") {
     return "Bitte Minuten und Sekunden angeben.";
-  }
-  if (minutes === "") {
-    return "Bitte Minuten angeben.";
-  }
-  if (seconds === "") {
-    return "Bitte Sekunden angeben.";
   }
   if (Number(minutes) > maxMinutes()) {
     return mode === "time"
@@ -87,7 +82,9 @@ export function timeError(
  * have to settle with the teams.
  */
 export function clockInput(minutes: string, seconds: string): string {
-  return `${minutes.padStart(2, "0")}:${seconds.padStart(2, "0")}`;
+  return `${(minutes === "" ? "0" : minutes).padStart(2, "0")}:${(
+    seconds === "" ? "0" : seconds
+  ).padStart(2, "0")}`;
 }
 
 /**

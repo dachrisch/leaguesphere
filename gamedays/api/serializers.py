@@ -203,7 +203,14 @@ class GameinfoSerializer(ModelSerializer):
 class GameSetupSerializer(ModelSerializer):
     class Meta:
         model = GameSetup
-        fields = ["ctResult", "direction", "fhPossession", "device_id"]
+        fields = [
+            "ctResult",
+            "direction",
+            "fhPossession",
+            "qbHome",
+            "qbAway",
+            "device_id",
+        ]
         # v1 submits its untouched form fields as empty strings (or omits an
         # undefined coin toss). The game still has to start — only a truly
         # invalid value (wrong type, over max_length) may reject the request.
@@ -211,6 +218,15 @@ class GameSetupSerializer(ModelSerializer):
             **{
                 field: {"required": False, "allow_blank": True}
                 for field in ("ctResult", "direction", "fhPossession")
+            },
+            # The quarterbacks are optional typing aids; `null`/omitted means
+            # "not chosen".
+            **{
+                field: {
+                    "required": False,
+                    "allow_null": True,
+                }
+                for field in ("qbHome", "qbAway")
             },
             # The per-game device lock is write-only: the endpoints that need
             # to read it already answer with it on a 409, and keeping it out of

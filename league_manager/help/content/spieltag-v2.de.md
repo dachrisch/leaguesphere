@@ -18,46 +18,68 @@ wie die bisherige Scorecard
    vorbereiten**.
 2. Prüfe in **Spiel vorbereiten** die Offiziellen und ihre Lizenzen, halte
    **Münzwurf gewonnen von**, **Erster Ballbesitz** und **Spielrichtung** fest
-   und tippe auf **Spiel starten**. **Jetzt starten** bestätigt den Start.
+   und tippe auf **Spiel starten**. Optional wählst du im Abschnitt
+   **Quarterback (optional)** für jedes Team die Trikotnummer; sie ist beim
+   ersten Pass und beim Versuch vorausgewählt und gilt auf jedem Gerät.
+   **Jetzt starten** bestätigt den Start.
    Die Schalter für **Münzwurf gewonnen von** und **Erster Ballbesitz** tragen
    die Teamfarben (Heim rot, Gast grün). Die **Münzwahl** hat immer das
    Gastteam – das zweit genannte Team; der Hinweis steht direkt unter dem
    Schalter. Die **Spielrichtung** liegt zwischen den Endzonen **Nord** und
    **Süd** (die Seitenlinie verläuft Ost–West); der Pfeil zeigt auf die
    Endzone, die angegriffen wird.
-3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug über
-   **Spielzug (Pass/Run/Sack)** – mit Spieler, Raumgewinn bzw. Raumverlust und
-   beim Pass mit **Complete/Incomplete** und dem **Quarterback** (der letzte
-   steht schon da). Ein Raumgewinn darf auch negativ sein: **Verlust** wählen
-   (oder ein Minus tippen), wenn der Ball zurückgetragen wird. Auf Pass und Run
-   kannst du zusätzlich den Verteidiger eintragen, der getackelt hat; bei einem
-   unvollständigen Pass zuerst **Deflection** wählen. Unter dem Ballbesitz steht
-   der **Down & Distanz** (z. B. **2nd & M**) mit der Feldposition (z. B.
-   **A12**). Das Feld ist 50 Yards lang: **A** ist die eigene Hälfte (0–25),
-   **M** die Mittellinie und **B** die gegnerische Hälfte (B20 = gegnerische
-   20-Yard-Linie). Jeder Angriff startet bei **A5** mit **1st & M**; wer die
-   Mittellinie erreicht, bekommt **1st & G** und hat vier Versuche bis zur
-   Endzone. Ein nicht verwandelter vierter Versuch gibt den Ball ab. Die
-   Feldposition setzt du über **Feldposition** (A/B + 0–25); sie hält über
-   Reloads, weil sie als Eintrag im Spielverlauf steht. **Challenge** hält einen Einspruch fest – ohne Text
-   oder mit einer kurzen Begründung. Dazu **Touchdown**, **1st Down**, **Turnover**,
-   **Interception**, **Strafe**, **Safety**, **Overtime** und **Spielzeit**;
-   bei **Touchdown** und **1st Down** kannst du den Raumgewinn mit eintragen.
-   Ein Touchdown zählt fürs Team auch **ohne Trikotnummer** (**Ohne Nummer**) –
-   die Nummer ist Statistik, nicht die Bedingung für die sechs Punkte.
-   Eine **Auszeit** nimmst du direkt beim Team: neben dem Ballbesitz-Knopf
-   steht für jedes Team sein eigenes Auszeit-Feld mit dem Stand (z. B. 1/2) –
-   ein Tipp genügt, unabhängig davon, wer den Ball hat. **Overtime** startet die Verlängerung (zweiter Tipp
-   bestätigt); danach wird aus der Kachel **+1 XP**, und beim Versuch nach
-   einem Touchdown gibt es nur noch **+1** statt **+2**. **1st Down**,
-   **Turnover** und **Interception** werden sofort gespeichert; bei 1st Down
-   und Interception trägst du die Trikotnummer nach, wenn du die Kachel
-   innerhalb von 10 Sekunden noch einmal tippst (**Nr. ergänzen**). Nach einem
-   Touchdown sind die Kacheln gesperrt, bis der Extrapunkt eingetragen ist:
-   **+1** oder **+2** öffnet die Trikotwahl – der Touchdown-Schütze ist
-   vorausgewählt, du kannst aber den tatsächlichen Verwandler wählen (ohne
-   eingetragenen Schützen wählst du frei);
-   **nicht verwandelt** schließt die Abfrage ohne Eintrag.
+3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug
+   über die Kacheln **Pass**, **Run** oder **Sack** – der Assistent fragt in
+   dieser Reihenfolge: **Spielzug** → **Ergebnis** → **Distanz** →
+   **Quarterback** → **Trikotnummer** → **Defense**. Übersprungene Schritte
+   (kein QB beim Lauf, kein Tackle beim Sack) fallen weg. Im Schritt
+   **Distanz** trägst du den Raumgewinn als **Yards** oder als **Endpunkt**
+   (A/B + 0–25) ein; darunter steht die Vorschau, z. B. **→ 2nd & M · A19**.
+   **Touchdown** trägt die Distanz bis zur Endzone ein und blendet den
+   Verlust-Schalter aus; **Safety** trägt den Weg bis zur eigenen Endzone ein.
+   **Interception** fragt zusätzlich Verteidiger, **Ballbesitz ab** und
+   optional **Pick six (Touchdown)**. Die Verteidiger-Trikotnummer steht unter
+   **Defense**; bei einem unvollständigen Pass zuerst **Deflection** wählen.
+   Unter dem Ballbesitz steht der **Down & Distanz** (z. B. **2nd & M**) mit
+   der Feldposition (z. B. **A12**). Das Feld ist 50 Yards lang: **A** ist die
+   eigene Hälfte (0–25), **M** die Mittellinie und **B** die gegnerische
+   Hälfte (B20 = gegnerische 20-Yard-Linie). Jeder Angriff startet bei **A5**
+   mit **1st & M**; wer die Mittellinie erreicht, bekommt **1st & G** und hat
+   vier Versuche bis zur Endzone. Ein nicht verwandelter vierter Versuch gibt
+   den Ball ab und schreibt eine eigene **Turnover**-Zeile in den
+   Spielverlauf.
+
+   **Mehr** öffnet die übrigen Einträge: **Turnover**, **1st Down**,
+   **Safety**, **Overtime**, **Challenge**, **Feldposition** und
+   **Touchdown (Kurzform)** für ein Spiel ohne Spielzug-Erfassung. Die
+   **Feldposition** setzt A/B + 0–25 und hält über Reloads, weil sie als
+   Eintrag im Spielverlauf steht; sie setzt auch **Down** (1–4) und **Line to
+   gain** (**M** oder **G**), wenn du sie von Hand korrigierst. **Challenge**
+   hält einen Einspruch fest – ohne Text oder mit einer kurzen Begründung.
+
+   Ein **Touchdown** zählt fürs Team auch **ohne Trikotnummer** (**Ohne
+   Nummer**) – die Nummer ist Statistik, nicht die Bedingung für die sechs
+   Punkte. Nach einem Touchdown bleibt der Ball bei der Mannschaft, die den
+   Versuch spielt; **+1** oder **+2** öffnet die Trikotwahl – der
+   Touchdown-Schütze ist vorausgewählt, du kannst aber den tatsächlichen
+   Verwandler wählen (ohne eingetragenen Schützen wählst du frei). Der
+   **Quarterback** steht im Versuch als Nummer mit **ändern** daneben;
+   **nicht verwandelt** beendet den Versuch und gibt den Ball ab. Eine
+   **Strafe** bleibt auch während des Versuchs erreichbar und wiederholt ihn
+   vom verschobenen Punkt.
+
+   Eine **Auszeit** nimmst du über die Kreise neben dem Team im Spielstand:
+   **●●** heißt zwei Auszeiten übrig, **●○** eine, **○○** keine. Der Dialog
+   fragt optional die **Restliche Spielzeit** (mm:ss; ein leeres Feld zählt
+   als 0) und zählt danach 60 Sekunden herunter. Eine dritte Auszeit in einer
+   Halbzeit verlangt einen zweiten Tipp (**Trotzdem erfassen**) und erinnert an
+   die Strafe „Auszeit ohne verbleibende Auszeit“ (5 Yards). Eine **Auszeit**
+   trägt sich unabhängig davon ein, wer den Ball hat. **Overtime** startet die
+   Verlängerung; danach wird der Versuch zum **+1 XP**.
+   **1st Down** und **Turnover** werden sofort gespeichert; bei **1st Down**
+   trägst du die Trikotnummer nach, wenn du die Kachel innerhalb von 10
+   Sekunden noch einmal tippst (**Nr. ergänzen**). Eine **Interception** läuft
+   über den Spielzug-Assistenten (**Pass** → **Interception**).
 
    Bei **Strafe** stehen die fünf häufigsten oben, der Rest alphabetisch.
    **Yardage** und **Nächster Versuch** (Wiederholung, First Down, Loss of
@@ -69,16 +91,24 @@ wie die bisherige Scorecard
    automatisch disqualifiziert. Die Feldposition wird vom letzten Spot aus
    verschoben, höchstens bis zur halben Distanz zur Endzone; über die
    Mittellinie wird daraus **1st & G**. Eine später eingetragene
-   **Feldposition** gewinnt immer: Sie verschiebt nur den Ball und lässt den
-   laufenden Versuch stehen – **1st** gibt es erst, wenn die Mittellinie (in
-   Goal-to-go die Endzone) erreicht ist oder das Team wechselt.
+   **Feldposition** gewinnt immer: Sie verschiebt den Ball und die
+   eingetragenen **Down**/**Line to gain** – ohne Angabe bleibt der laufende
+   Versuch stehen – **1st** gibt es erst, wenn die Mittellinie (in Goal-to-go
+   die Endzone) erreicht ist oder das Team wechselt.
+
+   **Halbzeit** öffnet einen Dialog mit Spielstand, **Ballbesitz 2.
+   Halbzeit** und der gedrehten **Spielrichtung**; **Halbzeit starten** wechselt
+   die Halbzeit und startet die Pause (Standard 2 Minuten, aus der
+   Regeldefinition). **Pause beenden** schließt sie früher ab.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    Spielzügen die Yards, bei **Feldposition** die Yardlinie, bei **Spielzeit**
    und **Auszeit** die Spielzeit); am großen Bildschirm geht das
    Zurücknehmen auch mit **Strg Z**. Ein Eintrag, der den Ballbesitz gedreht
-   hat (**Turnover**, **Touchdown**, **Interception**, **Safety**), nimmt
-   dabei auch diese Drehung zurück – auch wenn er noch nicht gesendet wurde.
+   hat (**Turnover**, **Interception**, **Safety**), nimmt dabei auch diese
+   Drehung zurück – auch wenn er noch nicht gesendet wurde. Der Touchdown
+   selbst dreht den Ball nicht mehr: erst der Versuch (**+1**, **+2**,
+   **nicht verwandelt** oder **Gegner +2**) gibt ihn ab.
    **Nur Punkte** blendet alles aus, was keine
    Punkte gebracht hat, damit ein falscher Spielstand schnell zu finden ist.
    **Halbzeit**
@@ -102,9 +132,10 @@ Spieleliste zeigt bei mehreren Feldern einen Feldplan mit gemeinsamen
 Anstoßzeiten. Auf dem Desktop kommen Spielinfo und Halbzeitenstände hinzu.
 
 Dort kannst du mit **T** einen Touchdown öffnen, mit **P** einen Spielzug
-(Pass/Run/Sack), mit **1–8** die acht Aktionen auslösen, mit **B** den
-Ballbesitz wechseln und mit **Strg+Z** (Mac: **Cmd+Z**) den letzten Eintrag
-zurücknehmen. Die Tastenkürzel sind deaktiviert, solange ein
+(Pass), mit **1–4** Pass/Run/Sack/Interception, mit **5** die Strafe, mit
+**6** die Spielzeit und mit **7** **Mehr** öffnen; **8–0** lösen 1st Down,
+Turnover und Safety aus. Mit **B** wechselt der Ballbesitz, mit **Strg+Z**
+(Mac: **Cmd+Z**) nimmst du den letzten Eintrag zurück. Die Tastenkürzel sind deaktiviert, solange ein
 Dialog oder ein Eingabefeld aktiv ist oder das Spiel nur gelesen werden darf.
 
 **Offizielle eintragen:** Tippe in **Spiel vorbereiten** auf eine Position und

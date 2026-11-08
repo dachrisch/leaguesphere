@@ -15,6 +15,7 @@ import type {
   GameLog,
   GameSetup as GameSetupPayload,
   Official,
+  RosterPlayer,
   TeamOfficial,
 } from "../api/types";
 import DirectionText, {
@@ -23,6 +24,7 @@ import DirectionText, {
 } from "../components/DirectionText";
 import Screen from "../components/Screen";
 import PersonPicker from "../components/PersonPicker";
+import JerseyPicker from "../components/JerseyPicker";
 import StartConfirmation, {
   startBlockers,
   type StartCrewLine,
@@ -31,6 +33,7 @@ import TeamLogo from "../components/TeamLogo";
 import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
 import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
+import { rememberQuarterback } from "../app/quarterback";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
 import { newOpId } from "../session/ids";
 import { lockFrom } from "../session/lock";
@@ -373,6 +376,14 @@ export default function GameSetupScreen({
   const [toss, setToss] = useState<Side | null>(null);
   const [possession, setPossession] = useState<Side | null>(null);
   const [direction, setDirection] = useState<Direction | null>(null);
+  /**
+   * The quarterback each team starts with, chosen before kickoff so the play
+   * sheet does not ask on the first pass. A typing aid: it is stored with the
+   * setup and remembered per device when the game starts.
+   */
+  const [qbHome, setQbHome] = useState<number | null>(null);
+  const [qbAway, setQbAway] = useState<number | null>(null);
+  const [roster, setRoster] = useState<RosterPlayer[] | null>(null);
 
   const [saving, setSaving] = useState(false);
   // The confirmation sheet between the tap on "Spiel starten" and the write.
@@ -435,6 +446,8 @@ export default function GameSetupScreen({
         setToss(normaliseToss(setup.ctResult, home, away));
         setPossession(normaliseSide(setup.fhPossession, home, away));
         setDirection(directionFromWire(setup.direction));
+        setQbHome(setup.qbHome ?? null);
+        setQbAway(setup.qbAway ?? null);
       }
       setLoading(false);
     } catch (loadFailure) {
@@ -453,6 +466,26 @@ export default function GameSetupScreen({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    // The jersey grid of the pre-game quarterback is the same roster the play
+    // sheet uses. A failed read leaves it empty; the keypad still works.
+    cachedGet<RosterPlayer[]>(snapshotKey.roster(id), `/api/game/${id}/roster`)
+      .then((players) => {
+        if (active) {
+          setRoster(players ?? []);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRoster([]);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   const retryLoad = (): void => {
     setLoading(true);
@@ -741,10 +774,22 @@ export default function GameSetupScreen({
           ctResult: toss,
           direction,
           fhPossession: possession,
+          // Always sent (null clears a stored number): the setup row is the
+          // one place every device reads the pre-game quarterback from.
+          qbHome,
+          qbAway,
           device_id: deviceId,
         });
         setHasSetup(true);
         setSetupAccepted(true);
+        // The device that starts the game remembers the pre-game quarterbacks
+        // at once: its own setup read may still answer the pre-start snapshot.
+        if (qbHome !== null) {
+          rememberQuarterback(id, "home", qbHome);
+        }
+        if (qbAway !== null) {
+          rememberQuarterback(id, "away", qbAway);
+        }
         // Only claim the session once the server accepted the start: a device
         // that lost the lock must not start stamping its id on later requests.
         setDeviceId(deviceId);
@@ -1227,6 +1272,40 @@ export default function GameSetupScreen({
                     Die Wahl der Seite hat immer das Gastteam – das zweit
                     genannte Team.
                   </p>
+                </section>
+
+                <section className="segfield">
+                  <h3 className="segtitle">Quarterback (optional)</h3>
+                  <p className="setupnote">
+                    Wird beim ersten Pass vorausgewählt und gilt für jedes
+                    Gerät, das das Spiel übernimmt. Im Spiel bleibt der QB
+                    änderbar.
+                  </p>
+                  {(["home", "away"] as const).map((side) => {
+                    const name = side === "home" ? home : away;
+                    const value = side === "home" ? qbHome : qbAway;
+                    const change =
+                      side === "home" ? setQbHome : setQbAway;
+                    return (
+                      <div className="qbsetup" key={side}>
+                        <p className="setupnote qbsetup-team">
+                          {teamLabel(name)}
+                        </p>
+                        <JerseyPicker
+                          compact
+                          disabled={readOnly || finished}
+                          groupLabel={`Quarterback ${teamLabel(name)}`}
+                          label="QB"
+                          onChange={change}
+                          optionalLabel="Ohne QB"
+                          players={(roster ?? []).filter(
+                            (player) => player.side === side,
+                          )}
+                          value={value}
+                        />
+                      </div>
+                    );
+                  })}
                 </section>
               </div>
             </section>

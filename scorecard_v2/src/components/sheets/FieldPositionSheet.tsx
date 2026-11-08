@@ -36,13 +36,21 @@ export function spotValue(raw: string): number | null {
 export function fieldPositionEvent(
   side: FieldSide,
   yards: number,
+  options: { down?: number; goal?: boolean } = {},
 ): GameLogEventInput {
   const ballOn = side === "A" ? yards : FIELD_LENGTH - yards;
   const text = `${side}${formatYards(yards)}`;
+  const payload: Record<string, unknown> = { ballOn, input: text };
+  if (options.down !== undefined) {
+    payload.down = options.down;
+  }
+  if (options.goal !== undefined) {
+    payload.goal = options.goal;
+  }
   return {
     name: "Feldposition",
     input: text,
-    payload: { ballOn, input: text },
+    payload,
   };
 }
 
@@ -50,6 +58,10 @@ interface FieldPositionSheetProps {
   teamName: string;
   /** The spot the drive is on, pre-filled (own-goal-based 0–50). */
   ballOn: number | null;
+  /** The running down, pre-filled (the officials may change it here). */
+  down?: number;
+  /** True when the current line to gain is the goal line. */
+  goal?: boolean;
   onSubmit: (event: GameLogEventInput) => Promise<void>;
   onClose: () => void;
 }
@@ -65,6 +77,8 @@ interface FieldPositionSheetProps {
 export default function FieldPositionSheet({
   teamName,
   ballOn,
+  down = 1,
+  goal = false,
   onSubmit,
   onClose,
 }: FieldPositionSheetProps) {
@@ -73,6 +87,8 @@ export default function FieldPositionSheet({
   const [yards, setYards] = useState(
     formatYards(current > MIDFIELD ? FIELD_LENGTH - current : current),
   );
+  const [nextDown, setNextDown] = useState(down);
+  const [toGoal, setToGoal] = useState(goal);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Two synchronous taps must not both write the row.
@@ -90,7 +106,12 @@ export default function FieldPositionSheet({
     setPosting(true);
     setError(null);
     try {
-      await onSubmit(fieldPositionEvent(side, distance));
+      await onSubmit(
+        fieldPositionEvent(side, distance, {
+          down: nextDown,
+          goal: toGoal,
+        }),
+      );
       onClose();
     } catch (failure) {
       saving.current = false;
@@ -162,6 +183,44 @@ export default function FieldPositionSheet({
           Die Yardlinie liegt zwischen 0 und 25.
         </p>
       ) : null}
+
+      <h3 className="sheetsection">Down</h3>
+      <div aria-label="Down" className="seg" role="group">
+        {[1, 2, 3, 4].map((value) => (
+          <button
+            aria-pressed={nextDown === value}
+            className={nextDown === value ? "sel" : undefined}
+            disabled={posting}
+            key={value}
+            onClick={() => setNextDown(value)}
+            type="button"
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+
+      <h3 className="sheetsection">Line to gain</h3>
+      <div aria-label="Line to gain" className="seg" role="group">
+        <button
+          aria-pressed={!toGoal}
+          className={!toGoal ? "sel" : undefined}
+          disabled={posting}
+          onClick={() => setToGoal(false)}
+          type="button"
+        >
+          M · Mittellinie
+        </button>
+        <button
+          aria-pressed={toGoal}
+          className={toGoal ? "sel" : undefined}
+          disabled={posting}
+          onClick={() => setToGoal(true)}
+          type="button"
+        >
+          G · Endzone
+        </button>
+      </div>
     </Sheet>
   );
 }

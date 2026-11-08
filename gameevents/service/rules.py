@@ -144,6 +144,8 @@ def _validate(definition: dict[str, Any], name: str) -> None:
         fail("series.downs must be 4 for flag football")
     if series.get("start") != field["no_run_zone"]:
         fail("series.start and field.no_run_zone disagree")
+    if series.get("middle_reached") not in ("on", "beyond"):
+        fail('series.middle_reached must be "on" or "beyond"')
 
     if not isinstance(definition["periods"].get("intermission_minutes"), (int, float)):
         fail("periods.intermission_minutes must be a number")

@@ -19,6 +19,7 @@ import type {
   GameLog,
   GameSetup,
   Official,
+  RosterPlayer,
   TeamOfficial,
 } from "../api/types";
 import { TeamLogosProvider } from "../app/teamLogos";
@@ -65,6 +66,12 @@ const DEFAULT_POSITIONS: CrewPosition[] = [
   { position: "Down Judge", label: "Down Judge", order: 3, required: true },
   { position: "Field Judge", label: "Field Judge", order: 4, required: true },
   { position: "Side Judge", label: "Side Judge", order: 5, required: true },
+];
+
+const ROSTER: RosterPlayer[] = [
+  { side: "home", jersey: 7, name: "Meier" },
+  { side: "home", jersey: 23, name: "Schulz" },
+  { side: "away", jersey: 11, name: "Wolf" },
 ];
 
 const GAME: Game = {
@@ -287,6 +294,8 @@ beforeEach(() => {
         return setup;
       case POSITIONS_PATH:
         return positions;
+      case "/api/game/42/roster":
+        return ROSTER;
       case LOG_PATH:
         startCalls.push(`GET ${path}`);
         return LOG;
@@ -1147,6 +1156,46 @@ describe("GameSetup — crew slots per league", () => {
 });
 
 describe("GameSetup — configuration and readiness", () => {
+  it("stores the pre-game quarterbacks and remembers them on this device", async () => {
+    crew = completeCrew();
+    const { onStarted } = await renderSetup();
+
+    const home = screen.getByRole("group", { name: "Quarterback Ravens" });
+    const away = screen.getByRole("group", { name: "Quarterback Wolves" });
+    await userEvent.click(
+      await within(home).findByRole("button", { name: "QB 7, Meier" }),
+    );
+    await userEvent.click(
+      await within(away).findByRole("button", { name: "QB 11, Wolf" }),
+    );
+
+    await chooseDefaults();
+    await clickStart();
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(startedLog()));
+
+    expect(apiPutMock).toHaveBeenCalledWith(
+      SETUP_PATH,
+      expect.objectContaining({ qbHome: 7, qbAway: 11 }),
+    );
+    // The starting device seeds its play sheet at once.
+    expect(
+      globalThis.localStorage.getItem("scorecard:v2:qb:42:home"),
+    ).toBe("7");
+    expect(
+      globalThis.localStorage.getItem("scorecard:v2:qb:42:away"),
+    ).toBe("11");
+  });
+
+  it("preselects the stored quarterbacks on a prepared game", async () => {
+    setup = { ctResult: "home", direction: "Nord", fhPossession: "home", qbHome: 23 };
+    await renderSetup();
+
+    const home = screen.getByRole("group", { name: "Quarterback Ravens" });
+    expect(
+      await within(home).findByRole("button", { name: "QB 23, Schulz" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("starts without a preselection and names what is still open", async () => {
     await renderSetup();
 
@@ -1295,6 +1344,8 @@ describe("GameSetup — start sequence", () => {
       ctResult: "home",
       direction: "Nord",
       fhPossession: "home",
+      qbHome: null,
+      qbAway: null,
       device_id: "device-1",
     });
     expect(apiPostMock).toHaveBeenCalledWith(EVENTS_PATH, {
@@ -1323,6 +1374,8 @@ describe("GameSetup — start sequence", () => {
       ctResult: "away",
       direction: "Süd",
       fhPossession: "away",
+      qbHome: null,
+      qbAway: null,
       device_id: "device-1",
     });
     expect(apiPostMock).toHaveBeenCalledWith(EVENTS_PATH, {

@@ -161,19 +161,47 @@ first. Layers 3–6 change the entry flow and should be checked with the operato
 
 ## 4. Open decisions
 
-| # | Question | Options | Recommendation |
+| # | Question | Options | Decision (2026-11-08) |
 |---|---|---|---|
-| Q1 | Does a ball **on** the middle line earn the first down? (D2) | IFAF R 5-1-1a: *beyond* (today) · operator: *reaching* | Make it a definition value (`series.middle_reached: "beyond" \| "on"`), default per what the German leagues play — needs Léon's confirmation, add to Rules Validation §9.4 |
-| Q2 | 3rd timeout in a half (C3) | block · warn + require a second tap and offer the *charged timeout* penalty | Warn + second tap (keeps *field calls win*); the circles make the state obvious |
-| Q3 | Mode switch for play-by-play (D5, L5) | per league setting · per game in setup · device toggle | Per game in *Spiel vorbereiten*, default from the league; the operator called it "Expertenmodus" |
-| Q4 | Pre-game QB storage (L3) | `GameSetup` field (migration) · event payload on *Spiel gestartet* | Payload on the start event — no migration, replays with the log |
+| Q1 | Does a ball **on** the middle line earn the first down? (D2) | IFAF R 5-1-1a: *beyond* (today) · operator: *reaching* | **Reaching counts.** The definition carries `series.middle_reached: "on"`; `"beyond"` stays a data change for a league that plays the book literally. |
+| Q2 | 3rd timeout in a half (C3) | block · warn + require a second tap and offer the *charged timeout* penalty | **Warn + second tap.** The circles show the state; the dialog names the 5-yard foul and records it only on the confirmed tap. |
+| Q3 | Mode switch for play-by-play (D5, L5) | per league setting · per game in setup · device toggle | **Still open.** The board now carries the six primary tiles *and* keeps the short-form entries (Touchdown / 1st Down) until a mode switch is decided. |
+| Q4 | Pre-game QB storage (L3) | `GameSetup` field (migration) · event payload on *Spiel gestartet* | **`GameSetup` field** (`qbHome` / `qbAway`, migration `0048`). The setup read already reaches every device; the start event carries no payload today. |
 
 ---
 
-## 5. Verification
+## 5. Implementation (2026-11-08)
 
-- vitest + eslint + build in `scorecard_v2/` per layer; pytest for `gameevents` where L2/L6 touch
-  replay.
-- A replay test per layer that feeds the 9316 first-half log (export from stage after
-  `ls_db_sync`) through `driveAfter` and compares the bar to the operator's expected column above.
-- Operator walk-through on stage after L2 and after L5.
+Shipped on `feat/scorecard-field-test-9316`:
+
+- **L1** — `applyPenalty` keeps goal-to-go; `series.middle_reached` ("on") is the definition's
+  first-down line; a failed fourth down writes its own **Turnover** row (one undo removes play,
+  row and flip); one empty mm/ss field counts as 0.
+- **L2** — `DriveState.phase: "try"`: a touchdown keeps the ball, the try ends the possession
+  (a miss is a possession change without a row), a penalty repeats it from the enforced spot,
+  and the try sheet carries the quarterback.
+- **L3** — **Spiel vorbereiten** stores an optional QB per team; starting seeds the device
+  memory and every later device reads it from the setup.
+- **L4** — the play wizard (type → result → distance → QB → receiver/runner → tackler), yards or
+  end spot with a live preview, touchdown/safety results, interception with dead-ball spot and
+  pick six; the edit bug was `payload.input` surviving the correction.
+- **L5** — Pass/Run/Sack/Interception/Strafe/Spielzeit tiles, a **Mehr** menu, and the header
+  carries possession and two timeout circles per team.
+- **L6** — the Auszeit dialog (60 s countdown, optional game time, Q2 second tap), the
+  Halbzeit dialog (score, second-half possession and direction), and **Feldposition** with
+  **Down** / **Line to gain**.
+
+Q3 remains open; the short-form tiles stay until it is decided.
+
+---
+
+## 6. Verification
+
+- `scorecard_v2`: `vitest run` (1365 tests), `eslint`, `tsc -b --noEmit` and `vite build`.
+- `gameevents`: `pytest gameevents/tests` (definition + projector); `gamedays/tests/api` for the
+  setup contract.
+- The operator's column is pinned in `scorecard_v2/src/app/drive.test.ts`: goal-to-go after a
+  penalty, reaching the middle, the Turnover row, the try phase (TD, +1/+2, penalty, miss,
+  old-log replay) and the explicit **Down** / **Line to gain** of a **Feldposition** row.
+- A real 9316 log replay on stage is still the operator walk-through: export the log with
+  `ls_db_sync` and feed it through `driveAfter` after the deploy.
