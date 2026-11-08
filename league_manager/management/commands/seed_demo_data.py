@@ -450,11 +450,16 @@ class Command(BaseCommand):
         """Create the two 2026 DFFL finals gamedays from the static snapshot.
 
         The snapshot (``_finals_demo_data.FINALS_GAMEDAYS``) is an anonymised
-        export of the real "Final 8" and "Final 4" gamedays: teams, schedule,
-        scores and jersey numbers are real, every person is fictional. The
+        export of the real "Final 8" and "Final 4" gamedays: teams, schedule
+        and jersey numbers are real, every person is fictional. The
         ``passcheck`` entries are the source for the roster - each one becomes
         a Playerlist entry plus its gameday check-in, which is what the
         scorecard's jersey picker and the matchreport read.
+
+        Both gamedays are dated on the reset day and their games are open
+        (``Geplant``, no scores), like ``seed_scorecard_demo``'s test gameday:
+        the scorecard only lists today's gamedays and only opens unfinished
+        ones, so this is what makes them usable after the nightly reset.
 
         Gameday and game pks are fixed so the demo links stay stable across the
         nightly rebuild. This command is demo-only.
@@ -482,7 +487,7 @@ class Command(BaseCommand):
                     "name": snapshot["name"],
                     "season": season,
                     "league": league,
-                    "date": date.fromisoformat(snapshot["date"]),
+                    "date": date.today(),
                     "start": time.fromisoformat(snapshot["start"]),
                     "format": snapshot["format"],
                     "address": snapshot["address"],
@@ -536,24 +541,27 @@ class Command(BaseCommand):
                         "gameday": gameday,
                         "scheduled": time.fromisoformat(game_data["scheduled"]),
                         "field": game_data["field"],
-                        "status": game_data["status"],
+                        "status": Gameinfo.STATUS_PUBLISHED,
+                        "gameStarted": None,
+                        "gameHalftime": None,
+                        "gameFinished": None,
                         "stage": game_data["stage"],
                         "standing": game_data["standing"],
                         "stage_category": game_data["stage_category"],
                         "league_group": None,
                         "officials": officials_team,
+                        "in_possession": None,
                     },
                 )
                 for is_home, side in ((True, "home"), (False, "away")):
-                    result = game_data[side]
                     Gameresult.objects.update_or_create(
                         gameinfo=gameinfo,
                         isHome=is_home,
                         defaults={
-                            "team": teams[result["team"]],
-                            "fh": result["fh"],
-                            "sh": result["sh"],
-                            "pa": result["pa"],
+                            "team": teams[game_data[side]],
+                            "fh": None,
+                            "sh": None,
+                            "pa": None,
                         },
                     )
 

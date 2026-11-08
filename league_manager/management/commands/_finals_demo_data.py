@@ -1,15 +1,20 @@
 """Anonymised demo snapshot of the 2026 DFFL finals gamedays.
 
 This is the data shown on demo.leaguesphere.app for the German flag football
-finals ("Final 8" and "Final 4", 2026-07-24).  It was exported from the two
-production gamedays (#888 "Final 8 - Tag 2" and #890 "Final 4 - Tag 2") once
-and is now a static seed fixture: the demo database is rebuilt every night, so
-it must not depend on production.
+finals ("Final 8" and "Final 4", originally played 2026-07-24).  It was exported
+from the two production gamedays (#888 "Final 8 - Tag 2" and #890 "Final 4 -
+Tag 2") once and is now a static seed fixture: the demo database is rebuilt
+every night, so it must not depend on production.
+
+The seed dates both gamedays on the reset day and keeps their games open
+(``Geplant``, no scores), exactly like the "Scorecard v2 Testtag" gameday, so
+they appear in the Scorecard and can be tracked along with the livestream.
+``source_date`` is only provenance.
 
 Privacy: every person in here is fictional.  Names, years of birth and pass
 numbers were replaced with synthetic values generated for this snapshot; the
-jersey numbers, teams, games, schedules and results are the real ones, which is
-what the demo/help-video recordings need.  Do not add real names back.
+jersey numbers, teams and schedule are the real ones, which is what the
+demo/help-video recordings need.  Do not add real names back.
 
 The ``passcheck`` list of each team is the source for the roster the seed
 derives (see ``SeedDemoData._create_finals_roster``): one entry per player with
@@ -20,7 +25,7 @@ FINALS_GAMEDAYS = [
     {
         "pk": 888,
         "name": "Final 8 - Tag 2",
-        "date": "2026-07-24",
+        "source_date": "2026-07-24",
         "start": "08:45",
         "format": "4_3_final8_day2",
         "address": "Erika-Fisch-Stadion, Hannover",
@@ -41,45 +46,41 @@ FINALS_GAMEDAYS = [
                 "pk": 9314,
                 "scheduled": "08:45",
                 "field": 1,
-                "status": "beendet",
                 "stage": "Finalrunde",
                 "standing": "HF",
                 "stage_category": "final",
-                "home": {"team": "Wall", "fh": 30, "sh": 14, "pa": 34},
-                "away": {"team": "Firecats", "fh": 12, "sh": 22, "pa": 44},
+                "home": "Wall",
+                "away": "Firecats",
             },
             {
                 "pk": 9315,
                 "scheduled": "08:45",
                 "field": 2,
-                "status": "beendet",
                 "stage": "Finalrunde",
                 "standing": "HF",
                 "stage_category": "final",
-                "home": {"team": "Spatz", "fh": 13, "sh": 20, "pa": 24},
-                "away": {"team": "Kelk", "fh": 18, "sh": 6, "pa": 33},
+                "home": "Spatz",
+                "away": "Kelk",
             },
             {
                 "pk": 9316,
                 "scheduled": "10:30",
                 "field": 3,
-                "status": "beendet",
                 "stage": "Finalrunde",
                 "standing": "P3",
                 "stage_category": "final",
-                "home": {"team": "Firecats", "fh": 14, "sh": 14, "pa": 18},
-                "away": {"team": "Kelk", "fh": 6, "sh": 12, "pa": 28},
+                "home": "Firecats",
+                "away": "Kelk",
             },
             {
                 "pk": 9317,
                 "scheduled": "14:00",
                 "field": 3,
-                "status": "beendet",
                 "stage": "Finalrunde",
                 "standing": "P1",
                 "stage_category": "final",
-                "home": {"team": "Wall", "fh": 10, "sh": 16, "pa": 32},
-                "away": {"team": "Spatz", "fh": 12, "sh": 20, "pa": 26},
+                "home": "Wall",
+                "away": "Spatz",
             },
         ],
         "teams": {
@@ -588,7 +589,7 @@ FINALS_GAMEDAYS = [
     {
         "pk": 890,
         "name": "Final 4 - Tag 2",
-        "date": "2026-07-24",
+        "source_date": "2026-07-24",
         "start": "09:00",
         "format": "4_final4_day2",
         "address": "Erika-Fisch-Stadion, Hannover",
@@ -609,23 +610,21 @@ FINALS_GAMEDAYS = [
                 "pk": 9322,
                 "scheduled": "09:00",
                 "field": 3,
-                "status": "beendet",
                 "stage": "Vorrunde",
                 "standing": "HF/P3",
                 "stage_category": "preliminary",
-                "home": {"team": "SpatzenW", "fh": 21, "sh": 13, "pa": 12},
-                "away": {"team": "FirecatsW", "fh": 6, "sh": 6, "pa": 34},
+                "home": "SpatzenW",
+                "away": "FirecatsW",
             },
             {
                 "pk": 9323,
                 "scheduled": "12:00",
                 "field": 3,
-                "status": "beendet",
                 "stage": "Finalrunde",
                 "standing": "P1",
                 "stage_category": "final",
-                "home": {"team": "Kelkw", "fh": 20, "sh": 12, "pa": 20},
-                "away": {"team": "SpatzenW", "fh": 14, "sh": 6, "pa": 32},
+                "home": "Kelkw",
+                "away": "SpatzenW",
             },
         ],
         "teams": {
