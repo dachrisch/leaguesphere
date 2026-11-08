@@ -8,7 +8,6 @@ from gamedays.models import (
     GameOfficial,
     Gameday,
     Gameinfo,
-    Gameresult,
     Person,
     ResourceUrl,
     Team,
@@ -205,7 +204,7 @@ class TestSeedDemoDataFinals:
         for snapshot in FINALS_GAMEDAYS:
             gameday = Gameday.objects.get(pk=snapshot["pk"])
             assert gameday.name == snapshot["name"]
-            assert gameday.date.isoformat() == snapshot["date"]
+            assert gameday.date == date.today()
             games = Gameinfo.objects.filter(gameday=gameday)
             assert games.count() == len(snapshot["games"])
             assert set(games.values_list("pk", flat=True)) == {
@@ -217,21 +216,41 @@ class TestSeedDemoDataFinals:
                 )
             ) == {resource["url"] for resource in snapshot["resource_urls"]}
 
-    def test_results_match_the_snapshot(self):
+    def test_both_finals_gamedays_are_in_the_scorecard_list(self, client):
+        # The scorecard lists /api/gameday/list/, which only answers gamedays
+        # dated today - that is why the finals are seeded on the reset day.
+        call_command("seed_demo_data")
+
+        gameday_ids = {row["id"] for row in client.get("/api/gameday/list/").json()}
+
+        assert FINALS_GAMEDAY_PKS <= gameday_ids
+
+    def test_finals_games_are_open_for_the_scorecard(self):
+        # A game with status "beendet" is inert in the scorecard; the finals
+        # have to start as open games so they can be tracked with the stream.
         call_command("seed_demo_data")
 
         for snapshot in FINALS_GAMEDAYS:
             for game_snapshot in snapshot["games"]:
                 game = Gameinfo.objects.get(pk=game_snapshot["pk"])
-                for is_home, side in ((True, "home"), (False, "away")):
-                    expected = game_snapshot[side]
-                    result = Gameresult.objects.get(gameinfo=game, isHome=is_home)
-                    assert result.team.name == expected["team"]
-                    assert (result.fh, result.sh, result.pa) == (
-                        expected["fh"],
-                        expected["sh"],
-                        expected["pa"],
-                    )
+                assert game.status == Gameinfo.STATUS_PUBLISHED
+                assert game.gameStarted is None
+                assert game.gameHalftime is None
+                assert game.gameFinished is None
+                for result in game.gameresult_set.all():
+                    assert (result.fh, result.sh, result.pa) == (None, None, None)
+
+    def test_scorecard_games_api_lists_every_finals_game(self, client):
+        # The exact endpoint the scorecard's game list reads.
+        call_command("seed_demo_data")
+
+        for snapshot in FINALS_GAMEDAYS:
+            rows = client.get(f"/api/gameday/{snapshot['pk']}/officials/*").json()
+            by_id = {row["id"]: row for row in rows}
+            for game_snapshot in snapshot["games"]:
+                row = by_id[game_snapshot["pk"]]
+                assert row["status"] == Gameinfo.STATUS_PUBLISHED
+                assert row["passcheck"] is True
 
     def test_rosters_are_derived_from_the_passcheck_snapshot(self):
         call_command("seed_demo_data")
@@ -313,7 +332,7 @@ class TestSeedDemoDataFinals:
             for game_snapshot in snapshot["games"]:
                 rows = client.get(f"/api/game/{game_snapshot['pk']}/roster").json()
                 for side in ("home", "away"):
-                    team_name = game_snapshot[side]["team"]
+                    team_name = game_snapshot[side]
                     expected = {
                         entry["jersey"]
                         for entry in snapshot["teams"][team_name]["passcheck"]
