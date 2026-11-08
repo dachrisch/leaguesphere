@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.13.1](https://github.com/dachrisch/leaguesphere/compare/v5.13.0...v5.13.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **demo:** make finals gamedays scorecard-ready ([1f570e5](https://github.com/dachrisch/leaguesphere/commit/1f570e5dc27be060b65a2ca21e952e3680cba60e))
+* **demo:** make finals gamedays scorecard-ready ([3700c4e](https://github.com/dachrisch/leaguesphere/commit/3700c4efd7b13409e27c0994bfab5767cba9a500))
+
 ## [5.13.0](https://github.com/dachrisch/leaguesphere/compare/v5.12.4...v5.13.0) (2026-11-07)
 
 
