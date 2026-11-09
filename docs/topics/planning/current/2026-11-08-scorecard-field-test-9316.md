@@ -193,6 +193,25 @@ Shipped on `feat/scorecard-field-test-9316`:
 
 Q3 remains open; the short-form tiles stay until it is decided.
 
+### 5.1 Follow-ups after the demo review (2026-11-09, 5.14.1)
+
+The demo walk-through of game 9326 confirmed the layers and exposed four gaps
+that are fixed on `fix/scorecard-9316-followups`:
+
+- **Safety on a pass.** `resultOptions("pass")` now includes *Safety*; the
+  distance step prefills the way to the own end zone for every type, not only
+  for Run/Sack.
+- **No tackler on a touchdown.** `stepsFor` no longer appends the `defender`
+  step when the result is a touchdown (the runner/receiver scored).
+- **Fourth-down preview.** The distance preview names `→ Turnover on downs`
+  instead of showing the new series as if the offence still had the ball.
+- **Penalty during the try.** The try bar derives its spot from `drive.ballOn`,
+  so a flag repeats the attempt from the enforced spot (B5 → B10 / B2,5)
+  instead of always printing `Versuch · B5`.
+
+The third-timeout foul (the dialog's 5-yard warning is not written as a penalty
+row yet) and Q3 remain open.
+
 ---
 
 ## 6. Verification

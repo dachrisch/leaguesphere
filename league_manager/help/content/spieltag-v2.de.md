@@ -32,11 +32,13 @@ wie die bisherige Scorecard
    über die Kacheln **Pass**, **Run** oder **Sack** – der Assistent fragt in
    dieser Reihenfolge: **Spielzug** → **Ergebnis** → **Distanz** →
    **Quarterback** → **Trikotnummer** → **Defense**. Übersprungene Schritte
-   (kein QB beim Lauf, kein Tackle beim Sack) fallen weg. Im Schritt
-   **Distanz** trägst du den Raumgewinn als **Yards** oder als **Endpunkt**
-   (A/B + 0–25) ein; darunter steht die Vorschau, z. B. **→ 2nd & M · A19**.
-   **Touchdown** trägt die Distanz bis zur Endzone ein und blendet den
-   Verlust-Schalter aus; **Safety** trägt den Weg bis zur eigenen Endzone ein.
+   (kein QB beim Lauf, kein Tackle beim Sack, kein Tackler beim Touchdown)
+   fallen weg. Im Schritt **Distanz** trägst du den Raumgewinn als **Yards**
+   oder als **Endpunkt** (A/B + 0–25) ein; darunter steht die Vorschau, z. B.
+   **→ 2nd & M · A19** oder bei einem scheiternden vierten Versuch
+   **→ Turnover on downs**. **Touchdown** trägt die Distanz bis zur Endzone
+   ein und blendet den Verlust-Schalter aus; **Safety** (bei Run, Sack und
+   Pass) trägt den Weg bis zur eigenen Endzone ein.
    **Interception** fragt zusätzlich Verteidiger, **Ballbesitz ab** und
    optional **Pick six (Touchdown)**. Die Verteidiger-Trikotnummer steht unter
    **Defense**; bei einem unvollständigen Pass zuerst **Deflection** wählen.

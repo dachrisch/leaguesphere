@@ -2057,7 +2057,7 @@ describe("Tracking extra point after the try", () => {
     await openPlay(user, "Run");
     await wizardNext(user); // type → result
     await user.click(screen.getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user, 3); // distance → player → defender
+    await wizardNext(user, 2); // distance → player (no tackler on a touchdown)
     await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
 
     // The six points stand without a name, so the try must still be asked —
@@ -3961,6 +3961,50 @@ describe("the try is its own down", () => {
     expect(await screen.findByText("Versuch · B10")).toBeInTheDocument();
   });
 
+  it("shows the enforced spot after a penalty during the try", async () => {
+    routeGets();
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 7);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    expect(await screen.findByText("Versuch · B5")).toBeInTheDocument();
+
+    // The log the server answers after the flag: the touchdown plus the
+    // five-yard offence penalty. The try repeats from B10.
+    answerAppend(
+      makeLog({
+        inPossession: "Ravens",
+        events: [
+          logEvent({
+            id: 2,
+            sequence: 2,
+            team: "Ravens",
+            event: "Strafe",
+            input: "Fehlstart",
+            payload: { yardage: -5, nextDown: "repeat" },
+          }),
+          logEvent({
+            id: 1,
+            sequence: 1,
+            team: "Ravens",
+            event: "Touchdown",
+            player: 7,
+          }),
+        ],
+      }),
+    );
+    const dialog = await openSheet(user, /^Strafe$/);
+    await user.click(
+      await within(dialog).findByRole("button", { name: /^Fehlstart/ }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Speichern" }));
+
+    expect(await screen.findByText("Versuch · B10")).toBeInTheDocument();
+  });
+
   it("records two points for the defence that scored on the try", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
@@ -4031,7 +4075,7 @@ describe("a scoring play", () => {
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → defender
+    // The player is the last step: a touchdown has no tackler.
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
     );
