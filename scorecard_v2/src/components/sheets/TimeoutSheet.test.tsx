@@ -57,6 +57,30 @@ describe("TimeoutSheet", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("counts the taken timeout once when the parent refreshes", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<Submit>(async () => undefined);
+    const sheet = (used: number) => (
+      <TimeoutSheet
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+        perHalf={2}
+        teamName="Ravens"
+        used={used}
+      />
+    );
+    const { rerender } = render(sheet(0));
+
+    await user.click(screen.getByRole("button", { name: "Auszeit nehmen" }));
+    expect(screen.getByText(/0 von 2 Auszeiten/)).toBeInTheDocument();
+
+    // The write lands and the screen re-renders with the new row counted.
+    rerender(sheet(1));
+
+    expect(screen.getByText(/1 von 2 Auszeiten/)).toBeInTheDocument();
+    expect(screen.queryByText(/2 von 2 Auszeiten/)).toBeNull();
+  });
+
   it("counts one empty clock field as zero", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet();

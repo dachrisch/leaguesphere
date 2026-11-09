@@ -87,7 +87,7 @@ export default function TimeoutSheet({
     return (
       <Sheet onClose={onClose} title={`Auszeit ${teamName}`}>
         <p className="sheetnote">
-          {used + 1} von {perHalf} Auszeiten in dieser Halbzeit. Die Uhr läuft
+          {used} von {perHalf} Auszeiten in dieser Halbzeit. Die Uhr läuft
           nur auf diesem Gerät; die Auszeit selbst steht im Spielverlauf.
         </p>
         <BreakCountdown
