@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.13.2](https://github.com/dachrisch/leaguesphere/compare/v5.13.1...v5.13.2) (2026-11-09)
+
+
+### Bug Fixes
+
+* **deps:** lock file maintenance ([#2335](https://github.com/dachrisch/leaguesphere/issues/2335)) ([8bd04a8](https://github.com/dachrisch/leaguesphere/commit/8bd04a82f6d447d94421e6ca1a5b9e24e030a711))
+* **deps:** update dependency fake-indexeddb to v6.2.8 ([#2332](https://github.com/dachrisch/leaguesphere/issues/2332)) ([1426c3a](https://github.com/dachrisch/leaguesphere/commit/1426c3ab0f441e1a68570639afbbec7a557eae30))
+* **deps:** update dependency react-i18next to v18.0.1 ([#2333](https://github.com/dachrisch/leaguesphere/issues/2333)) ([4fac5bd](https://github.com/dachrisch/leaguesphere/commit/4fac5bdf14a73ecedf41b379d5f6eaea7a82edb7))
+
 ## [5.13.1](https://github.com/dachrisch/leaguesphere/compare/v5.13.0...v5.13.1) (2026-11-08)
 
 
