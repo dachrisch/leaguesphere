@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.14.1](https://github.com/dachrisch/leaguesphere/compare/v5.14.0...v5.14.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **scorecard:** count the taken timeout once in the countdown ([f8054c2](https://github.com/dachrisch/leaguesphere/commit/f8054c2b17e8cadfb1aaa377e89cc6bfa459b9b9))
+* **scorecard:** count the taken timeout once in the countdown ([92a2ce4](https://github.com/dachrisch/leaguesphere/commit/92a2ce4d8b57839f031ed8816d00443443db9d95))
+
 ## [5.14.0](https://github.com/dachrisch/leaguesphere/compare/v5.13.4...v5.14.0) (2026-11-09)
 
 
