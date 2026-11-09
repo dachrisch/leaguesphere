@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.14.3](https://github.com/dachrisch/leaguesphere/compare/v5.14.2...v5.14.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* **scorecard:** close the 9316 follow-ups ([25b7764](https://github.com/dachrisch/leaguesphere/commit/25b77648935c40a94a4007af5f4f8c8e901ee67d))
+* **scorecard:** close the four follow-ups from the 9316 field test ([b75cf7f](https://github.com/dachrisch/leaguesphere/commit/b75cf7f79b9d1078eecb0db22a502d6e183372dc))
+
 ## [5.14.2](https://github.com/dachrisch/leaguesphere/compare/v5.14.1...v5.14.2) (2026-11-09)
 
 
