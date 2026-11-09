@@ -3112,6 +3112,20 @@ describe("Tracking half-time", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the second-half possession and the flipped direction", async () => {
+    routeGets({ setup: { fhPossession: "home", direction: "Nord" } });
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Halbzeit" }));
+    const dialog = screen.getByRole("dialog", { name: "Halbzeit" });
+
+    await waitFor(() => {
+      expect(dialog).toHaveTextContent("Wolves");
+      expect(dialog).toHaveTextContent("Süd");
+    });
+  });
+
   it("writes the half-time as an event, adopts the half and flips possession", async () => {
     routeGets({ log: markerLog() });
     renderTracking();
@@ -4336,6 +4350,33 @@ describe("a possession change in flight", () => {
     expect(
       screen.getByRole("button", { name: "Auszeit Wolves" }),
     ).toBeDisabled();
+  });
+});
+
+describe("Tracking Mehr menu", () => {
+  it.each([
+    ["Turnover", "Turnover"],
+    ["1st Down", "First Down"],
+    ["Safety", "Safety"],
+    ["Feldposition", "Feldposition · Ravens"],
+    ["Touchdown (Kurzform)", "Wer hat gepunktet?"],
+  ])("opens %s", async (item, title) => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Mehr" }));
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Mehr" })).getByRole(
+        "button",
+        { name: item },
+      ),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: title }),
+    ).toBeInTheDocument();
   });
 });
 

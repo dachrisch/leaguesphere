@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { GameLogTeam } from "../api/types";
 import { TeamLogosProvider } from "../app/teamLogos";
-import ScoreHeader from "./ScoreHeader";
+import ScoreHeader, { timeoutDots } from "./ScoreHeader";
 
 const HOME_LOGO = "https://example.test/media/teammanager/logos/ravens.png";
 const AWAY_LOGO = "https://example.test/media/teammanager/logos/wolves.png";
@@ -97,5 +97,68 @@ describe("ScoreHeader — team logos", () => {
     expect(
       screen.getByRole("button", { name: /Wolves, 3 Punkte/ }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("ScoreHeader — timeouts", () => {
+  function renderTimeouts(
+    homeUsed: number,
+    awayUsed: number,
+    { disabled = false, onTimeout = vi.fn() }: {
+      disabled?: boolean;
+      onTimeout?: (team: string) => void;
+    } = {},
+  ) {
+    return render(
+      <TeamLogosProvider logos={new Map()}>
+        <ScoreHeader
+          away={team("Wolves")}
+          disabled={false}
+          home={team("Ravens")}
+          isFirstHalf
+          onTimeout={onTimeout}
+          possession="Ravens"
+          timeouts={(entry) => ({
+            used: entry.name === "Ravens" ? homeUsed : awayUsed,
+            perHalf: 2,
+          })}
+          timeoutDisabled={disabled}
+        />
+      </TeamLogosProvider>,
+    );
+  }
+
+  it("draws filled circles for the timeouts still available", () => {
+    expect(timeoutDots({ used: 0, perHalf: 2 })).toBe("●●");
+    expect(timeoutDots({ used: 1, perHalf: 2 })).toBe("●○");
+    expect(timeoutDots({ used: 2, perHalf: 2 })).toBe("○○");
+    expect(timeoutDots({ used: 3, perHalf: 2 })).toBe("○○");
+  });
+
+  it("shows each side's budget and marks the exhausted one", () => {
+    renderTimeouts(1, 2);
+
+    expect(screen.getByRole("button", { name: "Auszeit Ravens" })).toHaveTextContent(
+      "●○",
+    );
+    const away = screen.getByRole("button", { name: "Auszeit Wolves" });
+    expect(away).toHaveTextContent("○○");
+    expect(away).toHaveClass("is-used");
+  });
+
+  it("takes a timeout for the tapped side", async () => {
+    const onTimeout = vi.fn();
+    renderTimeouts(0, 0, { onTimeout });
+
+    screen.getByRole("button", { name: "Auszeit Ravens" }).click();
+
+    expect(onTimeout).toHaveBeenCalledWith("Ravens");
+  });
+
+  it("disables the circles while a write is in flight", () => {
+    renderTimeouts(0, 0, { disabled: true });
+
+    expect(screen.getByRole("button", { name: "Auszeit Ravens" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Auszeit Wolves" })).toBeDisabled();
   });
 });

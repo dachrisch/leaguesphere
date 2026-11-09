@@ -197,7 +197,7 @@ Q3 remains open; the short-form tiles stay until it is decided.
 
 ## 6. Verification
 
-- `scorecard_v2`: `vitest run` (1365 tests), `eslint`, `tsc -b --noEmit` and `vite build`.
+- `scorecard_v2`: `vitest run` (1403 tests), `eslint`, `tsc -b --noEmit` and `vite build`.
 - `gameevents`: `pytest gameevents/tests` (definition + projector); `gamedays/tests/api` for the
   setup contract.
 - The operator's column is pinned in `scorecard_v2/src/app/drive.test.ts`: goal-to-go after a
