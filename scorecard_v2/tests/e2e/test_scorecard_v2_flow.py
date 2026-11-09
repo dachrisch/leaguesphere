@@ -258,11 +258,15 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     possession_box = possession.bounding_box()
     timeout_box = team_timeout.bounding_box()
     assert possession_box is not None and timeout_box is not None
-    # side by side: same row, the timeout to the right of the possession button
-    assert abs(possession_box["y"] - timeout_box["y"]) <= 2, (
-        possession_box,
-        timeout_box,
-    )
+    # side by side: same row, the timeout to the right of the possession button.
+    # Their heights differ when the name wraps, so compare the row centres.
+    assert (
+        abs(
+            (possession_box["y"] + possession_box["height"] / 2)
+            - (timeout_box["y"] + timeout_box["height"] / 2)
+        )
+        <= 2
+    ), (possession_box, timeout_box)
     assert timeout_box["x"] >= possession_box["x"] + possession_box["width"] - 1, (
         possession_box,
         timeout_box,
