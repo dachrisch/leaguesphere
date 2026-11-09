@@ -298,10 +298,12 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     extra_point.get_by_role("button", name="+1").click()
     # The result opens the jersey step: the person who converted is selectable
     # and the touchdown's scorer is pre-filled. This gameday has no roster, so
-    # the step is the numeric field.
+    # the step is the numeric field; the QB field sits beside it.
     pat_sheet = page.get_by_role("dialog", name=f"Extrapunkt {HOME_NAME}")
     expect(pat_sheet).to_be_visible()
-    expect(pat_sheet.locator("input.sheetinput-num")).to_have_value(str(JERSEY))
+    expect(pat_sheet.get_by_role("textbox", name=re.compile(r"^Trikot"))).to_have_value(
+        str(JERSEY)
+    )
     pat_sheet.get_by_role("button", name="Speichern").click()
     expect(page.get_by_text(f"1 Extrapunkt {HOME_NAME}", exact=True)).to_be_visible(
         timeout=20000
