@@ -537,6 +537,65 @@ describe("PlaySheet wizard", () => {
     ]);
   });
 
+  it("goes back a step without losing the entry", async () => {
+    const user = userEvent.setup();
+    renderSheet({ lastQuarterback: 12 });
+
+    await next(user); // type → result
+    expect(screen.getByText(/Schritt 2 von/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Zurück" }));
+
+    expect(screen.getByText(/Schritt 1 von/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pass" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("falls back to Raumgewinn when a type cannot produce the result", async () => {
+    const user = userEvent.setup();
+    renderSheet({ lastQuarterback: 12 });
+
+    await next(user); // type → result
+    await user.click(screen.getByRole("button", { name: "Interception" }));
+    await user.click(screen.getByRole("button", { name: "Zurück" }));
+    await user.click(screen.getByRole("button", { name: "Run" }));
+    await next(user); // type → result
+
+    expect(
+      screen.getByRole("button", { name: "Raumgewinn" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("switches back from the end spot to yards and between halves", async () => {
+    const user = userEvent.setup();
+    renderSheet({ drive: FIRST_AND_TEN });
+
+    await next(user); // type → result
+    await next(user); // result → distance
+    await user.click(screen.getByRole("button", { name: "Endpunkt" }));
+    await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
+    await user.click(screen.getByRole("button", { name: "A · eigene" }));
+    await user.click(screen.getByRole("button", { name: "Yards" }));
+
+    expect(
+      screen.getByRole("textbox", { name: /Raumgewinn/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("switches the loss back to a gain", async () => {
+    const user = userEvent.setup();
+    renderSheet({ lastQuarterback: 12 });
+
+    await next(user); // type → result
+    await next(user); // result → distance
+    await user.click(screen.getByRole("button", { name: "Verlust" }));
+    await user.click(screen.getByRole("button", { name: "Gewinn" }));
+
+    expect(
+      screen.getByRole("button", { name: "Gewinn" }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("keeps the sheet open with the reason when the write fails", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => {

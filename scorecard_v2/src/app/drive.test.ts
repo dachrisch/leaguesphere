@@ -11,6 +11,7 @@ import {
   enforceSpot,
   firstDownDistance,
   geometryOf,
+  pastMiddle,
   type Geometry,
   isTurnoverOnDowns,
   mirror,
@@ -78,6 +79,12 @@ describe("the 50-yard field", () => {
     expect(spotText(50)).toBe("B0");
     expect(spotText(4.5)).toBe("A4,5");
     expect(spotText(null)).toBeNull();
+  });
+});
+
+describe("pastMiddle", () => {
+  it("needs a spot before it can be reached", () => {
+    expect(pastMiddle(null)).toBe(false);
   });
 });
 
@@ -238,6 +245,16 @@ describe("applyPenalty", () => {
       ballOn: 30,
       goal: true,
     });
+  });
+
+  it("ends a goal-to-go series on a loss of down on fourth down", () => {
+    expect(
+      applyPenalty(
+        { down: 4, toGo: 3, ballOn: 47, goal: true },
+        -5,
+        "loss_of_down",
+      ),
+    ).toEqual(FIRST_AND_TEN);
   });
 
   it("below midfield the next-down choice applies", () => {

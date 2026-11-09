@@ -2626,6 +2626,38 @@ describe("Tracking possession flip", () => {
     ).toBeInTheDocument();
   });
 
+  it("records the timeout with the remaining game time", async () => {
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Auszeit Ravens" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Minuten" }),
+      "8",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Sekunden" }),
+      "12",
+    );
+    await user.click(screen.getByRole("button", { name: "Auszeit nehmen" }));
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith(
+        "/api/game/42/events",
+        expect.objectContaining({
+          events: [
+            expect.objectContaining({
+              type: "timeout",
+              code: "home",
+              payload: { input: "08:12" },
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
   it("keeps the ball after a first down and after a penalty", async () => {
     answerAppend(makeLog({ inPossession: "Ravens" }));
     routeGets();
@@ -4350,6 +4382,92 @@ describe("a possession change in flight", () => {
     expect(
       screen.getByRole("button", { name: "Auszeit Wolves" }),
     ).toBeDisabled();
+  });
+});
+
+describe("Tracking pre-game quarterback", () => {
+  it("seeds the setup's quarterbacks into this device", async () => {
+    routeGets({ setup: { qbHome: 7, qbAway: 11 } });
+    renderTracking();
+
+    await waitFor(() => {
+      expect(
+        globalThis.localStorage.getItem("scorecard:v2:qb:42:home"),
+      ).toBe("7");
+      expect(
+        globalThis.localStorage.getItem("scorecard:v2:qb:42:away"),
+      ).toBe("11");
+    });
+  });
+
+  it("keeps a quarterback this device already changed", async () => {
+    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "23");
+    routeGets({ setup: { qbHome: 7 } });
+    renderTracking();
+
+    await waitFor(() =>
+      expect(screen.getByText(/1st & M/)).toBeInTheDocument(),
+    );
+    expect(
+      globalThis.localStorage.getItem("scorecard:v2:qb:42:home"),
+    ).toBe("23");
+  });
+});
+
+describe("Tracking key shortcuts", () => {
+  function desktopKeys(): void {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: query === "(min-width: 1280px)",
+        media: query,
+      })),
+    );
+  }
+
+  it("opens every board sheet from its digit key", async () => {
+    desktopKeys();
+    routeGets();
+    renderTracking();
+
+    for (const [key, name] of [
+      ["1", "Spielzug · Ravens"],
+      ["2", "Spielzug · Ravens"],
+      ["3", "Spielzug · Ravens"],
+      ["4", "Spielzug · Ravens"],
+      ["5", "Strafe"],
+      ["6", "Spielzeit"],
+      ["7", "Mehr"],
+      ["0", "Safety"],
+    ] as const) {
+      fireEvent.keyDown(window, { key });
+      const dialog = await screen.findByRole("dialog", { name });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Schließen" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
+  });
+
+  it("records a turnover from the 9 key", async () => {
+    desktopKeys();
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+
+    fireEvent.keyDown(window, { key: "9" });
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith(
+        "/api/game/42/events",
+        expect.objectContaining({
+          events: [
+            expect.objectContaining({
+              type: "possession",
+              code: "turnover",
+              side: "home",
+            }),
+          ],
+        }),
+      ),
+    );
   });
 });
 

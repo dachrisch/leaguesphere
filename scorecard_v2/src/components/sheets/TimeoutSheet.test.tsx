@@ -37,6 +37,26 @@ describe("TimeoutSheet", () => {
     expect(screen.getByText("Auszeit beenden")).toBeInTheDocument();
   });
 
+  it("writes both clock fields", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet();
+
+    await user.type(screen.getByRole("textbox", { name: "Minuten" }), "1");
+    await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "5");
+    await user.click(screen.getByRole("button", { name: "Auszeit nehmen" }));
+
+    expect(onSubmit).toHaveBeenCalledWith("01:05");
+  });
+
+  it("does nothing while disabled", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ disabled: true });
+
+    await user.click(screen.getByRole("button", { name: "Auszeit nehmen" }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("counts one empty clock field as zero", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet();

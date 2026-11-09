@@ -86,8 +86,11 @@ export function useTrackingShortcuts({
         onPlay();
       } else if (key === "b") {
         onSwitchPossession();
-      } else if (/^[1-8]$/.test(key)) {
+      } else if (/^[1-9]$/.test(key)) {
         onAction(Number(key) - 1);
+      } else if (key === "0") {
+        // The tenth tile (Safety) sits after the digits 1–9.
+        onAction(9);
       } else {
         handled = false;
       }
