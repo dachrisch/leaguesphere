@@ -1,5 +1,27 @@
 # Changelog
 
+## [5.14.0](https://github.com/dachrisch/leaguesphere/compare/v5.13.4...v5.14.0) (2026-11-09)
+
+
+### Features
+
+* **scorecard:** implement the game 9316 field-test feedback (L1–L6) ([1f3ce4a](https://github.com/dachrisch/leaguesphere/commit/1f3ce4a37ca7e9dca058329156c723bf95128ce6))
+* **scorecard:** implement the game 9316 field-test feedback (L1–L6) ([9b93c4f](https://github.com/dachrisch/leaguesphere/commit/9b93c4f0899833796319c9613b578c45208c4d85))
+
+
+### Bug Fixes
+
+* **deps:** update dependency @vitejs/plugin-react to v6.3.0 ([#2341](https://github.com/dachrisch/leaguesphere/issues/2341)) ([3d9d595](https://github.com/dachrisch/leaguesphere/commit/3d9d595238b39287d3f11850483e68d4b038f6f8))
+* **scorecard:** address the try sheet's fields by label in the e2e flow ([24ca14d](https://github.com/dachrisch/leaguesphere/commit/24ca14dc0872620c6c91bf9b95dc82cd347e06c3))
+* **scorecard:** compare the team row's centres in the e2e check ([55e2ac1](https://github.com/dachrisch/leaguesphere/commit/55e2ac196275ff2c771dc50070f16f6b7075e058))
+* **scorecard:** follow the new board in the browser tests ([b7b0cb2](https://github.com/dachrisch/leaguesphere/commit/b7b0cb28741877f8b0b54251905c389520506749))
+* **scorecard:** keep keyboard shortcuts behind the timeout and half-time dialogs ([0aa37e2](https://github.com/dachrisch/leaguesphere/commit/0aa37e24e6596b4d2217e94132bfaa0bbf1c9c78))
+
+
+### Documentation
+
+* **scorecard:** plan for the game 9316 field-test feedback ([a89d664](https://github.com/dachrisch/leaguesphere/commit/a89d6645e85b468642642b448374f5233c27ba9d))
+
 ## [5.13.4](https://github.com/dachrisch/leaguesphere/compare/v5.13.3...v5.13.4) (2026-11-09)
 
 
