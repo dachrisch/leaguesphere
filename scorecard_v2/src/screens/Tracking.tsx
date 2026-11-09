@@ -1669,7 +1669,12 @@ export default function TrackingScreen({
 
   useTrackingShortcuts({
     readOnly: readOnly || finished,
-    sheetOpen: sheet !== null || pendingPat !== null || editing !== null,
+    sheetOpen:
+      sheet !== null ||
+      pendingPat !== null ||
+      editing !== null ||
+      timeoutTeam !== null ||
+      halftimeOpen,
     onTouchdown: () => {
       if (!composerDisabled && pendingPat === null) {
         openSheet({ kind: "touchdown" });

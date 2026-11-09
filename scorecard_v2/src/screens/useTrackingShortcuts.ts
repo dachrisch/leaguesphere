@@ -59,10 +59,15 @@ export function useTrackingShortcuts({
     }
 
     const onKeyDown = (event: KeyboardEvent): void => {
+      // A browser without matchMedia (a locked-down webview, a test double)
+      // simply has no desktop shortcuts.
+      const wide =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(min-width: 1280px)").matches;
       if (
         event.defaultPrevented ||
         event.repeat ||
-        !window.matchMedia("(min-width: 1280px)").matches ||
+        !wide ||
         document.querySelector('[role="dialog"]') !== null
       ) {
         return;
