@@ -185,6 +185,13 @@ function envelopeFor(
   if (spec.points !== undefined) {
     envelope.payload = { points: spec.points };
   }
+  // The play's structured detail (yards, quarterback, complete) is what a
+  // later statistics read consumes; it never changes what the log renders.
+  // Merged before the visible text so a stale `payload.input` from a
+  // correction cannot overwrite the new one (the 0-yard edit bug).
+  if (entry.payload !== undefined) {
+    envelope.payload = { ...(envelope.payload ?? {}), ...entry.payload };
+  }
   if (spec.input === "code") {
     envelope.code = entry.input ?? "";
   }
@@ -200,11 +207,6 @@ function envelopeFor(
     entry.input !== ""
   ) {
     envelope.payload = { ...(envelope.payload ?? {}), input: entry.input };
-  }
-  // The play's structured detail (yards, quarterback, complete) is what a
-  // later statistics read consumes; it never changes what the log renders.
-  if (entry.payload !== undefined) {
-    envelope.payload = { ...(envelope.payload ?? {}), ...entry.payload };
   }
   if (spec.type === "timeout") {
     // The timeout's code is its side; the server reads either.

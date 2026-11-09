@@ -219,15 +219,32 @@ describe("SeriesSheet", () => {
     expect(saveButton()).toBeDisabled();
   });
 
-  it("refuses a time with empty minutes", async () => {
+  it("counts an empty minutes field as zero", async () => {
+    const { onSubmit } = renderSheet("time");
+    const user = userEvent.setup();
+
+    await user.type(screen.getByRole("textbox", { name: "Sekunden" }), "5");
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    await user.click(saveButton());
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      { name: "Spielzeit", input: "00:05" },
+    ]);
+  });
+
+  it("refuses a time with both fields empty", async () => {
     renderSheet("time");
 
     await userEvent
       .setup()
       .type(screen.getByRole("textbox", { name: "Sekunden" }), "5");
+    await userEvent
+      .setup()
+      .clear(screen.getByRole("textbox", { name: "Sekunden" }));
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Bitte Minuten angeben.",
+      "Bitte Minuten und Sekunden angeben.",
     );
     expect(saveButton()).toBeDisabled();
   });

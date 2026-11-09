@@ -33,6 +33,13 @@ export interface DriveState {
   ballOn: number | null;
   /** True once the series' line to gain is the goal line ("& G"). */
   goal: boolean;
+  /**
+   * `"try"` while the point after a touchdown is being played, absent for a
+   * scrimmage series. The try has no down and no line to gain: it ends with
+   * its result (+1, +2, a miss or a defensive score), and only then does the
+   * ball change hands.
+   */
+  phase?: "series" | "try";
 }
 
 /** The 50-yard field. */
@@ -62,6 +69,13 @@ export interface Geometry {
   seriesStart: number;
   /** Downs per series. */
   downs: number;
+  /**
+   * Whether a dead ball **on** the middle line already earns the new series
+   * (`"on"`, the operator's call on game 9316) or has to be beyond it
+   * (`"beyond"`, IFAF R 5-1-1a's wording). A definition that does not carry
+   * the value keeps today's field behaviour, `"on"`.
+   */
+  middleReached?: "on" | "beyond";
 }
 
 /** IFAF 2023, flag football 5v5: 50 yards, middle 25, series at the own 5. */
@@ -70,6 +84,7 @@ export const DEFAULT_GEOMETRY: Geometry = {
   middle: MIDFIELD,
   seriesStart: SERIES_START,
   downs: 4,
+  middleReached: "on",
 };
 
 /**
@@ -89,7 +104,7 @@ export function geometryOf(rules: GameRules | null | undefined): Geometry {
     return DEFAULT_GEOMETRY;
   }
   const { length, middle } = field;
-  const { start, downs } = series;
+  const { start, downs, middle_reached } = series;
   if (
     !isPositive(length) ||
     !isPositive(middle) ||
@@ -99,7 +114,13 @@ export function geometryOf(rules: GameRules | null | undefined): Geometry {
   ) {
     return DEFAULT_GEOMETRY;
   }
-  return { fieldLength: length, middle, seriesStart: start, downs };
+  return {
+    fieldLength: length,
+    middle,
+    seriesStart: start,
+    downs,
+    middleReached: middle_reached === "beyond" ? "beyond" : "on",
+  };
 }
 
 function isPositive(value: unknown): value is number {
@@ -135,7 +156,6 @@ const PENALTY_EVENT = "Strafe";
 
 /** Rows that end the series and start the next one at the own 5. */
 const KICKOFF_EVENTS = new Set([
-  "Touchdown",
   "Spiel gestartet",
   "2. Halbzeit gestartet",
   "Spiel beendet",
@@ -147,6 +167,16 @@ const OVERTIME_EVENT = "Overtime startet";
 /** Rows that hand the ball over; the new series starts at the own 5. */
 const TURNOVER_EVENTS = new Set(["Turnover", "Interception"]);
 
+/** A safety ends the series too: the defence gets the ball after the kick. */
+const SAFETY_EVENTS = new Set(["Safety", "Safety (+1)", "Safety (+2)"]);
+
+/** Yards from the opponent's goal line for the one- and two-point try. */
+export const TRY_ONE = 5;
+export const TRY_TWO = 10;
+
+/** The rows that end the try. */
+const TRY_RESULT_EVENTS = new Set(["1-Extra-Punkt", "2-Extra-Punkte"]);
+
 /** A first down written by hand: it resets the series on the current spot. */
 const FIRST_DOWN_EVENT = "First Down";
 
@@ -155,17 +185,24 @@ function clampSpot(value: number, g: Geometry = DEFAULT_GEOMETRY): number {
 }
 
 /**
- * True once the ball is **beyond** the middle line.
+ * True once the ball has reached the middle line.
  *
- * R 5-1-1a awards the new series when the ball is dead "beyond the middle",
- * so a spot exactly on the line is not across it. Half yards are real (a
- * half-distance penalty produces them), so there is no rounding here.
+ * IFAF R 5-1-1a says the new series is awarded when the dead ball is "beyond
+ * the middle"; the definition can set `series.middle_reached` to `"on"` when
+ * the league counts the line itself (the operator's call on game 9316), which
+ * is the default. Half yards are real (a half-distance penalty produces them),
+ * so there is no rounding here.
  */
 export function pastMiddle(
   ballOn: number | null,
   g: Geometry = DEFAULT_GEOMETRY,
 ): boolean {
-  return ballOn !== null && ballOn > g.middle;
+  if (ballOn === null) {
+    return false;
+  }
+  return g.middleReached === "beyond"
+    ? ballOn > g.middle
+    : ballOn >= g.middle;
 }
 
 /** Yards to the line to gain for a fresh series on this spot. */
@@ -208,6 +245,27 @@ export function seriesToGoal(
     toGo: Math.max(0, g.fieldLength - ballOn),
     ballOn,
     goal: true,
+  };
+}
+
+/**
+ * The try after a touchdown: goal to go from B5 (one point) or B10 (two).
+ *
+ * It is its own phase, not a scrimmage series: it has no down count and only
+ * ends with its result, so the ball stays with the scoring team until the
+ * conversion (or the miss) is recorded.
+ */
+export function tryAt(
+  ballOn: number = DEFAULT_GEOMETRY.fieldLength - TRY_ONE,
+  g: Geometry = DEFAULT_GEOMETRY,
+): DriveState {
+  const spot = clampSpot(ballOn, g);
+  return {
+    down: 1,
+    toGo: Math.max(0, g.fieldLength - spot),
+    ballOn: spot,
+    goal: true,
+    phase: "try",
   };
 }
 
@@ -277,7 +335,26 @@ export function placeBall(
   state: DriveState,
   ballOn: number,
   g: Geometry = DEFAULT_GEOMETRY,
+  explicit?: { down?: number | null; goal?: boolean | null },
 ): DriveState {
+  // A **Feldposition** row may carry the down and the line to gain the
+  // officials set by hand (L1's D4). Those are the correction: they win over
+  // the derivation, including the "reaching the line is a first down" rule.
+  if (
+    (explicit?.down !== undefined && explicit.down !== null) ||
+    (explicit?.goal !== undefined && explicit.goal !== null)
+  ) {
+    const goal = explicit?.goal ?? state.goal;
+    const down = explicit?.down ?? state.down;
+    const line = goal ? g.fieldLength : g.middle;
+    return {
+      down,
+      toGo: Math.max(0, line - ballOn),
+      ballOn,
+      goal,
+    };
+  }
+
   const line = state.goal ? g.fieldLength : g.middle;
   const reached = state.goal ? ballOn >= line : pastMiddle(ballOn, g);
   if (reached) {
@@ -347,11 +424,14 @@ export function applyPenalty(
   nextDown: PenaltyNextDown = "repeat",
   g: Geometry = DEFAULT_GEOMETRY,
 ): DriveState {
-  const ballOn = enforceSpot(state.ballOn, yardage, g);
-
-  if (pastMiddle(ballOn, g)) {
-    return seriesAt(ballOn, g);
+  // A penalty during the try repeats the try from the enforced spot. It never
+  // moves the following series: that starts at the own 5 when the try ends.
+  if (state.phase === "try") {
+    const spot = enforceSpot(state.ballOn, yardage, g);
+    return tryAt(spot, g);
   }
+
+  const ballOn = enforceSpot(state.ballOn, yardage, g);
 
   let down = state.down;
   if (nextDown === "first_down") {
@@ -359,6 +439,27 @@ export function applyPenalty(
   } else if (nextDown === "loss_of_down") {
     down = state.down + 1;
   }
+
+  // A goal-to-go series keeps the goal line as its line to gain, even when a
+  // penalty carries the ball back behind the middle (mirror `advance` and
+  // `placeBall`). Losing the goal flag here turned `1st & G` into `1st & M`,
+  // which is the game-9316 defect.
+  if (state.goal) {
+    if (down > g.downs) {
+      return seriesAt(g.seriesStart, g);
+    }
+    return {
+      down,
+      toGo: Math.max(0, g.fieldLength - ballOn),
+      ballOn,
+      goal: true,
+    };
+  }
+
+  if (pastMiddle(ballOn, g)) {
+    return seriesAt(ballOn, g);
+  }
+
   if (down > g.downs) {
     return seriesAt(g.seriesStart, g);
   }
@@ -376,6 +477,24 @@ export function mirror(
   g: Geometry = DEFAULT_GEOMETRY,
 ): number | null {
   return ballOn === null ? null : g.fieldLength - ballOn;
+}
+
+/** The structured down of a **Feldposition** row, when the officials set it. */
+export function downOf(
+  row: LogRow,
+  g: Geometry = DEFAULT_GEOMETRY,
+): number | null {
+  const down = row.payload?.down;
+  if (typeof down !== "number" || !Number.isInteger(down)) {
+    return null;
+  }
+  return down >= 1 && down <= g.downs ? down : null;
+}
+
+/** The structured line to gain of a **Feldposition** row (`true` = goal). */
+export function goalOf(row: LogRow): boolean | null {
+  const goal = row.payload?.goal;
+  return typeof goal === "boolean" ? goal : null;
 }
 
 /** The structured spot of a **Feldposition** row, or `null`. */
@@ -418,6 +537,7 @@ export function penaltyOf(row: LogRow): PenaltySpot | null {
 export function driveAfter(
   rows: LogRow[],
   g: Geometry = DEFAULT_GEOMETRY,
+  possession: string | null = null,
 ): DriveState {
   let state: DriveState = firstAndTen(g);
   let lastTeam: string | null = null;
@@ -426,10 +546,36 @@ export function driveAfter(
     if (row.isDeleted) {
       continue;
     }
+    if (row.event === "Touchdown") {
+      // The try belongs to the scoring team; the ball only changes hands when
+      // its result (or a miss, which the screen writes as a possession change)
+      // ends it.
+      state = tryAt(g.fieldLength - TRY_ONE, g);
+      lastTeam = row.team;
+      continue;
+    }
+    if (TRY_RESULT_EVENTS.has(row.event)) {
+      // +1/+2 ends the try; the kickoff hands the ball to the other team, so
+      // the next series starts at the own 5.
+      state = firstAndTen(g);
+      lastTeam = row.team;
+      continue;
+    }
     if (row.event === FIELD_EVENT) {
       const ballOn = spotOf(row, g);
       if (ballOn !== null) {
-        state = placeBall(state, ballOn, g);
+        const explicit = { down: downOf(row, g), goal: goalOf(row) };
+        // A spot set while the try is open ends it (the officials corrected
+        // the spot instead of answering the try).
+        state =
+          state.phase === "try"
+            ? placeBall(
+                { ...state, phase: undefined, goal: false },
+                ballOn,
+                g,
+                explicit,
+              )
+            : placeBall(state, ballOn, g, explicit);
       }
       lastTeam = row.team;
       continue;
@@ -463,6 +609,11 @@ export function driveAfter(
       } else if (TURNOVER_EVENTS.has(row.event)) {
         state = firstAndTen(g);
         lastTeam = row.team;
+      } else if (SAFETY_EVENTS.has(row.event)) {
+        // The defence scored and receives the free kick: the next series is
+        // theirs, from their own 5.
+        state = firstAndTen(g);
+        lastTeam = row.team;
       }
       continue;
     }
@@ -474,6 +625,17 @@ export function driveAfter(
     lastTeam = row.team;
   }
 
+  // A missed try writes no row; the possession change is what ends it. Until
+  // the next series starts (a play resets on the team change), the bar must
+  // not keep claiming the try while the other team has the ball.
+  if (
+    state.phase === "try" &&
+    possession !== null &&
+    lastTeam !== null &&
+    possession !== lastTeam
+  ) {
+    return firstAndTen(g);
+  }
   return state;
 }
 
@@ -501,8 +663,11 @@ export function yardsOf(row: LogRow): number {
   return typeof yards === "number" && Number.isFinite(yards) ? yards : 0;
 }
 
-/** `1st & M`, `3rd & M`, `4th & G` — the officials' shorthand. */
+/** `1st & M`, `3rd & M`, `4th & G`, or `Versuch` during the try. */
 export function driveText(state: DriveState): string {
+  if (state.phase === "try") {
+    return "Versuch";
+  }
   return `${ordinal(state.down)} & ${state.goal ? "G" : "M"}`;
 }
 

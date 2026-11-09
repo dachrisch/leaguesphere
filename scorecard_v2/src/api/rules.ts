@@ -54,6 +54,12 @@ export interface GameRules {
     start: number;
     line_to_gain: string[];
     first_down_at_middle: "once" | "always" | "never";
+    /**
+     * Whether a dead ball **on** the middle line earns the new series (`"on"`)
+     * or has to be beyond it (`"beyond"`, IFAF R 5-1-1a's wording). Optional
+     * for version skew: an older definition behaves as `"on"`.
+     */
+    middle_reached?: "on" | "beyond";
     turnover_on_downs_spot: number;
     interception_spot: "dead_ball" | "own5";
   };

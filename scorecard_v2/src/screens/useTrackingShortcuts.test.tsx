@@ -99,12 +99,13 @@ describe("useTrackingShortcuts", () => {
     expect(callbacks.onTouchdown).not.toHaveBeenCalled();
   });
 
-  it("maps 1–8 to the eight grid actions in order", () => {
+  it("maps 1–9 and 0 to the ten grid actions in order", () => {
     const { callbacks } = renderShortcuts();
 
-    for (let key = 1; key <= 8; key += 1) {
+    for (let key = 1; key <= 9; key += 1) {
       fireEvent.keyDown(window, { key: String(key) });
     }
+    fireEvent.keyDown(window, { key: "0" });
 
     expect(callbacks.onAction.mock.calls).toEqual([
       [0],
@@ -115,6 +116,8 @@ describe("useTrackingShortcuts", () => {
       [5],
       [6],
       [7],
+      [8],
+      [9],
     ]);
   });
 

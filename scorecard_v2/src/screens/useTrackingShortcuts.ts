@@ -59,10 +59,15 @@ export function useTrackingShortcuts({
     }
 
     const onKeyDown = (event: KeyboardEvent): void => {
+      // A browser without matchMedia (a locked-down webview, a test double)
+      // simply has no desktop shortcuts.
+      const wide =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(min-width: 1280px)").matches;
       if (
         event.defaultPrevented ||
         event.repeat ||
-        !window.matchMedia("(min-width: 1280px)").matches ||
+        !wide ||
         document.querySelector('[role="dialog"]') !== null
       ) {
         return;
@@ -86,8 +91,11 @@ export function useTrackingShortcuts({
         onPlay();
       } else if (key === "b") {
         onSwitchPossession();
-      } else if (/^[1-8]$/.test(key)) {
+      } else if (/^[1-9]$/.test(key)) {
         onAction(Number(key) - 1);
+      } else if (key === "0") {
+        // The tenth tile (Safety) sits after the digits 1–9.
+        onAction(9);
       } else {
         handled = false;
       }

@@ -70,9 +70,26 @@ describe("FieldPositionSheet", () => {
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Feldposition",
       input: "A5",
-      payload: { ballOn: 5, input: "A5" },
+      payload: { ballOn: 5, input: "A5", down: 1, goal: false },
     });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("stores the down and the line to gain the officials set by hand", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ ballOn: 20, down: 2, goal: false });
+
+    await user.click(screen.getByRole("button", { name: "3" }));
+    await user.click(screen.getByRole("button", { name: "G · Endzone" }));
+    await user.click(
+      screen.getByRole("button", { name: "Feldposition speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Feldposition",
+      input: "A20",
+      payload: { ballOn: 20, input: "A20", down: 3, goal: true },
+    });
   });
 
   it("prefills the current spot on the B half", () => {
@@ -113,7 +130,7 @@ describe("FieldPositionSheet", () => {
     expect(onSubmit).toHaveBeenCalledWith({
       name: "Feldposition",
       input: "A4,5",
-      payload: { ballOn: 4.5, input: "A4,5" },
+      payload: { ballOn: 4.5, input: "A4,5", down: 1, goal: false },
     });
   });
 

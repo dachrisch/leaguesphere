@@ -791,26 +791,26 @@ class Phone:
         return shown
 
     def possession(self) -> str | None:
-        """The team the screen's possession switch marks as holding the ball."""
+        """The team the score header marks as holding the ball."""
 
         page = self._require_page()
         return page.evaluate("""() => {
-              const button = document.querySelector(
-                '.possswitch button[aria-pressed="true"]'
+              const row = document.querySelector(
+                '.board .team.hasball .tname'
               );
-              return button ? button.textContent.trim() : null;
+              return row ? row.textContent.trim() : null;
             }""")
 
     def wait_possession(self, team: str, timeout_ms: int = 15000) -> None:
-        """Wait until the possession switch shows ``team``."""
+        """Wait until the score header shows ``team`` in possession."""
 
         page = self._require_page()
         page.wait_for_function(
             """(expected) => {
-              const button = document.querySelector(
-                '.possswitch button[aria-pressed="true"]'
+              const row = document.querySelector(
+                '.board .team.hasball .tname'
               );
-              return button ? button.textContent.trim() === expected : false;
+              return row ? row.textContent.trim() === expected : false;
             }""",
             arg=team,
             timeout=timeout_ms,

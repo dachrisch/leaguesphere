@@ -15,6 +15,9 @@ import { sideOfName } from "./events";
 /** Rows whose `team` was the offence *before* the ball moved. */
 const OLD_POSSESSION = new Set(["Turnover", "Touchdown", "Overtime"]);
 
+/** The try's rows: they end the try and hand the ball to the other team. */
+const TRY_ROWS = new Set(["1-Extra-Punkt", "2-Extra-Punkte"]);
+
 /** Rows whose `team` is the *new* offence after the ball moved. */
 const NEW_POSSESSION = new Set([
   "Interception",
@@ -37,6 +40,20 @@ export function undoPossessionTeam(row: LogRow, log: GameLog): string | null {
     return null;
   }
   if (OLD_POSSESSION.has(row.event)) {
+    // A pick-six touchdown is credited to the defence; the ball was with the
+    // offence before the interception.
+    if (row.event === "Touchdown" && row.payload?.defense === true) {
+      return side === "home" ? log.away.name : log.home.name;
+    }
+    return row.team;
+  }
+  if (TRY_ROWS.has(row.event)) {
+    // A normal try is credited to the scoring team, which held the ball before
+    // it; a defensive try (`try_defense`) is credited to the defence, so the
+    // ball was with the other side.
+    if (row.payload?.try_defense === true) {
+      return side === "home" ? log.away.name : log.home.name;
+    }
     return row.team;
   }
   if (NEW_POSSESSION.has(row.event)) {

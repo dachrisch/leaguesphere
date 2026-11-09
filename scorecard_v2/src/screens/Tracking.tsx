@@ -47,6 +47,7 @@ import EventLog, {
   type LogRow,
 } from "../components/EventLog";
 import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
+import { directionFromWire } from "../components/DirectionText";
 import GameInfo from "../components/GameInfo";
 import SnapshotHint from "../components/SnapshotHint";
 import StrandedEntries from "../components/StrandedEntries";
@@ -54,7 +55,6 @@ import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
   Check,
-  Clock,
   Flag,
   Football,
   Interception,
@@ -68,6 +68,9 @@ import {
   type IconProps,
 } from "../components/icons";
 import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
+import MoreMenuSheet, {
+  type MorePick,
+} from "../components/sheets/MoreMenuSheet";
 import PenaltySheet, {
   type UnsportsmanlikeRecord,
   unsportsmanlikeRecord,
@@ -77,13 +80,19 @@ import SeriesSheet, {
   type SeriesMode,
 } from "../components/sheets/SeriesSheet";
 import JerseyPicker from "../components/JerseyPicker";
+import QuarterbackPick from "../components/QuarterbackPick";
 import ChallengeSheet from "../components/sheets/ChallengeSheet";
 import FieldPositionSheet from "../components/sheets/FieldPositionSheet";
-import PlaySheet from "../components/sheets/PlaySheet";
+import PlaySheet, {
+  type PlayResult,
+  type PlayType,
+} from "../components/sheets/PlaySheet";
 import EditSheet from "../components/sheets/EditSheet";
 import Sheet from "../components/sheets/Sheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
 import TouchdownSheet from "../components/sheets/TouchdownSheet";
+import TimeoutSheet from "../components/sheets/TimeoutSheet";
+import HalftimeSheet from "../components/sheets/HalftimeSheet";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
 import {
   createGameSession,
@@ -130,39 +139,13 @@ type Side = RosterPlayer["side"];
 /** The open sheet: the touchdown entry, a series/time entry, or a more event. */
 type SheetState =
   | { kind: "touchdown" }
-  | { kind: "play" }
+  | { kind: "play"; type?: PlayType; result?: PlayResult }
   | { kind: "challenge" }
   | { kind: "fieldpos" }
   | { kind: "series"; mode: SeriesMode }
   | { kind: "penalty" }
-  | { kind: "more"; mode: MoreMode };
-
-/**
- * The series/time tiles of the composer grid. `oneTap` entries need no input
- * and save on the tap; the toast offers undo (and, where the entry may name a
- * player, adding the jersey afterwards). The others open their sheet: an
- * interception is credited to the defender, which only a sheet opened
- * *before* the possession flip can get right, and the clocks need a time.
- */
-const SERIES_TILES: {
-  mode: SeriesMode;
-  label: string;
-  Icon: ComponentType<IconProps>;
-  oneTap: boolean;
-}[] = [
-  { mode: "first", label: "1st Down", Icon: ArrowRight, oneTap: true },
-  { mode: "turnover", label: "Turnover", Icon: SwapArrows, oneTap: true },
-  {
-    mode: "interception",
-    label: "Interception",
-    Icon: Interception,
-    oneTap: true,
-  },
-  { mode: "time", label: "Spielzeit", Icon: Stopwatch, oneTap: false },
-  // No Auszeit tile: a team's timeout is taken from its own row in the
-  // possession block below (meeting 2026-11-05, 57:33-59:08).
-
-];
+  | { kind: "more"; mode: MoreMode }
+  | { kind: "moremenu" };
 
 /** The log's event name for each one-tap entry, to find the row it wrote. */
 const ONE_TAP_EVENT: Partial<Record<SeriesMode, string>> = {
@@ -225,11 +208,13 @@ const CONFIRMATION: Record<string, string> = {
 /**
  * Events after which the ball stays where it is.
  *
- * Everything else hands the ball to the other team — a touchdown, a turnover,
- * an interception, a safety and an overtime score all kick off again. v1 also
+ * Everything else hands the ball to the other team — a turnover, an
+ * interception, a safety and an overtime score all kick off again. v1 also
  * flipped on an `Auszeit`, which was a bug: a timeout is called by the team in
- * possession and does not change it. A write group (touchdown + conversion)
- * counts as one play; if any of its rows keeps the ball, the group does.
+ * possession and does not change it. A touchdown is *not* a ball change any
+ * more: the try belongs to the scoring team, so only the try's result flips.
+ * A mixed write group (a play and its Turnover row) flips as soon as one of
+ * its rows does.
  */
 const KEEP_POSSESSION = new Set([
   "Strafe",
@@ -244,19 +229,18 @@ const KEEP_POSSESSION = new Set([
   "Challenge",
   "Feldposition",
   "Overtime starten",
-  // Written after the try, once the touchdown already handed the ball over.
-  "1-Extra-Punkt",
-  "2-Extra-Punkte",
+  // A touchdown keeps the ball: the try belongs to the scoring team, and the
+  // flip is written when the try ends (+1/+2, a miss, a defensive score).
+  "Touchdown",
 ]);
 
 /** Whether a successful write hands the ball to the other team. */
 export function flipsPossession(events: GameLogEventInput[]): boolean {
-  // A touchdown hands the ball over even when an older client sent its
-  // conversion in the same submission.
-  if (events.some((event) => event.name === "Touchdown")) {
-    return true;
-  }
-  return !events.some((event) => KEEP_POSSESSION.has(event.name));
+  // True as soon as **one** entry hands the ball over: a failed fourth down
+  // writes the play and its Turnover row in one submission, and that mixed
+  // submission must flip even though the play alone would keep the ball.
+  // A legacy touchdown+conversion submission flips on its conversion.
+  return events.some((event) => !KEEP_POSSESSION.has(event.name));
 }
 
 /**
@@ -568,6 +552,8 @@ export default function TrackingScreen({
   const [pendingPat, setPendingPat] = useState<{
     team: string;
     jersey: number | null;
+    /** The touchdown's write op, so the try's flip is linked to it. */
+    originId?: string;
   } | null>(null);
   /**
    * The try being answered: its team, its points and the default jersey (the
@@ -580,6 +566,8 @@ export default function TrackingScreen({
     defaultJersey: number | null;
   } | null>(null);
   const [patJersey, setPatJersey] = useState<number | null>(null);
+  /** The try's quarterback; a team may change it just for the conversion. */
+  const [patQb, setPatQb] = useState<number | null>(null);
   const [patBusy, setPatBusy] = useState(false);
   /** The try's first answer: focus lands here when the touchdown tile gives way. */
   const patFirst = useRef<HTMLButtonElement>(null);
@@ -587,11 +575,14 @@ export default function TrackingScreen({
   const [finishBlocked, setFinishBlocked] = useState(false);
   /** The one-tap row a jersey sheet replaces once it saves. */
   const [replacing, setReplacing] = useState<LogRow | null>(null);
+  /** The team whose Auszeit dialog is open. */
+  const [timeoutTeam, setTimeoutTeam] = useState<string | null>(null);
+  /** The half-time confirmation dialog. */
+  const [halftimeOpen, setHalftimeOpen] = useState(false);
   /** The log row being corrected in place ("Ändern" next to undo). */
   const [editing, setEditing] = useState<LogRow | null>(null);
   /** Two-step buttons: a one-tap entry offers its jersey, Halbzeit asks once more. */
-  const { armed, arm, disarm } =
-    useArmed<JerseyLater | "halftime" | "overtime">();
+  const { armed, arm, disarm } = useArmed<JerseyLater | "overtime">();
   const [halftimePending, setHalftimePending] = useState(false);
   const [halftimeError, setHalftimeError] = useState<string | null>(null);
   /**
@@ -643,7 +634,6 @@ export default function TrackingScreen({
   const rows = useMemo(() => logRows(log), [log]);
   /** Down & distance as the log tells it — recomputed on every row change. */
   const geometry = useMemo(() => geometryOf(rules), [rules]);
-  const drive = useMemo(() => driveAfter(rows, geometry), [rows, geometry]);
   /**
    * Every Auszeit still on the board, newest first as the log lists it. The
    * sheet shows both sides so the officials can answer "who took which
@@ -769,6 +759,26 @@ export default function TrackingScreen({
     void loaded.then((answer) => {
       if (active) {
         setSetup(answer?.value ?? null);
+      }
+      // The pre-game quarterback is a typing aid, not game state: seed it
+      // into this device's memory so the first pass is one tap shorter. Every
+      // device that opens the game gets the same seed from the setup; a QB
+      // this device already changed stays as it is.
+      const seededHome = answer?.value?.qbHome;
+      const seededAway = answer?.value?.qbAway;
+      if (
+        typeof seededHome === "number" &&
+        Number.isFinite(seededHome) &&
+        readQuarterback(game.id, "home") === null
+      ) {
+        rememberQuarterback(game.id, "home", seededHome);
+      }
+      if (
+        typeof seededAway === "number" &&
+        Number.isFinite(seededAway) &&
+        readQuarterback(game.id, "away") === null
+      ) {
+        rememberQuarterback(game.id, "away", seededAway);
       }
       const lock = answer?.updatedAt === null ? lockFrom(answer.value) : null;
       if (lock === null || !active) {
@@ -1019,6 +1029,15 @@ export default function TrackingScreen({
         : null) ?? possession;
   const opponentName =
     opponentSide === "home" ? logTeamName(log.home) : logTeamName(log.away);
+  /**
+   * Down & distance as the log tells it — recomputed on every row change. The
+   * possession name ends a try whose miss wrote no row (a conversion row ends
+   * it on its own).
+   */
+  const drive = useMemo(
+    () => driveAfter(rows, geometry, possessionName),
+    [rows, geometry, possessionName],
+  );
   /** A marker in the log, so the tile flips to +1 XP after every reload. */
   const overtime = rows.some(
     (row) => !row.isDeleted && row.event === "Overtime startet",
@@ -1041,9 +1060,12 @@ export default function TrackingScreen({
     }
   };
 
+  /** The side a team name belongs to (the try's jersey list and QB memory). */
+  const patSideOf = (team: string): Side =>
+    team === log.away.name ? "away" : "home";
   /** The side that scored the try: its roster feeds the jersey step. */
   const patSide: Side =
-    pendingPat !== null && pendingPat.team === log.away.name ? "away" : "home";
+    pendingPat === null ? "home" : patSideOf(pendingPat.team);
   const patPlayers =
     roster === null
       ? []
@@ -1079,8 +1101,16 @@ export default function TrackingScreen({
   const submit = async (
     events: GameLogEventInput[],
     teamOverride?: string,
-    /** The ball already moved with the row this write replaces. */
-    keepBall = false,
+    {
+      /** The ball already moved with the row this write replaces. */
+      keepBall = false,
+      /**
+       * The op the following possession flip belongs to. The try's flip names
+       * the touchdown, so undoing the touchdown takes its flip with it even
+       * though the conversion was a later write.
+       */
+      flipOrigin,
+    }: { keepBall?: boolean; flipOrigin?: string } = {},
   ): Promise<void> => {
     if (postInFlight.current) {
       throw new IgnoredWrite("Der Eintrag wird gerade gespeichert.");
@@ -1119,7 +1149,7 @@ export default function TrackingScreen({
       await session.writeEvent(body);
       // The flip written below belongs to this entry, so undoing the row can
       // take exactly that op with it.
-      const origin = session.lastOpId() ?? undefined;
+      const origin = flipOrigin ?? session.lastOpId() ?? undefined;
       const qb = events.find((event) => typeof event.payload?.qb === "number")
         ?.payload?.qb;
       if (typeof qb === "number" && possessionSide !== null) {
@@ -1205,6 +1235,7 @@ export default function TrackingScreen({
     }
     halftimeInFlight.current = false;
     setHalftimePending(false);
+    setHalftimeOpen(false);
   };
 
   const openSheet = (next: SheetState): void => {
@@ -1213,6 +1244,36 @@ export default function TrackingScreen({
     setQuick(null);
     setQuickError(null);
     setSheet(next);
+  };
+
+  /** A row of the **Mehr** menu opens the sheet it replaces. */
+  const pickFromMenu = (pick: MorePick): void => {
+    if (pick === "overtime") {
+      setSheet(null);
+      if (overtime) {
+        openSinglePat();
+      } else {
+        void startOvertime();
+      }
+      return;
+    }
+    if (pick === "safety") {
+      setSheet({ kind: "more", mode: "safety" });
+      return;
+    }
+    if (pick === "challenge") {
+      setSheet({ kind: "challenge" });
+      return;
+    }
+    if (pick === "fieldpos") {
+      setSheet({ kind: "fieldpos" });
+      return;
+    }
+    if (pick === "touchdown") {
+      setSheet({ kind: "touchdown" });
+      return;
+    }
+    setSheet({ kind: "series", mode: pick });
   };
 
   /** The newest live row a one-tap entry wrote (rows are newest first). */
@@ -1284,14 +1345,19 @@ export default function TrackingScreen({
   const submitTouchdown = async (events: GameLogEventInput[]): Promise<void> => {
     const team = possessionName;
     await submit(events);
+    // The touchdown does not flip the ball any more; its op is what the try's
+    // flip will name so undoing the touchdown takes the flip with it.
+    const originId = session.lastOpId() ?? undefined;
     const jersey = events[0]?.player;
     if (team !== null) {
       setPendingPat({
         team,
         jersey: typeof jersey === "number" ? jersey : null,
+        originId,
       });
       setPatTry(null);
       setPatJersey(null);
+      setPatQb(readQuarterback(game.id, patSideOf(team)));
       setPatError(null);
       setFinishBlocked(false);
     }
@@ -1302,6 +1368,7 @@ export default function TrackingScreen({
     setPendingPat(null);
     setPatTry(null);
     setPatJersey(null);
+    setPatQb(null);
     setFinishBlocked(false);
   };
 
@@ -1319,7 +1386,12 @@ export default function TrackingScreen({
       if (jersey !== null) {
         event.player = jersey;
       }
-      await submit([event], patTry.team);
+      if (patQb !== null) {
+        event.payload = { qb: patQb };
+      }
+      await submit([event], patTry.team, {
+        flipOrigin: pendingPat?.originId,
+      });
       closePat();
     } catch (failure) {
       setPatError(
@@ -1334,15 +1406,23 @@ export default function TrackingScreen({
   };
 
   /**
-   * The try's result. `nicht verwandelt` closes the prompt; +1/+2 open the
-   * jersey step, pre-selected with the touchdown's scorer.
+   * The try's result. `nicht verwandelt` ends the try and hands the ball over
+   * without a row (the miss itself is no game event); +1/+2 open the jersey
+   * step, pre-selected with the touchdown's scorer.
    */
   const answerPat = (points: 0 | 1 | 2): void => {
     if (pendingPat === null || patBusy) {
       return;
     }
     if (points === 0) {
+      // The flip is the only record a missed try leaves - linked to the
+      // touchdown's op, so undoing the touchdown also puts the ball back. The
+      // prompt closes at once; the switch itself paints optimistically.
+      const originId = pendingPat.originId;
       closePat();
+      if (opponentName !== null) {
+        void takePossession(opponentName, originId);
+      }
       return;
     }
     setPatTry({
@@ -1351,19 +1431,21 @@ export default function TrackingScreen({
       defaultJersey: pendingPat.jersey,
     });
     setPatJersey(pendingPat.jersey);
+    setPatQb(readQuarterback(game.id, patSideOf(pendingPat.team)));
     setPatError(null);
   };
 
   /**
-   * The defence scored on the try (R 8-1-1: two points).
+   * The defence scored on the try (IFAF R 8-1-1: two points).
    *
-   * The row goes to the defending team - the one that holds the ball right
-   * now, because the touchdown already flipped the possession. `try_defense`
-   * in the payload is what tells a later statistics pass that these two points
-   * were not a converted two-point try.
+   * The row goes to the **defending** team, i.e. the opponent of the side that
+   * scored the touchdown - the ball still belongs to the scoring team until
+   * the try ends. `try_defense` in the payload is what tells a later statistics
+   * pass that these two points were not a converted two-point try.
    */
   const writeDefensiveTry = async (): Promise<void> => {
-    if (pendingPat === null || patBusy || possessionName === null) {
+    const defence = opponentName;
+    if (pendingPat === null || patBusy || defence === null) {
       return;
     }
     setPatBusy(true);
@@ -1377,7 +1459,8 @@ export default function TrackingScreen({
             payload: { try_defense: true },
           },
         ],
-        possessionName,
+        defence,
+        { flipOrigin: pendingPat.originId },
       );
       closePat();
     } catch (failure) {
@@ -1399,6 +1482,7 @@ export default function TrackingScreen({
     }
     setPatTry({ team: possessionName, points: 1, defaultJersey: null });
     setPatJersey(null);
+    setPatQb(readQuarterback(game.id, possessionSide ?? patSideOf(possessionName)));
     setPatError(null);
   };
 
@@ -1435,8 +1519,11 @@ export default function TrackingScreen({
    * A scrimmage play: `submit` writes it, then the down & distance moves on.
    *
    * The resulting state is appended to the row's text (so the log and the
-   * ticker show "3rd & 4"), and a failed fourth down hands the ball to the
-   * other team — the possession event the app already uses for a turnover.
+   * ticker show "3rd & 4"), and a failed fourth down writes a **Turnover** row
+   * that says why the ball changed hands. The row shares the play's submission
+   * (and therefore its undo group), and the possession flip it triggers
+   * carries that group's origin, so one undo removes the play, the turnover
+   * row and the flip.
    */
   const submitPlay = async (events: GameLogEventInput[]): Promise<void> => {
     const [play, ...rest] = events;
@@ -1449,25 +1536,67 @@ export default function TrackingScreen({
     const next = advance(drive, yards, geometry);
     const turnover = isTurnoverOnDowns(drive, yards, geometry);
     const detail = play.input === undefined ? "" : `${play.input} · `;
-    await submit([{ ...play, input: `${detail}${driveText(next)}` }, ...rest]);
-    if (turnover && opponentName !== null) {
-      await takePossession(opponentName);
+    // Safety and interception rows belong to the **defence**; the play stays
+    // with the offence, so they are written in a second submission.
+    const changesHands = rest.some((event) => event.payload?.defense === true);
+    const written: GameLogEventInput[] = [
+      { ...play, input: `${detail}${driveText(next)}` },
+      ...rest,
+    ];
+    if (turnover && !changesHands) {
+      written.push({
+        name: "Turnover",
+        input: "4th down",
+        payload: { reason: "downs" },
+      });
     }
+    const offense = written.filter(
+      (event) => event.payload?.defense !== true,
+    );
+    const defense = written.filter(
+      (event) => event.payload?.defense === true,
+    );
+    await submit(offense);
     // A play that scored carries its own touchdown row, so the try is asked
     // right away - the same prompt a touchdown tile produces. A team score
     // without a number still asks: the six points stand (IFAF R 8-1-1).
-    const scored = rest.find((event) => event.name === "Touchdown");
+    const scored = offense.find((event) => event.name === "Touchdown");
     if (scored !== undefined && scoringTeam !== null) {
       const jersey =
         typeof scored.player === "number" ? scored.player : play.player;
       setPendingPat({
         team: scoringTeam,
         jersey: typeof jersey === "number" ? jersey : null,
+        originId: session.lastOpId() ?? undefined,
       });
       setPatTry(null);
       setPatJersey(null);
+      setPatQb(readQuarterback(game.id, patSideOf(scoringTeam)));
       setPatError(null);
       setFinishBlocked(false);
+    }
+    if (defense.length > 0 && opponentName !== null) {
+      await submit(defense, opponentName);
+      // A pick six belongs to the defence, and its try follows for them.
+      const defensiveScore = defense.find(
+        (event) => event.name === "Touchdown",
+      );
+      if (defensiveScore !== undefined) {
+        const jersey =
+          typeof defensiveScore.player === "number"
+            ? defensiveScore.player
+            : null;
+        setPendingPat({
+          team: opponentName,
+          jersey,
+          originId: session.lastOpId() ?? undefined,
+        });
+        setPatTry(null);
+        setPatJersey(null);
+        setPatQb(readQuarterback(game.id, patSideOf(opponentName)));
+        setPatError(null);
+        setFinishBlocked(false);
+      }
     }
   };
 
@@ -1477,17 +1606,15 @@ export default function TrackingScreen({
    * the order of the log are the record, and a typed clock would be one tap
    * more on the common path. A wrong tap is undone from its row.
    */
-  const takeTimeout = async (team: string): Promise<void> => {
-    try {
-      await submit([{ name: "Auszeit" }], team);
-    } catch (failure) {
-      setQuickError(
-        errorMessage(
-          failure,
-          "Die Auszeit konnte nicht gespeichert werden. Bitte erneut versuchen.",
-        ),
-      );
+  const takeTimeout = async (
+    team: string,
+    gameTime: string | null = null,
+  ): Promise<void> => {
+    const event: GameLogEventInput = { name: "Auszeit" };
+    if (gameTime !== null) {
+      event.input = gameTime;
     }
+    await submit([event], team);
   };
 
   /** A sheet that completes a one-tap entry writes the new row, then undoes the old. */
@@ -1495,7 +1622,9 @@ export default function TrackingScreen({
     const previous = replacing;
     // A replacement belongs to the replaced row's team, and the ball already
     // moved with that row (an interception): it must not move twice.
-    await submit(events, previous?.team ?? undefined, previous !== null);
+    await submit(events, previous?.team ?? undefined, {
+      keepBall: previous !== null,
+    });
     if (previous !== null) {
       setReplacing(null);
       // The replacement kept the ball where the replaced row left it.
@@ -1503,8 +1632,17 @@ export default function TrackingScreen({
     }
   };
 
-  // Nothing happens between the touchdown and the try: the entries wait for
-  // the extra point.
+  // Nothing happens between the touchdown and the try, except a penalty: a
+  // foul during the try is enforced on the try itself, so the flag must stay
+  // reachable while the prompt is open.
+  const penaltyDisabled =
+    posting ||
+    possessionPending ||
+    halftimePending ||
+    finished ||
+    readOnly ||
+    possessionSide === null ||
+    possessionName === null;
   const composerDisabled =
     pendingPat !== null ||
     posting ||
@@ -1531,7 +1669,12 @@ export default function TrackingScreen({
 
   useTrackingShortcuts({
     readOnly: readOnly || finished,
-    sheetOpen: sheet !== null || pendingPat !== null || editing !== null,
+    sheetOpen:
+      sheet !== null ||
+      pendingPat !== null ||
+      editing !== null ||
+      timeoutTeam !== null ||
+      halftimeOpen,
     onTouchdown: () => {
       if (!composerDisabled && pendingPat === null) {
         openSheet({ kind: "touchdown" });
@@ -1539,23 +1682,42 @@ export default function TrackingScreen({
     },
     onPlay: () => {
       if (!composerDisabled) {
-        openSheet({ kind: "play" });
+        openSheet({ kind: "play", type: "pass" });
       }
     },
     onAction: (index) => {
-      if (composerDisabled) {
+      // Only the penalty (index 4) stays reachable while the try is open (a
+      // foul during the try is enforced on it); every other entry waits.
+      if (composerDisabled && index !== 4) {
         return;
       }
-      const tile = SERIES_TILES[index];
-      if (tile !== undefined) {
-        tapSeriesTile(tile.mode, tile.oneTap);
-        return;
-      }
-      if (index === SERIES_TILES.length) {
-        openSheet({ kind: "penalty" });
-      } else if (index === SERIES_TILES.length + 1) {
+      if (index === 0) {
+        openSheet({ kind: "play", type: "pass" });
+      } else if (index === 1) {
+        openSheet({ kind: "play", type: "run" });
+      } else if (index === 2) {
+        openSheet({ kind: "play", type: "sack" });
+      } else if (index === 3) {
+        openSheet({
+          kind: "play",
+          type: "pass",
+          result: "interception",
+        });
+      } else if (index === 4) {
+        if (!penaltyDisabled) {
+          openSheet({ kind: "penalty" });
+        }
+      } else if (index === 5) {
+        openSheet({ kind: "series", mode: "time" });
+      } else if (index === 6) {
+        openSheet({ kind: "moremenu" });
+      } else if (index === 7) {
+        tapSeriesTile("first", true);
+      } else if (index === 8) {
+        tapSeriesTile("turnover", true);
+      } else if (index === 9) {
         openSheet({ kind: "more", mode: "safety" });
-      } else if (index === SERIES_TILES.length + 2) {
+      } else if (index === 10) {
         if (overtime) {
           openSinglePat();
         } else if (armed === "overtime") {
@@ -1623,72 +1785,23 @@ export default function TrackingScreen({
         disabled={possessionPending || halftimePending || readOnly}
         home={officialLog.home}
         isFirstHalf={officialLog.isFirstHalf}
+        onPossession={(team) => void takePossession(team)}
+        onTimeout={(team) => setTimeoutTeam(team)}
         possession={possession}
-      />
-      <div aria-label="Ballbesitz" className="possswitch" role="group">
-        {(
-          [
-            ["home", log.home],
-            ["away", log.away],
-          ] as const
-        ).map(([side, team]) => {
+        timeoutDisabled={
+          posting ||
+          possessionPending ||
+          halftimePending ||
+          finished ||
+          readOnly
+        }
+        timeouts={(team) => {
           const name = logTeamName(team);
-          const pressed = isPossessing(team, possession);
-          // The budget exists for every side: an unnamed placeholder simply
-          // has taken none, which keeps the render free of a dead branch.
-          const budget = timeoutBudget(
-            rows,
-            name ?? "–",
-            half,
-            timeoutsPerHalf,
-          );
-          return (
-            <div className="possteam" key={side}>
-              <button
-                aria-pressed={pressed}
-                className={`possbtn ${side}`}
-                disabled={
-                  name === null ||
-                  possessionPending ||
-                  halftimePending ||
-                  finished ||
-                  readOnly
-                }
-                onClick={() => {
-                  if (name !== null) {
-                    void takePossession(name);
-                  }
-                }}
-                title={name ?? undefined}
-                type="button"
-              >
-                <span className="possname">{name ?? "–"}</span>
-                <kbd aria-hidden="true" className="shortcut-hint" data-key="B" />
-              </button>
-              {name === null ? null : (
-                <button
-                  aria-label={`Auszeit ${name}`}
-                  className={
-                    budget.exhausted ? "timeoutbtn is-used" : "timeoutbtn"
-                  }
-                  disabled={
-                    posting ||
-                    possessionPending ||
-                    halftimePending ||
-                    finished ||
-                    readOnly
-                  }
-                  onClick={() => void takeTimeout(name)}
-                  type="button"
-                >
-                  <Clock aria-hidden="true" size={14} />
-                  <span className="timeoutcount">{timeoutText(budget)}</span>
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+          return name === null
+            ? null
+            : timeoutBudget(rows, name, half, timeoutsPerHalf);
+        }}
+      />
       <div className="drivebar">
         <p aria-live="polite" className="driveline">
           {pendingPat === null
@@ -1825,101 +1938,135 @@ export default function TrackingScreen({
             <kbd aria-hidden="true" className="shortcut-hint" data-key="T" />
           </button>
         )}
-        <div className="playrow">
-          <button
-            className="playbtn"
-            disabled={composerDisabled}
-            onClick={() => openSheet({ kind: "play" })}
-            type="button"
-          >
-            <Play className="playbtn-icon" size={20} />
-            <span>Spielzug (Pass/Run/Sack)</span>
-            <kbd aria-hidden="true" className="shortcut-hint" data-key="P" />
-          </button>
-          <button
-            className="playbtn playbtn-compact"
-            disabled={composerDisabled}
-            onClick={() => openSheet({ kind: "challenge" })}
-            type="button"
-          >
-            <span>Challenge</span>
-          </button>
-        </div>
         <div className="action-grid">
-        {SERIES_TILES.map(({ mode, label, Icon, oneTap }, index) => {
-          const offersJersey = armed === mode;
-          const TileIcon = offersJersey ? User : Icon;
-          return (
+          {(
+            [
+              { type: "pass", label: "Pass", Icon: Play },
+              { type: "run", label: "Run", Icon: ArrowRight },
+              { type: "sack", label: "Sack", Icon: Shield },
+              {
+                type: "pass",
+                result: "interception",
+                label: "Interception",
+                Icon: Interception,
+              },
+            ] as {
+              type: PlayType;
+              result?: PlayResult;
+              label: string;
+              Icon: ComponentType<IconProps>;
+            }[]
+          ).map(({ type, result, label, Icon }, index) => (
+            <button
+              className="action"
+              disabled={composerDisabled}
+              key={label}
+              onClick={() =>
+                openSheet({ kind: "play", type, result })
+              }
+              type="button"
+            >
+              <Icon className="action-icon" size={20} />
+              <span>{label}</span>
+              <kbd
+                aria-hidden="true"
+                className="shortcut-hint"
+                data-key={index + 1}
+              />
+            </button>
+          ))}
           <button
-            className={offersJersey ? "action is-armed" : "action"}
-            disabled={composerDisabled}
-            key={mode}
-            onClick={() => tapSeriesTile(mode, oneTap)}
+            className="action"
+            disabled={penaltyDisabled}
+            onClick={() => openSheet({ kind: "penalty" })}
             type="button"
           >
-            <TileIcon className="action-icon" size={20} />
-            <span>{offersJersey ? "Nr. ergänzen" : label}</span>
-            {mode === "timeout" && possessionTimeouts !== null ? (
-              // Decorative: the tile keeps its name, the sheet states the
-              // count and the history in words.
+            <Flag className="action-icon" size={20} />
+            <span>Strafe</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="5" />
+          </button>
+          <button
+            className="action"
+            disabled={composerDisabled}
+            onClick={() => openSheet({ kind: "series", mode: "time" })}
+            type="button"
+          >
+            <Stopwatch className="action-icon" size={20} />
+            <span>Spielzeit</span>
+            {possessionTimeouts === null ? null : (
               <span aria-hidden="true" className="actioncount">
                 {timeoutText(possessionTimeouts)}
               </span>
-            ) : null}
-            <kbd
-              aria-hidden="true"
-              className="shortcut-hint"
-              data-key={index + 1}
-            />
+            )}
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
           </button>
-          );
-        })}
-        <button
-          className="action"
-          disabled={composerDisabled}
-          onClick={() => openSheet({ kind: "penalty" })}
-          type="button"
-        >
-          <Flag className="action-icon" size={20} />
-          <span>Strafe</span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="5" />
-        </button>
-        <button
-          className="action"
-          disabled={composerDisabled}
-          onClick={() => openSheet({ kind: "more", mode: "safety" })}
-          type="button"
-        >
-          <Shield className="action-icon" size={20} />
-          <span>Safety</span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
-        </button>
-        <button
-          className={
-            armed === "overtime" ? "action is-armed" : "action"
-          }
-          disabled={composerDisabled}
-          onClick={() => {
-            if (overtime) {
-              openSinglePat();
-            } else if (armed === "overtime") {
-              void startOvertime();
-            } else {
-              arm("overtime");
-            }
-          }}
-          type="button"
-        >
-          <PlusCircle className="action-icon" size={20} />
-          <span>
-            {overtime
-              ? "+1 XP"
-              : armed === "overtime"
-                ? "Overtime starten"
-                : "Overtime"}
-          </span>
-          <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
-        </button>
+          <button
+            className="action"
+            disabled={composerDisabled}
+            onClick={() => openSheet({ kind: "moremenu" })}
+            type="button"
+          >
+            <PlusCircle className="action-icon" size={20} />
+            <span>Mehr</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="7" />
+          </button>
+          <button
+            className={armed === "first" ? "action is-armed" : "action"}
+            disabled={composerDisabled}
+            onClick={() => tapSeriesTile("first", true)}
+            type="button"
+          >
+            {armed === "first" ? (
+              <User className="action-icon" size={20} />
+            ) : (
+              <ArrowRight className="action-icon" size={20} />
+            )}
+            <span>{armed === "first" ? "Nr. ergänzen" : "1st Down"}</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="8" />
+          </button>
+          <button
+            className="action"
+            disabled={composerDisabled}
+            onClick={() => tapSeriesTile("turnover", true)}
+            type="button"
+          >
+            <SwapArrows className="action-icon" size={20} />
+            <span>Turnover</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="9" />
+          </button>
+          <button
+            className="action"
+            disabled={composerDisabled}
+            onClick={() => openSheet({ kind: "more", mode: "safety" })}
+            type="button"
+          >
+            <Shield className="action-icon" size={20} />
+            <span>Safety</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="0" />
+          </button>
+          <button
+            className={armed === "overtime" ? "action is-armed" : "action"}
+            disabled={composerDisabled}
+            onClick={() => {
+              if (overtime) {
+                openSinglePat();
+              } else if (armed === "overtime") {
+                void startOvertime();
+              } else {
+                arm("overtime");
+              }
+            }}
+            type="button"
+          >
+            <PlusCircle className="action-icon" size={20} />
+            <span>
+              {overtime
+                ? "+1 XP"
+                : armed === "overtime"
+                  ? "Overtime starten"
+                  : "Overtime"}
+            </span>
+          </button>
         </div>
       </section>
         <div
@@ -1934,21 +2081,18 @@ export default function TrackingScreen({
         {log.isFirstHalf && !finished ? (
         <section aria-label="Halbzeit" className="halfblock">
           <button
-            className={armed === "halftime" ? "halfbtn is-armed" : "halfbtn"}
+            className="halfbtn"
             disabled={halftimeDisabled}
-            onClick={() =>
-              armed === "halftime" ? void startHalftime() : arm("halftime")
-            }
+            onClick={() => {
+              setHalftimeError(null);
+              setHalftimeOpen(true);
+            }}
             type="button"
           >
             <Pause size={18} />
-            {halftimePending
-              ? "Halbzeit …"
-              : armed === "halftime"
-                ? "Halbzeit starten"
-                : "Halbzeit"}
+            {halftimePending ? "Halbzeit …" : "Halbzeit"}
           </button>
-          {halftimeError === null ? null : (
+          {halftimeError === null || halftimeOpen ? null : (
             <p className="trackerror" role="alert">
               {halftimeError}
             </p>
@@ -1986,11 +2130,9 @@ export default function TrackingScreen({
       </footer>
         </div>
         <p aria-live="polite" className="sr-only">
-          {armed === "halftime"
+          {armed === "overtime"
             ? "Zum Bestätigen erneut tippen"
-            : armed !== null
-              ? "Erneut tippen, um die Trikotnummer zu ergänzen"
-              : ""}
+            : ""}
         </p>
       </main>
 
@@ -2031,6 +2173,14 @@ export default function TrackingScreen({
             strict={game.passcheck === true}
             value={patJersey}
           />
+          <h3 className="sheetsection">Quarterback</h3>
+          <QuarterbackPick
+            disabled={patBusy || readOnly}
+            onChange={setPatQb}
+            roster={roster}
+            side={patSide}
+            value={patQb}
+          />
         </Sheet>
       ) : null}
 
@@ -2060,9 +2210,14 @@ export default function TrackingScreen({
       possessionName !== null &&
       (sheet.kind === "touchdown" ||
         sheet.kind === "series" ||
+        sheet.kind === "moremenu" ||
         opponentName !== null) ? (
         sheet.kind === "play" ? (
           <PlaySheet
+            drive={drive}
+            geometry={geometry}
+            initialResult={sheet.result}
+            initialType={sheet.type}
             lastQuarterback={readQuarterback(game.id, possessionSide)}
             onClose={() => setSheet(null)}
             onSubmit={submitPlay}
@@ -2074,6 +2229,8 @@ export default function TrackingScreen({
         ) : sheet.kind === "fieldpos" ? (
           <FieldPositionSheet
             ballOn={drive.ballOn}
+            down={drive.down}
+            goal={drive.goal}
             onClose={() => setSheet(null)}
             onSubmit={(event) => submit([event])}
             teamName={possessionName}
@@ -2141,6 +2298,12 @@ export default function TrackingScreen({
             side={possessionSide}
             teamName={possessionName}
           />
+        ) : sheet.kind === "moremenu" ? (
+          <MoreMenuSheet
+            disabled={composerDisabled}
+            onClose={() => setSheet(null)}
+            onPick={pickFromMenu}
+          />
         ) : (
           <MoreSheet
             key={sheet.mode}
@@ -2153,6 +2316,47 @@ export default function TrackingScreen({
             teamName={possessionName}
           />
         )
+      ) : null}
+
+      {halftimeOpen ? (
+        <HalftimeSheet
+          away={logTeamName(officialLog.away) ?? "–"}
+          awayScore={officialLog.away.score}
+          direction={(() => {
+            const first = directionFromWire(setup?.direction ?? undefined);
+            return first === "Nord" ? "Süd" : first === "Süd" ? "Nord" : null;
+          })()}
+          disabled={halftimeDisabled}
+          error={halftimeError}
+          home={logTeamName(officialLog.home) ?? "–"}
+          homeScore={officialLog.home.score}
+          intermissionMinutes={
+            rules?.periods?.intermission_minutes ?? 2
+          }
+          onClose={() => setHalftimeOpen(false)}
+          onStart={() => void startHalftime()}
+          possession={
+            secondHalfPossession(
+              setup,
+              logTeamName(log.home),
+              logTeamName(log.away),
+            ) ?? opponentName
+          }
+        />
+      ) : null}
+
+      {timeoutTeam !== null ? (
+        <TimeoutSheet
+          disabled={readOnly}
+          onSubmit={(gameTime) => takeTimeout(timeoutTeam, gameTime)}
+          onClose={() => setTimeoutTeam(null)}
+          perHalf={timeoutsPerHalf}
+          seconds={rules?.timeouts?.seconds ?? 60}
+          teamName={timeoutTeam}
+          used={
+            timeoutBudget(rows, timeoutTeam, half, timeoutsPerHalf).used
+          }
+        />
       ) : null}
     </div>
   );

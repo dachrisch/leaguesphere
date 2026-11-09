@@ -222,9 +222,25 @@ describe("EditSheet edge cases", () => {
     );
   });
 
-  it("refuses a clock correction with an empty field", () => {
+  it("counts one empty clock field as zero", async () => {
+    const { onSubmit } = renderSheet({ event: "Spielzeit", input: "08:12" });
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Sekunden" }), {
+      target: { value: "" },
+    });
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Änderung speichern" }));
+
+    expect(onSubmit).toHaveBeenCalledWith({ name: "Spielzeit", input: "08:00" });
+  });
+
+  it("refuses a clock correction when both fields are empty", () => {
     renderSheet({ event: "Spielzeit", input: "08:12" });
 
+    fireEvent.change(screen.getByRole("textbox", { name: "Minuten" }), {
+      target: { value: "" },
+    });
     fireEvent.change(screen.getByRole("textbox", { name: "Sekunden" }), {
       target: { value: "" },
     });
@@ -247,8 +263,26 @@ describe("correcting the rows without an edit action before", () => {
       name: "Pass",
       player: 7,
       input: "12 Yards · QB #12",
-      payload: { yards: 12, complete: true, qb: 12 },
+      payload: {
+        yards: 12,
+        complete: true,
+        qb: 12,
+        input: "12 Yards · QB #12",
+      },
     });
+  });
+
+  it("replaces the old visible text in the payload too (the 0-yard bug)", () => {
+    // The projector prefers `payload.input`; a correction that only changed
+    // `input` kept the old "0 Yards" on the row forever.
+    const event = editEvent("Pass", {
+      jersey: 7,
+      payload: { yards: 0, complete: true, qb: 12, input: "0 Yards · QB #12" },
+      yards: 12,
+    });
+
+    expect(event.input).toBe("12 Yards · QB #12");
+    expect(event.payload).toMatchObject({ yards: 12, input: "12 Yards · QB #12" });
   });
 
   it("keeps a sack a loss", () => {
@@ -258,7 +292,7 @@ describe("correcting the rows without an edit action before", () => {
       yards: 3,
     });
 
-    expect(event.payload).toEqual({ yards: -3 });
+    expect(event.payload).toEqual({ yards: -3, input: "3 Yards Verlust" });
     expect(event.input).toBe("3 Yards Verlust");
   });
 
@@ -315,7 +349,7 @@ describe("correcting the play's numbers in the sheet", () => {
       name: "Run",
       player: 23,
       input: "6 Yards Verlust",
-      payload: { yards: -6 },
+      payload: { yards: -6, input: "6 Yards Verlust" },
     });
   });
 
@@ -336,7 +370,7 @@ describe("correcting the play's numbers in the sheet", () => {
     );
 
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: { yards: 4 } }),
+      expect.objectContaining({ payload: { yards: 4, input: "4 Yards" } }),
     );
   });
 

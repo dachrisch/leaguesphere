@@ -293,6 +293,12 @@ class GameSetup(models.Model):
     ctResult = models.CharField(max_length=100)
     direction = models.CharField(max_length=100)
     fhPossession = models.CharField(max_length=100)
+    # The quarterback each team will use (jersey number). A typing aid for the
+    # play sheet, not part of the official record: the thrower travels in each
+    # pass event's payload. Optional, because a lower-league operator may not
+    # know it before the first snap.
+    qbHome = models.PositiveSmallIntegerField(null=True, blank=True)
+    qbAway = models.PositiveSmallIntegerField(null=True, blank=True)
     homeCaptain = models.CharField(max_length=100, blank=True)
     awayCaptain = models.CharField(max_length=100, blank=True)
     hasFinalScoreChanged = models.BooleanField(default=False)

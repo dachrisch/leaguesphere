@@ -144,6 +144,13 @@ export interface GameSetup {
   direction?: string;
   fhPossession?: string;
   /**
+   * The quarterback each team starts with (jersey number). A typing aid: the
+   * Tracking screen remembers it per device and pre-selects it on every pass
+   * and try. `null`/omitted means "not chosen".
+   */
+  qbHome?: number | null;
+  qbAway?: number | null;
+  /**
    * The device lock (Task 16). Write-only: `PUT` names the device that takes
    * the lock, `GET` never sends it back. A read that names its own device
    * learns the answer from {@link locked_elsewhere} instead.
