@@ -123,6 +123,11 @@ def _seed_game_today(with_crew: bool = True) -> Gameinfo:
     return game
 
 
+def _possession_button(page: Page, team_name: str):
+    """The team row is the possession control: its name carries the score."""
+    return page.get_by_role("button", name=re.compile(rf"^{re.escape(team_name)}, "))
+
+
 def _login(page: Page, live_server_url: str) -> None:
     get_user_model().objects.create_user(
         username=USERNAME, password=PASSWORD, email="official@example.com"
@@ -209,11 +214,9 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
         timeout=30000
     )
     expect(page.get_by_role("dialog")).to_have_count(0)
-    # The possession switch reads the team *names*, and its pressed side proves
-    # the opening possession was accepted (the list label would have 400'd).
-    possessing = page.get_by_role("group", name="Ballbesitz").get_by_role(
-        "button", name=HOME_NAME, exact=True
-    )
+    # The team row is the possession control; its pressed state proves the
+    # opening possession was accepted (the list label would have 400'd).
+    possessing = _possession_button(page, HOME_NAME)
     expect(possessing).to_be_visible()
     expect(possessing).to_have_attribute("aria-pressed", "true")
 
@@ -245,12 +248,8 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
 
     # A team is one row: possession left, its timeout right, both at least one
     # touch target (44 px) high and never stacked (meeting 2026-11-07).
-    possession = page.get_by_role("group", name="Ballbesitz").get_by_role(
-        "button", name=HOME_NAME, exact=True
-    )
-    team_timeout = page.get_by_role(
-        "button", name=f"Auszeit {HOME_NAME}", exact=True
-    )
+    possession = _possession_button(page, HOME_NAME)
+    team_timeout = page.get_by_role("button", name=f"Auszeit {HOME_NAME}", exact=True)
     for target, label in ((possession, "possession"), (team_timeout, "timeout")):
         box = target.bounding_box()
         assert box is not None, label
@@ -271,9 +270,7 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     # The two teams are separate groups: the other team's possession button
     # starts at least 8px after this team's timeout ends, so one tap cannot
     # slip from a timeout into the other side's possession button.
-    away_possession = page.get_by_role("group", name="Ballbesitz").get_by_role(
-        "button", name=AWAY_NAME, exact=True
-    )
+    away_possession = _possession_button(page, AWAY_NAME)
     away_box = away_possession.bounding_box()
     assert away_box is not None
     gap = away_box["x"] - (timeout_box["x"] + timeout_box["width"])
@@ -283,9 +280,7 @@ def test_scorecard_v2_flow_from_gameday_to_result(live_server, page: Page):
     # must offer the number field instead of blocking the game.
     # Two numeric fields live in the sheet now (jersey and yards): pick the
     # jersey one by its label.
-    number = touchdown_sheet.get_by_role(
-        "textbox", name=re.compile(r"^Trikotnummer")
-    )
+    number = touchdown_sheet.get_by_role("textbox", name=re.compile(r"^Trikotnummer"))
     expect(number).to_be_visible()
     number.fill(str(JERSEY))
     touchdown_sheet.get_by_role("button", name="Speichern").click()
@@ -357,9 +352,7 @@ def test_scorecard_v2_start_is_refused_without_a_crew(live_server, page: Page):
     expect(blockers).to_contain_text(
         "Offizielle: Schiedsrichter fehlt – die Liga verlangt diese Position."
     )
-    expect(blockers).to_contain_text(
-        "Münzwurf gewonnen von: keine Mannschaft gewählt."
-    )
+    expect(blockers).to_contain_text("Münzwurf gewonnen von: keine Mannschaft gewählt.")
     expect(blockers).to_contain_text("Erster Ballbesitz: keine Mannschaft gewählt.")
     expect(blockers).to_contain_text("Spielrichtung: keine Seite gewählt.")
 
@@ -474,9 +467,10 @@ def _assert_same_boxes(before: dict, after: dict) -> None:
 def test_scorecard_v2_two_step_buttons_keep_their_box(live_server, page: Page):
     """The first tap arms a button in place; the second runs its second action.
 
-    Halbzeit asks once more and 1st Down offers the jersey, each in the same
-    box as before at every layout step, with the label on one line. A second
-    tap on the armed 1st Down opens the jersey dialog for the saved entry.
+    1st Down offers the jersey on its second tap, in the same box as before at
+    every layout step, with the label on one line. Halbzeit is no longer a
+    two-step button: it opens the half-time dialog (with the score and the
+    second-half facts).
     """
     game = _seed_game_today()
 
@@ -487,25 +481,20 @@ def test_scorecard_v2_two_step_buttons_keep_their_box(live_server, page: Page):
     _tap_start(page).get_by_role("button", name="Jetzt starten").click()
     expect(page.locator("button.tdbtn")).to_be_visible(timeout=30000)
 
-    # ---- Halbzeit: armed, it reads "Halbzeit starten" in the same box. ----
+    # ---- Halbzeit: the button opens the confirmation dialog now. ---------
     halftime = page.locator("button.halfbtn")
-    unarmed = _boxes(page, halftime, TWO_STEP_SIZES)
     page.set_viewport_size({"width": 1440, "height": 900})
     halftime.click()
-    expect(halftime).to_have_text("Halbzeit starten")
-    expect(halftime).to_have_class(re.compile(r"\bis-armed\b"))
-    armed = _boxes(page, halftime, TWO_STEP_SIZES)
-    _assert_same_boxes(unarmed, armed)
-    for width, height in TWO_STEP_SIZES:
-        page.set_viewport_size({"width": width, "height": height})
-        assert halftime.evaluate(TEXT_LINE_COUNT) == 1, (width, height)
-    # The window passes without a second tap: nothing was started.
-    expect(halftime).to_have_text("Halbzeit", timeout=12000)
+    dialog = page.get_by_role("dialog", name="Halbzeit")
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_text("Ballbesitz 2. Halbzeit")).to_be_visible()
+    expect(dialog.get_by_role("button", name="Halbzeit starten")).to_be_visible()
+    dialog.get_by_role("button", name="Schließen").click()
     expect(page.get_by_text("1. Halbzeit")).to_be_visible()
 
     # ---- 1st Down: saved on the first tap, the jersey on the second. ------
     page.set_viewport_size({"width": 1440, "height": 900})
-    first = page.locator(".tracking .action").first
+    first = page.locator(".tracking .action-grid > .action").nth(7)
     unarmed = _boxes(page, first, TWO_STEP_SIZES)
     page.set_viewport_size({"width": 1440, "height": 900})
     first.click()

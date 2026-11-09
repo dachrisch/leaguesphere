@@ -2063,16 +2063,6 @@ export default function TrackingScreen({
             </span>
           </button>
         </div>
-        <div className="playrow">
-          <button
-            className="playbtn playbtn-compact"
-            disabled={composerDisabled}
-            onClick={() => openSheet({ kind: "challenge" })}
-            type="button"
-          >
-            <span>Challenge</span>
-          </button>
-        </div>
       </section>
         <div
           aria-label="Spielabschluss"

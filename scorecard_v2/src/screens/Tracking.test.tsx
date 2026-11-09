@@ -1403,7 +1403,13 @@ describe("Tracking challenge", () => {
     renderTracking();
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Challenge" }));
+    await user.click(screen.getByRole("button", { name: "Mehr" }));
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Mehr" })).getByRole(
+        "button",
+        { name: "Challenge" },
+      ),
+    );
     const sheet = screen.getByRole("dialog", { name: "Challenge · Ravens" });
     await user.type(
       within(sheet).getByRole("textbox", { name: /Was wird gechallenget/ }),
