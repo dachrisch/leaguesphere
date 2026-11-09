@@ -34,6 +34,8 @@ import {
   geometryOf,
   isTurnoverOnDowns,
   spotText,
+  TRY_ONE,
+  TRY_TWO,
 } from "../app/drive";
 import { readQuarterback, rememberQuarterback } from "../app/quarterback";
 import { timeoutBudget, timeoutText } from "../app/timeouts";
@@ -1038,6 +1040,20 @@ export default function TrackingScreen({
     () => driveAfter(rows, geometry, possessionName),
     [rows, geometry, possessionName],
   );
+  /**
+   * The spot of the open try: B5 for one point, B10 for two, moved by a penalty
+   * the log enforced since the touchdown. `drive.ballOn` carries the enforced
+   * spot, but a stale log read can still show the pre-touchdown series, so the
+   * delta only applies while the drive really is a try.
+   */
+  const trySpot = ((): number => {
+    const points = patTry?.points === 2 ? 2 : 1;
+    const base = geometry.fieldLength - (points === 2 ? TRY_TWO : TRY_ONE);
+    if (drive.phase !== "try" || drive.ballOn === null) {
+      return base;
+    }
+    return base + (drive.ballOn - (geometry.fieldLength - TRY_ONE));
+  })();
   /** A marker in the log, so the tile flips to +1 XP after every reload. */
   const overtime = rows.some(
     (row) => !row.isDeleted && row.event === "Overtime startet",
@@ -1810,8 +1826,9 @@ export default function TrackingScreen({
                   ? ""
                   : ` · ${spotText(drive.ballOn, geometry)}`
               }`
-            : // the try is its own down: from B5 (one point) or B10 (two)
-              `Versuch · B${patTry?.points === 2 ? 10 : 5}`}
+            : // the try is its own down: from B5 (one point) or B10 (two),
+              // moved by a penalty the log enforced during the try
+              `Versuch · ${spotText(trySpot, geometry)}`}
         </p>
         <button
           className="driveset"

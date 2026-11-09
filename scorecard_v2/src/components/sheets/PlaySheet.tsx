@@ -6,6 +6,7 @@ import {
   DEFAULT_GEOMETRY,
   driveText,
   FIELD_LENGTH,
+  isTurnoverOnDowns,
   MIDFIELD,
   type DriveState,
   type Geometry,
@@ -214,6 +215,7 @@ export function resultOptions(type: PlayType): {
       { value: "gain", label: "Complete" },
       { value: "incomplete", label: "Incomplete" },
       { value: "touchdown", label: "Touchdown" },
+      { value: "safety", label: "Safety" },
       { value: "interception", label: "Interception" },
     ];
   }
@@ -252,7 +254,8 @@ export function stepsFor(type: PlayType, result: PlayResult): Step[] {
     steps.push("interception");
   } else {
     steps.push("player");
-    if (type !== "sack") {
+    // A touchdown has no tackle to record: the runner/receiver scored.
+    if (type !== "sack" && result !== "touchdown") {
       steps.push("defender");
     }
   }
@@ -374,18 +377,24 @@ export default function PlaySheet({
   const qbMissing = type === "pass" && qb === null;
 
   const next = drive === null ? null : advance(drive, playYards, geometry);
+  // A failed fourth down flips the ball; `advance` alone would show the new
+  // series as if the offence still had it. Name the turnover instead.
+  const turnoverOnDowns =
+    drive !== null && isTurnoverOnDowns(drive, playYards, geometry);
   const preview =
     result === "touchdown"
       ? "→ Touchdown"
       : result === "safety"
         ? "→ Safety"
-        : next === null
-          ? null
-          : `→ ${driveText(next)}${
-              spotText(next.ballOn, geometry) === null
-                ? ""
-                : ` · ${spotText(next.ballOn, geometry)}`
-            }`;
+        : turnoverOnDowns
+          ? "→ Turnover on downs"
+          : next === null
+            ? null
+            : `→ ${driveText(next)}${
+                spotText(next.ballOn, geometry) === null
+                  ? ""
+                  : ` · ${spotText(next.ballOn, geometry)}`
+              }`;
 
   const stepReady =
     step === "distance"
