@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.14.7](https://github.com/dachrisch/leaguesphere/compare/v5.14.6...v5.14.7) (2026-11-10)
+
+
+### Bug Fixes
+
+* **security:** stop echoing framework exception text in responses ([cd6463b](https://github.com/dachrisch/leaguesphere/commit/cd6463b081ed18f5cb4987dcf8e58d8e5ccdc6d5))
+* **security:** stop echoing framework exception text in responses ([b02837a](https://github.com/dachrisch/leaguesphere/commit/b02837a64375776519d53a07d391bf6ab331985a))
+
+
+### Documentation
+
+* **guides:** how to triage the code-scanning alerts ([f625d84](https://github.com/dachrisch/leaguesphere/commit/f625d846604e4e6c25aef759edbf9afbe7988bee))
+
 ## [5.14.6](https://github.com/dachrisch/leaguesphere/compare/v5.14.5...v5.14.6) (2026-11-10)
 
 
