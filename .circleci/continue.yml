@@ -633,8 +633,9 @@ jobs:
   # Three browser suites, three jobs. They used to share one container and run
   # back to back (~4m25s of a ~6m PR run, 80% of the wall clock). Split, each
   # suite pays its own ~1m20s setup and the phase is as long as the slowest
-  # suite (~2m45s). Nothing had to keep them together: each builds only its
-  # own app and gets its own MySQL sidecar.
+  # suite (~2m45s). Nothing had to keep them together: each builds only the
+  # app it drives (the designer suite drives the scorecard SPA for its login
+  # and result flow, so it builds that one too).
   #
   # Every one of them is always-run (no `needed:`), so a docs-only push still
   # pays the checkout - that is the price of a required context that covers
@@ -714,8 +715,15 @@ jobs:
     steps:
       - checkout
       - setup_uv
+      # test_designer_scorecard_flow.py logs in through /scorecard/ and reads
+      # its result screen, so this job needs the scorecard bundle as well.
+      - node/install-packages:
+          app-dir: scorecard/
       - node/install-packages:
           app-dir: gameday_designer/
+      - run:
+          name: Build scorecard
+          command: npm --prefix scorecard/ run build
       - run:
           name: Build gameday_designer
           command: npm --prefix gameday_designer/ run build
