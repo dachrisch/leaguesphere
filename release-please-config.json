@@ -6,15 +6,15 @@
       "extra-files": [
         {
           "type": "generic",
-          "path": "league_manager/__init__.py",
-          "search_pattern": "__version__ = \"(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)\""
+          "path": "league_manager/__init__.py"
         },
         {"type": "json", "path": "journey_dashboard/package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "liveticker/package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "passcheck/package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "scorecard/package.json", "jsonpath": "$.version"},
         {"type": "json", "path": "scorecard_v2/package.json", "jsonpath": "$.version"},
-        {"type": "json", "path": "gameday_designer/package.json", "jsonpath": "$.version"}
+        {"type": "json", "path": "gameday_designer/package.json", "jsonpath": "$.version"},
+        {"type": "json", "path": "share/package.json", "jsonpath": "$.version"}
       ]
     }
   }
