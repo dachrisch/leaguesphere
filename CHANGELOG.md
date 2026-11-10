@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.5](https://github.com/dachrisch/leaguesphere/compare/v5.14.4...v5.14.5) (2026-11-10)
+
+
+### Documentation
+
+* **ci:** required checks are full_gate, scope_coverage and check_version_sequence ([c733eba](https://github.com/dachrisch/leaguesphere/commit/c733eba50f40a35bb9d53ab8375f8c1a7c15e22f))
+
 ## [5.14.4](https://github.com/dachrisch/leaguesphere/compare/v5.14.3...v5.14.4) (2026-11-10)
 
 
