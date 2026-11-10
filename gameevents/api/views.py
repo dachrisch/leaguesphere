@@ -268,8 +268,11 @@ class GameEventsAPIView(APIView):
             )
         except InvalidEnvelope as error:
             return Response({"detail": str(error)}, status=HTTPStatus.BAD_REQUEST)
-        except Team.DoesNotExist as error:
-            raise NotFound(detail=str(error))
+        except Team.DoesNotExist:
+            # "Team matching query does not exist: 4" names the ORM object
+            # and the id; the client only needs to know the team is unknown
+            # (CWE-209).
+            raise NotFound(detail="team not found")
 
         return _response(
             outcome.state,
