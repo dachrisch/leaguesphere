@@ -22,6 +22,18 @@ SCRIPT = os.path.join(
 )
 
 
+def _header_safe(value: str) -> str:
+    """A header value must not carry CR/LF.
+
+    ``BaseHTTPRequestHandler.path`` is client-controlled, so reflecting it
+    into ``Location`` verbatim would let a request smuggle a second header
+    (CWE-113). The mock only serves a probe, but it should not model the
+    vulnerability either.
+    """
+
+    return value.replace("\r", "").replace("\n", "")
+
+
 class _AppHandler(http.server.BaseHTTPRequestHandler):
     """Mimics Django behind a TLS-terminating proxy with SECURE_SSL_REDIRECT."""
 
@@ -30,7 +42,7 @@ class _AppHandler(http.server.BaseHTTPRequestHandler):
 
     def _redirect(self):
         self.send_response(301)
-        self.send_header("Location", "https://example.test" + self.path)
+        self.send_header("Location", "https://example.test" + _header_safe(self.path))
         self.end_headers()
 
     def do_GET(self):
@@ -63,6 +75,13 @@ def mock_app():
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_header_safe_strips_line_breaks():
+    """``self.path`` is client-controlled; a CR/LF in it would end the
+    ``Location`` value early and start a header of the sender's choosing."""
+
+    assert _header_safe("/login/\r\nX-Injected: 1") == "/login/X-Injected: 1"
 
 
 @pytest.mark.skipif(shutil.which("curl") is None, reason="curl not installed")

@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.db import connection
+from django.db import connection, DataError
 from django.test import TestCase, Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django_webtest import WebTest, DjangoWebtestResponse
@@ -1338,6 +1338,30 @@ class TestGameOfficialImportConfirmView(WebTest):
         assert f"{row_count} externe Einsätze erstellt" in content
         # Counts, not one line per created row.
         assert content.count("ID: ") == 0
+
+    def test_database_error_detail_is_logged_not_returned(self):
+        """A per-row DatabaseError names schema internals ("Data too long for
+        column ..."). Staff get the fixed message; the detail only reaches the
+        server log, never the JSON response (CWE-209)."""
+
+        def too_long(_row):
+            raise DataError("Data too long for column 'comment' at row 1")
+
+        with self.assertLogs("officials.views", level="WARNING") as logs:
+            created, errors = GameOfficialImportConfirmView._commit(
+                [{"row_number": 3}], too_long, lambda item: item
+            )
+
+        assert created == []
+        assert errors == [
+            {
+                "row_number": 3,
+                "message": "Datenbankfehler - Zeile vermutlich zu lang für ein Feld",
+            }
+        ]
+        logged = "\n".join(logs.output)
+        assert "row 3" in logged
+        assert "Data too long for column 'comment' at row 1" in logged
 
     def test_report_results_escapes_error_detail(self):
         """Per-row error messages can echo back CSV cell content."""

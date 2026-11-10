@@ -26,7 +26,7 @@ from gameevents.tests.api.support import (
 )
 from gameevents.tests.golden_cases import GOLDEN_CASES, expected_signature
 from gamedays.constants import API_GAME_DEVICE
-from gamedays.models import Gameresult, GameSetup, TeamLog
+from gamedays.models import Gameresult, GameSetup, Team, TeamLog
 
 
 def envelope(
@@ -354,6 +354,26 @@ def test_a_game_id_that_contradicts_the_url_is_rejected(client):
     )
 
     assert response.status_code == 400
+    assert GameEvent.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_an_unknown_team_is_a_404_without_the_orm_detail(client):
+    """``Team.DoesNotExist`` names the ORM object it looked for. The client
+    gets a fixed message; the exception must not be echoed (CWE-209)."""
+
+    game, _home, _away = make_game("canonical-unknown-team")
+    login(client)
+    unknown_team_id = Team.objects.order_by("-pk").first().pk + 1
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(game, unknown_team_id, [{"name": "Touchdown", "player": "7"}]),
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "team not found"}
     assert GameEvent.objects.count() == 0
 
 

@@ -463,8 +463,10 @@ def _entry_error_message(error: Exception) -> str:
         # Real production data has rows a model field can't hold as-is
         # (e.g. a free-text comment longer than 100 chars) - surfaced as
         # a per-row failure like any other, not a 500 that aborts the
-        # whole batch.
-        return f"Datenbankfehler - Zeile vermutlich zu lang für ein Feld ({error})"
+        # whole batch. The driver's own text names schema internals
+        # ("Data too long for column ..."), so ``_commit`` logs it with
+        # the row number instead; the response stays generic (CWE-209).
+        return "Datenbankfehler - Zeile vermutlich zu lang für ein Feld"
     if error.args:
         return str(error.args[0])
     return str(error)
@@ -711,6 +713,12 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
                 AmbiguousGameOfficialError,
                 DatabaseError,
             ) as error:
+                if isinstance(error, DatabaseError):
+                    logger.warning(
+                        "Game official import row %s hit a database error",
+                        row_number,
+                        exc_info=error,
+                    )
                 errors.append(
                     {
                         "row_number": row_number,
