@@ -57,16 +57,19 @@ every status context reports. Setup is split into two files driven by the
   job in its no-op form (`scoped_job` with `needed: false`, which prints
   one line and passes). They report in seconds; nothing is tested, no
   image is built and nothing is booted.
-- **Required checks always report.** The ruleset requires `full_gate`,
-  `scope_coverage`, `check_version_sequence`, `e2e`, `check_migrations`
-  and `test_compose_network`:
+- **Required checks always report.** The ruleset requires exactly the
+  contexts that are created on every branch push: `full_gate`,
+  `scope_coverage` and `check_version_sequence`.
   - `full_gate` is the terminal context of the matrix. Every job it fans
     in is always scheduled (no-ops included), so it exists on every push
     and is green only when every suite the diff scoped in passed. It also
-    gates the deploys.
+    gates the deploys, so `e2e`, `check_migrations`,
+    `test_compose_network` and the image tests are covered through it
+    rather than required one by one.
   - `scope_coverage` and `check_version_sequence` are unconditional jobs
     that run only on branches; they are PR-time guards, so they are
-    deliberately not part of the deploy matrix.
+    deliberately not part of the deploy matrix and are required on their
+    own.
   - `e2e` and `check_migrations` are unconditional jobs.
     `check_migrations` runs the checkout itself against an ephemeral
     MariaDB (`cimg/mysql` sidecar) instead of the backend image, so making
