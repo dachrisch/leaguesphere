@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.14.4](https://github.com/dachrisch/leaguesphere/compare/v5.14.3...v5.14.4) (2026-11-10)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @redux-devtools/extension to v4.0.1 ([#2352](https://github.com/dachrisch/leaguesphere/issues/2352)) ([7c7c4fd](https://github.com/dachrisch/leaguesphere/commit/7c7c4fd7a4d0f2ab670b81fb50c288fc30186152))
+* **deps:** update dependency @testing-library/user-event to v14.6.9 ([#2353](https://github.com/dachrisch/leaguesphere/issues/2353)) ([705dc7c](https://github.com/dachrisch/leaguesphere/commit/705dc7c6e3fa00acac2e5c68a4bda867999c1397))
+* **deps:** update dependency i18next to v27.1.1 ([#2354](https://github.com/dachrisch/leaguesphere/issues/2354)) ([e5efb96](https://github.com/dachrisch/leaguesphere/commit/e5efb96123ab3d574a08475ecf6c9b330914079f))
+* **deps:** update dependency mysqlclient to v2.3.1 ([#2355](https://github.com/dachrisch/leaguesphere/issues/2355)) ([051b7ce](https://github.com/dachrisch/leaguesphere/commit/051b7ce8a8a54dac461a24a0b1a1ae50cb887785))
+* **deps:** update dependency typescript-eslint to v8.72.2 ([#2349](https://github.com/dachrisch/leaguesphere/issues/2349)) ([df4e762](https://github.com/dachrisch/leaguesphere/commit/df4e7627408ac2a0690998655fc9e0a869d51fca))
+* **deps:** update js deps ([#2350](https://github.com/dachrisch/leaguesphere/issues/2350)) ([8566f64](https://github.com/dachrisch/leaguesphere/commit/8566f649118c6b1e7e29969cd80af4a0b8763191))
+* **scorecard:** format the timeout time as mm:ss ([c0976aa](https://github.com/dachrisch/leaguesphere/commit/c0976aa833fc94b0a81bcc6418c1789c6bd7903c))
+* **scorecard:** format the timeout time as mm:ss ([060cb7a](https://github.com/dachrisch/leaguesphere/commit/060cb7ae5095b9b6cb287d44bf40a82338629bbd))
+
 ## [5.14.3](https://github.com/dachrisch/leaguesphere/compare/v5.14.2...v5.14.3) (2026-11-09)
 
 
