@@ -2,10 +2,22 @@
 import React from 'react';
 import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Timeout from '../Timeout';
+import Timeout, {formatGameTime} from '../Timeout';
 import { vi } from 'vitest';
 
 const onSubmitMock = vi.fn();
+
+describe('formatGameTime', () => {
+  it('should pad both parts to mm:ss', () => {
+    expect(formatGameTime('0', '1')).toBe('00:01');
+    expect(formatGameTime('00', '01')).toBe('00:01');
+    expect(formatGameTime('12', '34')).toBe('12:34');
+  });
+  it('should treat a missing part as zero', () => {
+    expect(formatGameTime('', '')).toBe('00:00');
+    expect(formatGameTime('3', '')).toBe('03:00');
+  });
+});
 
 
 const setup = () => {
@@ -31,11 +43,27 @@ describe('Timeout component', () => {
     await user.click(screen.getByRole('button', {name: 'Fertig'}));
     expect(global.bootstrap.Modal.getInstance().hide).toHaveBeenCalled();
     expect(screen.getByTestId('timeoutButton')).toBeDisabled();
-    expect(screen.getByText('0:1')).toBeInTheDocument();
+    expect(screen.getByText('00:01')).toBeInTheDocument();
     expect(onSubmitMock.mock.calls[0][0]).toEqual({
       team: 'TeamName',
       event: [
-        {name: 'Auszeit', input: '0:1'},
+        {name: 'Auszeit', input: '00:01'},
+      ],
+    });
+  });
+  it('should pad single-digit input to mm:ss', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByTestId('timeoutButton'));
+    await user.type(screen.getByPlaceholderText('Minuten'), '0');
+    await user.type(screen.getByPlaceholderText('Sekunden'), '1');
+    await user.click(screen.getByRole('button', {name: 'Fertig'}));
+    expect(screen.getByTestId('timeoutButton')).toBeDisabled();
+    expect(screen.getByText('00:01')).toBeInTheDocument();
+    expect(onSubmitMock.mock.calls[0][0]).toEqual({
+      team: 'TeamName',
+      event: [
+        {name: 'Auszeit', input: '00:01'},
       ],
     });
   });

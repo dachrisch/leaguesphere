@@ -4,6 +4,15 @@ import PropTypes from 'prop-types';
 import {FaCheck, FaStopwatch, FaTimes} from 'react-icons/fa';
 import Timer from '../layout/Timer';
 
+/**
+ * The timeout time as `mm:ss` — the format the backend and Scorecard v2 use.
+ * Empty parts count as `0` and every part is padded, so the rendered label and
+ * the submitted `input` are the same whether the user types `0` / `1` or
+ * `00` / `01`.
+ */
+export const formatGameTime = (minutes, seconds) =>
+  `${(minutes || '0').padStart(2, '0')}:${(seconds || '0').padStart(2, '0')}`;
+
 const Timeout = (props) => {
   const {teamName = 'TeamName', modId, isSecondHalf, onSubmit: updateParent} = props;
   const [timerIsOn, setTimerIsOn] = useState(false);
@@ -28,7 +37,7 @@ const Timeout = (props) => {
     updateParent({
       team: teamName,
       event: [
-        {name: 'Auszeit', input: `${gameTimeMinutes}:${gameTimeSeconds}`},
+        {name: 'Auszeit', input: formatGameTime(gameTimeMinutes, gameTimeSeconds)},
       ],
     });
 
@@ -49,7 +58,7 @@ const Timeout = (props) => {
       {gameTimeMinutes &&
       <button type="button" className="btn btn-secondary timeout"
         disabled data-testid='timeoutButton'>
-        {`${gameTimeMinutes}:${gameTimeSeconds}`}
+        {formatGameTime(gameTimeMinutes, gameTimeSeconds)}
       </button>
       }
       <div className="modal fade"
