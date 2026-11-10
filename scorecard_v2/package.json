@@ -1,6 +1,6 @@
 {
   "name": "scorecard-v2",
-  "version": "5.14.5",
+  "version": "5.14.6",
   "private": true,
   "type": "module",
   "scripts": {

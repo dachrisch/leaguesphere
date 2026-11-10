@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.6](https://github.com/dachrisch/leaguesphere/compare/v5.14.5...v5.14.6) (2026-11-10)
+
+
+### Bug Fixes
+
+* unblock the release pipeline and cut PR wall clock by a third ([#2359](https://github.com/dachrisch/leaguesphere/issues/2359)) ([7e8cb85](https://github.com/dachrisch/leaguesphere/commit/7e8cb855799c0ce116056ab881899bf08960ff81))
+
 ## [5.14.5](https://github.com/dachrisch/leaguesphere/compare/v5.14.4...v5.14.5) (2026-11-10)
 
 
