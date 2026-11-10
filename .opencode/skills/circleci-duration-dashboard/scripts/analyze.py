@@ -27,13 +27,16 @@ from datetime import datetime
 # Job dependency graph for the PR/branch workflow (from .circleci/continue.yml).
 # Only jobs that gate other jobs need an entry; every other job starts at t0.
 DEPS = {
-    "test_backend_image": ["build_backend", "e2e"],
-    "test_frontend_image": ["build_frontend", "e2e"],
+    "test_backend_image": ["build_backend"],
+    "test_frontend_image": ["build_frontend"],
     "test_compose_network": ["build_backend", "build_frontend", "check_migrations"],
     "full_gate": ["python-core", "python-gamedays", "python-officials", "python-live",
                   "python-designer", "python-cross", "scorecard_js", "scorecard_v2_js",
                   "liveticker_js", "passcheck_js", "gameday_designer_js",
-                  "journey_dashboard_js", "share_js", "e2e", "check_migrations",
+                  "journey_dashboard_js", "share_js",
+                  "e2e_scorecard", "e2e_scorecard_v2", "e2e_designer",
+                  "e2e",  # pre-split runs still in the 35-day window
+                  "check_migrations",
                   "build_backend", "build_frontend", "test_backend_image",
                   "test_frontend_image", "test_compose_network"],
 }
@@ -41,6 +44,9 @@ DEPS = {
 # Human labels for critical-path phases (grouped; unknown jobs keep their name).
 JOB_LABELS = {
     "e2e": "e2e browser suite",
+    "e2e_scorecard": "e2e browser suite",
+    "e2e_scorecard_v2": "e2e browser suite",
+    "e2e_designer": "e2e browser suite",
     "test_backend_image": "image smoke test",
     "test_frontend_image": "image smoke test",
     "test_compose_network": "compose network",
