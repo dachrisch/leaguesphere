@@ -85,6 +85,51 @@ commands:
             source $BASH_ENV
             uv lock
 
+  # Report-on-every-push wrapper for a path-scoped job.
+  #
+  # CI is path-scoped (docs/topics/deployment/scoped-ci.md): a diff that
+  # touches no scorecard files has nothing to test there. Filtering the
+  # job out (`filters: "(pipeline.parameters.run-x == true)"`) is the
+  # obvious way to skip it — but a job that never runs publishes *no*
+  # status context, so the branch ruleset could not require it: a red
+  # scorecard_js stayed invisible until the release PR (#2353 → #2356).
+  #
+  # So scoped jobs are always scheduled and decide *inside*: `needed:
+  # false` skips the work in seconds and still reports a green context.
+  # `full_gate` fans in all of them, which lets the ruleset require that
+  # single context on branches: green means "every suite this diff
+  # scoped in is green".
+  #
+  # A tag pipeline always resolves to a full run; a no-op there means the
+  # scope mapping is broken, so it fails instead of turning a release
+  # green without running it (same rule as `test_compose_network`).
+  scoped_job:
+    parameters:
+      job_name:
+        type: string
+      needed:
+        type: boolean
+        default: true
+      steps:
+        type: steps
+    steps:
+      - when:
+          condition: << parameters.needed >>
+          steps:
+            - steps: << parameters.steps >>
+      - unless:
+          condition: << parameters.needed >>
+          steps:
+            - run:
+                name: << parameters.job_name >> is not in this diff's scope
+                command: |
+                  if [ -n "${CIRCLE_TAG:-}" ]; then
+                    echo "<< parameters.job_name >> was scoped out of tag pipeline ${CIRCLE_TAG}." >&2
+                    echo "A release must run the full matrix - scope-mapping.txt or this workflow is broken." >&2
+                    exit 1
+                  fi
+                  echo "<< parameters.job_name >> is not affected by this diff - nothing to do."
+
   # Shared body for the fanned-out python shard jobs. Each shard checks
   # out the full repo (cross-app imports need the code) but runs only
   # its own pytest paths. Scopes are documented in
@@ -170,6 +215,10 @@ jobs:
   # Shard → paths mapping is documented in
   # docs/topics/deployment/scoped-ci.md.
   python-core:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/python:3.15.2
       - image: cimg/mysql:26.10
@@ -179,14 +228,22 @@ jobs:
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
-      - checkout
-      - setup_uv
-      - python_shard_test:
-          paths: "league_manager/tests/ share/tests/ home/tests/ dbaccess/tests/"
-          junit: "test-results-core.xml"
-          cov_flag: "python-core"
+      - scoped_job:
+          job_name: python-core
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - setup_uv
+            - python_shard_test:
+                paths: "league_manager/tests/ share/tests/ home/tests/ dbaccess/tests/"
+                junit: "test-results-core.xml"
+                cov_flag: "python-core"
 
   python-gamedays:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/python:3.15.2
       - image: cimg/mysql:26.10
@@ -196,14 +253,22 @@ jobs:
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
-      - checkout
-      - setup_uv
-      - python_shard_test:
-          paths: "gamedays/ league_table/ gameevents/"
-          junit: "test-results-gamedays.xml"
-          cov_flag: "python-gamedays"
+      - scoped_job:
+          job_name: python-gamedays
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - setup_uv
+            - python_shard_test:
+                paths: "gamedays/ league_table/ gameevents/"
+                junit: "test-results-gamedays.xml"
+                cov_flag: "python-gamedays"
 
   python-officials:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/python:3.15.2
       - image: cimg/mysql:26.10
@@ -213,14 +278,22 @@ jobs:
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
-      - checkout
-      - setup_uv
-      - python_shard_test:
-          paths: "officials/tests/ teammanager/"
-          junit: "test-results-officials.xml"
-          cov_flag: "python-officials"
+      - scoped_job:
+          job_name: python-officials
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - setup_uv
+            - python_shard_test:
+                paths: "officials/tests/ teammanager/"
+                junit: "test-results-officials.xml"
+                cov_flag: "python-officials"
 
   python-live:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/python:3.15.2
       - image: cimg/mysql:26.10
@@ -230,14 +303,22 @@ jobs:
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
-      - checkout
-      - setup_uv
-      - python_shard_test:
-          paths: "liveticker/tests/ scorecard/tests.py scorecard_v2/tests/"
-          junit: "test-results-live.xml"
-          cov_flag: "python-live"
+      - scoped_job:
+          job_name: python-live
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - setup_uv
+            - python_shard_test:
+                paths: "liveticker/tests/ scorecard/tests.py scorecard_v2/tests/"
+                junit: "test-results-live.xml"
+                cov_flag: "python-live"
 
   python-designer:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/python:3.15.2
       - image: cimg/mysql:26.10
@@ -247,14 +328,22 @@ jobs:
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
-      - checkout
-      - setup_uv
-      - python_shard_test:
-          paths: "passcheck/tests/ gameday_designer/tests/ journey/tests.py journey/api/tests/ matchreport/tests/"
-          junit: "test-results-designer.xml"
-          cov_flag: "python-designer"
+      - scoped_job:
+          job_name: python-designer
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - setup_uv
+            - python_shard_test:
+                paths: "passcheck/tests/ gameday_designer/tests/ journey/tests.py journey/api/tests/ matchreport/tests/"
+                junit: "test-results-designer.xml"
+                cov_flag: "python-designer"
 
   python-cross:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/python:3.15.2
       - image: cimg/mysql:26.10
@@ -264,205 +353,265 @@ jobs:
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
-      - checkout
-      - setup_uv
-      - python_shard_test:
-          paths: "tests/ scripts/tests/"
-          junit: "test-results-cross.xml"
-          cov_flag: "python-cross"
+      - scoped_job:
+          job_name: python-cross
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - setup_uv
+            - python_shard_test:
+                paths: "tests/ scripts/tests/"
+                junit: "test-results-cross.xml"
+                cov_flag: "python-cross"
 
   scorecard_js:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     executor:
       name: node/default
       tag: "24.17"
     working_directory: ~/repo
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: scorecard/
-      - run:
-          name: "JavaScript Test Suite"
-          command: npm --prefix scorecard/ run test:run
-      - codecov/upload:
-          dir: scorecard/coverage
-          flags: scorecard
-      - run:
-          name: "JavaScript Linter"
-          command: |
-            mkdir -p /tmp/eslint
-            npm --prefix scorecard/ run eslint:junit
-      - store_test_results:
-          path: /tmp/eslint
-      - run:
-          name: "JavaScript Build"
-          command: npm --prefix scorecard/ run build
+      - scoped_job:
+          job_name: scorecard_js
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - node/install-packages:
+                app-dir: scorecard/
+            - run:
+                name: "JavaScript Test Suite"
+                command: npm --prefix scorecard/ run test:run
+            - codecov/upload:
+                dir: scorecard/coverage
+                flags: scorecard
+            - run:
+                name: "JavaScript Linter"
+                command: |
+                  mkdir -p /tmp/eslint
+                  npm --prefix scorecard/ run eslint:junit
+            - store_test_results:
+                path: /tmp/eslint
+            - run:
+                name: "JavaScript Build"
+                command: npm --prefix scorecard/ run build
 
   scorecard_v2_js:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     executor:
       name: node/default
       tag: "24.17"
     working_directory: ~/repo
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: scorecard_v2/
-      - run:
-          name: "JavaScript Test Suite"
-          command: npm --prefix scorecard_v2/ run test:run
-      - codecov/upload:
-          dir: scorecard_v2/coverage
-          flags: scorecard-v2
-      - run:
-          name: "TypeScript Typecheck"
-          command: npm --prefix scorecard_v2/ run typecheck
-      - run:
-          name: "JavaScript Linter"
-          command: |
-            mkdir -p /tmp/eslint
-            npm --prefix scorecard_v2/ run eslint:junit
-      - store_test_results:
-          path: /tmp/eslint
-      - run:
-          name: "JavaScript Build"
-          command: |
-            npm --prefix scorecard_v2/ run build
-            # The Django template loads a classic <script>; an `es` chunk would
-            # throw on import.meta and never mount.
-            if grep -q "import.meta" scorecard_v2/static/scorecard_v2/js/scorecard_v2.js; then
-              echo "IIFE bundle must not contain import.meta" >&2
-              exit 1
-            fi
+      - scoped_job:
+          job_name: scorecard_v2_js
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - node/install-packages:
+                app-dir: scorecard_v2/
+            - run:
+                name: "JavaScript Test Suite"
+                command: npm --prefix scorecard_v2/ run test:run
+            - codecov/upload:
+                dir: scorecard_v2/coverage
+                flags: scorecard-v2
+            - run:
+                name: "TypeScript Typecheck"
+                command: npm --prefix scorecard_v2/ run typecheck
+            - run:
+                name: "JavaScript Linter"
+                command: |
+                  mkdir -p /tmp/eslint
+                  npm --prefix scorecard_v2/ run eslint:junit
+            - store_test_results:
+                path: /tmp/eslint
+            - run:
+                name: "JavaScript Build"
+                command: |
+                  npm --prefix scorecard_v2/ run build
+                  # The Django template loads a classic <script>; an `es` chunk would
+                  # throw on import.meta and never mount.
+                  if grep -q "import.meta" scorecard_v2/static/scorecard_v2/js/scorecard_v2.js; then
+                    echo "IIFE bundle must not contain import.meta" >&2
+                    exit 1
+                  fi
 
   liveticker_js:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     executor:
       name: node/default
       tag: "24.17"
     working_directory: ~/repo
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: liveticker/
-      - run:
-          name: "JavaScript Test Suite"
-          command: npm --prefix liveticker/ run test:run
-      - codecov/upload:
-          dir: liveticker/coverage
-          flags: liveticker
-      - run:
-          name: "JavaScript Linter"
-          command: |
-            mkdir -p /tmp/eslint
-            npm --prefix liveticker/ run eslint:junit
-      - store_test_results:
-          path: /tmp/eslint
-      - run:
-          name: "JavaScript Build"
-          command: npm --prefix liveticker/ run build
+      - scoped_job:
+          job_name: liveticker_js
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - node/install-packages:
+                app-dir: liveticker/
+            - run:
+                name: "JavaScript Test Suite"
+                command: npm --prefix liveticker/ run test:run
+            - codecov/upload:
+                dir: liveticker/coverage
+                flags: liveticker
+            - run:
+                name: "JavaScript Linter"
+                command: |
+                  mkdir -p /tmp/eslint
+                  npm --prefix liveticker/ run eslint:junit
+            - store_test_results:
+                path: /tmp/eslint
+            - run:
+                name: "JavaScript Build"
+                command: npm --prefix liveticker/ run build
 
   passcheck_js:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     executor:
       name: node/default
       tag: "24.17"
     working_directory: ~/repo
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: passcheck/
-      - run:
-          name: "JavaScript Test Suite"
-          command: npm --prefix passcheck/ run test:run
-      - codecov/upload:
-          dir: passcheck/coverage
-          flags: passcheck
-      - run:
-          name: "TypeScript Typecheck"
-          command: npm --prefix passcheck/ run typecheck
-      - run:
-          name: "JavaScript Linter"
-          command: |
-            mkdir -p /tmp/eslint
-            npm --prefix passcheck/ run eslint:junit
-      - store_test_results:
-          path: /tmp/eslint
-      - run:
-          name: "JavaScript Build"
-          command: npm --prefix passcheck/ run build
+      - scoped_job:
+          job_name: passcheck_js
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - node/install-packages:
+                app-dir: passcheck/
+            - run:
+                name: "JavaScript Test Suite"
+                command: npm --prefix passcheck/ run test:run
+            - codecov/upload:
+                dir: passcheck/coverage
+                flags: passcheck
+            - run:
+                name: "TypeScript Typecheck"
+                command: npm --prefix passcheck/ run typecheck
+            - run:
+                name: "JavaScript Linter"
+                command: |
+                  mkdir -p /tmp/eslint
+                  npm --prefix passcheck/ run eslint:junit
+            - store_test_results:
+                path: /tmp/eslint
+            - run:
+                name: "JavaScript Build"
+                command: npm --prefix passcheck/ run build
 
   gameday_designer_js:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     executor:
       name: node/default
       tag: "24.17"
     working_directory: ~/repo
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: gameday_designer/
-      - run:
-          name: "JavaScript Test Suite"
-          command: npm --prefix gameday_designer/ run test:run
-      - codecov/upload:
-          dir: gameday_designer/coverage
-          flags: gameday_designer
-      - run:
-          name: "TypeScript Typecheck"
-          command: npm --prefix gameday_designer/ run typecheck
-      - run:
-          name: "JavaScript Linter"
-          command: npm --prefix gameday_designer/ run eslint
-      - run:
-          name: "JavaScript Build"
-          command: npm --prefix gameday_designer/ run build
+      - scoped_job:
+          job_name: gameday_designer_js
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - node/install-packages:
+                app-dir: gameday_designer/
+            - run:
+                name: "JavaScript Test Suite"
+                command: npm --prefix gameday_designer/ run test:run
+            - codecov/upload:
+                dir: gameday_designer/coverage
+                flags: gameday_designer
+            - run:
+                name: "TypeScript Typecheck"
+                command: npm --prefix gameday_designer/ run typecheck
+            - run:
+                name: "JavaScript Linter"
+                command: npm --prefix gameday_designer/ run eslint
+            - run:
+                name: "JavaScript Build"
+                command: npm --prefix gameday_designer/ run build
 
   journey_dashboard_js:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     executor:
       name: node/default
       tag: "24.17"
     working_directory: ~/repo
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: journey_dashboard/
-      - run:
-          name: "JavaScript Test Suite"
-          command: npm --prefix journey_dashboard/ run test:run
-      - codecov/upload:
-          dir: journey_dashboard/coverage
-          flags: journey_dashboard
-      - run:
-          name: "TypeScript Typecheck"
-          command: npm --prefix journey_dashboard/ run typecheck
-      - run:
-          name: "JavaScript Linter"
-          command: |
-            mkdir -p /tmp/eslint
-            npm --prefix journey_dashboard/ run eslint:junit
-      - store_test_results:
-          path: /tmp/eslint
-      - run:
-          name: "JavaScript Build"
-          command: npm --prefix journey_dashboard/ run build
+      - scoped_job:
+          job_name: journey_dashboard_js
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - node/install-packages:
+                app-dir: journey_dashboard/
+            - run:
+                name: "JavaScript Test Suite"
+                command: npm --prefix journey_dashboard/ run test:run
+            - codecov/upload:
+                dir: journey_dashboard/coverage
+                flags: journey_dashboard
+            - run:
+                name: "TypeScript Typecheck"
+                command: npm --prefix journey_dashboard/ run typecheck
+            - run:
+                name: "JavaScript Linter"
+                command: |
+                  mkdir -p /tmp/eslint
+                  npm --prefix journey_dashboard/ run eslint:junit
+            - store_test_results:
+                path: /tmp/eslint
+            - run:
+                name: "JavaScript Build"
+                command: npm --prefix journey_dashboard/ run build
 
   share_js:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     executor:
       name: node/default
       tag: "24.17"
     working_directory: ~/repo
     steps:
-      - checkout
-      - node/install-packages:
-          app-dir: share/
-      - run:
-          name: "JavaScript Test Suite"
-          command: npm --prefix share/ run test:run
-      - run:
-          name: "TypeScript Typecheck"
-          command: npm --prefix share/ run typecheck
-      - run:
-          name: "JavaScript Linter"
-          command: npm --prefix share/ run eslint
-      - run:
-          name: "JavaScript Build"
-          command: npm --prefix share/ run build
+      - scoped_job:
+          job_name: share_js
+          needed: << parameters.needed >>
+          steps:
+            - checkout
+            - node/install-packages:
+                app-dir: share/
+            - run:
+                name: "JavaScript Test Suite"
+                command: npm --prefix share/ run test:run
+            - run:
+                name: "TypeScript Typecheck"
+                command: npm --prefix share/ run typecheck
+            - run:
+                name: "JavaScript Linter"
+                command: npm --prefix share/ run eslint
+            - run:
+                name: "JavaScript Build"
+                command: npm --prefix share/ run build
 
   e2e:
     docker:
@@ -538,8 +687,9 @@ jobs:
       - image: cimg/base:stable
     working_directory: ~/repo
     steps:
-      - when:
-          condition: << parameters.needed >>
+      - scoped_job:
+          job_name: build_backend
+          needed: << parameters.needed >>
           steps:
             - checkout
             - ensure_lockfile
@@ -549,12 +699,6 @@ jobs:
             - build_docker_image:
                 dockerfile: container/app.Dockerfile
                 image_name: backend
-      - unless:
-          condition: << parameters.needed >>
-          steps:
-            - run:
-                name: No backend image build in scope for this diff
-                command: echo "Nothing to build — the diff needs no image."
 
   build_frontend:
     # Always scheduled so the required checks that depend on it always have a
@@ -567,8 +711,9 @@ jobs:
       - image: cimg/base:stable
     working_directory: ~/repo
     steps:
-      - when:
-          condition: << parameters.needed >>
+      - scoped_job:
+          job_name: build_frontend
+          needed: << parameters.needed >>
           steps:
             - checkout
             - ensure_lockfile
@@ -578,105 +723,115 @@ jobs:
             - build_docker_image:
                 dockerfile: container/nginx.Dockerfile
                 image_name: frontend
-      - unless:
-          condition: << parameters.needed >>
-          steps:
-            - run:
-                name: No frontend image build in scope for this diff
-                command: echo "Nothing to build — the diff needs no image."
 
   test_backend_image:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/base:stable
     steps:
-      - setup_remote_docker:
-          version: 20.10.24
-      - attach_workspace:
-          at: /tmp
-      - run:
-          name: Test Backend Image Health
-          command: |
-            docker load -i /tmp/docker-images/backend.tar
-            docker network create test_network
-            docker run --network test_network -d --name app mockserver/mockserver -serverPort 8000
-            
-            # Set expectations via container on same network
-            docker run --rm --network test_network curlimages/curl -s --retry 10 --retry-connrefused http://app:8000/mockserver/status
-            docker run --rm --network test_network curlimages/curl -s -X PUT \
-              --data '{"httpRequest": {"method": "GET", "path": "/"}, "httpResponse": {"statusCode": 200}}' \
-              http://app:8000/mockserver/expectation
-            docker run --rm --network test_network curlimages/curl -s -X PUT \
-              --data '{"httpRequest": {"method": "GET", "path": "/login/"}, "httpResponse": {"statusCode": 200, "headers": {"Set-Cookie": ["csrftoken=mocktoken123"]}}}' \
-              http://app:8000/mockserver/expectation
-            docker run --rm --network test_network curlimages/curl -s -X PUT \
-              --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' \
-              http://app:8000/mockserver/expectation
+      - scoped_job:
+          job_name: test_backend_image
+          needed: << parameters.needed >>
+          steps:
+            - setup_remote_docker:
+                version: 20.10.24
+            - attach_workspace:
+                at: /tmp
+            - run:
+                name: Test Backend Image Health
+                command: |
+                  docker load -i /tmp/docker-images/backend.tar
+                  docker network create test_network
+                  docker run --network test_network -d --name app mockserver/mockserver -serverPort 8000
 
-            # Test health status (envs are CI-only dummies: the prod settings
-            # guard requires all of them set, and fork PRs get no contexts;
-            # all HTTP is answered by mockserver, no real DB is ever touched)
-            docker run --rm --detach --network test_network --name test_container \
-              -e SECRET_KEY=test-image-dummy-secret-not-for-production \
-              -e MYSQL_HOST=127.0.0.1 \
-              -e MYSQL_DB_NAME=ci_dummy \
-              -e MYSQL_USER=ci_dummy \
-              -e MYSQL_PWD=ci_dummy \
-              backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
-            sleep 3
-            for i in {1..10}; do
-              status=$(docker inspect --format='{{.State.Health.Status}}' test_container)
-              echo "Health status: $status"
-              if [ "$status" = "healthy" ]; then break; fi
-              sleep 6
-            done
-            if [ "$status" != "healthy" ]; then
-              echo "Container did not become healthy"
-              exit 1
-            fi
+                  # Set expectations via container on same network
+                  docker run --rm --network test_network curlimages/curl -s --retry 10 --retry-connrefused http://app:8000/mockserver/status
+                  docker run --rm --network test_network curlimages/curl -s -X PUT \
+                    --data '{"httpRequest": {"method": "GET", "path": "/"}, "httpResponse": {"statusCode": 200}}' \
+                    http://app:8000/mockserver/expectation
+                  docker run --rm --network test_network curlimages/curl -s -X PUT \
+                    --data '{"httpRequest": {"method": "GET", "path": "/login/"}, "httpResponse": {"statusCode": 200, "headers": {"Set-Cookie": ["csrftoken=mocktoken123"]}}}' \
+                    http://app:8000/mockserver/expectation
+                  docker run --rm --network test_network curlimages/curl -s -X PUT \
+                    --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' \
+                    http://app:8000/mockserver/expectation
+
+                  # Test health status (envs are CI-only dummies: the prod settings
+                  # guard requires all of them set, and fork PRs get no contexts;
+                  # all HTTP is answered by mockserver, no real DB is ever touched)
+                  docker run --rm --detach --network test_network --name test_container \
+                    -e SECRET_KEY=test-image-dummy-secret-not-for-production \
+                    -e MYSQL_HOST=127.0.0.1 \
+                    -e MYSQL_DB_NAME=ci_dummy \
+                    -e MYSQL_USER=ci_dummy \
+                    -e MYSQL_PWD=ci_dummy \
+                    backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
+                  sleep 3
+                  for i in {1..10}; do
+                    status=$(docker inspect --format='{{.State.Health.Status}}' test_container)
+                    echo "Health status: $status"
+                    if [ "$status" = "healthy" ]; then break; fi
+                    sleep 6
+                  done
+                  if [ "$status" != "healthy" ]; then
+                    echo "Container did not become healthy"
+                    exit 1
+                  fi
 
   test_frontend_image:
+    parameters:
+      needed:
+        type: boolean
+        default: true
     docker:
       - image: cimg/base:stable
     steps:
-      - setup_remote_docker:
-          version: 20.10.24
-      - attach_workspace:
-          at: /tmp
-      - run:
-          name: Test Frontend Image Health
-          command: |
-            docker load -i /tmp/docker-images/frontend.tar
-            docker network create test_network
-            # Frontend healthcheck DOES need a backend (or mock) at http://app:8000
-            docker run --network test_network -d --name app mockserver/mockserver -serverPort 8000
-            
-            # Wait for mockserver and set expectations via container on same network
-            docker run --rm --network test_network curlimages/curl -s --retry 10 --retry-connrefused http://app:8000/mockserver/status
-            docker run --rm --network test_network curlimages/curl -s -X PUT \
-              --data '{"httpRequest": {"method": "GET", "path": "/login/"}, "httpResponse": {"statusCode": 200, "headers": {"Set-Cookie": ["csrftoken=mocktoken123"]}}}' \
-              http://app:8000/mockserver/expectation
-            docker run --rm --network test_network curlimages/curl -s -X PUT \
-              --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' \
-              http://app:8000/mockserver/expectation
-            
-            docker run --rm --detach --network test_network --name test_container frontend:latest
-            sleep 3
-            for i in {1..10}; do
-              status=$(docker inspect --format='{{.State.Health.Status}}' test_container)
-              echo "Health status: $status"
-              if [ "$status" = "healthy" ]; then break; fi
-              sleep 6
-            done
-            if [ "$status" != "healthy" ]; then
-              echo "Container did not become healthy"
-              docker logs test_container
-              exit 1
-            fi
+      - scoped_job:
+          job_name: test_frontend_image
+          needed: << parameters.needed >>
+          steps:
+            - setup_remote_docker:
+                version: 20.10.24
+            - attach_workspace:
+                at: /tmp
+            - run:
+                name: Test Frontend Image Health
+                command: |
+                  docker load -i /tmp/docker-images/frontend.tar
+                  docker network create test_network
+                  # Frontend healthcheck DOES need a backend (or mock) at http://app:8000
+                  docker run --network test_network -d --name app mockserver/mockserver -serverPort 8000
 
-            # The image must actually serve the v2 bundle (Task 22 DoD: builds and serves).
-            docker run --rm --network test_network curlimages/curl -fsS \
-              http://test_container/static/scorecard_v2/js/scorecard_v2.js > /dev/null
-            echo "scorecard_v2 bundle is served by the frontend image"
+                  # Wait for mockserver and set expectations via container on same network
+                  docker run --rm --network test_network curlimages/curl -s --retry 10 --retry-connrefused http://app:8000/mockserver/status
+                  docker run --rm --network test_network curlimages/curl -s -X PUT \
+                    --data '{"httpRequest": {"method": "GET", "path": "/login/"}, "httpResponse": {"statusCode": 200, "headers": {"Set-Cookie": ["csrftoken=mocktoken123"]}}}' \
+                    http://app:8000/mockserver/expectation
+                  docker run --rm --network test_network curlimages/curl -s -X PUT \
+                    --data '{"httpRequest": {"method": "POST", "path": "/login/"}, "httpResponse": {"statusCode": 200}}' \
+                    http://app:8000/mockserver/expectation
+
+                  docker run --rm --detach --network test_network --name test_container frontend:latest
+                  sleep 3
+                  for i in {1..10}; do
+                    status=$(docker inspect --format='{{.State.Health.Status}}' test_container)
+                    echo "Health status: $status"
+                    if [ "$status" = "healthy" ]; then break; fi
+                    sleep 6
+                  done
+                  if [ "$status" != "healthy" ]; then
+                    echo "Container did not become healthy"
+                    docker logs test_container
+                    exit 1
+                  fi
+
+                  # The image must actually serve the v2 bundle (Task 22 DoD: builds and serves).
+                  docker run --rm --network test_network curlimages/curl -fsS \
+                    http://test_container/static/scorecard_v2/js/scorecard_v2.js > /dev/null
+                  echo "scorecard_v2 bundle is served by the frontend image"
 
   # Required status check, so it is never path-scoped: a docs-only PR must
   # still report it, otherwise the required check sits in "Expected" and the
@@ -732,8 +887,9 @@ jobs:
       - image: cimg/base:stable
     working_directory: ~/repo
     steps:
-      - when:
-          condition: << parameters.needed >>
+      - scoped_job:
+          job_name: test_compose_network
+          needed: << parameters.needed >>
           steps:
             - checkout
             - setup_remote_docker:
@@ -830,20 +986,6 @@ jobs:
 
                   docker exec "$APP_CONTAINER" sh -c 'curl -f --max-time 10 https://www.google.com'
                   docker-compose -f docker-compose.ci.yaml down -v
-      - unless:
-          condition: << parameters.needed >>
-          steps:
-            - run:
-                name: Compose boot not needed for this diff
-                command: |
-                  # A tag pipeline must resolve to a full run; if it ever
-                  # resolves to empty, fail instead of reporting a release
-                  # green on a stub.
-                  if [ -n "${CIRCLE_TAG:-}" ]; then
-                    echo "Tag ${CIRCLE_TAG} resolved to an empty scope: the real compose check must run for a release." >&2
-                    exit 1
-                  fi
-                  echo "No image in scope for this diff — nothing to boot, reporting green."
 
   check_release_sequence:
     docker:
@@ -882,12 +1024,16 @@ jobs:
 
   # Fan-in for deploys: every scoped job of a full run.
   full_gate:
+    # Terminal context of the matrix: every job it fans in is always
+    # scheduled (scoped jobs no-op via `needed`), so this job runs on
+    # branch pipelines too and the ruleset can require it. Green here means
+    # every suite this diff scoped in passed; deploys require it as well.
     docker:
       - image: cimg/base:stable
     steps:
       - run:
           name: Full-run gate
-          command: echo "Every scoped job of this full run finished."
+          command: echo "Every scoped job of this run finished green."
 
   scope_coverage:
     docker:
@@ -911,6 +1057,15 @@ jobs:
             # catch a config regression. Fails when a flag CI uploads is
             # not carryforward-enabled (issue #2015). stdlib only.
             python3 scripts/check_codecov_flags.py
+      - run:
+          name: Every scoped job must report a status and feed the gate
+          command: |
+            # Also always-on: no job may be switched off with a `filters:`
+            # expression (a job that never runs publishes no status, so a
+            # required check can never see it), every `needed:` entry must
+            # point at a declared parameter, and full_gate must fan in every
+            # job that runs on tags. stdlib only.
+            python3 scripts/check_ci_gate.py
 
   check_version_sequence:
     docker:
@@ -1182,42 +1337,62 @@ workflows:
       not:
         equal: [ << pipeline.git.branch >>, "master" ]
     jobs:
-      # Scoped test jobs: no `requires` (they fan out in parallel) and an
-      # expression filter each, driven by the pipeline parameters the scope
-      # job sets in config.yml. Only these jobs are path-scoped.
+      # Scoped test jobs: no `requires` (they fan out in parallel) and a
+      # `needed` parameter each, driven by the pipeline parameters the scope
+      # job sets in config.yml. They are always *scheduled* and decide
+      # inside whether to do the work, so every scoped suite still publishes
+      # a status context and `full_gate` can be required on branches.
       #
-      # The image chain is NOT filtered. build_backend, build_frontend and
-      # the required test_compose_network are always scheduled and decide
-      # inside (`needed`, from the single `run-images` parameter) whether to
-      # build or boot; the two image smoke tests stay scoped. That is what keeps
-      # the required `test_compose_network` context reporting on every push
-      # without building an image for a docs-only diff — and it is why they
-      # can be `requires` targets at all: a filtered-out job publishes no
-      # context, which stranded PRs in "Expected" (see
-      # docs/topics/deployment/scoped-ci.md).
+      # The image chain follows the same rule. build_backend,
+      # build_frontend, test_backend_image, test_frontend_image and the
+      # required test_compose_network are always scheduled and decide inside
+      # (`needed`, from the single `run-images` parameter) whether to build or
+      # boot. That is what keeps every required context reporting on every
+      # push without building an image for a docs-only diff — a filtered-out
+      # job publishes no context at all, which stranded PRs in "Expected"
+      # (see docs/topics/deployment/scoped-ci.md).
       #
       # e2e is always-run: it is a required check and touches every app by
       # convention. It gates the post-build image smoke tests, so a slow
       # browser suite never delays kicking off a docker build.
       #
-      # Tests gate *deploys*, not builds: `full_gate` fans in every scoped
-      # job and the deploy jobs require it, so a release only ships when the
-      # complete matrix of a full run is green. On a branch `full_gate` is
-      # skipped whenever any of those jobs was skipped (nothing deploys
-      # there). Tag pipelines resolve to a full run because release version
-      # files match the shared and per-app mapping rules.
+      # Tests gate *deploys*, not builds: `full_gate` fans in every job above
+      # and the deploy jobs require it, so a release only ships when the
+      # complete matrix of a full run is green. Because every scoped job is
+      # always *scheduled*, `full_gate` also runs on a branch — where it is
+      # the required context that closes the scope: green means every suite
+      # this diff scoped in is green, and a red scoped suite blocks the merge
+      # instead of surfacing on the next release PR (#2353 → #2356).
       - python-core:
-          filters: "(pipeline.parameters.run-python-core == true)"
+          needed: << pipeline.parameters.run-python-core >>
+          filters:
+            tags:
+              only: /.*/
       - python-gamedays:
-          filters: "(pipeline.parameters.run-python-gamedays == true)"
+          needed: << pipeline.parameters.run-python-gamedays >>
+          filters:
+            tags:
+              only: /.*/
       - python-officials:
-          filters: "(pipeline.parameters.run-python-officials == true)"
+          needed: << pipeline.parameters.run-python-officials >>
+          filters:
+            tags:
+              only: /.*/
       - python-live:
-          filters: "(pipeline.parameters.run-python-live == true)"
+          needed: << pipeline.parameters.run-python-live >>
+          filters:
+            tags:
+              only: /.*/
       - python-designer:
-          filters: "(pipeline.parameters.run-python-designer == true)"
+          needed: << pipeline.parameters.run-python-designer >>
+          filters:
+            tags:
+              only: /.*/
       - python-cross:
-          filters: "(pipeline.parameters.run-python-cross == true)"
+          needed: << pipeline.parameters.run-python-cross >>
+          filters:
+            tags:
+              only: /.*/
       # Always-run: required check, exercises every app by convention. Opts
       # in to tags (tags: only /.*/) because a job with no filters only runs
       # on branches — without this, e2e silently drops out of tag pipelines
@@ -1227,19 +1402,40 @@ workflows:
             tags:
               only: /.*/
       - scorecard_js:
-          filters: "(pipeline.parameters.run-scorecard == true)"
+          needed: << pipeline.parameters.run-scorecard >>
+          filters:
+            tags:
+              only: /.*/
       - scorecard_v2_js:
-          filters: "(pipeline.parameters.run-scorecard-v2 == true)"
+          needed: << pipeline.parameters.run-scorecard-v2 >>
+          filters:
+            tags:
+              only: /.*/
       - liveticker_js:
-          filters: "(pipeline.parameters.run-liveticker == true)"
+          needed: << pipeline.parameters.run-liveticker >>
+          filters:
+            tags:
+              only: /.*/
       - passcheck_js:
-          filters: "(pipeline.parameters.run-passcheck == true)"
+          needed: << pipeline.parameters.run-passcheck >>
+          filters:
+            tags:
+              only: /.*/
       - gameday_designer_js:
-          filters: "(pipeline.parameters.run-designer == true)"
+          needed: << pipeline.parameters.run-designer >>
+          filters:
+            tags:
+              only: /.*/
       - journey_dashboard_js:
-          filters: "(pipeline.parameters.run-journey == true)"
+          needed: << pipeline.parameters.run-journey >>
+          filters:
+            tags:
+              only: /.*/
       - share_js:
-          filters: "(pipeline.parameters.run-share == true)"
+          needed: << pipeline.parameters.run-share >>
+          filters:
+            tags:
+              only: /.*/
 
       # The image chain is always scheduled (required checks depend on it) and
       # builds only when the scope asks for an image: no image is built for a
@@ -1257,12 +1453,18 @@ workflows:
               only: /.*/
 
       - test_backend_image:
-          filters: "(pipeline.parameters.run-images == true)"
+          needed: << pipeline.parameters.run-images >>
+          filters:
+            tags:
+              only: /.*/
           requires:
             - build_backend
             - e2e
       - test_frontend_image:
-          filters: "(pipeline.parameters.run-images == true)"
+          needed: << pipeline.parameters.run-images >>
+          filters:
+            tags:
+              only: /.*/
           requires:
             - build_frontend
             - e2e

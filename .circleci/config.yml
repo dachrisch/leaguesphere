@@ -17,7 +17,9 @@ version: 2.1
 # A stale tag diffs huge → full run, then check_release_sequence
 # refuses the deploy. Either way tags fail open to full, never to
 # empty. Branch pushes with only ignored paths (docs) run just the
-# always-on jobs (scope_coverage, check_version_sequence).
+# always-on jobs (scope_coverage, check_version_sequence) plus every
+# scoped job in its no-op form, so all status contexts (full_gate
+# included) still report.
 #
 # NOTE: "Enable dynamic config using setup workflows" must be turned
 # on in CircleCI project settings for this to take effect.
