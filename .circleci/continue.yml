@@ -85,6 +85,23 @@ commands:
             source $BASH_ENV
             uv lock
 
+  # Chromium (plus its deps) for the e2e jobs. The browser download is the
+  # expensive half and changes only with uv.lock (the playwright pin), so it
+  # is cached; `install` is a fast no-op when the cache is warm.
+  install_playwright:
+    steps:
+      - restore_cache:
+          keys:
+            - v1-playwright-{{ checksum "uv.lock" }}
+            - v1-playwright-
+      - run:
+          name: Install Playwright browsers
+          command: uv run playwright install chromium --with-deps
+      - save_cache:
+          paths:
+            - ~/.cache/ms-playwright
+          key: v1-playwright-{{ checksum "uv.lock" }}
+
   # Report-on-every-push wrapper for a path-scoped job.
   #
   # CI is path-scoped (docs/topics/deployment/scoped-ci.md): a diff that
@@ -613,7 +630,17 @@ jobs:
                 name: "JavaScript Build"
                 command: npm --prefix share/ run build
 
-  e2e:
+  # Three browser suites, three jobs. They used to share one container and run
+  # back to back (~4m25s of a ~6m PR run, 80% of the wall clock). Split, each
+  # suite pays its own ~1m20s setup and the phase is as long as the slowest
+  # suite (~2m45s). Nothing had to keep them together: each builds only the
+  # app it drives (the designer suite drives the scorecard SPA for its login
+  # and result flow, so it builds that one too).
+  #
+  # Every one of them is always-run (no `needed:`), so a docs-only push still
+  # pays the checkout - that is the price of a required context that covers
+  # every app. `full_gate` fans all three in.
+  e2e_scorecard:
     docker:
       - image: cimg/python:3.15.2-node
       - image: cimg/mysql:26.10
@@ -627,24 +654,15 @@ jobs:
       - setup_uv
       - node/install-packages:
           app-dir: scorecard/
-      - node/install-packages:
-          app-dir: scorecard_v2/
-      - node/install-packages:
-          app-dir: gameday_designer/
       - run:
           name: Build scorecard
           command: npm --prefix scorecard/ run build
-      - run:
-          name: Build scorecard_v2
-          command: npm --prefix scorecard_v2/ run build
-      - run:
-          name: Build gameday_designer
-          command: npm --prefix gameday_designer/ run build
-      - run:
-          name: Install Playwright browsers
-          command: uv run playwright install chromium --with-deps
+      - install_playwright
       - run:
           name: Run scorecard e2e tests
+          # A hung browser click produces no output; 20 min of default patience
+          # once turned a 4 min suite into a 20 min job (v4.42.1-rc.6).
+          no_output_timeout: 8m
           environment:
             SECRET_KEY: 123456-TEST
             MYSQL_HOST: 127.0.0.1
@@ -654,8 +672,30 @@ jobs:
           command: |
             uv run pytest scorecard/tests/e2e/ -v \
               --junitxml=test-reports/e2e-scorecard-results.xml
+      - store_test_results:
+          path: test-reports
+
+  e2e_scorecard_v2:
+    docker:
+      - image: cimg/python:3.15.2-node
+      - image: cimg/mysql:26.10
+        command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
+        environment:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: test_test_db
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - setup_uv
+      - node/install-packages:
+          app-dir: scorecard_v2/
+      - run:
+          name: Build scorecard_v2
+          command: npm --prefix scorecard_v2/ run build
+      - install_playwright
       - run:
           name: Run scorecard_v2 e2e tests
+          no_output_timeout: 8m
           environment:
             SECRET_KEY: 123456-TEST
             MYSQL_HOST: 127.0.0.1
@@ -665,8 +705,32 @@ jobs:
           command: |
             uv run pytest scorecard_v2/tests/e2e/ -v \
               --junitxml=test-reports/e2e-scorecard-v2-results.xml
+      - store_test_results:
+          path: test-reports
+
+  e2e_designer:
+    docker:
+      - image: cimg/python:3.15.2-node
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - setup_uv
+      # test_designer_scorecard_flow.py logs in through /scorecard/ and reads
+      # its result screen, so this job needs the scorecard bundle as well.
+      - node/install-packages:
+          app-dir: scorecard/
+      - node/install-packages:
+          app-dir: gameday_designer/
+      - run:
+          name: Build scorecard
+          command: npm --prefix scorecard/ run build
+      - run:
+          name: Build gameday_designer
+          command: npm --prefix gameday_designer/ run build
+      - install_playwright
       - run:
           name: Run gameday_designer e2e tests
+          no_output_timeout: 8m
           environment:
             SECRET_KEY: 123456-TEST
           command: |
@@ -1352,9 +1416,11 @@ workflows:
       # job publishes no context at all, which stranded PRs in "Expected"
       # (see docs/topics/deployment/scoped-ci.md).
       #
-      # e2e is always-run: it is a required check and touches every app by
-      # convention. It gates the post-build image smoke tests, so a slow
-      # browser suite never delays kicking off a docker build.
+      # The three e2e jobs are always-run: a required check that touches every
+      # app by convention. They are split per app so the browser suites run in
+      # parallel instead of back to back. They do not gate the image smoke
+      # tests - e2e reaches the deploy through `full_gate` like everything
+      # else, so a slow browser suite never delays a docker check.
       #
       # Tests gate *deploys*, not builds: `full_gate` fans in every job above
       # and the deploy jobs require it, so a release only ships when the
@@ -1395,9 +1461,18 @@ workflows:
               only: /.*/
       # Always-run: required check, exercises every app by convention. Opts
       # in to tags (tags: only /.*/) because a job with no filters only runs
-      # on branches — without this, e2e silently drops out of tag pipelines
-      # (deploys) and its requires entries vanish, so deploys bypass e2e.
-      - e2e:
+      # on branches — without this, the browser suites silently drop out of
+      # tag pipelines (deploys) and their requires entries vanish, so deploys
+      # bypass them. One job per app so they run in parallel.
+      - e2e_scorecard:
+          filters:
+            tags:
+              only: /.*/
+      - e2e_scorecard_v2:
+          filters:
+            tags:
+              only: /.*/
+      - e2e_designer:
           filters:
             tags:
               only: /.*/
@@ -1452,6 +1527,10 @@ workflows:
             tags:
               only: /.*/
 
+      # The image smoke tests only need their own image. They used to wait for
+      # the browser suite as well, which serialised a 35 s check behind the
+      # slowest job of the run for no gain - e2e still gates the deploy
+      # through `full_gate`.
       - test_backend_image:
           needed: << pipeline.parameters.run-images >>
           filters:
@@ -1459,7 +1538,6 @@ workflows:
               only: /.*/
           requires:
             - build_backend
-            - e2e
       - test_frontend_image:
           needed: << pipeline.parameters.run-images >>
           filters:
@@ -1467,7 +1545,6 @@ workflows:
               only: /.*/
           requires:
             - build_frontend
-            - e2e
       - check_migrations:
           # Required status check: never path-scoped, so it reports on every
           # branch and tag pipeline (see the job's own comment).
@@ -1531,7 +1608,9 @@ workflows:
             - gameday_designer_js
             - journey_dashboard_js
             - share_js
-            - e2e
+            - e2e_scorecard
+            - e2e_scorecard_v2
+            - e2e_designer
             - check_migrations
             - build_backend
             - build_frontend

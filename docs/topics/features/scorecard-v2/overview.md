@@ -319,7 +319,7 @@ never sends (tested explicitly), so they can stay. Retiring the old app is
 |---|---|
 | `python-live` | `scorecard_v2/tests/` plus the existing `scorecard/tests.py`; the app shares the `gamedays` APIs |
 | `scorecard_v2_js` | `npm run eslint`, `npm run typecheck`, `npm run test:run` (Codecov flag `scorecard-v2`), `npm run build` and the IIFE/`import.meta` guard |
-| `e2e` | builds the v2 bundle and runs `scorecard_v2/tests/e2e/` beside the old scorecard flow |
+| `e2e_scorecard_v2` | builds the v2 bundle and runs `scorecard_v2/tests/e2e/` (its own job, in parallel with the other browser suites) |
 | `build_frontend` | `container/nginx.Dockerfile` builds the bundle in a `scorecard-v2-app` node stage |
 
 Scope rules live in `.circleci/scope-mapping.txt`: the frontend files gate

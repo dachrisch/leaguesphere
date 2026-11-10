@@ -265,7 +265,7 @@ The four slices are one story (*"the scorecard follows IFAF 2023"*), so they bel
 | `master` state | scorecard v2 L0–L5 are **merged** (#2278 last); no open scorecard layer remains |
 | open PR touching the same code | **#2280** `fix/scorecard-fieldpos-keeps-down` — `drive.ts`, `drive.test.ts`, `FieldPositionSheet.tsx`, `Tracking.test.tsx` |
 | GitHub stacked-PR feature | **enabled** (confirmed 2026-11-05) — `submit` links the layer PRs into one GitHub stack, so reviewers see the chain in order |
-| repository ruleset on `master` | **protected** by the active ruleset `PR` (id 12420854): pull request required, code quality, no force-push, no deletion, required checks `ci/circleci: test_compose_network`, `ci/circleci: check_migrations`, `ci/circleci: e2e`. Admins may bypass; everybody else cannot |
+| repository ruleset on `master` | **protected** by the active ruleset `PR` (id 12420854): pull request required, code quality, no force-push, no deletion, required checks `ci/circleci: full_gate`, `ci/circleci: scope_coverage`, `ci/circleci: check_version_sequence`. Admins may bypass; everybody else cannot |
 | merge settings | squash/rebase/merge commit all allowed, `delete_branch_on_merge=true`; no merge queue, so `gh stack merge --squash` merges directly |
 | consequence | each layer must be **green on CI** before the layer above can merge, and merge **bottom-up**: a merged layer's branch is auto-deleted and `gh stack sync --prune` replays the rest |
 

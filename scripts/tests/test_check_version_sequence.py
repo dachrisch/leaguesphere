@@ -40,8 +40,16 @@ FILES_AT_BASE = {
     "scorecard_v2/package.json": "4.23.0",
     "gameday_designer/package.json": "4.23.0",
     "journey_dashboard/package.json": "4.23.0",
+    "share/package.json": "4.23.0",
     "uv.lock": "4.23.0",
 }
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+# Directories excluded from CI as legacy/dead code (see
+# .circleci/scope-exclude.txt). Their package.json is never built or
+# released, so it is not a version file.
+DEAD_CODE_DIRS = {"fe_template", "hardening"}
 
 CHANGELOG_AT_BASE = (
     "# Changelog\n\n"
@@ -116,6 +124,35 @@ class TestReleasePleaseBranches:
             head_changelog=changelog_for("4.24.0", BASE),
         )
         assert any("pyproject.toml" in e for e in errors)
+
+    def test_uv_lock_may_lag_one_release_on_a_release_please_branch(self, guard):
+        """release-please cannot regenerate uv.lock; the finalize job does it.
+
+        The first push of the release PR must not be red for a file the bot
+        owns, or every release starts with a failed pipeline (#v5.14.x).
+        """
+        head_files = files_at("4.24.0")
+        head_files["uv.lock"] = BASE
+        errors = guard.check_release_please_branch(
+            base_manifest=BASE,
+            head_manifest="4.24.0",
+            head_files=head_files,
+            base_changelog=CHANGELOG_AT_BASE,
+            head_changelog=changelog_for("4.24.0", BASE),
+        )
+        assert errors == []
+
+    def test_uv_lock_with_an_unexpected_version_is_still_blocked(self, guard):
+        head_files = files_at("4.24.0")
+        head_files["uv.lock"] = "4.22.0"
+        errors = guard.check_release_please_branch(
+            base_manifest=BASE,
+            head_manifest="4.24.0",
+            head_files=head_files,
+            base_changelog=CHANGELOG_AT_BASE,
+            head_changelog=changelog_for("4.24.0", BASE),
+        )
+        assert any("uv.lock" in e for e in errors)
 
     def test_backwards_changelog_link_is_blocked(self, guard):
         errors = guard.check_release_please_branch(
@@ -321,3 +358,58 @@ class TestBaseState:
 
         assert state is None
         assert error == f"could not list pyproject.toml in {base_ref} - failing closed"
+
+
+class TestVersionFileInventory:
+    """Every shipped SPA is a version file, and release-please bumps it.
+
+    v5.14.5 shipped with share/ missing from both lists: the release commit
+    never touched share/package.json, so `run-share` stayed false on the tag
+    pipeline and the release failed by design ("A release must run the full
+    matrix").  This keeps the three lists in step:
+
+        directory -> guard.VERSION_FILES -> release-please extra-files
+    """
+
+    @staticmethod
+    def _app_package_jsons() -> list[str]:
+        apps = []
+        for entry in sorted(os.listdir(REPO_ROOT)):
+            path = os.path.join(REPO_ROOT, entry, "package.json")
+            if entry in DEAD_CODE_DIRS or not os.path.isfile(path):
+                continue
+            with open(path, encoding="utf-8") as handle:
+                if "version" in json.load(handle):
+                    apps.append(f"{entry}/package.json")
+        return apps
+
+    @staticmethod
+    def _release_please_version_files() -> set[str]:
+        with open(
+            os.path.join(REPO_ROOT, "release-please-config.json"), encoding="utf-8"
+        ) as handle:
+            config = json.load(handle)
+        paths: set[str] = set()
+        for package in config.get("packages", {}).values():
+            for extra in package.get("extra-files", []):
+                paths.add(extra if isinstance(extra, str) else extra["path"])
+        return paths
+
+    def test_every_app_package_json_is_checked_by_the_guard(self, guard):
+        missing = [p for p in self._app_package_jsons() if p not in guard.VERSION_FILES]
+        assert missing == [], (
+            f"{missing} are shipped apps but not version files - a release "
+            "never bumps them and their scope stays closed on tags"
+        )
+
+    def test_every_checked_package_json_is_bumped_by_release_please(self, guard):
+        registered = self._release_please_version_files()
+        missing = [
+            p
+            for p in guard.VERSION_FILES
+            if p.endswith("package.json") and p not in registered
+        ]
+        assert missing == [], (
+            f"{missing} are version files but release-please does not bump "
+            "them - the release commit must touch every app's version file"
+        )

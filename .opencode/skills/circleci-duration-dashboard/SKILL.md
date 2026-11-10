@@ -18,7 +18,7 @@ Three charts, in this order:
    the **critical path** of the median successful PR run, so the segments
    (e2e browser suite → image smoke test → full gate, plus queue/scheduling)
    **add up to that run's elapsed wall-clock**. Parallel unit tests and image
-   builds run under e2e and add nothing to the elapsed time.
+   builds run alongside e2e and add nothing to the elapsed time.
 3. **Release Pipeline Over Time** — one stacked vertical bar per release tag
    pipeline, chronological. Segments: PR-merged → tag-pushed (blue),
    tag-pushed → first CI job (purple), first CI job → green (green). Dashed line

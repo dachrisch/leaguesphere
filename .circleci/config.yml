@@ -90,5 +90,14 @@ workflows:
           mapping: .circleci/scope-mapping.txt
           exclude: .circleci/scope-exclude.txt
           filters:
+            # Master pushes are not CI'd at all: the continued workflow skips
+            # them (`when: not master`) because a merge commit was already
+            # tested on its PR branch. Without this filter every merge still
+            # started a pipeline whose only job was this setup job (~25s on a
+            # `large` executor, 247 times in 35 days) and then did nothing.
+            # Tags must keep matching: the setup job continues into the real
+            # pipeline for releases.
+            branches:
+              ignore: /^master$/
             tags:
               only: /.*/

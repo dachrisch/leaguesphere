@@ -13,7 +13,9 @@ branch), i.e. at PR time, before anything is merged:
 - on ``release-please--*`` branches: the manifest must move strictly
   forward, every version file must equal the new manifest version (stable
   only, no ``-rc``/``+demo``), and the new CHANGELOG entry must link
-  forward (``v<base>...v<head>``).
+  forward (``v<base>...v<head>``). ``uv.lock`` may still carry the *base*
+  version: release-please cannot regenerate it, so the finalize job pushes
+  that as a follow-up commit and the first push must not be red.
 - on every other branch: the manifest and CHANGELOG must stay identical
   to ``origin/master`` (only release-please may touch them); version
   files must either match master or carry a staging suffix (``-rc.N`` /
@@ -52,6 +54,7 @@ VERSION_FILES = {
     "scorecard_v2/package.json": "package-json",
     "gameday_designer/package.json": "package-json",
     "journey_dashboard/package.json": "package-json",
+    "share/package.json": "package-json",
     "uv.lock": "uv-lock",
 }
 
@@ -154,6 +157,13 @@ def check_release_please_branch(
     for path in VERSION_FILES:
         if path not in head_files:
             errors.append(f"{path}: missing from version check")
+        elif path == "uv.lock" and head_files[path] == base_manifest:
+            # release-please cannot regenerate uv.lock (it is produced by
+            # `uv lock`), so it stays at the base version until the finalize
+            # job pushes its follow-up commit. Accepting exactly that one
+            # lagging version keeps the release PR's first push green instead
+            # of red-by-construction; any other version still fails.
+            continue
         elif head_files[path] != head_manifest:
             errors.append(
                 f"{path} is {head_files[path]!r} but manifest is "

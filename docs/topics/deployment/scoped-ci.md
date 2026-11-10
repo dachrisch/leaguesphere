@@ -34,8 +34,9 @@ every status context reports. Setup is split into two files driven by the
    boolean parameter, and any job that runs on tags without being fanned
    into `full_gate`.
 5. **Tests gate deploys, not builds.** `full_gate` fans in every scheduled
-   job (shards, JS suites, `e2e`, both image tests, the builds, the
-   compose boot) and the deploy jobs require it, so a release only ships
+   job (shards, JS suites, the three `e2e_*` browser suites, both image
+   tests, the builds, the compose boot) and the deploy jobs require it, so
+   a release only ships
    when the complete matrix of a full run is green. Because nothing in
    that matrix is filtered out, `full_gate` runs on branch pipelines too,
    where it is the **required** context: there it is green only when every
@@ -53,7 +54,8 @@ every status context reports. Setup is split into two files driven by the
   across every app → full run. A stale/large diff also resolves to a
   full run, and `check_release_sequence` refuses stale deploys.
 - **Docs-only pushes** run only the always-on jobs — `scope_coverage`,
-  `check_version_sequence`, `check_migrations`, `e2e`, plus every scoped
+  `check_version_sequence`, `check_migrations`, the three `e2e_*` browser
+  suites, plus every scoped
   job in its no-op form (`scoped_job` with `needed: false`, which prints
   one line and passes). They report in seconds; nothing is tested, no
   image is built and nothing is booted.
@@ -63,17 +65,23 @@ every status context reports. Setup is split into two files driven by the
   - `full_gate` is the terminal context of the matrix. Every job it fans
     in is always scheduled (no-ops included), so it exists on every push
     and is green only when every suite the diff scoped in passed. It also
-    gates the deploys, so `e2e`, `check_migrations`,
+    gates the deploys, so the `e2e_*` suites, `check_migrations`,
     `test_compose_network` and the image tests are covered through it
     rather than required one by one.
   - `scope_coverage` and `check_version_sequence` are unconditional jobs
     that run only on branches; they are PR-time guards, so they are
     deliberately not part of the deploy matrix and are required on their
     own.
-  - `e2e` and `check_migrations` are unconditional jobs.
+  - The `e2e_*` jobs and `check_migrations` are unconditional jobs.
     `check_migrations` runs the checkout itself against an ephemeral
     MariaDB (`cimg/mysql` sidecar) instead of the backend image, so making
     it always-on drags no image build behind it.
+  - The browser suites are split per app (`e2e_scorecard`,
+    `e2e_scorecard_v2`, `e2e_designer`) so they run in parallel: one job
+    that ran all three back to back was 80% of a PR run's wall clock.
+    They do not gate the image smoke tests — e2e reaches the deploy
+    through `full_gate`, and a 35s docker check must not wait for a
+    browser suite.
   - `test_compose_network` needs both images, so it is scheduled always
     but boots only when `run-images` is true. When it is false the job
     prints "nothing to boot" and passes; on a tag pipeline it **fails**
@@ -99,7 +107,7 @@ every status context reports. Setup is split into two files driven by the
 
 Shards need the LXC test DB locally (see Contributor Guide) and get a
 sidecar MySQL service + `-n 4 --nomigrations` in CI. e2e dirs stay
-excluded from shards via `pytest.ini` and run only in the `e2e` job.
+excluded from shards via `pytest.ini` and run only in the `e2e_*` jobs.
 
 ### Coverage uploads and carryforward
 
