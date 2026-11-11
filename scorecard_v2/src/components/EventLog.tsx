@@ -37,9 +37,10 @@ const SCORING_KEYS: Record<string, string> = {
 };
 
 /**
- * Game-level markers. Deleting one only strikes the log row: it cannot revert
- * `Gameinfo.gameStarted` / `gameHalftime` / `gameFinished`, so undo would lie
- * about the game state. They stay visible and non-undoable.
+ * Game-level markers. A marker that can be corrected carries its own undo;
+ * "gestartet" and "beendet" stay non-undoable because deleting their row
+ * cannot revert `Gameinfo.gameStarted` / `gameFinished`, so undo would lie
+ * about the game state.
  */
 const MARKER_EVENTS = new Set([
   "Spiel gestartet",
@@ -47,6 +48,9 @@ const MARKER_EVENTS = new Set([
   "Overtime startet",
   "Spiel beendet",
 ]);
+
+/** A wrong half-time or overtime start can be stepped back from its row. */
+const UNDOABLE_MARKERS = new Set(["2. Halbzeit gestartet", "Overtime startet"]);
 
 const FALLBACK_IGNORED_KEYS = new Set([
   "sequence",
@@ -162,6 +166,18 @@ export function undoBody(
 /** Markers are shown but not undoable; see {@link MARKER_EVENTS}. */
 export function isMarker(row: LogRow): boolean {
   return MARKER_EVENTS.has(row.event);
+}
+
+/**
+ * Whether the row offers its undo. Every regular row does; of the game-level
+ * markers only the half-time and overtime start, whose correction the server
+ * projects back into the first half / before the overtime.
+ */
+export function isUndoable(row: LogRow): boolean {
+  if (row.isDeleted) {
+    return false;
+  }
+  return !isMarker(row) || UNDOABLE_MARKERS.has(row.event);
 }
 
 /**
@@ -558,7 +574,7 @@ export default function EventLog({
             const secondary = join(described.secondary, offlineAttribution(row));
             const KindIcon = KIND_ICON[described.kind];
             const undoable =
-              onUndo !== undefined && !row.isDeleted && !isMarker(row);
+              onUndo !== undefined && isUndoable(row);
             return (
               <li
                 className={row.isDeleted ? "row deleted" : "row"}

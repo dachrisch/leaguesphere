@@ -140,6 +140,32 @@ describe("JerseyPicker", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("renders a trailing nobody tile last and lets the sheet drive its state", async () => {
+    const onSelect = vi.fn();
+    render(
+      <JerseyPicker
+        onChange={vi.fn()}
+        optionalLabel="Ohne Nummer"
+        optionalSelected
+        players={ROSTER}
+        trailing={{ label: "Ganzes Team", selected: false, onSelect }}
+        value={null}
+      />,
+    );
+
+    const group = screen.getByRole("group", { name: "Trikotnummer" });
+    const team = within(group).getByRole("button", { name: "Ganzes Team" });
+    expect(group.lastElementChild).toBe(team);
+    expect(team).toHaveAttribute("aria-pressed", "false");
+    expect(
+      within(group).getByRole("button", { name: "Ohne Nummer" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.setup().click(team);
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
   it("names the group separately from the button prefix", () => {
     render(
       <JerseyPicker

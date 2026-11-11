@@ -541,6 +541,9 @@ class _CorrectionEffect:
     score_home: int = 0
     score_away: int = 0
     possession_change: bool = False
+    # The half the correction puts the game back into, when it undoes a period
+    # marker ("2. Halbzeit gestartet" -> 1). `None` keeps the current half.
+    period: Optional[int] = None
 
 
 def _target_rows(target: GameEventValue) -> list[TeamLogRow]:
@@ -567,6 +570,8 @@ def _correction_effect(correction: GameEventValue) -> _CorrectionEffect:
             score_home=-inner.score_home,
             score_away=-inner.score_away,
             possession_change=inner.possession_change,
+            # An undo of the undo puts the half back where the marker had it.
+            period=2 if inner.period == 1 else None,
         )
 
     rows = _target_rows(target)
@@ -598,6 +603,13 @@ def _correction_effect(correction: GameEventValue) -> _CorrectionEffect:
         score_home=-sum(row.value for row in live_rows if row.side == "home"),
         score_away=-sum(row.value for row in live_rows if row.side == "away"),
         possession_change=target.type == "possession" and target.code in _SIDES,
+        # A wrong half-time start is corrected back into the first half; the
+        # overtime marker leaves the period alone (it is not a third half).
+        period=(
+            1
+            if target.type == "period" and target.code == "half_time" and live_rows
+            else None
+        ),
     )
 
 
@@ -609,10 +621,13 @@ def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projectio
     }
     if effect.possession_change:
         changes["in_possession"] = event.payload.get("restore_in_possession")
-    # A corrected period marker cannot un-happen the period in the projection;
-    # the deleted marker row is the record. Keep the current period.
+    # A corrected period marker normally leaves the period alone (an undo of
+    # "Overtime startet" is not a third half). A wrong half-time start is the
+    # exception: the game is back in the first half, or the screen keeps
+    # offering second-half entries against a log that says half 1.
+    period = state.period if effect.period is None else effect.period
     return _projection(
-        _advance(state, event, period=state.period, **changes),
+        _advance(state, event, period=period, **changes),
         deleted=list(effect.deleted),
         restored=list(effect.restored),
         deleted_rows=list(effect.deleted_row),

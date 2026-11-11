@@ -80,6 +80,22 @@ interface JerseyPickerProps {
    */
   optionalLabel?: string;
   /**
+   * Overrides whether the leading "nobody" tile reads as chosen. A sheet with
+   * two "nobody" tiles (Ohne Nummer / Ganzes Team) uses this and
+   * {@link JerseyPickerProps.trailing} to keep exactly one of them pressed.
+   */
+  optionalSelected?: boolean;
+  /**
+   * A second "nobody" tile at the end of the choices, e.g. "Ganzes Team".
+   * It selects the same `null`; the sheet decides which label is shown as
+   * pressed.
+   */
+  trailing?: {
+    label: string;
+    selected: boolean;
+    onSelect: () => void;
+  };
+  /**
    * One wrapping row instead of the grid — the "Zuletzt" shortcuts keep the
    * tile shape at a smaller size.
    */
@@ -97,13 +113,16 @@ function OptionalChoice({
   value,
   onChange,
   disabled,
+  selected: selectedOverride,
 }: {
   label: string;
   value: number | null;
   onChange: (jersey: number | null) => void;
   disabled: boolean;
+  /** Defaults to "is nothing picked"; a second tile passes its own state. */
+  selected?: boolean;
 }) {
-  const selected = value === null;
+  const selected = selectedOverride ?? value === null;
   return (
     <button
       aria-label={label}
@@ -128,6 +147,8 @@ function JerseyKeypad({
   groupLabel,
   strict,
   optionalLabel,
+  optionalSelected,
+  trailing,
 }: {
   options: JerseyOption[];
   value: number | null;
@@ -137,6 +158,8 @@ function JerseyKeypad({
   groupLabel: string;
   strict: boolean;
   optionalLabel?: string;
+  optionalSelected?: boolean;
+  trailing?: JerseyPickerProps["trailing"];
 }) {
   const digits = value === null ? "" : String(value);
   const match = options.find((option) => option.jersey === value) ?? null;
@@ -159,6 +182,7 @@ function JerseyKeypad({
             disabled={disabled}
             label={optionalLabel}
             onChange={onChange}
+            selected={optionalSelected}
             value={value}
           />
         </div>
@@ -188,6 +212,15 @@ function JerseyKeypad({
           ),
         )}
       </div>
+      {trailing === undefined ? null : (
+        <OptionalChoice
+          disabled={disabled}
+          label={trailing.label}
+          onChange={() => trailing.onSelect()}
+          selected={trailing.selected}
+          value={null}
+        />
+      )}
     </div>
   );
 }
@@ -216,6 +249,8 @@ export default function JerseyPicker({
   groupLabel,
   strict = false,
   optionalLabel,
+  optionalSelected,
+  trailing,
   compact = false,
 }: JerseyPickerProps) {
   const inputId = useId();
@@ -230,8 +265,10 @@ export default function JerseyPicker({
         label={label}
         onChange={onChange}
         optionalLabel={optionalLabel}
+        optionalSelected={optionalSelected}
         options={options}
         strict={strict}
+        trailing={trailing}
         value={value}
       />
     );
@@ -276,6 +313,7 @@ export default function JerseyPicker({
           disabled={disabled}
           label={optionalLabel}
           onChange={onChange}
+          selected={optionalSelected}
           value={value}
         />
       )}
@@ -301,6 +339,15 @@ export default function JerseyPicker({
           </button>
         );
       })}
+      {trailing === undefined ? null : (
+        <OptionalChoice
+          disabled={disabled}
+          label={trailing.label}
+          onChange={() => trailing.onSelect()}
+          selected={trailing.selected}
+          value={null}
+        />
+      )}
     </div>
   );
 }

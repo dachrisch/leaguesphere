@@ -315,6 +315,11 @@ export default function PenaltySheet({
   const [yardageLoss, setYardageLoss] = useState(false);
   const [nextDown, setNextDown] = useState<PenaltyNextDown>("repeat");
   const [jersey, setJersey] = useState<number | null>(null);
+  /**
+   * "Ganzes Team" is a second tile with the same empty jersey. It cannot be a
+   * number, so the sheet only needs to know which of the two tiles is pressed.
+   */
+  const [teamWide, setTeamWide] = useState(false);
   const [unsportsmanlike, setUnsportsmanlike] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -421,6 +426,7 @@ export default function PenaltySheet({
   const pickTeam = (name: string): void => {
     setTeam(name);
     setTeamPicked(true);
+    setTeamWide(false);
     const nextSide = name === opponentName ? otherSide : side;
     setJersey((current) =>
       current === null
@@ -442,6 +448,7 @@ export default function PenaltySheet({
     // The roster changed with the team the flag implies; a number meant for
     // the other side must not survive.
     setJersey(null);
+    setTeamWide(false);
     setUnsportsmanlike("");
     const suggested = penaltyYardage(penalty);
     setYardageText(String(Math.abs(suggested)));
@@ -635,6 +642,7 @@ export default function PenaltySheet({
               id="penalty-yards"
               inputMode="numeric"
               onChange={(event) => changeYardage(event.target.value)}
+              onFocus={(event) => event.target.select()}
               pattern="[0-9]*"
               type="text"
               value={yardageText}
@@ -752,11 +760,27 @@ export default function PenaltySheet({
                       : "Trikotnummer (optional)"
                   }
                   label="Trikot"
-                  onChange={setJersey}
+                  onChange={(next) => {
+                    setJersey(next);
+                    setTeamWide(false);
+                  }}
                   optionalLabel={
-                    kind === "disqualification" ? undefined : "Ganzes Team"
+                    kind === "disqualification" ? undefined : "Ohne Nummer"
                   }
+                  optionalSelected={jersey === null && !teamWide}
                   players={players}
+                  trailing={
+                    kind === "disqualification"
+                      ? undefined
+                      : {
+                          label: "Ganzes Team",
+                          selected: teamWide && jersey === null,
+                          onSelect: () => {
+                            setJersey(null);
+                            setTeamWide(true);
+                          },
+                        }
+                  }
                   value={jersey}
                 />
               )}

@@ -14,6 +14,7 @@ import EventLog, {
   describeRow,
   formatLogTime,
   isMarker,
+  isUndoable,
   logRows,
   offlineAttribution,
   undoBody,
@@ -405,6 +406,15 @@ describe("undoBody and isMarker", () => {
     }
     expect(isMarker(row({ event: "First Down" }))).toBe(false);
   });
+
+  it("undoes the half-time and overtime markers, never the start or end", () => {
+    expect(isUndoable(row({ event: "2. Halbzeit gestartet" }))).toBe(true);
+    expect(isUndoable(row({ event: "Overtime startet" }))).toBe(true);
+    expect(isUndoable(row({ event: "Spiel gestartet" }))).toBe(false);
+    expect(isUndoable(row({ event: "Spiel beendet" }))).toBe(false);
+    expect(isUndoable(row({ event: "Touchdown" }))).toBe(true);
+    expect(isUndoable(row({ event: "Touchdown", isDeleted: true }))).toBe(false);
+  });
 });
 
 describe("formatLogTime", () => {
@@ -536,20 +546,31 @@ describe("EventLog", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the overtime marker but never offers its undo", () => {
-    render(
-      <EventLog onUndo={vi.fn()} rows={[row({ event: "Overtime startet" })]} />,
-    );
+  it("offers the undo of a wrong overtime or half-time start", () => {
+    for (const eventName of ["Overtime startet", "2. Halbzeit gestartet"]) {
+      const { unmount } = render(
+        <EventLog onUndo={vi.fn()} rows={[row({ event: eventName })]} />,
+      );
 
-    expect(screen.getByText("Overtime startet")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Rückgängig/ }),
-    ).toBeNull();
+      expect(
+        screen.getByRole("button", { name: /Rückgängig/ }),
+      ).toBeInTheDocument();
+      unmount();
+    }
   });
 
-  it("shows a marker but never offers its undo", () => {
-    render(<EventLog onUndo={vi.fn()} rows={[row({ event: "Spiel beendet" })]} />);
+  it("shows the kick-off and end markers but never offers their undo", () => {
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[
+          row({ event: "Spiel gestartet", key: "a" }),
+          row({ event: "Spiel beendet", key: "b" }),
+        ]}
+      />,
+    );
 
+    expect(screen.getByText("Spiel gestartet")).toBeInTheDocument();
     expect(screen.getByText("Spiel beendet")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Rückgängig/ }),

@@ -1364,18 +1364,29 @@ button.game-row:active {
   cursor: not-allowed;
 }
 
-/* The live "→ 3rd & M · A18" line of the play wizard. */
+/* The live "3rd & M · A18" line of the play wizard. A confirmation, not a
+   control: the guest-green wash and the tick match the coin-toss answer, so it
+   cannot be mistaken for another button needing a tap. */
 .playpreview {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
   margin: var(--space-2) 0 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
   font-family: var(--font-display);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-base);
   font-weight: 700;
-  color: var(--fg);
+  color: var(--away-text);
   text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--away-wash);
+  border: 1px solid color-mix(in srgb, var(--away) 35%, transparent);
   border-radius: var(--radius-lg);
+}
+
+.playpreview svg {
+  flex: 0 0 auto;
+  color: var(--away-text);
 }
 
 /* ------------------------------------------------------------- tracking -- */
@@ -1655,16 +1666,14 @@ button.game-row:active {
 
 .poss {
   display: inline-flex;
-  align-items: center;
+  flex: 0 0 auto;
   gap: 2px;
-  max-width: 100%;
-  padding: 1px 5px;
-  overflow: hidden;
-  font-size: var(--fs-xs);
-  font-weight: 600;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: var(--fs-md);
+  font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1.4;
-  text-overflow: ellipsis;
   text-transform: uppercase;
   color: var(--primary);
   background: color-mix(in srgb, var(--primary) 12%, transparent);
