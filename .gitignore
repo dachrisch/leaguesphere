@@ -171,6 +171,11 @@ share/static/share/*.css
 # Superpowers tooling artifacts
 .superpowers/
 
+# graphify knowledge-graph output (regenerated locally; the cache and
+# .graphify_root hold absolute machine paths). See
+# docs/topics/architecture/module-map.md for how to rebuild it.
+graphify-out/
+
 # Local JS lint output
 **/js-lint-results-*.json
 **/js-lint-results-*.sarif

@@ -6,6 +6,7 @@ System design, technical decisions, and technology stack documentation.
 
 - [Architecture Overview](./architecture-overview.md) — High-level system design
 - [Tech Stack](./tech-stack.md) — Technologies and libraries
+- [Module Map](./module-map.md) — How the modules actually depend on each other (codebase graph)
 - [Architecture Decision Records (ADRs)](./adr/) — Technical decisions and rationale
 
 ## Overview
@@ -16,6 +17,7 @@ This section documents how the system is designed, the choices we've made, and w
 
 - `architecture-overview.md` — System components, dependencies, data flow
 - `tech-stack.md` — Framework versions, database, deployment stack
+- `module-map.md` — Cross-module dependencies found by the codebase graph; how to rebuild it
 - `adr/` — Individual architectural decisions with context and rationale
   - One file per decision
   - Use NNNN-decision-name.md naming

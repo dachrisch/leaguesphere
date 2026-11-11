@@ -40,4 +40,4 @@ LeagueSphere follows a modern hybrid architecture, combining a robust Django bac
 - **Security**: Mandatory token authentication for sensitive operations; strict validation of player eligibility in the backend.
 - **Scalability**: Decoupled frontends allow for independent scaling and maintenance; load-tested with Locust.
 
-Refer to `docs/arch/` for specific ADRs (Architectural Decision Records).
+Refer to `docs/topics/architecture/adr/` for specific ADRs (Architectural Decision Records). For how the modules depend on each other in code, see [Module Map](./module-map.md).
