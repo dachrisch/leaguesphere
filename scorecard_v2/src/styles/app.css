@@ -2174,6 +2174,11 @@ button.game-row:active {
 .logwrap {
   position: relative;
   display: flex;
+  /* One line for the saved strip: 36px of button (or text) plus its 12px of
+     padding. The log is sized against this, and the strip keeps it even while
+     its undo button has not arrived yet — a strip that shrank to its text
+     alone gave the rows 17px back and let them slide under its top edge. */
+  --trackok-line: 48px;
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
@@ -2215,6 +2220,9 @@ button.game-row:active {
 .logwrap > .trackok {
   flex-wrap: nowrap;
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  /* Same line as the space the log reserves, whether or not the undo button
+     is there yet. */
+  min-height: var(--trackok-line);
 }
 
 .trackok-actions {
@@ -5492,7 +5500,7 @@ button.syncbadge {
   }
 
   .tracking .logwrap:has(> .trackok, > .trackerror) {
-    min-height: calc(var(--log-min) + 48px + var(--space-2));
+    min-height: calc(var(--log-min) + var(--trackok-line) + var(--space-2));
   }
 }
 

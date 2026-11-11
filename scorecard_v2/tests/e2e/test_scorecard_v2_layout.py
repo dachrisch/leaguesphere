@@ -85,6 +85,31 @@ def _rect(page: Page, selector: str) -> dict:
     return rect
 
 
+MEASURE_LOG = """() => {
+  const rect = (el) => {
+    if (el === null) return null;
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, left: r.left, right: r.right,
+             height: r.height };
+  };
+  return {
+    row: rect(document.querySelector('.logrows .row')),
+    rows: rect(document.querySelector('.logrows')),
+    strip: rect(document.querySelector('.trackok')),
+  };
+}"""
+
+
+def _measure_log_and_strip(page: Page) -> dict:
+    """One snapshot for row, log and strip.
+
+    Read in a single round-trip: the strip's undo button arrives a moment after
+    the entry, and anything that reflows in between would otherwise mix the
+    geometry of two layouts into one assertion.
+    """
+    return page.evaluate(MEASURE_LOG)
+
+
 def _start_with_entries(page: Page, live_server_url: str, entries: int) -> None:
     game = _seed_game_today()
     page.set_viewport_size({"width": 390, "height": 844})
@@ -124,14 +149,13 @@ def test_scorecard_v2_tracking_keeps_log_and_controls_at_every_size(
         ), size
 
         # F5: the row actions sit side by side, a row is one target high.
-        row = _rect(page, ".logrows .row")
+        geometry = _measure_log_and_strip(page)
+        row, rows, strip = geometry["row"], geometry["rows"], geometry["strip"]
         assert row["height"] <= (76 if width < 360 else 62), (size, row)
 
         # F2/F1: at least two entries are visible in the log...
-        rows = _rect(page, ".logrows")
         assert rows["height"] >= 2 * row["height"] - 1, (size, rows, row)
         # ...and the saved strip no longer lies on top of them.
-        strip = _rect(page, ".trackok")
         side_by_side = (
             strip["left"] >= rows["right"] - 1 or strip["right"] <= rows["left"] + 1
         )
@@ -158,6 +182,32 @@ def test_scorecard_v2_tracking_keeps_log_and_controls_at_every_size(
                 control.text_content(),
                 box,
             )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_scorecard_v2_saved_strip_keeps_its_height(live_server, page: Page):
+    """The strip's undo button lands a moment after the entry is saved.
+
+    The strip must keep its height when it does: the log is sized to hand it one
+    line, so a strip that grows as the button arrives (30.9px with the text
+    alone, 48px with the button) takes that 17px back from the rows and can drop
+    them under the strip's top edge.
+    """
+    _start_with_entries(page, live_server.url, 1)
+    page.set_viewport_size({"width": 320, "height": 568})
+    expect(page.locator(".trackok .trackok-actions")).to_be_visible(timeout=20000)
+
+    heights = page.evaluate(
+        """() => {
+             const strip = document.querySelector('.trackok');
+             const before = strip.getBoundingClientRect().height;
+             strip.querySelector('.trackok-actions').remove();
+             const after = strip.getBoundingClientRect().height;
+             return { before, after };
+           }"""
+    )
+
+    assert heights["after"] == pytest.approx(heights["before"], abs=0.5), heights
 
 
 @pytest.mark.django_db(transaction=True)
