@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.14.12](https://github.com/dachrisch/leaguesphere/compare/v5.14.11...v5.14.12) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @babel/core to v8.1.2 ([#2373](https://github.com/dachrisch/leaguesphere/issues/2373)) ([9e69d2d](https://github.com/dachrisch/leaguesphere/commit/9e69d2d17c4017eb199c7adf46be09d054a0926c))
+* **scorecard:** address the first-use feedback ([a96420c](https://github.com/dachrisch/leaguesphere/commit/a96420c2f6781ae96465077de306dabedd6508e8))
+
 ## [5.14.11](https://github.com/dachrisch/leaguesphere/compare/v5.14.10...v5.14.11) (2026-11-11)
 
 
