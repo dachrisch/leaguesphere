@@ -1,6 +1,6 @@
 {
   "name": "liveticker",
-  "version": "5.14.9-rc.4",
+  "version": "5.14.10",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
@@ -42,7 +42,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
     "jsdom": "^31.0.0",
-    "prettier": "3.9.10",
+    "prettier": "3.10.0",
     "redux-mock-store": "^1.5.5",
     "vite": "^8.0.12",
     "vitest": "^5.0.0"
