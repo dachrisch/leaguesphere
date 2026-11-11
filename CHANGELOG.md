@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.9](https://github.com/dachrisch/leaguesphere/compare/v5.14.8...v5.14.9) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.10.0 ([#2365](https://github.com/dachrisch/leaguesphere/issues/2365)) ([8456658](https://github.com/dachrisch/leaguesphere/commit/8456658d9aa650a197b42ebf4022cde023c6f1bd))
+
 ## [5.14.8](https://github.com/dachrisch/leaguesphere/compare/v5.14.7...v5.14.8) (2026-11-11)
 
 
