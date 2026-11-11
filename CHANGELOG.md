@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.14.13](https://github.com/dachrisch/leaguesphere/compare/v5.14.12...v5.14.13) (2026-11-11)
+
+
+### Bug Fixes
+
+* **scorecard_v2:** keep the saved strip one line high ([aa9c900](https://github.com/dachrisch/leaguesphere/commit/aa9c9004aa2207a2ff1eb3f929bba15ff31ae8f6))
+* **scorecard_v2:** keep the saved strip one line high ([8ee01b0](https://github.com/dachrisch/leaguesphere/commit/8ee01b0a6abd4e0011a840bbaf5587adf9f1a32e))
+
 ## [5.14.12](https://github.com/dachrisch/leaguesphere/compare/v5.14.11...v5.14.12) (2026-11-11)
 
 
