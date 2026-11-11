@@ -500,7 +500,8 @@ def test_scorecard_v2_two_step_buttons_keep_their_box(live_server, page: Page):
 
     # ---- 1st Down: saved on the first tap, the jersey on the second. ------
     page.set_viewport_size({"width": 1440, "height": 900})
-    first = page.locator(".tracking .action-grid > .action").nth(7)
+    # By its shortcut key, not by position: the tile list grows.
+    first = page.locator('.tracking .action-grid > .action:has(kbd[data-key="8"])')
     unarmed = _boxes(page, first, TWO_STEP_SIZES)
     page.set_viewport_size({"width": 1440, "height": 900})
     first.click()
