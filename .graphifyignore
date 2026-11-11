@@ -1,0 +1,10 @@
+# graphify scan scope for this repo.
+#
+# Only the modules this graph was built for are scanned; the rest of the
+# checkout is ignored so a post-commit rebuild stays a few seconds instead of
+# re-extracting the whole project. Add a module here to bring it into the
+# graph, then rebuild: graphify update .
+/*
+!/gamedays/
+!/gameday_designer/
+!/scorecard_v2/
