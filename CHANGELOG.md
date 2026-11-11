@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.11](https://github.com/dachrisch/leaguesphere/compare/v5.14.10...v5.14.11) (2026-11-11)
+
+
+### Documentation
+
+* **architecture:** add module map from the codebase graph ([#2370](https://github.com/dachrisch/leaguesphere/issues/2370)) ([a149f08](https://github.com/dachrisch/leaguesphere/commit/a149f08c5500c806c12467c5cb6e0d347fa35428))
+
 ## [5.14.10](https://github.com/dachrisch/leaguesphere/compare/v5.14.9...v5.14.10) (2026-11-11)
 
 
