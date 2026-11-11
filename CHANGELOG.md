@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.10](https://github.com/dachrisch/leaguesphere/compare/v5.14.9...v5.14.10) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deps:** update dependency bootstrap to v5.3.9 ([#2368](https://github.com/dachrisch/leaguesphere/issues/2368)) ([1696176](https://github.com/dachrisch/leaguesphere/commit/16961766bd16be0a43c9ccb1a5c36d9e66349a6f))
+
 ## [5.14.9](https://github.com/dachrisch/leaguesphere/compare/v5.14.8...v5.14.9) (2026-11-11)
 
 
