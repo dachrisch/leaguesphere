@@ -1,6 +1,6 @@
 {
   "name": "gameday_designer",
-  "version": "5.14.8",
+  "version": "5.14.9-rc.1",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "type": "module",
