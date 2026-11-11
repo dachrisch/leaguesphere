@@ -32,6 +32,7 @@ fe_template/.*
 \.opencode/.*
 \.qwen/.*
 (.*/)?\.gitignore
+\.graphifyignore
 \.pre-commit-config\.yaml
 \.codecov\.yml
 renovate\.json
