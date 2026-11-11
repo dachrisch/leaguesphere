@@ -57,6 +57,7 @@ import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
   Check,
+  Clock,
   Flag,
   Football,
   Interception,
@@ -2010,12 +2011,21 @@ export default function TrackingScreen({
           >
             <Stopwatch className="action-icon" size={20} />
             <span>Spielzeit</span>
+            <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
+          </button>
+          <button
+            className="action"
+            disabled={composerDisabled}
+            onClick={() => setTimeoutTeam(possessionName)}
+            type="button"
+          >
+            <Clock className="action-icon" size={20} />
+            <span>Auszeit</span>
             {possessionTimeouts === null ? null : (
               <span aria-hidden="true" className="actioncount">
                 {timeoutText(possessionTimeouts)}
               </span>
             )}
-            <kbd aria-hidden="true" className="shortcut-hint" data-key="6" />
           </button>
           <button
             className="action"
@@ -2365,11 +2375,18 @@ export default function TrackingScreen({
       {timeoutTeam !== null ? (
         <TimeoutSheet
           disabled={readOnly}
+          half={half}
+          key={timeoutTeam}
           onSubmit={(gameTime) => takeTimeout(timeoutTeam, gameTime)}
           onClose={() => setTimeoutTeam(null)}
+          onTeam={(team) => setTimeoutTeam(team)}
+          opponentName={
+            timeoutTeam === possessionName ? opponentName : possessionName
+          }
           perHalf={timeoutsPerHalf}
           seconds={rules?.timeouts?.seconds ?? 60}
           teamName={timeoutTeam}
+          timeouts={timeouts}
           used={
             timeoutBudget(rows, timeoutTeam, half, timeoutsPerHalf).used
           }

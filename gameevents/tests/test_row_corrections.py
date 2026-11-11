@@ -109,6 +109,64 @@ def test_undoing_a_penalty_deletes_only_that_row(client):
 
 
 @pytest.mark.django_db
+def test_undoing_the_half_time_marker_returns_the_game_to_the_first_half(client):
+    login(client)
+    game, _home, _away = make_game("halfundo")
+
+    post_events(
+        client,
+        game,
+        {"events": [{"type": "period", "code": "half_time"}], "client_id": sub_id(1)},
+    )
+    game.refresh_from_db()
+    assert game.gameHalftime is not None
+    assert game.status == "2. Halbzeit"
+
+    undo(
+        client,
+        game,
+        GameEvent.objects.get(game=game, type="period", code="half_time").seq,
+    )
+
+    game.refresh_from_db()
+    assert game.gameHalftime is None
+    assert game.status == "1. Halbzeit"
+    assert GameState.objects.get(game=game).period == 1
+    assert get_log(client, game)["isFirstHalf"] is True
+    assert list(
+        TeamLog.objects.filter(
+            gameinfo=game, event="2. Halbzeit gestartet"
+        ).values_list("isDeleted", flat=True)
+    ) == [True]
+
+
+@pytest.mark.django_db
+def test_undoing_the_overtime_marker_leaves_the_second_half_alone(client):
+    login(client)
+    game, _home, _away = make_game("otundo")
+
+    post_events(
+        client,
+        game,
+        {"events": [{"type": "period", "code": "half_time"}], "client_id": sub_id(1)},
+    )
+    post_events(
+        client,
+        game,
+        {"events": [{"type": "period", "code": "overtime"}], "client_id": sub_id(2)},
+    )
+    overtime = GameEvent.objects.get(game=game, type="period", code="overtime")
+
+    undo(client, game, overtime.seq)
+
+    game.refresh_from_db()
+    assert game.gameHalftime is not None
+    assert GameState.objects.get(game=game).period == 2
+    rows = TeamLog.objects.filter(gameinfo=game, event="Overtime startet")
+    assert list(rows.values_list("isDeleted", flat=True)) == [True]
+
+
+@pytest.mark.django_db
 def test_undoing_a_penalty_leaves_the_projection_reconciled(client):
     login(client)
     game, _home, _away = make_game("rowundo")

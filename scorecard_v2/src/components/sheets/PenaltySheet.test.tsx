@@ -419,14 +419,21 @@ describe("PenaltySheet", () => {
     );
   });
 
-  it("defaults the player to the whole team", async () => {
+  it("defaults the player to 'Ohne Nummer' and keeps 'Ganzes Team' last", async () => {
     renderSheet();
 
+    const group = within(
+      screen.getByRole("group", { name: "Trikotnummer (optional)" }),
+    );
+    const none = group.getByRole("button", { name: "Ohne Nummer" });
+    const team = group.getByRole("button", { name: "Ganzes Team" });
+    expect(none).toHaveAttribute("aria-pressed", "true");
+    expect(team).toHaveAttribute("aria-pressed", "false");
+    // The explicit "Ganzes Team" closes the row, after the jerseys.
+    const jersey = group.getByRole("button", { name: /Trikot 23/ });
     expect(
-      within(
-        screen.getByRole("group", { name: "Trikotnummer (optional)" }),
-      ).getByRole("button", { name: "Ganzes Team" }),
-    ).toHaveAttribute("aria-pressed", "true");
+      jersey.compareDocumentPosition(team) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("sends the jersey of the team the penalty is charged to", async () => {
@@ -463,7 +470,7 @@ describe("PenaltySheet", () => {
     await user.click(teamButton("Ravens"));
 
     expect(
-      screen.getByRole("button", { name: "Ganzes Team" }),
+      screen.getByRole("button", { name: "Ohne Nummer" }),
     ).toHaveAttribute("aria-pressed", "true");
     await user.click(saveButton());
 

@@ -57,6 +57,29 @@ describe("TimeoutSheet", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("switches the team and lists when its timeouts were taken", async () => {
+    const user = userEvent.setup();
+    const onTeam = vi.fn();
+    renderSheet({
+      opponentName: "Wolves",
+      onTeam,
+      timeouts: [
+        { team: "Ravens", half: 1, time: "07:12" },
+        { team: "Wolves", half: 2, time: "03:40" },
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Ravens" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(/1\. HZ 07:12/)).toBeInTheDocument();
+    expect(screen.getByText(/2\. HZ 03:40/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Wolves" }));
+
+    expect(onTeam).toHaveBeenCalledWith("Wolves");
+  });
+
   it("counts the taken timeout once when the parent refreshes", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<Submit>(async () => undefined);

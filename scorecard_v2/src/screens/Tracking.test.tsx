@@ -1119,7 +1119,7 @@ describe("Tracking play-by-play", () => {
     const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
     await user.clear(yards);
     await user.type(yards, "8");
-    await wizardNext(user, 2); // distance → qb → player
+    await wizardNext(user); // distance → qb + receiver
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 7, Meier" }),
     );
@@ -1793,10 +1793,13 @@ describe("Tracking cockpit", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Schließen" }));
     expect(apiPostMock).not.toHaveBeenCalled();
-    // a timeout was one tap on the team row - no sheet, nothing written here
+    // the Auszeit tile opens the same dialog as the circles on the team row
+    await user.click(screen.getByRole("button", { name: "Auszeit" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /^Auszeit$/ }),
-    ).toBeNull();
+      screen.getByRole("heading", { name: "Auszeit Ravens" }),
+    ).toBeInTheDocument();
+    expect(apiPostMock).not.toHaveBeenCalled();
   });
 });
 
@@ -1815,9 +1818,9 @@ describe("Tracking wide layout", () => {
     ).not.toBeNull();
 
     const actions = screen.getByRole("region", { name: "Einträge" });
-    // the four play tiles, penalty, Spielzeit, Mehr and the short-form
-    // entries: the Auszeit tile moved to the team rows above
-    expect(actions.querySelectorAll(".action-grid > .action")).toHaveLength(11);
+    // the four play tiles, penalty, Spielzeit, Auszeit, Mehr and the
+    // short-form entries
+    expect(actions.querySelectorAll(".action-grid > .action")).toHaveLength(12);
     const end = screen.getByRole("group", { name: "Spielabschluss" });
     expect(end).toHaveClass("tracking-end");
     expect(within(end).getByRole("button", { name: "Halbzeit" })).toBeInTheDocument();
@@ -4071,7 +4074,7 @@ describe("a scoring play", () => {
     const sheet = await openPlay(user, "Pass");
     await wizardNext(user); // type → result
     await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user, 3); // distance → qb → player
+    await wizardNext(user, 2); // distance → qb + receiver
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );

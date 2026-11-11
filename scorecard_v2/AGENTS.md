@@ -39,6 +39,9 @@ React/TypeScript field-entry app. Run `npm ci`, then `npm run test:run`,
   shortens a long name with an ellipsis), its timeout on the right with the
   used budget (`1/2`). Both are at least `--touch` (44px) wide and high at every
   breakpoint; the timeout is one tap for either team and never a second row.
+  The **Auszeit** tile in the action grid opens the same dialog (with a team
+  switch inside) for officials who look for a labelled button, and carries the
+  possession team's `used/perHalf` badge the Spielzeit tile used to show.
 - Two-step buttons (`useArmed`, `ARM_MS` = 10s): the first tap arms a button in
   place (`.is-armed`: same box, the second action as its label, a draining
   bar), a second tap within the window runs it. The first tap follows what an

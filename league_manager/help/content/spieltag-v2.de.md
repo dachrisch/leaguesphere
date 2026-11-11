@@ -31,16 +31,20 @@ wie die bisherige Scorecard
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug
    über die Kacheln **Pass**, **Run** oder **Sack** – der Assistent fragt in
    dieser Reihenfolge: **Spielzug** → **Ergebnis** → **Distanz** →
-   **Quarterback** → **Trikotnummer** → **Defense**. Übersprungene Schritte
-   (kein QB beim Lauf, kein Tackle beim Sack, kein Tackler beim Touchdown)
-   fallen weg. Im Schritt **Distanz** trägst du den Raumgewinn als **Yards**
-   oder als **Endpunkt** (A/B + 0–25) ein; darunter steht die Vorschau, z. B.
-   **→ 2nd & M · A19** oder bei einem scheiternden vierten Versuch
-   **→ Turnover on downs**. **Touchdown** trägt die Distanz bis zur Endzone
+   **Quarterback und Trikotnummer** (ein Schritt) → **Defense**. Übersprungene
+   Schritte (kein QB beim Lauf, kein Tackle beim Sack, kein Tackler beim
+   Touchdown) fallen weg. Im Schritt **Distanz** trägst du den Raumgewinn als
+   **Yards** oder als **Spielfeldlinie** (A/B + 0–25) ein; darunter steht die
+   Vorschau, z. B. **2nd & M · A19** oder bei einem scheiternden vierten
+   Versuch **Turnover on downs**. Die Vorschau ist grün hinterlegt wie das
+   Ergebnis beim Münzwurf – sie zeigt nur, was der Eintrag bewirkt.
+   **Touchdown** trägt die Distanz bis zur Endzone
    ein und blendet den Verlust-Schalter aus; **Safety** (bei Run, Sack und
    Pass) trägt den Weg bis zur eigenen Endzone ein.
    **Interception** fragt zusätzlich Verteidiger, **Ballbesitz ab** und
-   optional **Pick six (Touchdown)**. Die Verteidiger-Trikotnummer steht unter
+   optional **Pick six (Touchdown)**. Sobald du **Return-Yards** einträgst,
+   gilt der Return als beendet und der Touchdown wird wieder abgewählt.
+   Die Verteidiger-Trikotnummer steht unter
    **Defense**; bei einem unvollständigen Pass zuerst **Deflection** wählen.
    Unter dem Ballbesitz steht der **Down & Distanz** (z. B. **2nd & M**) mit
    der Feldposition (z. B. **A12**). Das Feld ist 50 Yards lang: **A** ist die
@@ -70,10 +74,12 @@ wie die bisherige Scorecard
    **Strafe** bleibt auch während des Versuchs erreichbar und wiederholt ihn
    vom verschobenen Punkt.
 
-   Eine **Auszeit** nimmst du über die Kreise neben dem Team im Spielstand:
-   **●●** heißt zwei Auszeiten übrig, **●○** eine, **○○** keine. Der Dialog
-   fragt optional die **Restliche Spielzeit** (mm:ss; ein leeres Feld zählt
-   als 0) und zählt danach 60 Sekunden herunter. Eine dritte Auszeit in einer
+   Eine **Auszeit** nimmst du über die Kachel **Auszeit** oder die Kreise
+   neben dem Team im Spielstand: **●●** heißt zwei Auszeiten übrig, **●○**
+   eine, **○○** keine. Der Dialog zeigt, wer wann welche Auszeit genommen hat,
+   und lässt dich oben zwischen beiden Teams wechseln. Er fragt optional die
+   **Restliche Spielzeit** (mm:ss; ein leeres Feld zählt als 0) und zählt
+   danach 60 Sekunden herunter. Eine dritte Auszeit in einer
    Halbzeit verlangt einen zweiten Tipp (**Trotzdem erfassen**) und erinnert an
    die Strafe „Auszeit ohne verbleibende Auszeit“ (5 Yards). Eine **Auszeit**
    trägt sich unabhängig davon ein, wer den Ball hat. **Overtime** startet die
@@ -85,7 +91,9 @@ wie die bisherige Scorecard
 
    Bei **Strafe** stehen die fünf häufigsten oben, der Rest alphabetisch.
    **Yardage** und **Nächster Versuch** (Wiederholung, First Down, Loss of
-   Down) sind aus der Strafe vorbelegt und bleiben änderbar. Bei
+   Down) sind aus der Strafe vorbelegt und bleiben änderbar. Die
+   Trikotnummer ist standardmäßig **Ohne Nummer**; **Ganzes Team** steht als
+   eigene Kachel am Ende der Nummern. Bei
    **Disqualifikation** ist die Trikotnummer Pflicht. Bei **Unsportlichem
    Verhalten** trägst du die Nummer(n) als Freitext ein (optional, mehrere mit
    Komma oder Leerzeichen); das Sheet zeigt die bisherigen UNV des Teams und
@@ -106,7 +114,9 @@ wie die bisherige Scorecard
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    Spielzügen die Yards, bei **Feldposition** die Yardlinie, bei **Spielzeit**
    und **Auszeit** die Spielzeit); am großen Bildschirm geht das
-   Zurücknehmen auch mit **Strg Z**. Ein Eintrag, der den Ballbesitz gedreht
+   Zurücknehmen auch mit **Strg Z**. Auch ein versehentlich gestarteter
+   **Halbzeit**- oder **Overtime**-Eintrag lässt sich so zurücknehmen: Das
+   Spiel steht danach wieder in der ersten Halbzeit bzw. vor der Overtime. Ein Eintrag, der den Ballbesitz gedreht
    hat (**Turnover**, **Interception**, **Safety**), nimmt dabei auch diese
    Drehung zurück – auch wenn er noch nicht gesendet wurde. Der Touchdown
    selbst dreht den Ball nicht mehr: erst der Versuch (**+1**, **+2**,

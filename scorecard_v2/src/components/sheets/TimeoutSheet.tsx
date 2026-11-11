@@ -1,7 +1,13 @@
 import { useRef, useState } from "react";
 
 import BreakCountdown from "../BreakCountdown";
-import { clockDigits, clockInput, maxMinutes } from "./SeriesSheet";
+import {
+  clockDigits,
+  clockInput,
+  maxMinutes,
+  TimeoutHistory,
+  type TimeoutRecord,
+} from "./SeriesSheet";
 import { errorMessage } from "./errors";
 import Sheet from "./Sheet";
 
@@ -10,12 +16,20 @@ export const TIMEOUT_SECONDS = 60;
 
 interface TimeoutSheetProps {
   teamName: string;
+  /** The other team, so the sheet can switch without closing it. */
+  opponentName?: string | null;
+  /** Switch the team whose timeout is entered. */
+  onTeam?: (team: string) => void;
   /** Timeouts this team already took this half. */
   used: number;
   /** The definition's `timeouts.per_half`. */
   perHalf: number;
   /** The definition's `timeouts.seconds`. */
   seconds?: number;
+  /** The half the entry belongs to, for the history. */
+  half?: number;
+  /** Every timeout still on the board, so the sheet can say when. */
+  timeouts?: TimeoutRecord[];
   disabled?: boolean;
   /** Writes the **Auszeit** row; the optional game time travels as its input. */
   onSubmit: (gameTime: string | null) => Promise<void>;
@@ -33,9 +47,13 @@ interface TimeoutSheetProps {
  */
 export default function TimeoutSheet({
   teamName,
+  opponentName = null,
+  onTeam,
   used,
   perHalf,
   seconds = TIMEOUT_SECONDS,
+  half = 1,
+  timeouts = [],
   disabled = false,
   onSubmit,
   onClose,
@@ -126,9 +144,32 @@ export default function TimeoutSheet({
       onClose={onClose}
       title={`Auszeit ${teamName}`}
     >
-      <p className="sheetnote">
-        {used} von {perHalf} Auszeiten in dieser Halbzeit genommen.
-      </p>
+      {opponentName === null ||
+      onTeam === undefined ? null : (
+        <>
+          <h3 className="sheetsection">Auszeit für</h3>
+          <div aria-label="Auszeit für" className="seg" role="group">
+            {[teamName, opponentName].map((team) => (
+              <button
+                aria-pressed={teamName === team}
+                className={teamName === team ? "sel" : undefined}
+                disabled={posting}
+                key={team}
+                onClick={() => onTeam(team)}
+                type="button"
+              >
+                {team}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <TimeoutHistory
+        half={half}
+        perHalf={perHalf}
+        teams={opponentName === null ? [teamName] : [teamName, opponentName]}
+        timeouts={timeouts}
+      />
       {exhausted ? (
         <p className="sheetwarn" role="alert">
           Keine Auszeit mehr in dieser Halbzeit. Eine weitere ist die Strafe

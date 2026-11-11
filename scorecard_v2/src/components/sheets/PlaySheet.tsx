@@ -14,6 +14,7 @@ import {
 } from "../../app/drive";
 import JerseyPicker from "../JerseyPicker";
 import QuarterbackPick from "../QuarterbackPick";
+import { Check } from "../icons";
 import { errorMessage } from "./errors";
 import { interceptionEvent } from "./SeriesSheet";
 import { spotValue } from "./FieldPositionSheet";
@@ -238,6 +239,7 @@ type Step =
   | "result"
   | "distance"
   | "qb"
+  | "qbplayer"
   | "player"
   | "defender"
   | "interception";
@@ -247,14 +249,25 @@ export function stepsFor(type: PlayType, result: PlayResult): Step[] {
   if (result === "gain" || result === "touchdown" || result === "safety") {
     steps.push("distance");
   }
-  if (type === "pass") {
-    steps.push("qb");
-  }
   if (result === "interception") {
+    // The defender's sheet follows; the passer is the only jersey still asked.
+    if (type === "pass") {
+      steps.push("qb");
+    }
     steps.push("interception");
+    return steps;
+  }
+  if (type === "pass") {
+    // The quarterback is the same person in 95% of the passes, so the passer
+    // and the receiver share one step instead of a second "Weiter".
+    steps.push("qbplayer");
+    // A touchdown has no tackle to record: the receiver scored.
+    if (result !== "touchdown") {
+      steps.push("defender");
+    }
   } else {
     steps.push("player");
-    // A touchdown has no tackle to record: the runner/receiver scored.
+    // A touchdown has no tackle to record: the runner scored.
     if (type !== "sack" && result !== "touchdown") {
       steps.push("defender");
     }
@@ -303,15 +316,17 @@ interface PlaySheetProps {
 }
 
 /**
- * The play-by-play entry as a wizard: **type → result → distance → QB →
- * receiver/runner → tackler**, each step only when it applies.
+ * The play-by-play entry as a wizard: **type → result → distance → QB and
+ * receiver → tackler**, each step only when it applies.
  *
- * The distance can be typed as yards or as the end spot (A/B + yard line), and
- * the sheet previews the resulting down & distance from the same `advance`
- * the board uses. A touchdown prefills the distance to the goal line and hides
- * the loss switch; a safety prefills the run to the own goal line. An
- * interception asks for the defender, the dead-ball spot and an optional pick
- * six.
+ * The passer and the receiver share one step (the same QB throws 95% of the
+ * passes); an interception keeps the passer alone because the defender's
+ * details follow. The distance can be typed as yards or as the field line
+ * (A/B + yard line), and the sheet previews the resulting down & distance from
+ * the same `advance` the board uses. A touchdown prefills the distance to the
+ * goal line and hides the loss switch; a safety prefills the run to the own
+ * goal line. An interception asks for the defender, the dead-ball spot and an
+ * optional pick six.
  */
 export default function PlaySheet({
   teamName,
@@ -383,14 +398,14 @@ export default function PlaySheet({
     drive !== null && isTurnoverOnDowns(drive, playYards, geometry);
   const preview =
     result === "touchdown"
-      ? "→ Touchdown"
+      ? "Touchdown"
       : result === "safety"
-        ? "→ Safety"
+        ? "Safety"
         : turnoverOnDowns
-          ? "→ Turnover on downs"
+          ? "Turnover on downs"
           : next === null
             ? null
-            : `→ ${driveText(next)}${
+            : `${driveText(next)}${
                 spotText(next.ballOn, geometry) === null
                   ? ""
                   : ` · ${spotText(next.ballOn, geometry)}`
@@ -399,7 +414,7 @@ export default function PlaySheet({
   const stepReady =
     step === "distance"
       ? !distanceMissing
-      : step === "qb"
+      : step === "qb" || step === "qbplayer"
         ? !qbMissing
         : true;
 
@@ -589,7 +604,7 @@ export default function PlaySheet({
               onClick={() => setDistanceMode("end")}
               type="button"
             >
-              Endpunkt
+              Spielfeldlinie
             </button>
           </div>
 
@@ -607,6 +622,7 @@ export default function PlaySheet({
                 id="play-yards"
                 inputMode="numeric"
                 onChange={(event) => changeYards(event.target.value)}
+                onFocus={(event) => event.target.select()}
                 pattern="[0-9]*"
                 type="text"
                 value={yardsText}
@@ -636,7 +652,7 @@ export default function PlaySheet({
               </div>
               <div className="sheetfield">
                 <label className="sheetlabel" htmlFor="play-end">
-                  Endpunkt (0–25)
+                  Spielfeldlinie (0–25)
                 </label>
                 <input
                   autoComplete="off"
@@ -645,6 +661,7 @@ export default function PlaySheet({
                   id="play-end"
                   inputMode="decimal"
                   onChange={(event) => setEndYards(event.target.value)}
+                  onFocus={(event) => event.target.select()}
                   pattern="[0-9.,]*"
                   type="text"
                   value={endYards}
@@ -678,13 +695,14 @@ export default function PlaySheet({
 
           {preview === null ? null : (
             <p aria-live="polite" className="playpreview" role="status">
-              {preview}
+              <Check size={18} />
+              <span>{preview}</span>
             </p>
           )}
         </>
       ) : null}
 
-      {step === "qb" ? (
+      {step === "qb" || step === "qbplayer" ? (
         <>
           <h3 className="sheetsection">Quarterback</h3>
           <QuarterbackPick
@@ -702,10 +720,14 @@ export default function PlaySheet({
         </>
       ) : null}
 
-      {step === "player" ? (
+      {step === "qbplayer" || step === "player" ? (
         <>
           <h3 className="sheetsection">
-            {type === "sack" ? "Trikotnummer (Sack)" : "Trikotnummer (optional)"}
+            {type === "sack"
+              ? "Trikotnummer (Sack)"
+              : step === "qbplayer"
+                ? "Trikotnummer (Passempfänger, optional)"
+                : "Trikotnummer (optional)"}
           </h3>
           <JerseyPicker
             disabled={posting}
@@ -822,7 +844,15 @@ export default function PlaySheet({
               disabled={posting}
               id="interception-return"
               inputMode="numeric"
-              onChange={(event) => setReturnYards(event.target.value)}
+              onChange={(event) => {
+                setReturnYards(event.target.value);
+                // Return yards and a pick six describe the same run: typing a
+                // number means the defender was tackled, not in the endzone.
+                if (event.target.value.trim() !== "") {
+                  setPickSix(false);
+                }
+              }}
+              onFocus={(event) => event.target.select()}
               pattern="[0-9]*"
               type="text"
               value={returnYards}
@@ -833,7 +863,14 @@ export default function PlaySheet({
               aria-pressed={pickSix}
               className={pickSix ? "sel" : undefined}
               disabled={posting}
-              onClick={() => setPickSix((current) => !current)}
+              onClick={() => {
+                const next = !pickSix;
+                setPickSix(next);
+                // A touchdown has no return yardage to record.
+                if (next) {
+                  setReturnYards("");
+                }
+              }}
               type="button"
             >
               Pick six (Touchdown)

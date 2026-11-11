@@ -70,7 +70,10 @@ from gameevents.service.projector import (
 from gameevents.service.replay import Replay, replay_events, resolve_correction
 from gamedays.models import Gameresult, Gameinfo, Team, TeamLog
 from gamedays.service.game_service import GameService
-from gamedays.service.wrapper.gameinfo_wrapper import STATUS_HALFTIME
+from gamedays.service.wrapper.gameinfo_wrapper import (
+    STATUS_FIRST_HALF,
+    STATUS_HALFTIME,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -413,7 +416,7 @@ def _sync_possession(game, side: Optional[str]) -> None:
     game.save(update_fields=["in_possession", "updated_at"])
 
 
-def _sync_halftime(game, state: GameStateValue) -> None:
+def _sync_halftime(game, state: GameStateValue, *, undo_half: bool = False) -> None:
     """Mirror the projected halftime onto ``Gameinfo``.
 
     ``GET /api/gamelog/<id>`` answers ``isFirstHalf`` from
@@ -425,13 +428,25 @@ def _sync_halftime(game, state: GameStateValue) -> None:
     "Halbzeit" and files every play of the second half under half 1.
 
     The first half-time wins: a later event (a second-half play, a replayed
-    marker) must not move the timestamp again.
+    marker) must not move the timestamp again. ``undo_half`` is the one
+    exception: correcting the half-time marker itself puts the game back into
+    the first half. It is passed explicitly because a game whose halftime the
+    old app wrote has no marker in the event log -- a later v2 append must not
+    mistake that missing marker for a corrected half.
     """
 
-    if state.period < 2 or game.gameHalftime is not None:
+    if state.period >= 2:
+        if game.gameHalftime is not None:
+            return
+        game.gameHalftime = timezone.now()
+        game.status = STATUS_HALFTIME
+        game.save(update_fields=["gameHalftime", "status"])
         return
-    game.gameHalftime = timezone.now()
-    game.status = STATUS_HALFTIME
+    if not undo_half or game.gameHalftime is None:
+        return
+    game.gameHalftime = None
+    if game.status == STATUS_HALFTIME:
+        game.status = STATUS_FIRST_HALF
     game.save(update_fields=["gameHalftime", "status"])
 
 
@@ -560,7 +575,17 @@ def append_submission(
         _apply_sequence_flags(game, projection, _row_flag_events(game, projection))
     if projection.state.in_possession != replayed.state.in_possession:
         _sync_possession(game, projection.state.in_possession)
-    _sync_halftime(game, projection.state)
+    _sync_halftime(
+        game,
+        projection.state,
+        undo_half=any(
+            value.type == "correction"
+            and value.undo_of is not None
+            and value.undo_of.type == "period"
+            and value.undo_of.code == "half_time"
+            for value in resolved
+        ),
+    )
     _save_state(game, projection.state)
     return AppendOutcome(
         state=projection.state, applied=True, last_seq=projection.state.last_seq
