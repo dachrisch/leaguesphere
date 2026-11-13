@@ -27,7 +27,7 @@
             <tbody>
             {% for official in officials_list %}
             <tr class="{% if official.license_year < course_date.year %}bg-danger text-white{% endif %}">
-                <th scope="row"><a href="https://offd.de/offd/moodle/user/profile.php?id={{official.external_id}}"
+                <th scope="row"><a href="https://offd.de/user/profile.php?id={{official.external_id}}"
                                    target=”_blank”>{{official.external_id}}</a></th>
                 {% if official.id %}
                 <td><a href=" {% url profile_url pk=official.id season=course_date.year %}" target=”_blank”>{{official.id}}</a></td>

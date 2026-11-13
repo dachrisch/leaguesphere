@@ -260,7 +260,7 @@ class MoodleApi:
 
     def __init__(self):
         self.moodle_url = (
-            f"{settings.MOODLE_URL}/moodle/webservice/rest/server.php"
+            f"{settings.MOODLE_URL}/webservice/rest/server.php"
             f"?wstoken={settings.MOODLE_WSTOKEN}&moodlewsrestformat=json"
         )
 
@@ -270,7 +270,7 @@ class MoodleApi:
     def confirm_user_auth(self, username, password):
         return MoodleAuth(
             requests.get(
-                f"{settings.MOODLE_URL}/moodle/login/token.php",
+                f"{settings.MOODLE_URL}/login/token.php",
                 {
                     "username": username,
                     "password": password,

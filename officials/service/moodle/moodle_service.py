@@ -50,8 +50,8 @@ def measure_execution_time(func):
 
 
 class MoodleService:
-    MOODLE_PROFILE = "/moodle/user/profile.php"
-    MOODLE_COURSE = "/moodle/course/edit.php"
+    MOODLE_PROFILE = "/user/profile.php"
+    MOODLE_COURSE = "/course/edit.php"
 
     def __init__(self):
         self.moodle_api = MoodleApi()
