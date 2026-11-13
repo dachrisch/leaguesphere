@@ -1147,7 +1147,7 @@ jobs:
     docker:
       # graphifyy pins requires-python <3.15, so this job cannot use the
       # 3.15.2 image the test jobs run on.
-      - image: cimg/python:3.14
+      - image: cimg/python:3.15
     working_directory: ~/repo
     steps:
       - scoped_job:
