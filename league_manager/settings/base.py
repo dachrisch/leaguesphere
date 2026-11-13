@@ -12,15 +12,20 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-# Every React app is served (or dev-proxied) same-origin. The only path a
-# third-party page may read is the public API, /api/snapshot/: anonymous,
-# read-only, never with credentials. Every other route (admin, auth, the
-# internal /api/ endpoints, HTML pages) gets no CORS headers at all.
-# NOTE: the trailing slash is significant — CorsMiddleware runs before
-# CommonMiddleware's APPEND_SLASH redirect, so /api/snapshot (no slash)
-# gets no CORS headers by design. The share widget must use the exact
-# trailing-slash URL.
-CORS_URLS_REGEX = r"^/api/snapshot/$"
+# Every React app is served (or dev-proxied) same-origin. Third-party pages may
+# read exactly two things, both anonymous, read-only and never credentialed:
+#   - /api/snapshot/            the public API
+#   - /dal/team/                the team autocomplete the OFFD/Moodle signup form
+#                               (offd.de) renders in its footer
+# Every other route (admin, auth, the internal /api/ endpoints, HTML pages) gets
+# no CORS headers at all.
+# NOTE: the trailing slash is significant for /api/snapshot/ — CorsMiddleware
+# runs before CommonMiddleware's APPEND_SLASH redirect, so /api/snapshot (no
+# slash) gets no CORS headers by design. The share widget must use the exact
+# trailing-slash URL. For /dal/team the pattern accepts both spellings: the
+# Moodle footer was written against the slashless URI, and the 301 it produces
+# then carries the headers through to the redirect target.
+CORS_URLS_REGEX = r"^(/api/snapshot/|/dal/team/?)$"
 CORS_ALLOW_ALL_ORIGINS = True  # only on CORS_URLS_REGEX
 # Vestigial deny-by-default: ALLOW_ALL takes precedence on matched paths;
 # unmatched paths get nothing either way. Kept empty so a future
