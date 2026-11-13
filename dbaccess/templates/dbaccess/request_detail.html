@@ -27,9 +27,9 @@
                         <p class="mb-4">{{ access_request.purpose|linebreaksbr }}</p>
 
                         <h2 class="h6">Tables it may update</h2>
-                        <p class="mb-4">
-                            {% include "dbaccess/_tables.html" with tables=access_request.tables %}
-                        </p>
+                        <div class="mb-4">
+                            {% include "dbaccess/_tables.html" with tables=access_request.tables limit=10 expandable=True %}
+                        </div>
 
                         <dl class="row small mb-0">
                             <dt class="col-sm-4 fw-normal text-muted">Database user</dt>
@@ -78,7 +78,7 @@
                                 <strong>{{ event.actor }}</strong>
                                 <span class="text-muted">{{ event.action }}</span>
                                 {% if event.detail %}
-                                    <span class="d-block text-muted">{{ event.detail }}</span>
+                                    <span class="d-block text-muted">{{ event.detail_short }}</span>
                                 {% endif %}
                             </span>
                         </li>

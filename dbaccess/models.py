@@ -16,6 +16,7 @@ The design and the reasoning behind that split live in
 from __future__ import annotations
 
 import datetime as dt
+import re
 import string
 
 from cryptography.fernet import Fernet
@@ -56,6 +57,42 @@ def access_handle(username: str) -> str:
     refuses fails the request *after* approval, which wastes the decision.
     """
     return "".join(ch for ch in (username or "").lower() if ch in HANDLE_ALPHABET)[:HANDLE_LENGTH]
+
+
+# How many table names a surface shows before it says "+N more". The audit trail
+# can afford fewer than the request itself, but neither should print fifteen.
+DETAIL_TABLES_SHOWN = 4
+
+# `tables: a,b,c; ttl: 6h` (this app) and
+# `dbeaver_prod_<x>@<host> on a b c` (the sidecar) are the two shapes.
+_REQUESTED_TABLES = re.compile(r"(tables:\s*)([^;]+)")
+_ACTIVATED_TABLES = re.compile(
+    r"^(?P<head>\S+@[\w.%]+ on )(?P<tables>[A-Za-z0-9_]+(?: [A-Za-z0-9_]+)*)$"
+)
+
+
+def _shorten_list(items: list[str], joiner: str) -> str:
+    shown, hidden = items[:DETAIL_TABLES_SHOWN], items[DETAIL_TABLES_SHOWN:]
+    text = joiner.join(shown)
+
+    return f"{text} +{len(hidden)} more" if hidden else text
+
+
+def _shorten_detail_tables(detail: str) -> str:
+    def requested(match: re.Match) -> str:
+        names = [name.strip() for name in match.group(2).split(",") if name.strip()]
+
+        return match.group(1) + _shorten_list(names, ", ")
+
+    text = _REQUESTED_TABLES.sub(requested, detail)
+    activated = _ACTIVATED_TABLES.match(text)
+
+    if activated:
+        text = activated.group("head") + _shorten_list(
+            activated.group("tables").split(), " "
+        )
+
+    return text
 
 
 
@@ -231,7 +268,6 @@ class GrantableTable(models.Model):
 
 class AccessEvent(models.Model):
     """Append-only. With no binlog before 2026-10-26 this was the only record."""
-
     request = models.ForeignKey(
         AccessRequest, on_delete=models.CASCADE, related_name="events"
     )
@@ -245,6 +281,17 @@ class AccessEvent(models.Model):
         # See AccessRequest.Meta.db_table: `tick.sh` appends to this table.
         db_table = "dbaccess_event"
         ordering = ["-at"]
+
+    @property
+    def detail_short(self) -> str:
+        """The detail with a long table list reduced to `+N more`.
+
+        Two writers put table names in here: the app records
+        `tables: a,b,c; ttl: 6h`, and the sidecar appends
+        `dbeaver_prod_<x>@<host> on a b c`. Fifteen names in the trail is a wall
+        of text that pushes the action and the actor off the line.
+        """
+        return _shorten_detail_tables(self.detail or "")
 
     def __str__(self):
         return f"{self.at:%Y-%m-%d %H:%M} {self.actor} {self.action}"

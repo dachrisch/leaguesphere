@@ -277,6 +277,9 @@ DBACCESS_TUNNEL_PORT = os.environ.get("DBACCESS_TUNNEL_PORT", "33063")
 DBACCESS_TUNNEL_KEY_ITEM = os.environ.get(
     "DBACCESS_TUNNEL_KEY_ITEM", "dbeaver prod tunnel key (servy)"
 )
+# The SSH side of the tunnel, which the reveal page prints next to the key item
+# so a person can fill in both DBeaver tabs without opening the help page.
+DBACCESS_TUNNEL_SSH_PORT = os.environ.get("DBACCESS_TUNNEL_SSH_PORT", "22")
 
 LOGGING = {
     "version": 1,

@@ -1,45 +1,99 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="py-3" style="max-width: 720px">
+    <div class="py-3" style="max-width: 820px">
         <h1 class="h4">Connection details</h1>
         <p class="text-muted small">
-            Shown once per click, and every reveal is recorded. The password is meaningless
-            after <strong>{{ access_request.expires_at|date:"d.m.Y H:i" }}</strong>.
+            Everything DBeaver needs for this session: the account below only exists for
+            these hours, and the password stops working after
+            <strong>{{ access_request.expires_at|date:"d.m.Y H:i" }}</strong>.
+            Every reveal is recorded.
         </p>
 
-        <table class="table table-sm">
-            <tbody>
-            <tr><th style="width: 34%">SSH host / user</th>
-                <td><code>{{ tunnel.host }}</code> / <code>{{ tunnel.user }}</code></td></tr>
-            <tr><th>Tunnel key</th>
-                <td class="small">Vaultwarden: <code>{{ tunnel.key_item }}</code></td></tr>
-            <tr><th>Main host / port</th>
-                <td><code>127.0.0.1</code> / <code>{{ tunnel.port }}</code></td></tr>
-            <tr><th>Database</th>
-                <td><code>{{ db_name }}</code></td></tr>
-            <tr><th>User</th>
-                <td><code>{{ access_request.db_user }}</code>
-                    {% if access_request.grant_host %}
-                        <span class="text-muted small">&mdash; accepted only from
-                            <code>{{ access_request.grant_host }}</code></span>
-                    {% endif %}
-                </td></tr>
-            <tr><th>Password</th>
-                <td><code class="fs-5">{{ password }}</code></td></tr>
-            </tbody>
-        </table>
+        <div class="card mb-3">
+            <div class="card-header bg-body-tertiary small text-uppercase text-muted fw-semibold">
+                DBeaver &rarr; Main
+            </div>
+            <div class="card-body">
+                <dl class="row small mb-0">
+                    <dt class="col-sm-4 fw-normal text-muted">URL</dt>
+                    <dd class="col-sm-8">
+                        <code>jdbc:mariadb://127.0.0.1:{{ tunnel.port }}/{{ db_name }}</code>
+                    </dd>
 
-        <div class="alert alert-warning small mb-0">
-            Turn auto-commit off before you touch anything. Every write needs a scoped
-            <code>SELECT</code> first, and the pre-session <code>bak_&lt;table&gt;_&lt;date&gt;</code>
-            copies already exist&nbsp;&mdash;&nbsp;for a table name too long for MariaDB's
-            64-character limit the copy is <code>bak_&lt;shortened&gt;_&lt;hash&gt;_&lt;date&gt;</code>.
-            Do not try to create your own, the account has no
-            <code>CREATE</code>.
+                    <dt class="col-sm-4 fw-normal text-muted">Server Host</dt>
+                    <dd class="col-sm-8"><code>127.0.0.1</code></dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Port</dt>
+                    <dd class="col-sm-8"><code>{{ tunnel.port }}</code></dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Database</dt>
+                    <dd class="col-sm-8"><code>{{ db_name }}</code></dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Username</dt>
+                    <dd class="col-sm-8">
+                        <code>{{ access_request.db_user }}</code>
+                        {% if access_request.grant_host %}
+                            <span class="text-muted">&mdash; accepted only from
+                                <code>{{ access_request.grant_host }}</code></span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Password</dt>
+                    <dd class="col-sm-8">
+                        <code class="fs-5">{{ password }}</code>
+                        <span class="d-block text-muted mt-1">
+                            Your session only. Never put it in a ticket or a chat.
+                        </span>
+                    </dd>
+                </dl>
+            </div>
         </div>
 
-        <a class="btn btn-link btn-sm px-0 mt-3"
+        <div class="card mb-3">
+            <div class="card-header bg-body-tertiary small text-uppercase text-muted fw-semibold">
+                DBeaver &rarr; SSH
+            </div>
+            <div class="card-body">
+                <dl class="row small mb-0">
+                    <dt class="col-sm-4 fw-normal text-muted">Host/IP</dt>
+                    <dd class="col-sm-8"><code>{{ tunnel.host }}</code></dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Port</dt>
+                    <dd class="col-sm-8"><code>{{ tunnel.ssh_port }}</code></dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">User Name</dt>
+                    <dd class="col-sm-8"><code>{{ tunnel.user }}</code></dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Authentication Method</dt>
+                    <dd class="col-sm-8">Public Key</dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Private Key</dt>
+                    <dd class="col-sm-8">
+                        <code>{{ tunnel.key_item }}</code>
+                        <span class="d-block text-muted mt-1">
+                            From Vaultwarden, saved locally. The tunnel account is
+                            transport only &mdash; the username and password above are
+                            your identity.
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <p class="text-muted small">
+            <strong>Test Connection</strong> only works once the tunnel is up. Auto-commit
+            off before you touch anything. Every write needs a scoped
+            <code>SELECT</code> first, and the pre-session
+            <code>bak_&lt;table&gt;_&lt;date&gt;</code> copies already exist&nbsp;&mdash;&nbsp;for
+            a table name too long for MariaDB's 64-character limit the copy is
+            <code>bak_&lt;shortened&gt;_&lt;hash&gt;_&lt;date&gt;</code>. Do not try to create
+            your own, the account has no <code>CREATE</code>.
+        </p>
+
+        <a class="btn btn-link btn-sm px-0"
+           href="{% url 'help-topic' 'dbaccess' %}">The full guide</a>
+        <a class="btn btn-link btn-sm"
            href="{% url 'dbaccess-detail' access_request.pk %}">Back to the session</a>
     </div>
 {% endblock %}

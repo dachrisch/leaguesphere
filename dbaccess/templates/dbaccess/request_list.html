@@ -19,22 +19,24 @@
         {% if can_approve and pending %}
             <h2 class="h6 text-uppercase text-muted">Waiting for a decision</h2>
             <div class="table-responsive mb-4">
-                <table class="table table-sm align-middle">
+                <table class="table table-sm align-middle table-hover">
                     <thead>
                     <tr>
                         <th>Person</th>
                         <th>Tables</th>
                         <th>Valid for</th>
                         <th class="d-none d-md-table-cell">Asked by</th>
-                        <th></th>
                     </tr>
                     </thead>
                     <tbody>
                     {% for item in pending %}
-                        <tr>
-                            <td><code>dbeaver_prod_{{ item.person }}</code></td>
+                        <tr class="position-relative">
+                            <td>
+                                <a class="stretched-link text-decoration-none"
+                                   href="{% url 'dbaccess-detail' item.pk %}"><code>dbeaver_prod_{{ item.person }}</code></a>
+                            </td>
                             <td class="small text-muted text-break">
-                                {% include "dbaccess/_tables.html" with tables=item.tables %}
+                                {% include "dbaccess/_tables.html" with tables=item.tables limit=4 %}
                             </td>
                             <td>{{ item.ttl_hours }} h</td>
                             <td class="d-none d-md-table-cell">
@@ -42,10 +44,6 @@
                                 {% if item.requester_id == request.user.id %}
                                     <span class="badge bg-light text-dark border">you</span>
                                 {% endif %}
-                            </td>
-                            <td class="text-end">
-                                <a class="btn btn-outline-secondary btn-sm"
-                                   href="{% url 'dbaccess-detail' item.pk %}">Review</a>
                             </td>
                         </tr>
                     {% endfor %}
@@ -56,7 +54,7 @@
 
         <h2 class="h6 text-uppercase text-muted">History</h2>
         <div class="table-responsive">
-            <table class="table table-sm align-middle">
+            <table class="table table-sm align-middle table-hover">
                 <thead>
                 <tr>
                     <th>Person</th>
@@ -64,27 +62,25 @@
                     <th>Tables</th>
                     <th>Expires</th>
                     <th class="d-none d-md-table-cell">Asked</th>
-                    <th></th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for item in requests %}
-                    <tr>
-                        <td><code>dbeaver_prod_{{ item.person }}</code></td>
+                    <tr class="position-relative">
+                        <td>
+                            <a class="stretched-link text-decoration-none"
+                               href="{% url 'dbaccess-detail' item.pk %}"><code>dbeaver_prod_{{ item.person }}</code></a>
+                        </td>
                         <td>{% include "dbaccess/_state_badge.html" with state=item.state %}</td>
                         <td class="small text-muted text-break">
-                            {% include "dbaccess/_tables.html" with tables=item.tables %}
+                            {% include "dbaccess/_tables.html" with tables=item.tables limit=4 %}
                         </td>
                         <td class="small">{{ item.expires_at|date:"d.m. H:i" }}</td>
                         <td class="small d-none d-md-table-cell">{{ item.created_at|date:"d.m. H:i" }}</td>
-                        <td class="text-end">
-                            <a class="btn btn-outline-secondary btn-sm"
-                               href="{% url 'dbaccess-detail' item.pk %}">Open</a>
-                        </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-muted">No requests yet.</td>
+                        <td colspan="5" class="text-muted">No requests yet.</td>
                     </tr>
                 {% endfor %}
                 </tbody>
