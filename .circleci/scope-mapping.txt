@@ -21,20 +21,12 @@
 \.circleci/.* run-journey true
 \.circleci/.* run-share true
 \.circleci/.* run-images true
-\.circleci/.* run-code-graph true
 
 # --- dependency manifests: a bump changes the runtime we ship, not just one
 #     app. Build both images and boot the compose network as well, so a green
 #     dependency PR has actually started the stack it ships. The migration
 #     gate is always-on (`check_migrations`), so it is not listed here.
 (.*/)?(pyproject\.toml|uv\.lock|package\.json|package-lock\.json|requirements.*\.txt) run-images true
-# A release bumps every manifest, and the graph job must run on tags like the
-# rest of the matrix (scoped_job fails a tag pipeline whose scope is false).
-(.*/)?(pyproject\.toml|uv\.lock|package\.json|package-lock\.json|requirements.*\.txt) run-code-graph true
-
-# --- code graph: the modules graphify indexes (see .graphifyignore) ---
-(gamedays|gameday_designer|scorecard_v2)/.* run-code-graph true
-\.graphifyignore run-code-graph true
 
 # --- .github: legacy Actions workflows (dormant on PRs) still get the full
 #     gate, so a merge never claims proof it does not have ---
