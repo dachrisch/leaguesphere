@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.20](https://github.com/dachrisch/leaguesphere/compare/v5.14.19...v5.14.20) (2026-11-13)
+
+
+### Bug Fixes
+
+* **dbaccess:** keep a snapshot name inside the 64-character limit ([#2392](https://github.com/dachrisch/leaguesphere/issues/2392)) ([6f37574](https://github.com/dachrisch/leaguesphere/commit/6f37574e4a4482fd048948c1c5ffc8c4dc164dd3))
+
 ## [5.14.19](https://github.com/dachrisch/leaguesphere/compare/v5.14.18...v5.14.19) (2026-11-13)
 
 
