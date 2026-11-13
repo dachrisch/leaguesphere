@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.19](https://github.com/dachrisch/leaguesphere/compare/v5.14.18...v5.14.19) (2026-11-13)
+
+
+### Bug Fixes
+
+* **dbaccess:** grant a table whose name has upper case in it ([#2390](https://github.com/dachrisch/leaguesphere/issues/2390)) ([d9f22b1](https://github.com/dachrisch/leaguesphere/commit/d9f22b1ed878b7bf7107dabe168ef231487d46e8))
+
 ## [5.14.18](https://github.com/dachrisch/leaguesphere/compare/v5.14.17...v5.14.18) (2026-11-13)
 
 
