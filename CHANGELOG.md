@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.17](https://github.com/dachrisch/leaguesphere/compare/v5.14.16...v5.14.17) (2026-11-13)
+
+
+### Bug Fixes
+
+* **officials:** address Moodle at the domain root, not /offd/moodle ([#2382](https://github.com/dachrisch/leaguesphere/issues/2382)) ([1f4b0a1](https://github.com/dachrisch/leaguesphere/commit/1f4b0a17820b487c8cc3d485c0d26991867fab09))
+
 ## [5.14.16](https://github.com/dachrisch/leaguesphere/compare/v5.14.15...v5.14.16) (2026-11-13)
 
 
