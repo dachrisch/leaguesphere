@@ -33,7 +33,9 @@
                     {% for item in pending %}
                         <tr>
                             <td><code>dbeaver_prod_{{ item.person }}</code></td>
-                            <td class="small text-muted">{{ item.tables_csv }}</td>
+                            <td class="small text-muted text-break">
+                                {% include "dbaccess/_tables.html" with tables=item.tables %}
+                            </td>
                             <td>{{ item.ttl_hours }} h</td>
                             <td class="d-none d-md-table-cell">
                                 {{ item.requester }}
@@ -70,7 +72,9 @@
                     <tr>
                         <td><code>dbeaver_prod_{{ item.person }}</code></td>
                         <td>{% include "dbaccess/_state_badge.html" with state=item.state %}</td>
-                        <td class="small text-muted">{{ item.tables_csv }}</td>
+                        <td class="small text-muted text-break">
+                            {% include "dbaccess/_tables.html" with tables=item.tables %}
+                        </td>
                         <td class="small">{{ item.expires_at|date:"d.m. H:i" }}</td>
                         <td class="small d-none d-md-table-cell">{{ item.created_at|date:"d.m. H:i" }}</td>
                         <td class="text-end">

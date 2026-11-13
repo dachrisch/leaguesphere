@@ -1,0 +1,7 @@
+{% comment %}
+The requested tables as wrapping chips, so the list and the detail page cannot
+drift apart again. A comma-joined CSV in a <td> has no break point: fifteen
+tables widened the row until the history scrolled sideways and the Person and
+State columns left the page, while the detail page - which already rendered
+chips - looked fine.
+{% endcomment %}{% for table in tables %}<code class="d-inline-block bg-body-tertiary border rounded px-2 py-1 me-1 mb-1">{{ table }}</code>{% empty %}<span class="text-muted">none recorded</span>{% endfor %}

@@ -93,8 +93,12 @@ sql "$DB" -e "
      LIMIT $MAX_PER_TICK" | while IFS="$TAB" read -r id person tables ttl; do
     [ -n "${id:-}" ] || continue
 
-    if ! printf '%s' "$person" | grep -Eq '^[a-z][a-z0-9]{1,20}$'; then
-        fail_row "$id" "person must be lowercase alphanumeric"
+    # The alphabet is the app's `HANDLE_ALPHABET` (dbaccess/models.py) - a
+    # leading digit included, because `dbeaver_prod_5eradmin` is a legal
+    # account and the app derives it from a login like `5erAdmin`. The length
+    # is the app's HANDLE_LENGTH (20), not the 21 the first draft allowed.
+    if ! printf '%s' "$person" | grep -Eq '^[a-z0-9][a-z0-9]{0,19}$'; then
+        fail_row "$id" "person must be lowercase ASCII letters and digits (1-20, may start with a digit)"
         continue
     fi
 

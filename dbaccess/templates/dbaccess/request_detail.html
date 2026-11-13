@@ -28,11 +28,7 @@
 
                         <h2 class="h6">Tables it may update</h2>
                         <p class="mb-4">
-                            {% for table in access_request.tables %}
-                                <code class="d-inline-block bg-body-tertiary border rounded px-2 py-1 mb-1">{{ table }}</code>
-                            {% empty %}
-                                <span class="text-muted">none recorded</span>
-                            {% endfor %}
+                            {% include "dbaccess/_tables.html" with tables=access_request.tables %}
                         </p>
 
                         <dl class="row small mb-0">

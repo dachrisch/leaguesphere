@@ -16,6 +16,7 @@ The design and the reasoning behind that split live in
 from __future__ import annotations
 
 import datetime as dt
+import string
 
 from cryptography.fernet import Fernet
 from django.conf import settings
@@ -34,15 +35,27 @@ TTL_CAP_HOURS = 8
 HANDLE_LENGTH = 32 - len("dbeaver_prod_")
 
 
+# The alphabet `deployed/dba/tick.sh` accepts for a `person` (it validates the
+# row before minting, and the account name is interpolated into hand-written
+# SQL). ASCII on purpose: `str.isalnum()` also accepts `ü`, so a login like
+# `Müller` used to keep its umlaut and every mint was parked as `failed` -
+# after a second person had already approved the request.
+HANDLE_ALPHABET = frozenset(string.ascii_lowercase + string.digits)
+
+
 def access_handle(username: str) -> str:
     """The handle a request is filed under: the requester's login, sanitised.
 
     Nobody types this any more - it is derived from the account that is asking,
-    so every temporary MySQL user traces back to exactly one named human. MySQL
-    account names accept only letters and digits here (the account is created
-    with hand-written SQL in the sidecar), hence the stripping.
+    so every temporary MySQL user traces back to exactly one named human.
+
+    A leading digit is kept: the login may be `5erAdmin` and the account name it
+    derives (`dbeaver_prod_5eradmin`) is a legal MariaDB user either way, so
+    rewriting the handle would only hide who it belongs to. Unlike the leading
+    character, the alphabet has to match the sidecar exactly - a handle it
+    refuses fails the request *after* approval, which wastes the decision.
     """
-    return "".join(ch for ch in (username or "").lower() if ch.isalnum())[:HANDLE_LENGTH]
+    return "".join(ch for ch in (username or "").lower() if ch in HANDLE_ALPHABET)[:HANDLE_LENGTH]
 
 
 

@@ -8,6 +8,7 @@ pin the narrower grant so the two halves cannot drift apart again.
 """
 
 import pathlib
+import re
 
 SIDECAR = pathlib.Path(__file__).resolve().parents[2] / "deployed" / "dba" / "tick.sh"
 
@@ -41,3 +42,30 @@ def test_the_account_keeps_its_connection_caps():
 
     assert "MAX_STATEMENT_TIME 60" in script
     assert "MAX_USER_CONNECTIONS 4" in script
+
+
+def _person_check() -> re.Pattern:
+    """The pattern the sidecar applies to a row's `person` before minting."""
+    match = re.search(r"printf '%s' \"\$person\" \| grep -Eq '([^']+)'", _script())
+
+    assert match, "the sidecar no longer validates `person` in a form this test can read"
+    return re.compile(match.group(1))
+
+
+def test_every_handle_the_app_derives_passes_the_sidecars_person_check():
+    """The two halves must agree on the alphabet, or every mint is parked.
+
+    `access_handle()` derives the name the sidecar creates; when the sidecar is
+    stricter than the derivation, the request is approved and *then* fails, and
+    the person who approved it has spent their decision on nothing.
+    """
+    from dbaccess.models import access_handle
+
+    pattern = _person_check()
+    for login in ("chrisd", "5erAdmin", "Müller", "first-last_99", "a" * 60):
+        handle = access_handle(login)
+
+        assert handle, login
+        assert pattern.fullmatch(handle), (
+            f"{login!r} derives the handle {handle!r}, which the sidecar refuses"
+        )

@@ -223,3 +223,22 @@ def test_the_form_only_offers_grantable_tables(client, requester):
     assert response.status_code == 200
     offered = response.context["form"].fields["tables"].queryset
     assert list(offered.values_list("name", flat=True)) == ["divisions"]
+
+
+@pytest.mark.django_db
+def test_a_long_table_list_wraps_instead_of_widening_the_row(client, requester, approver):
+    """Fifteen tables used to be one comma-joined cell with no break point.
+
+    The cell forced the table wider than the page, so the history scrolled
+    sideways and the Person/State columns disappeared off the left edge.
+    """
+    tables = [f"wpdatabase_{n}" for n in range(1, 16)]
+    _request(requester, tables_csv=",".join(tables))
+    client.force_login(approver)
+
+    html = client.get(reverse("dbaccess-list")).content.decode()
+
+    assert "wpdatabase_1,wpdatabase_2" not in html, "the list still emits one unbreakable cell"
+    for table in tables:
+        assert table in html, table
+    assert "text-break" in html
