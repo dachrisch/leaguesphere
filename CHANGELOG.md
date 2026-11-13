@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.15.0](https://github.com/dachrisch/leaguesphere/compare/v5.14.20...v5.15.0) (2026-11-13)
+
+
+### Features
+
+* **dbaccess:** cap the table lists, link the row, print the connection recipe ([#2394](https://github.com/dachrisch/leaguesphere/issues/2394)) ([d1e14e8](https://github.com/dachrisch/leaguesphere/commit/d1e14e8d1cee2b1c190882fdc597c324b7ed090a))
+
 ## [5.14.20](https://github.com/dachrisch/leaguesphere/compare/v5.14.19...v5.14.20) (2026-11-13)
 
 
