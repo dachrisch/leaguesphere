@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.16](https://github.com/dachrisch/leaguesphere/compare/v5.14.15...v5.14.16) (2026-11-13)
+
+
+### Bug Fixes
+
+* **dal:** let the OFFD/Moodle signup autocomplete read the team list ([#2384](https://github.com/dachrisch/leaguesphere/issues/2384)) ([0733a55](https://github.com/dachrisch/leaguesphere/commit/0733a55c6d7531fb4b6641c22765a0edd236aeb9))
+
 ## [5.14.15](https://github.com/dachrisch/leaguesphere/compare/v5.14.14...v5.14.15) (2026-11-13)
 
 
