@@ -227,12 +227,8 @@ def test_the_form_only_offers_grantable_tables(client, requester):
 
 @pytest.mark.django_db
 def test_a_long_table_list_wraps_instead_of_widening_the_row(client, requester, approver):
-    """Fifteen tables used to be one comma-joined cell with no break point.
-
-    The cell forced the table wider than the page, so the history scrolled
-    sideways and the Person/State columns disappeared off the left edge.
-    """
-    tables = [f"wpdatabase_{n}" for n in range(1, 16)]
+    """A comma-joined cell has no break point and widens the whole table."""
+    tables = [f"wpdatabase_{n}" for n in range(1, 4)]
     _request(requester, tables_csv=",".join(tables))
     client.force_login(approver)
 
@@ -242,3 +238,108 @@ def test_a_long_table_list_wraps_instead_of_widening_the_row(client, requester, 
     for table in tables:
         assert table in html, table
     assert "text-break" in html
+
+
+@pytest.mark.django_db
+def test_the_history_shows_a_count_instead_of_every_table(client, requester, approver):
+    """Fifteen tables used to make one row taller than the page."""
+    tables = [f"wpdatabase_{n}" for n in range(1, 16)]
+    _request(requester, tables_csv=",".join(tables))
+    client.force_login(approver)
+
+    html = client.get(reverse("dbaccess-list")).content.decode()
+
+    for table in tables[:4]:
+        assert table in html, table
+    assert "wpdatabase_5" not in html
+    assert "+11 more" in html
+
+
+@pytest.mark.django_db
+def test_the_detail_page_shows_a_count_instead_of_every_table(client, requester):
+    """Collapsed by default, but all of them are reachable with one click."""
+    tables = [f"wpdatabase_{n}" for n in range(1, 16)]
+    access_request = _request(requester, tables_csv=",".join(tables))
+    client.force_login(requester)
+
+    html = client.get(
+        reverse("dbaccess-detail", args=[access_request.pk])
+    ).content.decode()
+
+    assert "+5 more" in html
+    assert "<details" in html and "<summary" in html
+    # the hidden ones are rendered inside the disclosure, not dropped
+    for table in tables:
+        assert table in html, table
+
+
+@pytest.mark.django_db
+def test_the_history_row_is_the_link_and_the_button_is_gone(
+    client, requester, approver
+):
+    """The whole row opens the request; a row-sized target beats an 8-character button."""
+    access_request = _request(requester)
+    client.force_login(approver)
+
+    html = client.get(reverse("dbaccess-list")).content.decode()
+    detail_url = reverse("dbaccess-detail", args=[access_request.pk])
+
+    assert f'href="{detail_url}"' in html
+    assert "stretched-link" in html
+    assert ">Open<" not in html
+
+
+@pytest.mark.django_db
+def test_the_audit_trail_shortens_the_recorded_table_list(client, requester):
+    tables = [f"wpdatabase_{n}" for n in range(1, 16)]
+    access_request = _request(requester, tables_csv=",".join(tables))
+    access_request.log(
+        requester.username, "requested", detail=f"tables: {access_request.tables_csv}; ttl: 2h"
+    )
+    client.force_login(requester)
+
+    html = client.get(
+        reverse("dbaccess-detail", args=[access_request.pk])
+    ).content.decode()
+
+    assert "+11 more" in html
+    assert "wpdatatable" not in html or "wpdatabase_1, wpdatabase_2, wpdatabase_3" in html
+
+
+@pytest.mark.django_db
+def test_the_reveal_page_shows_the_whole_dbeaver_config(client, requester, settings):
+    """The page is the connection recipe, not just the password.
+
+    The help topic already spells out both DBeaver tabs; a person who clicked
+    Show password should not have to keep another tab open to find out which
+    port the tunnel lands on.
+    """
+    settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
+    settings.DBACCESS_TUNNEL_USER = "dbeaver_stage"
+    settings.DBACCESS_TUNNEL_PORT = "33064"
+    settings.DBACCESS_TUNNEL_KEY_ITEM = "dbeaver stage tunnel key (lehel)"
+    access_request = _request(
+        requester,
+        state=AccessRequest.State.ACTIVE,
+        secret="pw123",
+        db_user="dbeaver_prod_requester",
+        grant_host="172.26.%",
+    )
+    client.force_login(requester)
+
+    response = client.post(reverse("dbaccess-reveal", args=[access_request.pk]))
+    body = response.content.decode()
+
+    # main tab, with the person's own account and password
+    assert "jdbc:mariadb://127.0.0.1:33064/" in body
+    assert "127.0.0.1" in body
+    assert "33064" in body
+    assert "dbeaver_prod_requester" in body
+    assert "pw123" in body
+    # ssh tab
+    assert "servy.lehel.xyz" in body
+    assert "dbeaver_stage" in body
+    assert "Public Key" in body
+    assert "dbeaver stage tunnel key (lehel)" in body
+    assert response.context["tunnel"]["ssh_port"] == "22"
+

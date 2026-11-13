@@ -199,6 +199,7 @@ class RevealView(StaffRequiredMixin, DetailView):
                     "host": settings.DBACCESS_TUNNEL_HOST,
                     "user": settings.DBACCESS_TUNNEL_USER,
                     "port": settings.DBACCESS_TUNNEL_PORT,
+                    "ssh_port": settings.DBACCESS_TUNNEL_SSH_PORT,
                     "key_item": settings.DBACCESS_TUNNEL_KEY_ITEM,
                 },
             },

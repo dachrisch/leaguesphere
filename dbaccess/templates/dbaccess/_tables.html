@@ -1,7 +1,11 @@
-{% comment %}
-The requested tables as wrapping chips, so the list and the detail page cannot
-drift apart again. A comma-joined CSV in a <td> has no break point: fifteen
-tables widened the row until the history scrolled sideways and the Person and
-State columns left the page, while the detail page - which already rendered
-chips - looked fine.
-{% endcomment %}{% for table in tables %}<code class="d-inline-block bg-body-tertiary border rounded px-2 py-1 me-1 mb-1">{{ table }}</code>{% empty %}<span class="text-muted">none recorded</span>{% endfor %}
+{% load dbaccess_extras %}{% comment %}
+The requested tables as wrapping chips, so the list, the detail page and the
+audit trail cannot drift apart. A comma-joined CSV in a <td> has no break point:
+fifteen tables widened the row until the history scrolled sideways while the
+detail page - which already rendered chips - looked fine.
+
+`limit` caps what is shown. The rest is summarised as "+N more", and callers
+choose what that means: in the tables it stays a count (a row must stay a row),
+on the detail page it is a <details> disclosure, so the full list is one click
+away without a page in between.
+{% endcomment %}{% with shown=tables|lead:limit remaining=tables|rest:limit %}{% for table in shown %}<code class="d-inline-block bg-body-tertiary border rounded px-2 py-1 me-1 mb-1">{{ table }}</code>{% endfor %}{% if remaining %}{% if expandable %}<details class="d-inline-block align-top"><summary class="text-muted small">+{{ remaining|length }} more</summary><div class="mt-1">{% for table in remaining %}<code class="d-inline-block bg-body-tertiary border rounded px-2 py-1 me-1 mb-1">{{ table }}</code>{% endfor %}</div></details>{% else %}<span class="badge bg-body-tertiary text-muted border fw-normal">+{{ remaining|length }} more</span>{% endif %}{% endif %}{% if not shown %}<span class="text-muted">none recorded</span>{% endif %}{% endwith %}

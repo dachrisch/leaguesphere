@@ -7,7 +7,13 @@ from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, transaction
 
-from dbaccess.models import AccessRequest, HANDLE_LENGTH, TTL_CAP_HOURS, access_handle
+from dbaccess.models import (
+    AccessEvent,
+    AccessRequest,
+    HANDLE_LENGTH,
+    TTL_CAP_HOURS,
+    access_handle,
+)
 from gamedays.tests.setup_factories.factories import UserFactory
 
 
@@ -148,3 +154,22 @@ def test_table_names_match_the_sidecar_sql():
 
     assert AccessRequest._meta.db_table == "dbaccess_request"
     assert AccessEvent._meta.db_table == "dbaccess_event"
+
+
+def test_the_audit_detail_shortens_a_long_requested_table_list():
+    """The trail shows what was asked for, not all fifteen names."""
+    event = AccessEvent(detail="tables: a,b,c,d,e,f; ttl: 6h")
+
+    assert event.detail_short == "tables: a, b, c, d +2 more; ttl: 6h"
+
+
+def test_the_audit_detail_shortens_the_sidecars_activation_line():
+    event = AccessEvent(detail="dbeaver_prod_x@172.25.% on a b c d e f")
+
+    assert event.detail_short == "dbeaver_prod_x@172.25.% on a b c d +2 more"
+
+
+def test_the_audit_detail_leaves_prose_alone():
+    detail = "manual reset: the mint failed on the digit-leading handle"
+
+    assert AccessEvent(detail=detail).detail_short == detail
