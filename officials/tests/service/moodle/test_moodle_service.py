@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from officials.models import Official, OfficialLicenseHistory
 from officials.service.boff_license_calculation import (
@@ -743,6 +743,30 @@ class TestMoodleService(TestCase):
         official_id = moodle_service.login("username@email.org", "secret-password")
         assert official_id == 5
         user_email_mock.assert_called_with("username@email.org")
+
+
+class TestMoodleLinkPaths:
+    """Profile and course links must not carry the pre-cutover ``/moodle`` prefix.
+
+    ``_get_ahref`` concatenates ``settings.MOODLE_URL`` with these paths, so a
+    stale prefix produces a link that looks plausible and 404s for the teacher
+    clicking it — nothing in the request path would surface that.
+    """
+
+    def test_link_paths_have_no_legacy_prefix(self):
+        assert MoodleService.MOODLE_PROFILE == "/user/profile.php"
+        assert MoodleService.MOODLE_COURSE == "/course/edit.php"
+
+    def test_profile_link_renders_against_the_configured_root(self):
+        service = MoodleService.__new__(MoodleService)
+
+        with override_settings(MOODLE_URL="https://offd.de"):
+            html = service._get_ahref_for_moodle_profile(4711)
+
+        assert html == (
+            '<a href="https://offd.de/user/profile.php?id=4711" '
+            'target="_blank">4711</a>'
+        )
 
 
 class TestMoodleEmailCache(TestCase):

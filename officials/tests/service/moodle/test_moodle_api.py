@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from django.conf import settings
+from django.test import override_settings
 
 from officials.service.moodle.moodle_api import (
     MoodleApi,
@@ -150,6 +151,36 @@ class TestMoodleApiBatchUserInfos:
         )
 
         assert MoodleApi().get_user_infos_by_ids([1, 2, 3]) == {}
+
+
+class TestMoodleUrlShape:
+    """The instance answers at the root of ``settings.MOODLE_URL``.
+
+    Until 2026-11-13 Moodle was served under ``/offd/moodle``, so every URL was
+    built as ``f"{MOODLE_URL}/moodle/..."``. After the cutover the droplet
+    answers at the root and that prefix 404s — which is not a loud failure:
+    ``requests`` receives an HTML error page, ``.json()`` raises, and the licence
+    report dies with an error that says nothing about the URL. These assertions
+    are the cheap guard against a prefix creeping back in.
+    """
+
+    def test_webservice_url_uses_the_configured_root(self):
+        with override_settings(MOODLE_URL="https://offd.de", MOODLE_WSTOKEN="tok"):
+            url = MoodleApi().moodle_url
+
+        assert url.startswith(
+            "https://offd.de/webservice/rest/server.php?wstoken=tok"
+            "&moodlewsrestformat=json"
+        )
+        assert "/moodle/" not in url
+
+    def test_token_url_uses_the_configured_root(self):
+        with override_settings(MOODLE_URL="https://offd.de", MOODLE_WSTOKEN="tok"):
+            with patch("officials.service.moodle.moodle_api.requests.get") as get:
+                get.return_value.json.return_value = {"token": "x"}
+                MoodleApi().confirm_user_auth("user", "pass")
+
+        assert get.call_args.args[0] == "https://offd.de/login/token.php"
 
 
 class _FakeResponse:

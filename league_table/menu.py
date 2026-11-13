@@ -24,7 +24,7 @@ class League_tableMenu(BaseMenu):
         #     MenuDivider.create(),
         #     MenuItem.create(
         #         name='Einsätze melden',
-        #         url='https://offd.de/offd/moodle/mod/page/view.php?id=315',
+        #         url='https://offd.de/mod/page/view.php?id=315',
         #         is_static=True,
         #     ),
         # ]
