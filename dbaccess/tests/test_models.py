@@ -30,6 +30,26 @@ def test_access_handle_of_a_login_without_letters_or_digits_is_empty():
     assert access_handle("") == ""
 
 
+def test_access_handle_is_ascii_even_when_the_login_is_not():
+    """`str.isalnum()` is Unicode-aware; the sidecar is not (see tick.sh).
+
+    A login like `Müller` used to keep its umlaut, so every mint was parked as
+    `failed` with "person must be lowercase alphanumeric" - after a second
+    person had already approved the request.
+    """
+    assert access_handle("Müller") == "mller"
+    assert access_handle("Jörg-Ünal") == "jrgnal"
+
+
+def test_access_handle_keeps_a_leading_digit():
+    """A login may start with a digit; the account name never does.
+
+    `dbeaver_prod_5eradmin` is a legal MariaDB account, and rewriting the handle
+    to `u5eradmin` would hide which human it belongs to.
+    """
+    assert access_handle("5erAdmin") == "5eradmin"
+
+
 def _request(**kwargs):
     requester = kwargs.pop("requester", None) or UserFactory(
         username=kwargs.pop("requester_name", "requester")
