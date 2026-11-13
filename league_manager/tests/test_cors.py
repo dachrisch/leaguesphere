@@ -1,13 +1,14 @@
-"""CORS: only the public API (/api/snapshot/) is cross-origin readable.
+"""CORS: only public data (/api/snapshot/, /dal/team/) is cross-origin readable.
 
 Replaces the blanket CORS_ORIGIN_ALLOW_ALL removed in #1977 with the
-property that matters: any origin may *read* the anonymous snapshot, no
-origin gets CORS on anything else, and nothing is ever credentialed.
+property that matters: any origin may *read* the anonymous public endpoints,
+no origin gets CORS on anything else, and nothing is ever credentialed.
 """
 
 import pytest
 
 PUBLIC_API_URL = "/api/snapshot/"
+DAL_TEAM_URL = "/dal/team/"
 ORIGIN = "https://club.example.org"
 INTERNAL_URLS = [
     "/api/leagues/",
@@ -60,6 +61,30 @@ def test_snapshot_without_trailing_slash_gets_no_cors_headers(client):
 
     assert response.status_code in (301, 302)
     assert "Access-Control-Allow-Origin" not in response.headers
+
+
+@pytest.mark.django_db
+def test_dal_team_is_readable_from_any_origin(client):
+    # The OFFD/Moodle signup form (offd.de) renders a team autocomplete in its
+    # footer that reads this endpoint cross-origin. It returns public team
+    # names only, so any origin may read it.
+    response = client.get(DAL_TEAM_URL, HTTP_ORIGIN=ORIGIN)
+
+    assert response.status_code == 200
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
+    assert "Access-Control-Allow-Credentials" not in response.headers
+
+
+@pytest.mark.django_db
+def test_dal_team_without_trailing_slash_redirects_with_cors(client):
+    # The footer was written against the slashless URI. APPEND_SLASH answers
+    # with a 301; it has to carry the CORS headers, or the browser refuses to
+    # follow the redirect and the autocomplete dies with "blocked by CORS
+    # policy" while the server logs a perfectly healthy 301.
+    response = client.get("/dal/team", HTTP_ORIGIN=ORIGIN)
+
+    assert response.status_code in (301, 302)
+    assert response.headers["Access-Control-Allow-Origin"] == "*"
 
 
 @pytest.mark.django_db
