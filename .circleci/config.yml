@@ -79,9 +79,6 @@ parameters:
   run-images:
     type: boolean
     default: false
-  run-code-graph:
-    type: boolean
-    default: false
 
 workflows:
   version: 2

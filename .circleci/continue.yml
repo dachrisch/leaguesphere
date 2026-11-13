@@ -53,9 +53,6 @@ parameters:
   run-images:
     type: boolean
     default: false
-  run-code-graph:
-    type: boolean
-    default: false
 
 commands:
   setup_uv:
@@ -1134,48 +1131,6 @@ jobs:
             # job that runs on tags. stdlib only.
             python3 scripts/check_ci_gate.py
 
-  code_graph:
-    # The knowledge graph the repo's local graphify hook keeps in graphify-out/,
-    # rebuilt for each pipeline that touches one of the graphified modules and
-    # published as job artifacts (graph.json, graph.html, GRAPH_REPORT.md).
-    # Code-only AST: no API key, no LLM, nothing to leak. Informational, but it
-    # runs on tags like every other job so a release cannot skip it.
-    parameters:
-      needed:
-        type: boolean
-        default: true
-    docker:
-      # graphifyy pins requires-python <3.15, so this job cannot use the
-      # 3.15.2 image the test jobs run on.
-      - image: cimg/python:3.14
-    working_directory: ~/repo
-    steps:
-      - scoped_job:
-          job_name: code_graph
-          needed: << parameters.needed >>
-          steps:
-            - checkout
-            - run:
-                name: Install graphify
-                command: |
-                  python -m pip install --quiet --disable-pip-version-check \
-                    graphifyy==0.9.106
-            - run:
-                name: Build the code graph
-                environment:
-                  # Deterministic clustering: louvain iterates string-keyed
-                  # sets whose order PYTHONHASHSEED randomizes per process.
-                  PYTHONHASHSEED: "0"
-                command: |
-                  graphify extract . --code-only
-                  graphify cluster-only . --no-label
-            - store_artifacts:
-                path: graphify-out/graph.json
-            - store_artifacts:
-                path: graphify-out/graph.html
-            - store_artifacts:
-                path: graphify-out/GRAPH_REPORT.md
-
   check_version_sequence:
     docker:
       - image: cimg/base:stable
@@ -1557,14 +1512,6 @@ workflows:
             tags:
               only: /.*/
 
-      # Rebuilds the code graph (graphify, code-only AST over gamedays,
-      # gameday_designer and scorecard_v2) and publishes it as artifacts.
-      - code_graph:
-          needed: << pipeline.parameters.run-code-graph >>
-          filters:
-            tags:
-              only: /.*/
-
       # The image chain is always scheduled (required checks depend on it) and
       # builds only when the scope asks for an image: no image is built for a
       # diff that needs none. Tests no longer gate the builds — they gate the
@@ -1661,7 +1608,6 @@ workflows:
             - gameday_designer_js
             - journey_dashboard_js
             - share_js
-            - code_graph
             - e2e_scorecard
             - e2e_scorecard_v2
             - e2e_designer
