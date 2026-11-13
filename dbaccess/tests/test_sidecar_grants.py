@@ -69,3 +69,41 @@ def test_every_handle_the_app_derives_passes_the_sidecars_person_check():
         assert pattern.fullmatch(handle), (
             f"{login!r} derives the handle {handle!r}, which the sidecar refuses"
         )
+
+
+def _table_check() -> re.Pattern:
+    """The identifier guard the sidecar applies to every requested table."""
+    match = re.search(r"^VALID_ID='([^']+)'$", _script(), re.M)
+
+    assert match, "the sidecar no longer declares VALID_ID in a form this test can read"
+    return re.compile(match.group(1))
+
+
+def test_the_sidecar_accepts_the_mixed_case_names_the_allow_list_seeds():
+    """`dbaccess_sync_tables` seeds table names verbatim from information_schema.
+
+    Production has exactly three mixed-case ones - `Gameinfo`,
+    `Gesamttabelle_2022_sortiert`, `Strafen` - and the guard demanded a
+    lowercase first letter, so a request naming any of them failed *whole*,
+    after approval, with "table name is not a plain identifier". The GRANT is
+    backticked, so the case carries no injection risk.
+    """
+    pattern = _table_check()
+
+    for name in (
+        "Gameinfo",
+        "Gesamttabelle_2022_sortiert",
+        "Strafen",
+        "divisions",
+        "wpdatatable_3",
+        "officials_officialexternalgames",
+    ):
+        assert pattern.fullmatch(name), name
+
+
+def test_the_sidecar_still_refuses_a_table_name_that_is_not_an_identifier():
+    """Case is allowed now; everything the backticks cannot contain stays out."""
+    pattern = _table_check()
+
+    for name in ("x`", "x'y", 'x"y', "x; DROP TABLE t", "x y", "x\n", "-x", "a" * 65, ""):
+        assert not pattern.fullmatch(name), name
