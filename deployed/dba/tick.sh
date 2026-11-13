@@ -48,6 +48,28 @@ sql() {
 # tables unrequestable.
 VALID_ID='^[A-Za-z][A-Za-z0-9_]{0,63}$'
 
+# --- snapshot naming -------------------------------------------------------
+# The runbook's `bak_<table>_<date>` is kept whenever it fits: MariaDB caps an
+# identifier at 64 bytes, and a long table name overflows it
+# (`bak_league_table_leagueseasonconfig_leagues_for_league_points_20261113` is
+# 70, which the server refuses with 1103 - so that table could never be
+# snapshotted, and a request naming it failed whole, after approval).
+#
+# A name that does not fit keeps a 38-character prefix plus an 8-hex digest of
+# the full table name: 4 + 38 + 1 + 8 + 1 + 8 = 60 characters, stable across
+# ticks (so `CREATE TABLE IF NOT EXISTS` reuses it) and specific to one table
+# (truncation alone would merge two names that share a prefix).
+snapshot_for() {
+    candidate="bak_$1_$today"
+    if [ "${#candidate}" -le 64 ]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+    digest=$(printf '%s' "$1" | sha256sum | cut -c1-8)
+    printf 'bak_%s_%s_%s\n' "$(printf '%s' "$1" | cut -c1-38)" "$digest" "$today"
+}
+# --- end snapshot naming ---------------------------------------------------
+
 fail_row() {
     # $1 = row id, $2 = reason
     sql "$DB" -e "
@@ -132,11 +154,13 @@ sql "$DB" -e "
     # Snapshot first: a grant without a way back is worse than no grant.
     today=$(date +%Y%m%d)
     for t in $valid_tables; do
-        if ! sql "$DB" -e "CREATE TABLE IF NOT EXISTS \`bak_${t}_${today}\`
+        snap=$(snapshot_for "$t")
+        if ! sql "$DB" -e "CREATE TABLE IF NOT EXISTS \`${snap}\`
                              AS SELECT * FROM \`${t}\`"; then
-            fail_row "$id" "snapshot of $t failed"
+            fail_row "$id" "snapshot ${snap} of $t failed"
             continue 2
         fi
+        echo "db-access: snapshot $snap"
     done
 
     pw=$(head -c 512 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)
@@ -172,8 +196,8 @@ SQL
             # runbook's "verify the safety copy" step still works
             printf "GRANT SELECT, UPDATE ON \`%s\`.\`%s\` TO '%s'@'%s';\n" \
                 "$DB" "$t" "$user" "$PATTERN"
-            printf "GRANT SELECT ON \`%s\`.\`bak_%s_%s\` TO '%s'@'%s';\n" \
-                "$DB" "$t" "$today" "$user" "$PATTERN"
+            printf "GRANT SELECT ON \`%s\`.\`%s\` TO '%s'@'%s';\n" \
+                "$DB" "$(snapshot_for "$t")" "$user" "$PATTERN"
         done
     } | sql "$DB"; then
         drop_account "$user" "$PATTERN" ""

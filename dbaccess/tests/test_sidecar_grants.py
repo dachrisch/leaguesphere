@@ -9,6 +9,7 @@ pin the narrower grant so the two halves cannot drift apart again.
 
 import pathlib
 import re
+import subprocess
 
 SIDECAR = pathlib.Path(__file__).resolve().parents[2] / "deployed" / "dba" / "tick.sh"
 
@@ -107,3 +108,67 @@ def test_the_sidecar_still_refuses_a_table_name_that_is_not_an_identifier():
 
     for name in ("x`", "x'y", 'x"y', "x; DROP TABLE t", "x y", "x\n", "-x", "a" * 65, ""):
         assert not pattern.fullmatch(name), name
+
+
+def _snapshot_names(tables, today="20261113") -> list[str]:
+    """Run the sidecar's own `snapshot_for` under sh, so the logic is real code.
+
+    Extracted between its markers rather than reimplemented: a Python copy of
+    the naming would pass while the shell went on building a name the server
+    refuses.
+    """
+    script = _script()
+    start = script.index("snapshot_for() {")
+    end = script.index("# --- end snapshot naming")
+
+    body = f"today={today}\n{script[start:end]}\n"
+    body += "\n".join(f'snapshot_for "{t}"' for t in tables) + "\n"
+    result = subprocess.run(["sh", "-c", body], capture_output=True, text=True, check=True)
+
+    return result.stdout.split()
+
+
+def test_a_snapshot_name_always_fits_the_identifier_limit():
+    """MariaDB caps an identifier at 64 bytes and says 1103 beyond that.
+
+    `bak_league_table_leagueseasonconfig_leagues_for_league_points_20261113` is
+    70, so that table could never be snapshotted - and a request naming it was
+    parked as `failed` after approval, with every other table in the request
+    collateral damage.
+    """
+    long_names = [
+        "league_table_leagueseasonconfig_leagues_for_league_points",
+        "league_table_leagueseasonconfig_exclude_gamedays",
+    ]
+
+    for name in _snapshot_names(long_names):
+        assert len(name) <= 64, name
+        assert name.startswith("bak_"), name
+        assert name.endswith("_20261113"), name
+
+
+def test_a_snapshot_of_a_short_name_keeps_the_runbook_form():
+    """The runbook says `SELECT COUNT(*) FROM bak_<table>_<date>`; keep it true."""
+    assert _snapshot_names(["divisions", "Gameinfo"]) == [
+        "bak_divisions_20261113",
+        "bak_Gameinfo_20261113",
+    ]
+
+
+def test_a_snapshot_name_stays_specific_when_the_table_name_is_truncated():
+    """Truncation alone would merge two long names that share a prefix."""
+    first, second = _snapshot_names(
+        [
+            "league_table_leagueseasonconfig_leagues_for_league_points",
+            "league_table_leagueseasonconfig_leagues_for_league_standings",
+        ]
+    )
+
+    assert first != second
+
+
+def test_the_snapshot_name_is_stable_across_ticks():
+    """`CREATE TABLE IF NOT EXISTS` reuses it, so it must not drift per run."""
+    table = "league_table_leagueseasonconfig_leagues_for_league_points"
+
+    assert _snapshot_names([table]) == _snapshot_names([table])
