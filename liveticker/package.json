@@ -1,6 +1,6 @@
 {
   "name": "liveticker",
-  "version": "5.14.19",
+  "version": "5.14.20",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
