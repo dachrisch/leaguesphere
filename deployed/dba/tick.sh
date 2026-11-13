@@ -40,8 +40,13 @@ sql() {
         --batch --skip-column-names "$@"
 }
 
-# identifier shape, checked twice on purpose: here and by the database
-VALID_ID='^[a-z][a-z0-9_]{0,63}$'
+# identifier shape, checked twice on purpose: here and by the database.
+# Case-sensitive on purpose too: the allow-list seeds names verbatim from
+# information_schema and production has three mixed-case ones (`Gameinfo`,
+# `Gesamttabelle_2022_sortiert`, `Strafen`). The GRANT backticks the name, so
+# the case carries no injection risk - a lowercase-only guard just made those
+# tables unrequestable.
+VALID_ID='^[A-Za-z][A-Za-z0-9_]{0,63}$'
 
 fail_row() {
     # $1 = row id, $2 = reason
@@ -106,7 +111,7 @@ sql "$DB" -e "
     valid_tables=""
     for t in $(printf '%s' "$tables" | tr ',' ' '); do
         if ! printf '%s' "$t" | grep -Eq "$VALID_ID"; then
-            fail_row "$id" "table name is not a plain identifier"
+            fail_row "$id" "table name is not a plain identifier: $t"
             continue 2
         fi
         exists=$(sql -e "SELECT COUNT(*) FROM information_schema.tables
