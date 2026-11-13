@@ -53,8 +53,9 @@ Im Reiter **SSH** schaltest du den Tunnel ein:
 ## Bevor du schreibst
 
 - Auto-Commit ausschalten und jede Änderung zuerst mit einem `SELECT` prüfen.
-- Die `bak_<tabelle>_<datum>`-Kopien entstehen vor der Sitzung automatisch. Lege
-  keine eigenen an – das Konto hat kein `CREATE`.
+- Die `bak_<tabelle>_<datum>`-Kopien entstehen vor der Sitzung automatisch. Ist der
+  Tabellenname zu lang für MariaDBs Grenze von 64 Zeichen, heißt die Kopie
+  `bak_<gekürzt>_<hash>_<datum>`. Lege keine eigenen an – das Konto hat kein `CREATE`.
 - Schreiben darfst du nur in die ausgewählten Tabellen, alles andere ist lesbar.
 
 ## Häufige Fragen

@@ -33,7 +33,9 @@
         <div class="alert alert-warning small mb-0">
             Turn auto-commit off before you touch anything. Every write needs a scoped
             <code>SELECT</code> first, and the pre-session <code>bak_&lt;table&gt;_&lt;date&gt;</code>
-            copies already exist — do not try to create your own, the account has no
+            copies already exist&nbsp;&mdash;&nbsp;for a table name too long for MariaDB's
+            64-character limit the copy is <code>bak_&lt;shortened&gt;_&lt;hash&gt;_&lt;date&gt;</code>.
+            Do not try to create your own, the account has no
             <code>CREATE</code>.
         </div>
 
