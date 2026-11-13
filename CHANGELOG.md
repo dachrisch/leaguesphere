@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.18](https://github.com/dachrisch/leaguesphere/compare/v5.14.17...v5.14.18) (2026-11-13)
+
+
+### Bug Fixes
+
+* **dbaccess:** mint a digit-leading handle, and wrap the table list ([#2388](https://github.com/dachrisch/leaguesphere/issues/2388)) ([b4a117a](https://github.com/dachrisch/leaguesphere/commit/b4a117a869d6f1e30c703a098e68a8400cde48c4))
+
 ## [5.14.17](https://github.com/dachrisch/leaguesphere/compare/v5.14.16...v5.14.17) (2026-11-13)
 
 
