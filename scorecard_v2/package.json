@@ -33,7 +33,7 @@
     "eslint-formatter-junit": "9.0.1",
     "eslint-plugin-react-hooks": "7.1.1",
     "fake-indexeddb": "6.2.8",
-    "jsdom": "31.0.0",
+    "jsdom": "31.0.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",
     "vite": "8.3.8",
