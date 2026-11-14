@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.15.1](https://github.com/dachrisch/leaguesphere/compare/v5.15.0...v5.15.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency eslint to v10.15.0 ([#2398](https://github.com/dachrisch/leaguesphere/issues/2398)) ([55bcdf1](https://github.com/dachrisch/leaguesphere/commit/55bcdf16cd680920d338d612718d129017b886ce))
+* **deps:** update dependency playwright-core to v1.65.1 ([#2397](https://github.com/dachrisch/leaguesphere/issues/2397)) ([f659018](https://github.com/dachrisch/leaguesphere/commit/f65901875c013a69c0805a6bf4d968c8e0030570))
+
 ## [5.15.0](https://github.com/dachrisch/leaguesphere/compare/v5.14.20...v5.15.0) (2026-11-13)
 
 
