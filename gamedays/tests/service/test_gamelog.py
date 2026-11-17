@@ -301,22 +301,6 @@ class TestGamelogCreator(TestCase):
         assert teamlog.value == 6
         assert teamlog.half == 1
 
-
-class TestScoringEvents:
-    def test_scoring_events_match_the_point_values(self):
-        from gamedays.service.gamelog import (
-            SCORING_EVENTS,
-            SCORING_EVENT_VALUES,
-            GameLogCreator,
-        )
-
-        assert set(SCORING_EVENTS) == set(SCORING_EVENT_VALUES)
-        assert "Auszeit" not in SCORING_EVENTS
-        for event in SCORING_EVENTS:
-            assert SCORING_EVENT_VALUES[event] > 0
-            assert GameLogCreator._getValue(None, event) == SCORING_EVENT_VALUES[event]
-        assert GameLogCreator._getValue(None, "Strafe") == 0
-
     def test_a_missed_try_is_stored_with_value_zero(self):
         # "nicht verwandelt" keeps the try's name (the row still says which try
         # was attempted) but must not score: the client marks the miss in the
@@ -350,3 +334,19 @@ class TestScoringEvents:
             sum(TeamLog.objects.filter(gameinfo=game).values_list("value", flat=True))
             == 2
         )
+
+
+class TestScoringEvents:
+    def test_scoring_events_match_the_point_values(self):
+        from gamedays.service.gamelog import (
+            SCORING_EVENTS,
+            SCORING_EVENT_VALUES,
+            GameLogCreator,
+        )
+
+        assert set(SCORING_EVENTS) == set(SCORING_EVENT_VALUES)
+        assert "Auszeit" not in SCORING_EVENTS
+        for event in SCORING_EVENTS:
+            assert SCORING_EVENT_VALUES[event] > 0
+            assert GameLogCreator._getValue(None, event) == SCORING_EVENT_VALUES[event]
+        assert GameLogCreator._getValue(None, "Strafe") == 0
