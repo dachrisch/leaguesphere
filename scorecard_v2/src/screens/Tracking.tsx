@@ -1499,8 +1499,9 @@ export default function TrackingScreen({
       // An in-place correction already wrote the replacement; it is no mis-tap.
       return;
     }
-    const team =
-      undoPossessionTeamOfGroup(tryRow, rows, log) ?? tryRow.team;
+    // The try's own row names the team the ball goes back to: the offence that
+    // scored, also for a defensive try (which is credited to the defence).
+    const team = undoPossessionTeamOfGroup(tryRow, rows, log);
     if (team === null) {
       return;
     }
@@ -1749,10 +1750,7 @@ export default function TrackingScreen({
         event.payload?.yards === undefined
           ? {
               ...event,
-              input:
-                event.input === undefined
-                  ? yardsText(gain)
-                  : `${event.input} · ${yardsText(gain)}`,
+              input: event.input ?? yardsText(gain),
               payload: { ...(event.payload ?? {}), yards: gain },
             }
           : event,
