@@ -1,6 +1,6 @@
 {
   "name": "passcheck",
-  "version": "5.17.0",
+  "version": "5.18.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "type": "module",

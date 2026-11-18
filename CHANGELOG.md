@@ -1,5 +1,30 @@
 # Changelog
 
+## [5.18.0](https://github.com/dachrisch/leaguesphere/compare/v5.17.0...v5.18.0) (2026-11-18)
+
+
+### Features
+
+* **scorecard-v2:** act on the first field test's findings ([6aa2afe](https://github.com/dachrisch/leaguesphere/commit/6aa2afe8a3763280dd788fc830a305a31c96858e))
+* **scorecard-v2:** break in the half-time dialog, defensive try jersey and field polish ([bdfb27f](https://github.com/dachrisch/leaguesphere/commit/bdfb27f7e6538ceff7d4f9e5a1153bc8b9cf67c9))
+* **scorecard-v2:** let the officials fix the quarterback ([8313973](https://github.com/dachrisch/leaguesphere/commit/831397348fd922b41276f090c4e52db439d7774e))
+* **scorecard-v2:** let the penalty field take a half yard ([b30ba5e](https://github.com/dachrisch/leaguesphere/commit/b30ba5e6a27832cac2806a71d114653841781532))
+* **scorecard-v2:** pick a result in two rows and move on ([e6279a6](https://github.com/dachrisch/leaguesphere/commit/e6279a65fdb5bc5e48b2826e6ce5b5d5f2b37ad3))
+* **scorecard-v2:** record where an interception's play ended ([51d1d73](https://github.com/dachrisch/leaguesphere/commit/51d1d7302a312a1a424dae195d4b935f24236be0))
+* **scorecard-v2:** search penalties by short code and English name ([c62acef](https://github.com/dachrisch/leaguesphere/commit/c62acefd75496e046957b01daeaf0b2fbd09158f))
+* **scorecard-v2:** team colours and missed tries in the game log ([11eb820](https://github.com/dachrisch/leaguesphere/commit/11eb82035a4907f825e73384bc1abb78a8d4e200))
+* **scorecard-v2:** two play buttons, result-first wizard and a back stack ([070f309](https://github.com/dachrisch/leaguesphere/commit/070f309493d6c456ee270d26003617b707e4004e))
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v27.2.1 ([#2455](https://github.com/dachrisch/leaguesphere/issues/2455)) ([2c987ff](https://github.com/dachrisch/leaguesphere/commit/2c987fffd89145588757dda89bdbf73f9bb1da52))
+* **deps:** update js deps ([#2454](https://github.com/dachrisch/leaguesphere/issues/2454)) ([e8f59f0](https://github.com/dachrisch/leaguesphere/commit/e8f59f0333dfe5740a07c7c5ac235f4b33764834))
+* **scorecard-v2:** keep a penalty's spot across the possession change ([d99a7ee](https://github.com/dachrisch/leaguesphere/commit/d99a7ee2f643e192788374589a001b591960da68))
+* **scorecard-v2:** name the licence on the crew row and read it from the crew ([8ea8119](https://github.com/dachrisch/leaguesphere/commit/8ea81199dea1857c8763b4852e3d13d78caaa6c6))
+* **scorecard-v2:** read half yards from a decimal comma ([830f578](https://github.com/dachrisch/leaguesphere/commit/830f578d953203f2848955baa06bbbcf0d20a9ac))
+* **scorecard-v2:** type half yards and refuse a distance off the field ([c74a95c](https://github.com/dachrisch/leaguesphere/commit/c74a95cbe7dd6476dcef8a1ee9ea5390b73c939d))
+
 ## [5.17.0](https://github.com/dachrisch/leaguesphere/compare/v5.16.3...v5.17.0) (2026-11-18)
 
 
