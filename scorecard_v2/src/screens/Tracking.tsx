@@ -2068,8 +2068,10 @@ export default function TrackingScreen({
           below the log instead of covering the newest rows. */}
       <div className="logwrap tracking-log">
         <EventLog
+          away={logTeamName(log.away)}
           disabled={halftimePending || readOnly || finished}
           error={undoError}
+          home={logTeamName(log.home)}
           onEdit={readOnly || finished ? undefined : openEdit}
           onUndo={(row) => void undo(row)}
           rows={rows}

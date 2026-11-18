@@ -146,8 +146,10 @@ wie die bisherige Scorecard
    eine **Extrapunkt**-Zeile zurück, kommt sie mit derselben Mannschaft und
    derselben vorausgewählten Nummer wieder – ein falscher Tipp ist damit einen
    Tipp entfernt. Andere Einträge lassen den Ballbesitz, wo er ist.
-   **Nur Punkte** blendet alles aus, was keine
-   Punkte gebracht hat, damit ein falscher Spielstand schnell zu finden ist.
+   **Nur Punkte** zeigt alle Punkte-Einträge – auch einen **nicht
+   verwandelten** Versuch, der dann ausgegraut stehen bleibt. Die
+   Punkte-Zeilen tragen die Farbe ihrer Mannschaft (Heim rot, Gast grün),
+   damit ein falscher Spielstand schnell zu finden ist.
    **Halbzeit**
    fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim
    zweiten Tippen innerhalb von 10 Sekunden in die zweite Halbzeit; danach

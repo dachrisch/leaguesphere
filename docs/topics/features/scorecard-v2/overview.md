@@ -198,7 +198,10 @@ no reload.
    **Ändern** to correct the jersey or the game time of a row in place (the
    corrected event is written, then the old row is undone; the row keeps its
    team and half and never flips possession). **Nur Punkte** filters the log
-   down to the plays that scored. Each team's own timeout field lists its
+   down to the scoring entries — a missed try stays, greyed out — and every
+   scoring row (touchdown, extra point, safety, overtime) is washed in its
+   team's colour, with the points icon in the same colour. Each team's own
+   timeout field lists its
    with half and game time — the entry stores the *remaining game time*, like
    the old app, not a duration — and its tile carries the count of the side
    with the ball. Starting the second half runs a five-minute **Pause**

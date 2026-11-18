@@ -697,6 +697,62 @@ describe("EventLog — Nur Punkte", () => {
     expect(screen.getByText("Noch keine Punkte")).toBeInTheDocument();
   });
 
+  it("keeps a failed try in the points view, greyed out", async () => {
+    const user = userEvent.setup();
+    render(
+      <EventLog
+        onUndo={vi.fn()}
+        rows={[
+          row({ key: "a", event: "Touchdown", player: 23, eventSeq: 1 }),
+          row({
+            key: "b",
+            event: "1-Extra-Punkt",
+            player: 23,
+            input: "nicht verwandelt",
+            payload: { missed: true },
+            eventSeq: 2,
+          }),
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Nur Punkte" }));
+
+    expect(screen.getByText("2 Einträge")).toBeInTheDocument();
+    const missed = screen
+      .getByText("1 Extrapunkt nicht verwandelt Ravens")
+      .closest("li");
+    expect(missed).toHaveClass("row", "miss");
+  });
+
+  it("washes a scoring row in its team's colour", () => {
+    render(
+      <EventLog
+        away="Wolves"
+        home="Ravens"
+        rows={[
+          row({ key: "a", event: "Touchdown", team: "Ravens", player: 23 }),
+          row({
+            key: "b",
+            event: "1-Extra-Punkt",
+            team: "Wolves",
+            player: 11,
+          }),
+          row({ key: "c", event: "Strafe", team: "Ravens", input: "Holding" }),
+        ]}
+      />,
+    );
+
+    const [touchdown, extraPoint, penalty] = screen.getAllByRole("listitem");
+    expect(touchdown).toHaveClass("row", "row-home");
+    expect(touchdown.querySelector(".ev")).toHaveClass("ev-td", "ev-home");
+    expect(extraPoint).toHaveClass("row", "row-away");
+    expect(extraPoint.querySelector(".ev")).toHaveClass("ev-pat", "ev-away");
+    // A non-scoring row stays neutral: only the points read as team colour.
+    expect(penalty).not.toHaveClass("row-home");
+    expect(penalty).not.toHaveClass("row-away");
+  });
+
   it("offers the edit next to undo, but not on a marker or a legacy row", () => {
     const onEdit = vi.fn();
     render(
@@ -951,7 +1007,7 @@ describe("a missed extra point", () => {
     expect(screen.getByText("#3 · Deflection #2")).toBeInTheDocument();
   });
 
-  it("is not counted as points in the Nur Punkte view", async () => {
+  it("is shown but greyed out in the Nur Punkte view", async () => {
     const user = userEvent.setup();
     render(
       <EventLog
@@ -975,11 +1031,12 @@ describe("a missed extra point", () => {
 
     await user.click(screen.getByRole("button", { name: "Nur Punkte" }));
 
-    expect(screen.getByText("1 Einträge")).toBeInTheDocument();
+    expect(screen.getByText("2 Einträge")).toBeInTheDocument();
     expect(screen.getByText("Touchdown Ravens")).toBeInTheDocument();
-    expect(
-      screen.queryByText("1 Extrapunkt nicht verwandelt Ravens"),
-    ).not.toBeInTheDocument();
+    const missed = screen
+      .getByText("1 Extrapunkt nicht verwandelt Ravens")
+      .closest("li");
+    expect(missed).toHaveClass("row", "miss");
   });
 });
 

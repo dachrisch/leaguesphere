@@ -1922,6 +1922,46 @@ button.game-row:active {
   background: var(--fill-soft);
 }
 
+/* The scoring icon follows the team that scored: home red, guests green. */
+.ev-home {
+  color: var(--home-text);
+  background: var(--home-wash);
+  border-color: color-mix(in srgb, var(--home) 30%, transparent);
+}
+
+.ev-away {
+  color: var(--away-text);
+  background: var(--away-wash);
+  border-color: color-mix(in srgb, var(--away) 30%, transparent);
+}
+
+/* A scoring row is washed in its team's colour across the whole line. */
+.row-home {
+  background: var(--home-wash);
+}
+
+.row-away {
+  background: var(--away-wash);
+}
+
+/* A failed try stays in "Nur Punkte", greyed out: the attempt is history,
+   the points are not. */
+.row.miss {
+  background: var(--fill-soft);
+}
+
+.row.miss .ev {
+  color: var(--muted);
+  background: var(--panel2);
+  border-color: var(--line);
+}
+
+.row.miss .rowprimary,
+.row.miss .rowsub,
+.row.miss .rowtime {
+  color: var(--muted);
+}
+
 .rowmain {
   display: flex;
   flex-direction: column;

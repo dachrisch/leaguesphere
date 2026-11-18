@@ -70,7 +70,11 @@ export default function ResultScreen({
 
         {/* Everything the game recorded, in one place: the officials check the
             result against the log before they leave the field. */}
-        <EventLog rows={logRows(log)} />
+        <EventLog
+          away={teamName(log.away, game.away)}
+          home={teamName(log.home, game.home)}
+          rows={logRows(log)}
+        />
 
         <button className="startbtn" onClick={onDone} type="button">
           Neues Spiel

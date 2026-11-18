@@ -241,7 +241,9 @@ const SCORING_EVENTS = new Set([
 
 /** True for the events that put points on the board. */
 export function isScoring(row: LogRow): boolean {
-  return SCORING_EVENTS.has(row.event) && !isMissedTry(row);
+  // A failed try is a scoring row too: "Nur Punkte" shows every attempt, the
+  // miss itself is greyed out rather than hidden.
+  return SCORING_EVENTS.has(row.event);
 }
 
 /** The two-point try's and the one-point try's words, as the log names them. */
@@ -592,8 +594,29 @@ export function formatLogTime(iso: string | null): string {
   });
 }
 
+/** The side a row belongs to; `null` when the log cannot name it. */
+function rowSide(
+  row: LogRow,
+  home: string | null,
+  away: string | null,
+): "home" | "away" | null {
+  if (row.team === null) {
+    return null;
+  }
+  if (home !== null && row.team === home) {
+    return "home";
+  }
+  if (away !== null && row.team === away) {
+    return "away";
+  }
+  return null;
+}
+
 interface EventLogProps {
   rows: LogRow[];
+  /** The two teams of the log, so a scoring row can carry its side's colour. */
+  home?: string | null;
+  away?: string | null;
   /** Omitted where the log is read-only (the result screen). */
   onUndo?: (row: LogRow) => void;
   /** Correct a row in place; omitted where the log is read-only. */
@@ -618,6 +641,8 @@ interface EventLogProps {
  */
 export default function EventLog({
   rows,
+  home = null,
+  away = null,
   onUndo,
   onEdit,
   undoKey = null,
@@ -657,20 +682,34 @@ export default function EventLog({
             const KindIcon = KIND_ICON[described.kind];
             const undoable =
               onUndo !== undefined && isUndoable(row);
+            // Only the scoring rows carry a team colour: the log stays a
+            // readable list, the points section is what the eye should find.
+            const side =
+              described.kind === "td" ||
+              described.kind === "pat" ||
+              described.kind === "safety"
+                ? rowSide(row, home, away)
+                : null;
             return (
               <li
-                className={
-                  row.isDeleted
-                    ? "row deleted"
-                    : described.missed
-                      ? "row miss"
-                      : "row"
-                }
+                className={[
+                  "row",
+                  row.isDeleted ? "deleted" : described.missed ? "miss" : null,
+                  side === null ? null : `row-${side}`,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 key={row.key}
               >
                 <span
                   aria-hidden="true"
-                  className={`ev ev-${described.kind}`}
+                  className={[
+                    "ev",
+                    `ev-${described.kind}`,
+                    side === null ? null : `ev-${side}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
                   <KindIcon size={18} />
                 </span>
