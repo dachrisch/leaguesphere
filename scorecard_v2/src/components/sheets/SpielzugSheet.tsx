@@ -14,6 +14,7 @@ import {
   PlusCircle,
   Shield,
   SwapArrows,
+  User,
   Whistle,
   type IconProps,
 } from "../icons";
@@ -25,6 +26,7 @@ export type SpielzugPick =
   | "turnover"
   | "challenge"
   | "fieldpos"
+  | "quarterback"
   | "safety"
   | "overtime";
 
@@ -58,6 +60,9 @@ const OTHERS: Tile[] = [
   { key: "4", label: "1st Down", Icon: ArrowRight, pick: "first" },
   { key: "5", label: "Safety", Icon: Shield, pick: "safety" },
   { key: "6", label: "Challenge", Icon: Whistle, pick: "challenge" },
+  // No number key: 7 was freed when the Mehr menu went, and the tile is a
+  // setup correction, not a per-snap entry.
+  { key: "", label: "QB", Icon: User, pick: "quarterback" },
 ];
 
 const PHASE: Tile[] = [

@@ -1666,6 +1666,33 @@ describe("Tracking play-by-play", () => {
     ).toBeInTheDocument();
   });
 
+  it("lets the operator change the default quarterback", async () => {
+    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "7");
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Spielzug" }));
+    const menu = await screen.findByRole("dialog", { name: "Spielzug" });
+    await user.click(within(menu).getByRole("button", { name: "QB" }));
+    const sheet = await screen.findByRole("dialog", { name: "QB · Ravens" });
+    await user.click(
+      within(sheet).getByRole("button", { name: "QB 23, Schulz" }),
+    );
+    await user.click(
+      within(sheet).getByRole("button", { name: "QB speichern" }),
+    );
+
+    // The change is the new default: the next pass preselects it.
+    expect(globalThis.localStorage.getItem("scorecard:v2:qb:42:home")).toBe(
+      "23",
+    );
+    const play = await openPlay(user, "Pass");
+    await user.click(within(play).getByRole("button", { name: "Incomplete" }));
+    expect(within(play).getByText("#23")).toBeInTheDocument();
+  });
+
   it("records a pass with yards and the remembered quarterback", async () => {
     globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "12");
     apiGetMock.mockResolvedValue(ROSTER);

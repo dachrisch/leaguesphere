@@ -3,6 +3,7 @@ import { useId, useRef, useState } from "react";
 import type { GameLogEventInput, RosterPlayer } from "../../api/types";
 import { FIELD_LENGTH, MIDFIELD, SERIES_START, formatYards } from "../../app/drive";
 import JerseyPicker, { jerseyOptions } from "../JerseyPicker";
+import QuarterbackPick from "../QuarterbackPick";
 import { errorMessage } from "./errors";
 import { fieldPositionEvent, spotValue, type FieldSide } from "./FieldPositionSheet";
 import { playInput, type PlayType } from "./PlaySheet";
@@ -125,6 +126,7 @@ export function editEvent(
     yards = null,
     spot = null,
     text = null,
+    qb = undefined,
   }: {
     jersey?: number | null;
     minutes?: string;
@@ -135,6 +137,8 @@ export function editEvent(
     side?: FieldSide;
     spot?: number | null;
     text?: string | null;
+    /** The corrected thrower; `undefined` keeps the stored one. */
+    qb?: number | null;
   } = {},
 ): GameLogEventInput {
   switch (editField(event)) {
@@ -164,11 +168,14 @@ export function editEvent(
       const signed = event === "Sack" ? -Math.abs(value) : value;
       const previous = playPayload(payload);
       const complete = previous.complete;
+      // A per-play correction of the thrower: `undefined` means the sheet did
+      // not touch it, `null` means the pass had nobody (a team entry).
+      const thrower = qb === undefined ? previous.qb : qb;
       const text = playInput({
         type: playTypeOf(event),
         complete,
         yards: signed,
-        qb: previous.qb,
+        qb: thrower,
         defender: previous.defender,
         deflection: previous.deflection,
       });
@@ -180,6 +187,14 @@ export function editEvent(
         yards: signed,
         input: text,
       };
+      if (playTypeOf(event) === "pass") {
+        // The projectors read `payload.qb`; a cleared thrower has to go.
+        if (thrower === null) {
+          delete nextPayload.qb;
+        } else {
+          nextPayload.qb = thrower;
+        }
+      }
       return {
         name: event,
         player: jersey ?? undefined,
@@ -256,6 +271,7 @@ export default function EditSheet({
     String(Math.abs(Number(payload?.yards ?? 0)) || 0),
   );
   const [playLoss, setPlayLoss] = useState(Number(payload?.yards ?? 0) < 0);
+  const [qb, setQb] = useState<number | null>(playPayload(payload).qb);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Two synchronous taps must not both write a correction.
@@ -313,6 +329,7 @@ export default function EditSheet({
                     : FIELD_LENGTH - spotValueNumber) * 10,
                 ) / 10,
           text,
+          qb,
         }),
       );
       onClose();
@@ -461,6 +478,23 @@ export default function EditSheet({
               value={playYards}
             />
           </div>
+          {playTypeOf(event) === "pass" ? (
+            <>
+              <h3 className="sheetsection">Quarterback</h3>
+              <QuarterbackPick
+                disabled={posting}
+                label="Quarterback"
+                onChange={setQb}
+                roster={roster}
+                side={side}
+                value={qb}
+              />
+              <p className="sheetnote">
+                Ändert nur diesen Spielzug. Den Standard für die nächsten Pässe
+                stellt der Eintrag „QB“ im Spielzug-Menü.
+              </p>
+            </>
+          ) : null}
         </>
       ) : null}
 

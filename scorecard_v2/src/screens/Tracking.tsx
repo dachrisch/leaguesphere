@@ -37,7 +37,11 @@ import {
   TRY_ONE,
   TRY_TWO,
 } from "../app/drive";
-import { readQuarterback, rememberQuarterback } from "../app/quarterback";
+import {
+  readQuarterback,
+  rememberQuarterback,
+  setQuarterback,
+} from "../app/quarterback";
 import { timeoutBudget, timeoutText } from "../app/timeouts";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
@@ -94,6 +98,7 @@ import TouchdownSheet from "../components/sheets/TouchdownSheet";
 import TimeoutSheet from "../components/sheets/TimeoutSheet";
 import HalftimeSheet from "../components/sheets/HalftimeSheet";
 import MissedPatSheet from "../components/sheets/MissedPatSheet";
+import QuarterbackSheet from "../components/sheets/QuarterbackSheet";
 import { yardsText } from "../components/sheets/yards";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
 import {
@@ -151,6 +156,7 @@ type SheetState =
   | { kind: "series"; mode: SeriesMode }
   | { kind: "penalty" }
   | { kind: "more"; mode: MoreMode }
+  | { kind: "quarterback" }
   | { kind: "spielzug" };
 
 /** The log's event name for each one-tap entry, to find the row it wrote. */
@@ -1414,6 +1420,10 @@ export default function TrackingScreen({
       openSheet({ kind: "fieldpos" });
       return;
     }
+    if (pick === "quarterback") {
+      openSheet({ kind: "quarterback" });
+      return;
+    }
     openSheet({ kind: "series", mode: pick });
   };
 
@@ -2498,6 +2508,7 @@ export default function TrackingScreen({
       possessionName !== null &&
       (sheet.kind === "touchdown" ||
         sheet.kind === "series" ||
+        sheet.kind === "quarterback" ||
         sheet.kind === "spielzug" ||
         opponentName !== null) ? (
         sheet.kind === "play" ? (
@@ -2591,6 +2602,17 @@ export default function TrackingScreen({
             roster={roster}
             side={possessionSide}
             teamName={possessionName}
+          />
+        ) : sheet.kind === "quarterback" ? (
+          <QuarterbackSheet
+            onClose={closeSheet}
+            onSubmit={(jersey) =>
+              setQuarterback(game.id, possessionSide, jersey)
+            }
+            roster={roster}
+            side={possessionSide}
+            teamName={possessionName}
+            value={readQuarterback(game.id, possessionSide)}
           />
         ) : sheet.kind === "spielzug" ? (
           <SpielzugSheet

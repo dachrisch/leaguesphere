@@ -60,3 +60,23 @@ export function forgetQuarterbacks(gameId: number): void {
   storage()?.removeItem(key(gameId, "home"));
   storage()?.removeItem(key(gameId, "away"));
 }
+
+/**
+ * Replace the team's default quarterback, or clear it with `null`.
+ *
+ * `rememberQuarterback` keeps the first number on purpose (a trick play is not
+ * a new default), so the default needs its own, deliberate way out: the
+ * operator opens the QB entry of the Spielzug sheet and says who throws. The
+ * next pass of that side preselects the new number.
+ */
+export function setQuarterback(
+  gameId: number,
+  side: Side,
+  jersey: number | null,
+): void {
+  if (jersey === null) {
+    storage()?.removeItem(key(gameId, side));
+    return;
+  }
+  storage()?.setItem(key(gameId, side), String(jersey));
+}

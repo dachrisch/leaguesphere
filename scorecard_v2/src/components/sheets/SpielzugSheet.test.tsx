@@ -36,6 +36,7 @@ describe("SpielzugSheet", () => {
       "1st Down",
       "Safety",
       "Challenge",
+      "QB",
       "Overtime",
       "Feldposition",
     ]) {
@@ -69,6 +70,7 @@ describe("SpielzugSheet", () => {
     ["1st Down", "first"],
     ["Safety", "safety"],
     ["Challenge", "challenge"],
+    ["QB", "quarterback"],
     ["Overtime", "overtime"],
     ["Feldposition", "fieldpos"],
   ] as const)("picks %s", async (label, pick) => {

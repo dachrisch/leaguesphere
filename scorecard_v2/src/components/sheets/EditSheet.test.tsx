@@ -328,6 +328,86 @@ describe("correcting the rows without an edit action before", () => {
   });
 });
 
+describe("correcting a pass's thrower", () => {
+  it("rewrites the payload and the visible text", () => {
+    const event = editEvent("Pass", {
+      jersey: 7,
+      payload: { yards: 8, complete: true, qb: 12 },
+      qb: 23,
+      yards: 8,
+    });
+
+    expect(event).toEqual({
+      name: "Pass",
+      player: 7,
+      input: "8 Yards · QB #23",
+      payload: {
+        yards: 8,
+        complete: true,
+        qb: 23,
+        input: "8 Yards · QB #23",
+      },
+    });
+  });
+
+  it("drops the thrower when the correction clears it", () => {
+    const event = editEvent("Pass", {
+      jersey: 7,
+      payload: { yards: 8, complete: true, qb: 12 },
+      qb: null,
+      yards: 8,
+    });
+
+    expect(event.payload).toEqual({ yards: 8, complete: true, input: "8 Yards" });
+    expect(event.input).toBe("8 Yards");
+  });
+
+  it("keeps the thrower when the sheet did not touch it", () => {
+    const event = editEvent("Pass", {
+      jersey: 7,
+      payload: { yards: 8, complete: true, qb: 12 },
+      yards: 12,
+    });
+
+    expect(event.payload).toMatchObject({ qb: 12 });
+  });
+
+  it("shows the stored thrower and saves the picked one", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Pass",
+      input: "8 Yards · QB #12",
+      jersey: 7,
+      payload: { yards: 8, complete: true, qb: 12 },
+    });
+
+    expect(screen.getByText("#12")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "ändern" }));
+    await user.click(screen.getByRole("button", { name: "QB 23, Schulz" }));
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: "Pass",
+      player: 7,
+      input: "8 Yards · QB #23",
+      payload: {
+        yards: 8,
+        complete: true,
+        qb: 23,
+        input: "8 Yards · QB #23",
+      },
+    });
+  });
+
+  it("offers no quarterback on a run", () => {
+    renderSheet({ event: "Run", payload: { yards: 8 } });
+
+    expect(screen.queryByRole("group", { name: "Quarterback" })).toBeNull();
+  });
+});
+
 describe("correcting the play's numbers in the sheet", () => {
   it("sends a typed loss and keeps the sign in the payload", async () => {
     const user = userEvent.setup();
