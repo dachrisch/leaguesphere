@@ -600,6 +600,30 @@ describe("PenaltySheet", () => {
     );
   });
 
+  it("reads a comma yardage as a half yard", async () => {
+    const { onSubmit } = renderSheet();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
+    await user.click(screen.getByRole("button", { name: "Gewinn" }));
+    const yards = screen.getByRole("textbox", { name: "Yardage (0–50)" });
+    await user.clear(yards);
+    await user.type(yards, "2,5");
+    await user.click(saveButton());
+
+    // 2,5 is two and a half yards, not 25: a half-distance penalty is real.
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 02",
+          payload: { yardage: 2.5, nextDown: "repeat" },
+        },
+      ],
+      "Ravens",
+    );
+  });
+
   it("shows the short code next to the name and finds the row by it", async () => {
     renderSheet({
       penalties: [

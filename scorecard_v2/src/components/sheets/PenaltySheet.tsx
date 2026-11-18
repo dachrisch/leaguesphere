@@ -670,10 +670,10 @@ export default function PenaltySheet({
               className="sheetinput sheetinput-num"
               disabled={posting}
               id="penalty-yards"
-              inputMode="numeric"
+              inputMode="decimal"
               onChange={(event) => changeYardage(event.target.value)}
               onFocus={(event) => event.target.select()}
-              pattern="[0-9]*"
+              pattern="[0-9.,]*"
               type="text"
               value={yardageText}
             />
