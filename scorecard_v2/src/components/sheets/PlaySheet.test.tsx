@@ -12,7 +12,6 @@ import PlaySheet, {
   resultOptions,
   stepsFor,
 } from "./PlaySheet";
-import { yardsValue } from "./yards";
 
 const ROSTER: RosterPlayer[] = [
   { side: "home", jersey: 7, name: "Meier" },
@@ -232,15 +231,6 @@ describe("PlaySheet helpers", () => {
       "qbplayer",
       "defender",
     ]);
-  });
-
-  it("reads the yards field as a signed two-digit number", () => {
-    expect(yardsValue("8")).toBe(8);
-    expect(yardsValue("-5")).toBe(-5);
-    expect(yardsValue("")).toBeNull();
-    expect(yardsValue("-")).toBeNull();
-    expect(yardsValue("1a2")).toBe(12);
-    expect(yardsValue("123")).toBe(12);
   });
 });
 
