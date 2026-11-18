@@ -249,6 +249,27 @@ describe("Sheet", () => {
     scroller.remove();
   });
 
+  it("restores the document scroll position when it closes", async () => {
+    // jsdom has no layout and no `document.scrollingElement`; a real browser
+    // scrolls that element while the keyboard opens.
+    const page = document.createElement("div");
+    page.scrollTop = 90;
+    Object.defineProperty(document, "scrollingElement", {
+      configurable: true,
+      get: () => page,
+    });
+    try {
+      const { unmount } = render(<Opener />);
+      await open();
+      page.scrollTop = 0;
+      unmount();
+
+      expect(page.scrollTop).toBe(90);
+    } finally {
+      Reflect.deleteProperty(document, "scrollingElement");
+    }
+  });
+
   it("locks the page scroll while open and releases it on close", async () => {
     const { unmount } = render(<Opener />);
     await open();
