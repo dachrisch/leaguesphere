@@ -526,7 +526,8 @@ export function describeRow(row: LogRow): Described {
         });
         return {
           kind: "note",
-          primary: `Feldposition ${line} · ${spotText(spot) ?? row.input}`,
+          // A set spot always has a label; `spotText` is only `null` without one.
+          primary: `Feldposition ${line} · ${spotText(spot)!}`,
           secondary: null,
         };
       }

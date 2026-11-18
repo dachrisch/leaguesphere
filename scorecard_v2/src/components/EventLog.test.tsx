@@ -776,6 +776,36 @@ describe("the Feldposition row", () => {
     });
   });
 
+  it("defaults a partially structured row to the first down", () => {
+    expect(
+      describeRow(
+        row({
+          event: "Feldposition",
+          payload: { ballOn: 20, goal: true },
+        }),
+      ),
+    ).toEqual({
+      kind: "note",
+      primary: "Feldposition 1st & G · A20",
+      secondary: null,
+    });
+  });
+
+  it("derives the line to gain from the spot when the row has none", () => {
+    expect(
+      describeRow(
+        row({
+          event: "Feldposition",
+          payload: { ballOn: 12, down: 3 },
+        }),
+      ),
+    ).toEqual({
+      kind: "note",
+      primary: "Feldposition 3rd & M · A12",
+      secondary: null,
+    });
+  });
+
   it("renders the whole situation as one line", () => {
     render(
       <EventLog
@@ -850,6 +880,40 @@ describe("a missed extra point", () => {
       missed: true,
     });
     expect(described.secondary).toBe("#3 · Tackle #2");
+  });
+
+  it("shows a miss the payload names without any visible detail", () => {
+    expect(
+      describeRow(
+        row({
+          event: "1-Extra-Punkt",
+          payload: { missed: true },
+        }),
+      ),
+    ).toEqual({
+      kind: "pat",
+      primary: "1 Extrapunkt nicht verwandelt Ravens",
+      secondary: null,
+      missed: true,
+    });
+  });
+
+  it("keeps a detail that does not spell out the miss", () => {
+    expect(
+      describeRow(
+        row({
+          event: "1-Extra-Punkt",
+          player: 3,
+          input: "Deflection #2",
+          payload: { missed: true },
+        }),
+      ),
+    ).toEqual({
+      kind: "pat",
+      primary: "1 Extrapunkt nicht verwandelt Ravens",
+      secondary: "#3 · Deflection #2",
+      missed: true,
+    });
   });
 
   it("keeps a converted try a scoring row", () => {

@@ -42,7 +42,7 @@ export function fieldPositionEvent(
   options: { down?: number; goal?: boolean } = {},
 ): GameLogEventInput {
   const ballOn = side === "A" ? yards : FIELD_LENGTH - yards;
-  const text = fieldPositionText(side, yards, ballOn, options);
+  const text = fieldPositionText(ballOn, options);
   const payload: Record<string, unknown> = { ballOn, input: text };
   if (options.down !== undefined) {
     payload.down = options.down;
@@ -64,12 +64,11 @@ export function fieldPositionEvent(
  * travels in it too.
  */
 function fieldPositionText(
-  side: FieldSide,
-  yards: number,
   ballOn: number,
   options: { down?: number; goal?: boolean },
 ): string {
-  const spot = spotText(ballOn) ?? `${side}${formatYards(yards)}`;
+  // A set spot always has a label; `spotText` is only `null` without one.
+  const spot = spotText(ballOn)!;
   if (options.down === undefined && options.goal === undefined) {
     return spot;
   }
