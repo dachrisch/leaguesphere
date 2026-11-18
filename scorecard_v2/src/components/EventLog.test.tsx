@@ -753,6 +753,31 @@ describe("EventLog — Nur Punkte", () => {
     expect(penalty).not.toHaveClass("row-away");
   });
 
+  it("keeps a scoring row neutral when the log cannot name its side", () => {
+    render(
+      <EventLog
+        away="Wolves"
+        home="Ravens"
+        rows={[
+          // A row without a team name at all, and one whose team matches
+          // neither side: both stay neutral instead of guessing a colour.
+          row({ key: "d", event: "Touchdown", team: null, player: 23 }),
+          row({ key: "e", event: "Safety", team: "Falcons", player: 7 }),
+        ]}
+      />,
+    );
+
+    const [noTeam, unknownTeam] = screen.getAllByRole("listitem");
+    for (const item of [noTeam, unknownTeam]) {
+      expect(item).not.toHaveClass("row-home");
+      expect(item).not.toHaveClass("row-away");
+      expect(item.querySelector(".ev")).not.toHaveClass("ev-home");
+      expect(item.querySelector(".ev")).not.toHaveClass("ev-away");
+    }
+    expect(noTeam.querySelector(".ev")).toHaveClass("ev-td");
+    expect(unknownTeam.querySelector(".ev")).toHaveClass("ev-safety");
+  });
+
   it("offers the edit next to undo, but not on a marker or a legacy row", () => {
     const onEdit = vi.fn();
     render(
