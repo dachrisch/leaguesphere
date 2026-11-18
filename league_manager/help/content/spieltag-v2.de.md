@@ -163,9 +163,9 @@ Spieleliste zeigt bei mehreren Feldern einen Feldplan mit gemeinsamen
 Anstoßzeiten. Auf dem Desktop kommen Spielinfo und Halbzeitenstände hinzu.
 
 Dort kannst du mit **T** einen Touchdown öffnen, mit **S** die Kachel
-**Spielzug**; darin wählen **1–0** die Einträge. **1–4** öffnen
-Pass/Run/Sack/Interception auch direkt, mit **5** die Strafe, mit **6** die
-Spielzeit; **8–0** lösen 1st Down,
+**Spielzug**; darin wählen **1–0** die Einträge. **P** öffnet einen Pass auch
+ohne die Kachel, **1–4** Pass/Run/Sack/Interception, mit **5** die Strafe, mit
+**6** die Spielzeit; **8–0** lösen 1st Down,
 Turnover und Safety aus. Mit **B** wechselt der Ballbesitz, mit **Strg+Z**
 (Mac: **Cmd+Z**) nimmst du den letzten Eintrag zurück. Die Tastenkürzel sind deaktiviert, solange ein
 Dialog oder ein Eingabefeld aktiv ist oder das Spiel nur gelesen werden darf.
