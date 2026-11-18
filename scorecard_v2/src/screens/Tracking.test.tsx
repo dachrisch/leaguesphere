@@ -3849,7 +3849,7 @@ describe("Tracking safety and overtime", () => {
     expect(sentPossessions()).toEqual(["away"]);
   });
 
-  it("offers only the one-point try in overtime", async () => {
+  it("offers the full try choice after a touchdown in overtime", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     const otLog = makeLog({
       inPossession: "Ravens",
@@ -3866,10 +3866,9 @@ describe("Tracking safety and overtime", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
     const pat = await screen.findByRole("group", { name: "Extrapunkt Ravens" });
 
-    expect(within(pat).getByRole("button", { name: "+1" })).toBeInTheDocument();
-    expect(
-      within(pat).queryByRole("button", { name: "+2" }),
-    ).toBeNull();
+    for (const name of ["+1", "+2", "nicht verwandelt", "Gegner +2"]) {
+      expect(within(pat).getByRole("button", { name })).toBeInTheDocument();
+    }
   });
 });
 
@@ -3925,22 +3924,33 @@ describe("Tracking half-time", () => {
     expect(screen.getByText("2. Halbzeit gestartet")).toBeInTheDocument();
     // The second half has no half-time button any more.
     expect(screen.queryByRole("button", { name: "Halbzeit" })).toBeNull();
-    // The break countdown starts with the half.
-    expect(await screen.findByRole("timer")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Pause beenden" }));
+    // The dialog stays open and is the break: its countdown runs there, not
+    // next to "Spiel beenden".
+    const dialog = screen.getByRole("dialog", { name: "Halbzeit" });
+    expect(within(dialog).getByRole("timer")).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole("button", { name: "2. Halbzeit starten" }),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByRole("timer")).toBeNull();
   });
 
-  it("keeps counting a break that this device already started", () => {
+  it("keeps counting a break that this device already started", async () => {
     globalThis.localStorage.setItem(
       "scorecard:v2:break:42",
       String(Date.now() - 60_000),
     );
 
     renderTracking({ log: markerLog() });
+    const user = userEvent.setup();
 
+    // No timer next to the game end: the break reopens in its dialog.
+    expect(screen.queryByRole("timer")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Halbzeit" });
     // the intermission is the definition's two minutes (IFAF R 3-2-1)
-    expect(screen.getByRole("timer")).toHaveTextContent(/^0[01]:\d\d$/);
+    expect(within(dialog).getByRole("timer")).toHaveTextContent(/^0[01]:\d\d$/);
   });
 
   it("drops a break that is already over instead of showing 00:00", () => {
@@ -4750,6 +4760,28 @@ describe("the try is its own down", () => {
     expect(await screen.findByText("Versuch · B10")).toBeInTheDocument();
   });
 
+  it("goes back from the defence jersey step to the try choice", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 7);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(await screen.findByRole("button", { name: "Gegner +2" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Zurück" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Gegner +2" }),
+    ).toBeInTheDocument();
+  });
+
   it("records two points for the defence that scored on the try", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
@@ -4762,6 +4794,12 @@ describe("the try is its own down", () => {
     await user.click(
       await screen.findByRole("button", { name: "Gegner +2" }),
     );
+    // The defence's jersey is its own step now.
+    const dialog = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Trikot 11, Wolf" }));
+    await user.click(within(dialog).getByRole("button", { name: "Speichern" }));
 
     await waitFor(() =>
       expect(apiPostMock).toHaveBeenCalledWith(
@@ -4772,6 +4810,7 @@ describe("the try is its own down", () => {
               type: "score",
               code: "pat2",
               side: "away",
+              player: 11,
               payload: expect.objectContaining({ try_defense: true }),
             }),
           ],
@@ -4793,13 +4832,17 @@ describe("a failed entry during the try", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
     const defence = await screen.findByRole("button", { name: "Gegner +2" });
 
-    // the write is refused: the prompt must stay and say why
+    // the write is refused: the jersey step must stay and say why
     apiPostMock.mockRejectedValueOnce(new ApiError(500, null, "Server weg"));
     await user.click(defence);
+    const dialog = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Speichern" }));
 
-    expect(await screen.findByText("Server weg")).toBeInTheDocument();
+    expect(await within(dialog).findByText("Server weg")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Gegner +2" }),
+      screen.getByRole("dialog", { name: "Gegner +2 · Wolves" }),
     ).toBeInTheDocument();
   });
 });

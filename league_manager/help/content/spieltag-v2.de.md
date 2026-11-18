@@ -97,7 +97,9 @@ wie die bisherige Scorecard
    Halbzeit verlangt einen zweiten Tipp (**Trotzdem erfassen**) und erinnert an
    die Strafe „Auszeit ohne verbleibende Auszeit“ (5 Yards). Eine **Auszeit**
    trägt sich unabhängig davon ein, wer den Ball hat. **Overtime** startet die
-   Verlängerung; danach wird der Versuch zum **+1 XP**.
+   Verlängerung; danach wird der Versuch zum **+1 XP**. Nach einem Touchdown in
+   der Overtime gelten dieselben Versuchsoptionen wie regulär (**+1**, **+2**,
+   **nicht verwandelt**, **Gegner +2**).
    **1st Down** und **Turnover** werden sofort gespeichert; bei **1st Down**
    trägst du die Trikotnummer nach, wenn du die Kachel innerhalb von 10
    Sekunden noch einmal tippst (**Nr. ergänzen**). Eine **Interception** läuft
@@ -127,9 +129,11 @@ wie die bisherige Scorecard
    Verteidiger-Nummer, wenn das Heimteam den Ball hat.
 
    **Halbzeit** öffnet einen Dialog mit Spielstand, **Ballbesitz 2.
-   Halbzeit** und der gedrehten **Spielrichtung**; **Halbzeit starten** wechselt
-   die Halbzeit und startet die Pause (Standard 2 Minuten, aus der
-   Regeldefinition). **Pause beenden** schließt sie früher ab.
+   Halbzeit** und der gedrehten **Spielrichtung**. **Halbzeit starten** schreibt
+   die Halbzeit; der Dialog bleibt offen und zeigt den **Pausen-Countdown**
+   (Standard 2 Minuten, aus der Regeldefinition). **2. Halbzeit starten** beendet
+   die Pause und geht zurück ins Spiel. Schließt du den Dialog vorher, öffnet
+   die Kachel **Pause** ihn wieder.
 4. Das Pfeil-Symbol neben einem Eintrag im Spielverlauf (**Rückgängig**) nimmt
    ihn zurück, **Ändern** korrigiert ihn an Ort und Stelle (Trikotnummer, bei
    Spielzügen die Yards, bei **Feldposition** die Yardlinie, bei **Spielzeit**
@@ -141,7 +145,8 @@ wie die bisherige Scorecard
    dabei auch diese Drehung zurück – auch wenn er noch nicht gesendet wurde.
    Der Touchdown
    selbst dreht den Ball nicht mehr: erst der Versuch (**+1**, **+2**,
-   **nicht verwandelt** oder **Gegner +2**) gibt ihn ab. Nimmst du den
+   **nicht verwandelt** oder **Gegner +2**) gibt ihn ab. **Gegner +2** fragt
+   die Trikotnummer des Gegners in einem eigenen Schritt. Nimmst du den
    **Touchdown** zurück, schließt sich die offene Extrapunkt-Abfrage; nimmst du
    eine **Extrapunkt**-Zeile zurück, kommt sie mit derselben Mannschaft und
    derselben vorausgewählten Nummer wieder – ein falscher Tipp ist damit einen
@@ -150,12 +155,6 @@ wie die bisherige Scorecard
    verwandelten** Versuch, der dann ausgegraut stehen bleibt. Die
    Punkte-Zeilen tragen die Farbe ihrer Mannschaft (Heim rot, Gast grün),
    damit ein falscher Spielstand schnell zu finden ist.
-   **Halbzeit**
-   fragt beim ersten Tippen nach (**Halbzeit starten**) und wechselt erst beim
-   zweiten Tippen innerhalb von 10 Sekunden in die zweite Halbzeit; danach
-   läuft oben die **Pause** mit Countdown (Standard 2 Minuten, aus der
-   Regeldefinition), **Pause beenden**
-   schließt sie früher ab.
 5. **Spielende und Bestätigung** öffnet den Abschluss: beide Captains
    bestätigen, dann **Ergebnis abschicken**. Danach zeigt **Ergebnis gesendet**
    den Endstand mit beiden Halbzeiten und den vollständigen Spielverlauf.

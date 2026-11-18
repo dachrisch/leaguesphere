@@ -49,6 +49,23 @@ describe("HalftimeSheet", () => {
     expect(screen.getByText("2 Minuten")).toBeInTheDocument();
   });
 
+  it("shows the running break and returns to the second half", async () => {
+    const user = userEvent.setup();
+    const onSecondHalf = vi.fn();
+    renderSheet({ startedAt: Date.now(), onSecondHalf });
+
+    expect(screen.getByRole("timer")).toHaveTextContent(/^0[12]:\d\d$/);
+    expect(
+      screen.queryByRole("button", { name: "Halbzeit starten" }),
+    ).toBeNull();
+
+    await user.click(
+      screen.getByRole("button", { name: "2. Halbzeit starten" }),
+    );
+
+    expect(onSecondHalf).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the coin toss, who starts and each team's second-half direction", () => {
     renderSheet({ setup: SETUP });
 

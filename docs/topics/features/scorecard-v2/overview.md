@@ -120,8 +120,12 @@ no reload.
    which writes the numbered row for the same team (an interception's ball
    does not move twice) and undoes the one-tap row. Entries with required
    input — touchdown, Spielzeit, penalty, safety, overtime — open
-   their sheet on the first tap. **Halbzeit** confirms the same way (first tap
-   arms **Halbzeit starten**, the second starts it); the marker it writes also
+   their sheet on the first tap. **Halbzeit** opens the confirmation dialog; its
+   **Halbzeit starten** writes
+   the marker, and the dialog stays open as the break, counting down in place.
+   **2. Halbzeit starten** ends the break and returns to the game; a closed
+   dialog is reopened by the **Pause** tile (no timer next to **Spiel
+   beenden**). The marker also
    sets `Gameinfo.status` and `gameHalftime`, so the half flips for every
    reader and the second half's plays are filed under half 2. While an extra point is
    open, the tiles and Halbzeit are locked.
@@ -149,7 +153,8 @@ no reload.
    enough, a short reason is optional — as its own `challenge` event.
    **Overtime** is a two-step marker (`period/overtime`, no score, no third
    half); the tile then turns into **+1 XP**, which opens the same jersey step
-   for the converter, and the try after a touchdown offers only **+1**.
+   for the converter, and the try after a touchdown offers the same options as a
+   regular try (**+1**, **+2**, **nicht verwandelt**, **Gegner +2**).
    Under the possession switch the screen shows the **down & distance** and the
    spot (**2nd & M · A12**), derived from the plays in the log on the
    50-yard field: A is the own half (0–25), `M` is midfield and B is the
@@ -190,7 +195,8 @@ no reload.
    touchdown button (+1 / +2 / nicht verwandelt, nothing pre-selected),
    credited to the scoring team; **+1**/**+2** open the jersey step with the
    touchdown's scorer pre-selected, so the person who actually converted can be
-   picked, and **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search (the
+   picked, **Gegner +2** asks for the defender's jersey in its own step, and
+   **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search (the
    five most common penalties stay in catalogue order, the rest are
    alphabetical; the sheet prefills yardage and next down from the catalogue's
    `subtext` and keeps both editable), safety,
@@ -204,8 +210,8 @@ no reload.
    timeout field lists its
    with half and game time — the entry stores the *remaining game time*, like
    the old app, not a duration — and its tile carries the count of the side
-   with the ball. Starting the second half runs a five-minute **Pause**
-   countdown under the controls (**Pause beenden** ends it early); it is a
+   with the ball. The half-time dialog carries the **Pause** countdown while the
+   break runs (**2. Halbzeit starten** ends it early); it is a
    helper stored per device, not a game clock. The
    screen keeps the display on while the game is open (Wake Lock, where the
    browser offers it) and confirms each saved entry with a short vibration.

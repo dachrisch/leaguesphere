@@ -76,6 +76,8 @@ interface MissedPatSheetProps {
   initialJersey?: number | null;
   onSubmit: (events: GameLogEventInput[]) => Promise<void>;
   onClose: () => void;
+  /** Back to the result choice behind this sheet. */
+  onBack?: () => void;
 }
 
 /**
@@ -94,6 +96,7 @@ export default function MissedPatSheet({
   initialJersey = null,
   onSubmit,
   onClose,
+  onBack,
 }: MissedPatSheetProps) {
   const [points, setPoints] = useState<MissedPatPoints>(1);
   const [qb, setQb] = useState<number | null>(lastQuarterback);
@@ -144,6 +147,7 @@ export default function MissedPatSheet({
           {posting ? "Speichern …" : "Nicht verwandelt speichern"}
         </button>
       }
+      onBack={onBack}
       onClose={onClose}
       title={`Extrapunkt ${teamName} · nicht verwandelt`}
     >

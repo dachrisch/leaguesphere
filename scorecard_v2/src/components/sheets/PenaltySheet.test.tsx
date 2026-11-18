@@ -268,6 +268,14 @@ describe("PenaltySheet helpers", () => {
 });
 
 describe("PenaltySheet", () => {
+  it("puts the cursor into the search field", () => {
+    renderSheet();
+
+    expect(
+      screen.getByRole("searchbox", { name: "Strafe suchen" }),
+    ).toHaveFocus();
+  });
+
   it("loads the catalogue from the config endpoint", async () => {
     renderSheet();
 

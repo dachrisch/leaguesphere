@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { GameSetup } from "../../api/types";
+import BreakCountdown from "../BreakCountdown";
 import DirectionText, {
   directionFromWire,
   type Direction,
@@ -112,16 +113,22 @@ export default function HalftimeSheet({
   direction,
   intermissionMinutes,
   setup = null,
+  /** Epoch ms the break started; `null` before "Halbzeit starten". */
+  startedAt = null,
   busy = false,
   error = null,
   disabled = false,
   onStart,
+  onSecondHalf,
   onClose,
 }: HalftimeFacts & {
+  startedAt?: number | null;
   busy?: boolean;
   error?: string | null;
   disabled?: boolean;
   onStart: () => void;
+  /** Ends the break and returns to the running game ("2. Halbzeit starten"). */
+  onSecondHalf?: () => void;
   onClose: () => void;
 }) {
   const toss = tossWinnerName(setup, home, away);
@@ -134,20 +141,26 @@ export default function HalftimeSheet({
   const otherDirection = oppositeDirection(receivingDirection);
   const otherTeam =
     possession === home ? away : possession === away ? home : null;
+  // Once the marker is written the dialog stays open and *is* the break: the
+  // countdown replaces the start footer, so the officials can watch the
+  // intermission where they started it instead of next to "Spiel beenden".
+  const started = startedAt !== null;
 
   return (
     <Sheet
       busy={busy}
       error={error}
       footer={
-        <button
-          className="startbtn"
-          disabled={busy || disabled}
-          onClick={onStart}
-          type="button"
-        >
-          {busy ? "Halbzeit …" : "Halbzeit starten"}
-        </button>
+        started ? undefined : (
+          <button
+            className="startbtn"
+            disabled={busy || disabled}
+            onClick={onStart}
+            type="button"
+          >
+            {busy ? "Halbzeit …" : "Halbzeit starten"}
+          </button>
+        )
       }
       onClose={onClose}
       title="Halbzeit"
@@ -192,6 +205,17 @@ export default function HalftimeSheet({
       <dl aria-label="Pause" className="startlist">
         <Line label="Pause">{intermissionMinutes} Minuten</Line>
       </dl>
+
+      {started ? (
+        <BreakCountdown
+          doneLabel="2. Halbzeit starten"
+          label="Pause"
+          onDone={onSecondHalf ?? onClose}
+          panelLabel="Halbzeitpause"
+          startedAt={startedAt}
+          totalSeconds={intermissionMinutes * 60}
+        />
+      ) : null}
 
       <p className="sheetnote">
         Der zweite Ballbesitz kommt aus der Vorbereitung: die Mannschaft, die

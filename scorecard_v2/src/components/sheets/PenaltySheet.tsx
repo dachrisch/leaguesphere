@@ -305,6 +305,7 @@ export default function PenaltySheet({
   const [penalties, setPenalties] = useState<Penalty[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [selected, setSelected] = useState<Penalty | null>(null);
   const [team, setTeam] = useState<string | null>(null);
@@ -351,6 +352,12 @@ export default function PenaltySheet({
     return () => {
       active = false;
     };
+  }, []);
+
+  // The catalogue is what the official opened this sheet for: start typing the
+  // name right away instead of hunting for the field first.
+  useEffect(() => {
+    searchRef.current?.focus({ preventScroll: true });
   }, []);
 
   /**
@@ -541,6 +548,7 @@ export default function PenaltySheet({
               setExpanded(false);
             }}
             placeholder="Strafe eingeben …"
+            ref={searchRef}
             type="search"
             value={search}
           />
