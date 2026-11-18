@@ -143,6 +143,12 @@ interface JerseyPickerProps {
    * tile shape at a smaller size.
    */
   compact?: boolean;
+  /**
+   * A finished tap on a tile — a jersey, "Ohne Nummer" or the trailing tile.
+   * The sheet may move on by itself; typing on the keypad or in the fallback
+   * number field is not a tap and does not call it.
+   */
+  onPick?: (jersey: number | null) => void;
 }
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "Löschen"];
@@ -155,12 +161,15 @@ function OptionalChoice({
   label,
   value,
   onChange,
+  onPick,
   disabled,
   selected: selectedOverride,
 }: {
   label: string;
   value: number | null;
   onChange: (jersey: number | null) => void;
+  /** A tile tap is a finished choice; the keypad/typing never calls it. */
+  onPick?: () => void;
   disabled: boolean;
   /** Defaults to "is nothing picked"; a second tile passes its own state. */
   selected?: boolean;
@@ -172,7 +181,10 @@ function OptionalChoice({
       aria-pressed={selected}
       className={selected ? "choice sel" : "choice"}
       disabled={disabled}
-      onClick={() => onChange(null)}
+      onClick={() => {
+        onChange(null);
+        onPick?.();
+      }}
       type="button"
     >
       <span className="choice-label">{label}</span>
@@ -185,6 +197,7 @@ function JerseyKeypad({
   options,
   value,
   onChange,
+  onPick,
   disabled,
   label,
   groupLabel,
@@ -197,6 +210,7 @@ function JerseyKeypad({
   options: JerseyOption[];
   value: number | null;
   onChange: (jersey: number | null) => void;
+  onPick?: (jersey: number | null) => void;
   disabled: boolean;
   label: string;
   groupLabel: string;
@@ -234,6 +248,7 @@ function JerseyKeypad({
             disabled={disabled}
             label={optionalLabel}
             onChange={onChange}
+            onPick={() => onPick?.(null)}
             selected={optionalSelected}
             value={value}
           />
@@ -269,6 +284,7 @@ function JerseyKeypad({
           disabled={disabled}
           label={trailing.label}
           onChange={() => trailing.onSelect()}
+          onPick={() => onPick?.(null)}
           selected={trailing.selected}
           value={null}
         />
@@ -301,6 +317,7 @@ export default function JerseyPicker({
   players,
   value,
   onChange,
+  onPick,
   disabled = false,
   label = "Trikotnummer",
   groupLabel,
@@ -322,6 +339,7 @@ export default function JerseyPicker({
         groupLabel={group}
         label={label}
         onChange={onChange}
+        onPick={onPick}
         optionalLabel={optionalLabel}
         optionalSelected={optionalSelected}
         options={options}
@@ -372,6 +390,7 @@ export default function JerseyPicker({
           disabled={disabled}
           label={optionalLabel}
           onChange={onChange}
+          onPick={() => onPick?.(null)}
           selected={optionalSelected}
           value={value}
         />
@@ -395,7 +414,10 @@ export default function JerseyPicker({
             })}
             disabled={disabled}
             key={option.jersey}
-            onClick={() => onChange(option.jersey)}
+            onClick={() => {
+              onChange(option.jersey);
+              onPick?.(option.jersey);
+            }}
             type="button"
           >
             <span className="choice-num">{option.jersey}</span>
@@ -408,6 +430,7 @@ export default function JerseyPicker({
           disabled={disabled}
           label={trailing.label}
           onChange={() => trailing.onSelect()}
+          onPick={() => onPick?.(null)}
           selected={trailing.selected}
           value={null}
         />

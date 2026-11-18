@@ -1029,6 +1029,14 @@ button.game-row:active {
   gap: var(--space-2);
 }
 
+/* The play's result: one short row for what the play was, a second for how it
+   scored or ended. Tiles keep their full touch height instead of shrinking to
+   fit six labels into one grid. */
+.segresults {
+  display: grid;
+  gap: var(--space-2);
+}
+
 /* Three short choices (the penalty's next down); the labels wrap rather than
    shrinking below the touch target. */
 .seg.seg-three {

@@ -1429,12 +1429,10 @@ describe("the touchdown's Raumgewinn", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Run");
-    await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user); // result → player (the field position comes last)
+    await user.click(within(sheet).getByRole("button", { name: "TD" }));
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → field position, pre-filled with the gain
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
     );
@@ -1680,7 +1678,6 @@ describe("Tracking play-by-play", () => {
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 7, Meier" }),
     );
-    await wizardNext(user); // receiver → defender
     await wizardNext(user); // defender → field position
     const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
     await user.clear(yards);
@@ -1917,7 +1914,6 @@ describe("Tracking play-by-play", () => {
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → defender
     await wizardNext(user); // defender → field position
     const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
     await user.clear(yards);
@@ -1963,7 +1959,6 @@ describe("Tracking play-by-play", () => {
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → defender
     await wizardNext(user); // defender → field position
     const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
     await user.clear(yards);
@@ -2221,7 +2216,7 @@ describe("Tracking series and time entry", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user, 2); // result → qb → interception
+    await wizardNext(user); // qb → interception
     await user.click(
       await within(sheet).findByRole("button", { name: "Defense 11, Wolf" }),
     );
@@ -2700,8 +2695,8 @@ describe("Tracking extra point after the try", () => {
     const user = userEvent.setup();
 
     await openPlay(user, "Run");
-    await user.click(screen.getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user, 2); // result → player (no number) → field position
+    await user.click(screen.getByRole("button", { name: "TD" }));
+    await wizardNext(user); // player → field position
     await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
 
     // The six points stand without a name, so the try must still be asked —
@@ -4935,13 +4930,11 @@ describe("a scoring play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Pass");
-    await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user); // result → qb + receiver
+    await user.click(within(sheet).getByRole("button", { name: "TD" }));
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    // A touchdown has no tackler: the field position is the last step.
-    await wizardNext(user); // receiver → field position
+    // A touchdown has no tackler: the jersey tap lands on the field position.
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
     );
@@ -4975,8 +4968,7 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await user.click(within(sheet).getByRole("button", { name: "Interception" }));
-    await wizardNext(user, 2); // result → qb → interception
+    await wizardNext(user); // qb → interception
     await user.click(within(sheet).getByRole("button", { name: "Defense 11, Wolf" }));
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
@@ -5004,7 +4996,7 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user, 2); // result → qb → interception
+    await wizardNext(user); // qb → interception
     await user.click(within(sheet).getByRole("button", { name: "Defense 11, Wolf" }));
     await user.click(
       within(sheet).getByRole("button", { name: "Pick six (Touchdown)" }),
@@ -5027,11 +5019,9 @@ describe("plays that change hands", () => {
 
     const sheet = await openPlay(user, "Run");
     await user.click(within(sheet).getByRole("button", { name: "Safety" }));
-    await wizardNext(user); // result → player
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → defender
     await wizardNext(user); // defender → field position
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),

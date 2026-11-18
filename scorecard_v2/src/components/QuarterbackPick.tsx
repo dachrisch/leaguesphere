@@ -10,6 +10,8 @@ interface QuarterbackPickProps {
   side: RosterPlayer["side"];
   value: number | null;
   onChange: (jersey: number | null) => void;
+  /** A finished tap on a jersey tile; typing never calls it. */
+  onPick?: (jersey: number | null) => void;
   disabled?: boolean;
   /** Section heading; the picker is one row inside the sheet. */
   label?: string;
@@ -28,6 +30,7 @@ export default function QuarterbackPick({
   side,
   value,
   onChange,
+  onPick,
   disabled = false,
   label = "Quarterback",
 }: QuarterbackPickProps) {
@@ -63,6 +66,7 @@ export default function QuarterbackPick({
         onChange(jersey);
         setEditing(false);
       }}
+      onPick={onPick}
       optionalLabel="Ohne QB"
       players={players}
       value={value}

@@ -236,6 +236,50 @@ export function resultOptions(type: PlayType): {
   ];
 }
 
+/**
+ * The result step's rows: what the play was first, how it scored or ended
+ * second (field report 2026-11-18). Six results in one grid made the operator
+ * read every label; two short rows fit a phone and keep each tile a full touch
+ * target. The scoring results share the short "TD" the scoreboard uses.
+ */
+export function resultRows(type: PlayType): {
+  value: PlayResult;
+  label: string;
+}[][] {
+  if (type === "pass") {
+    return [
+      [
+        { value: "gain", label: "Complete" },
+        { value: "incomplete", label: "Incomplete" },
+        { value: "interception", label: "Interception" },
+      ],
+      [
+        { value: "touchdown", label: "TD" },
+        { value: "safety", label: "Safety" },
+        { value: "sack", label: "Sack" },
+      ],
+    ];
+  }
+  if (type === "run") {
+    return [
+      [
+        { value: "gain", label: "Raumgewinn" },
+        { value: "sack", label: "Sack" },
+      ],
+      [
+        { value: "touchdown", label: "TD" },
+        { value: "safety", label: "Safety" },
+      ],
+    ];
+  }
+  return [
+    [
+      { value: "gain", label: "Sack" },
+      { value: "safety", label: "Safety" },
+    ],
+  ];
+}
+
 /** One step of the wizard; sections that do not apply are skipped. */
 type Step =
   | "result"
@@ -428,6 +472,19 @@ export default function PlaySheet({
   const steps = stepsFor(type, result);
   const index = Math.min(stepIndex, steps.length - 1);
   const step = steps[index];
+  const last = index === steps.length - 1;
+
+  /**
+   * A finished selection moves on by itself: tapping a result, a jersey or a
+   * quarterback is the whole answer to its step. A typed field (and the
+   * interception's spot) keeps the operator on the step, where "Weiter" is
+   * the only way on.
+   */
+  const goNext = (): void => {
+    if (!last) {
+      setStepIndex(index + 1);
+    }
+  };
 
   const magnitude = Math.abs(yardsValue(yardsText) ?? 0);
   const endSpot = spotFrom(endSide, endYards, geometry);
@@ -557,7 +614,6 @@ export default function PlaySheet({
     }
   };
 
-  const last = index === steps.length - 1;
   const footer = (
     <div className="sheetfootrow">
       {index === 0 ? null : (
@@ -609,18 +665,28 @@ export default function PlaySheet({
       {step === "result" ? (
         <>
           <h3 className="sheetsection">Ergebnis</h3>
-          <div aria-label="Ergebnis" className="seg" role="group">
-            {resultOptions(type).map((option) => (
-              <button
-                aria-pressed={result === option.value}
-                className={result === option.value ? "sel" : undefined}
-                disabled={posting}
-                key={option.value}
-                onClick={() => chooseResult(option.value)}
-                type="button"
+          <div aria-label="Ergebnis" className="segresults" role="group">
+            {resultRows(type).map((row) => (
+              <div
+                className={row.length === 3 ? "seg seg-three" : "seg"}
+                key={row.map((option) => option.value).join("-")}
               >
-                {option.label}
-              </button>
+                {row.map((option) => (
+                  <button
+                    aria-pressed={result === option.value}
+                    className={result === option.value ? "sel" : undefined}
+                    disabled={posting}
+                    key={option.value}
+                    onClick={() => {
+                      chooseResult(option.value);
+                      goNext();
+                    }}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         </>
@@ -760,6 +826,7 @@ export default function PlaySheet({
           <QuarterbackPick
             disabled={posting}
             onChange={setQb}
+            onPick={step === "qb" ? goNext : undefined}
             roster={roster}
             side={side}
             value={qb}
@@ -786,6 +853,7 @@ export default function PlaySheet({
             groupLabel="Trikotnummer"
             label="Trikot"
             onChange={setJersey}
+            onPick={goNext}
             optionalLabel="Ohne Nummer"
             players={players}
             value={jersey}
@@ -805,6 +873,7 @@ export default function PlaySheet({
             groupLabel="Trikotnummer Defense"
             label="Defense"
             onChange={setDefender}
+            onPick={goNext}
             optionalLabel="Ohne Nummer"
             players={defenders}
             value={defender}
