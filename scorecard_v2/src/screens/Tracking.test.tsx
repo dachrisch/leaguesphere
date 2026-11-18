@@ -1429,7 +1429,6 @@ describe("the touchdown's Raumgewinn", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
     await wizardNext(user); // result → player (the field position comes last)
     await user.click(
@@ -1579,8 +1578,14 @@ async function openPlay(
 ): Promise<HTMLElement> {
   await user.click(screen.getByRole("button", { name: "Spielzug" }));
   const menu = await screen.findByRole("dialog", { name: "Spielzug" });
-  await user.click(within(menu).getByRole("button", { name }));
-  return screen.findByRole("dialog", { name: "Spielzug · Ravens" });
+  // Sack and Interception are results of the Pass wizard now, not tiles.
+  const tile = name === "Sack" || name === "Interception" ? "Pass" : name;
+  await user.click(within(menu).getByRole("button", { name: tile }));
+  const sheet = await screen.findByRole("dialog", { name: "Spielzug · Ravens" });
+  if (name === "Sack" || name === "Interception") {
+    await user.click(within(sheet).getByRole("button", { name }));
+  }
+  return sheet;
 }
 
 /** Advance the play wizard one or more steps (its primary button). */
@@ -1627,6 +1632,42 @@ async function missTry(
 }
 
 describe("Tracking play-by-play", () => {
+  it("goes back from a play to the Spielzug sheet and to the play menu", async () => {
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Spielzug" }));
+    const menu = await screen.findByRole("dialog", { name: "Spielzug" });
+    await user.click(within(menu).getByRole("button", { name: "Pass" }));
+    const sheet = await screen.findByRole("dialog", {
+      name: "Spielzug · Ravens",
+    });
+
+    await user.click(within(sheet).getByRole("button", { name: "Zurück" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Spielzug" }),
+    ).toBeInTheDocument();
+  });
+
+  it("goes back from a Safety sheet to the Spielzug sheet", async () => {
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Spielzug" }));
+    const menu = await screen.findByRole("dialog", { name: "Spielzug" });
+    await user.click(within(menu).getByRole("button", { name: "Safety" }));
+    const sheet = await screen.findByRole("dialog", { name: /Safety/ });
+
+    await user.click(within(sheet).getByRole("button", { name: "Zurück" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Spielzug" }),
+    ).toBeInTheDocument();
+  });
+
   it("records a pass with yards and the remembered quarterback", async () => {
     globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "12");
     apiGetMock.mockResolvedValue(ROSTER);
@@ -1635,7 +1676,6 @@ describe("Tracking play-by-play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → qb + receiver
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 7, Meier" }),
@@ -1690,7 +1730,6 @@ describe("Tracking play-by-play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → qb + receiver
     expect(within(sheet).getByText("#7")).toBeInTheDocument();
     await user.click(within(sheet).getByRole("button", { name: "ändern" }));
@@ -1709,7 +1748,6 @@ describe("Tracking play-by-play", () => {
     );
 
     const second = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → qb + receiver
 
     expect(within(second).getByText("#7")).toBeInTheDocument();
@@ -1875,7 +1913,6 @@ describe("Tracking play-by-play", () => {
     // Fourth down after three runs; one more yard is short of midfield.
     expect(screen.getByText(/4th & M/)).toBeInTheDocument();
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → player
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
@@ -1922,7 +1959,6 @@ describe("Tracking play-by-play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → player
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
@@ -2185,7 +2221,6 @@ describe("Tracking series and time entry", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user); // type → result
     await wizardNext(user, 2); // result → qb → interception
     await user.click(
       await within(sheet).findByRole("button", { name: "Defense 11, Wolf" }),
@@ -2665,7 +2700,6 @@ describe("Tracking extra point after the try", () => {
     const user = userEvent.setup();
 
     await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await user.click(screen.getByRole("button", { name: "Touchdown" }));
     await wizardNext(user, 2); // result → player (no number) → field position
     await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
@@ -4780,7 +4814,6 @@ describe("a scoring play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
     await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
     await wizardNext(user); // result → qb + receiver
     await user.click(
@@ -4821,7 +4854,6 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user); // type → result
     await user.click(within(sheet).getByRole("button", { name: "Interception" }));
     await wizardNext(user, 2); // result → qb → interception
     await user.click(within(sheet).getByRole("button", { name: "Defense 11, Wolf" }));
@@ -4851,9 +4883,7 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user);
-    await user.click(within(sheet).getByRole("button", { name: "Interception" }));
-    await wizardNext(user, 2);
+    await wizardNext(user, 2); // result → qb → interception
     await user.click(within(sheet).getByRole("button", { name: "Defense 11, Wolf" }));
     await user.click(
       within(sheet).getByRole("button", { name: "Pick six (Touchdown)" }),
@@ -4875,7 +4905,6 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await user.click(within(sheet).getByRole("button", { name: "Safety" }));
     await wizardNext(user); // result → player
     await user.click(
@@ -5309,9 +5338,6 @@ describe("Tracking Spielzug sheet", () => {
     for (const label of [
       "Pass",
       "Run",
-      "Sack",
-      "Interception",
-      "Touchdown (Kurzform)",
       "Turnover",
       "1st Down",
       "Safety",
@@ -5320,6 +5346,11 @@ describe("Tracking Spielzug sheet", () => {
       "Feldposition",
     ]) {
       expect(within(menu).getByRole("button", { name: label })).toBeEnabled();
+    }
+    // These are results of the Pass wizard or the board's own Touchdown
+    // button now, not entries of this sheet.
+    for (const label of ["Sack", "Interception", "Touchdown (Kurzform)"]) {
+      expect(within(menu).queryByRole("button", { name: label })).toBeNull();
     }
     expect(
       within(menu).getByRole("heading", { name: "Spielphase" }),
@@ -5339,7 +5370,6 @@ describe("Tracking Spielzug sheet", () => {
     ["1st Down", "First Down"],
     ["Safety", "Safety"],
     ["Feldposition", "Feldposition · Ravens"],
-    ["Touchdown (Kurzform)", "Wer hat gepunktet?"],
     ["Challenge", "Challenge · Ravens"],
   ])("opens %s from the sheet", async (item, title) => {
     apiGetMock.mockResolvedValue(ROSTER);

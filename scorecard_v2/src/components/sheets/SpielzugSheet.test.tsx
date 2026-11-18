@@ -26,15 +26,12 @@ function renderSheet(
 }
 
 describe("SpielzugSheet", () => {
-  it("offers the plays, the rarer entries and the game phases", () => {
+  it("offers the two plays, the rarer entries and the game phases", () => {
     renderSheet();
 
     for (const label of [
       "Pass",
       "Run",
-      "Sack",
-      "Interception",
-      "Touchdown (Kurzform)",
       "Turnover",
       "1st Down",
       "Safety",
@@ -44,6 +41,11 @@ describe("SpielzugSheet", () => {
     ]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
+    // Sack, Interception and the short-form touchdown are results/details of
+    // the play wizard now, not entries of this sheet.
+    for (const label of ["Sack", "Interception", "Touchdown (Kurzform)"]) {
+      expect(screen.queryByRole("button", { name: label })).toBeNull();
+    }
     expect(
       screen.getByRole("heading", { name: "Spielphase" }),
     ).toBeInTheDocument();
@@ -52,8 +54,6 @@ describe("SpielzugSheet", () => {
   it.each([
     ["Pass", "pass", undefined],
     ["Run", "run", undefined],
-    ["Sack", "sack", undefined],
-    ["Interception", "pass", "interception"],
   ] as const)("opens the play wizard for %s", async (label, type, result) => {
     const user = userEvent.setup();
     const { onPlay, onPick } = renderSheet();
@@ -65,7 +65,6 @@ describe("SpielzugSheet", () => {
   });
 
   it.each([
-    ["Touchdown (Kurzform)", "touchdown"],
     ["Turnover", "turnover"],
     ["1st Down", "first"],
     ["Safety", "safety"],
@@ -88,10 +87,10 @@ describe("SpielzugSheet", () => {
     fireEvent.keyDown(window, { key: "1" });
     expect(onPlay).toHaveBeenCalledWith("pass", undefined);
 
-    fireEvent.keyDown(window, { key: "4" });
-    expect(onPlay).toHaveBeenCalledWith("pass", "interception");
+    fireEvent.keyDown(window, { key: "2" });
+    expect(onPlay).toHaveBeenCalledWith("run", undefined);
 
-    fireEvent.keyDown(window, { key: "6" });
+    fireEvent.keyDown(window, { key: "3" });
     expect(onPick).toHaveBeenCalledWith("turnover");
 
     fireEvent.keyDown(window, { key: "0" });

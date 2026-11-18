@@ -28,6 +28,7 @@ export type PlayType = "pass" | "run" | "sack";
 export type PlayResult =
   | "gain"
   | "incomplete"
+  | "sack"
   | "touchdown"
   | "safety"
   | "interception";
@@ -215,6 +216,7 @@ export function resultOptions(type: PlayType): {
     return [
       { value: "gain", label: "Complete" },
       { value: "incomplete", label: "Incomplete" },
+      { value: "sack", label: "Sack" },
       { value: "touchdown", label: "Touchdown" },
       { value: "safety", label: "Safety" },
       { value: "interception", label: "Interception" },
@@ -223,6 +225,7 @@ export function resultOptions(type: PlayType): {
   if (type === "run") {
     return [
       { value: "gain", label: "Raumgewinn" },
+      { value: "sack", label: "Sack" },
       { value: "touchdown", label: "Touchdown" },
       { value: "safety", label: "Safety" },
     ];
@@ -235,7 +238,6 @@ export function resultOptions(type: PlayType): {
 
 /** One step of the wizard; sections that do not apply are skipped. */
 type Step =
-  | "type"
   | "result"
   | "distance"
   | "qb"
@@ -245,7 +247,14 @@ type Step =
   | "interception";
 
 export function stepsFor(type: PlayType, result: PlayResult): Step[] {
-  const steps: Step[] = ["type", "result"];
+  // The type is chosen by the tile that opened the wizard (Pass/Run), so the
+  // first step is the result. A sack is one of those results, not a type.
+  const steps: Step[] = ["result"];
+  if (result === "sack") {
+    // A sack is a loss behind the line; the sacked passer is the only jersey.
+    steps.push("player", "distance");
+    return steps;
+  }
   if (result === "interception") {
     // The defender's sheet follows; the passer is the only jersey still asked.
     if (type === "pass") {
@@ -333,17 +342,27 @@ interface PlaySheetProps {
   initialResult?: PlayResult;
   onSubmit: (events: GameLogEventInput[]) => Promise<void>;
   onClose: () => void;
+  /**
+   * Back to the popup that opened the wizard. Shown on the first step; a
+   * later step's back stays in the wizard.
+   */
+  onBack?: () => void;
 }
 
 /**
- * The play-by-play entry as a wizard: **type → result → QB/receiver (or
- * runner) → tackler → field position**, each step only when it applies.
+ * The play-by-play entry as a wizard: **result → QB/receiver (or runner) →
+ * tackler → field position**, each step only when it applies.
  *
- * The numbers come first and the field position last (scorer feedback,
+ * The play **type** comes from the tile that opened the wizard (Pass or Run),
+ * so there is no second type choice: a sack is a result of either type, and an
+ * interception is a result of a pass. The numbers come first and the field
+ * position last (scorer feedback,
  * 2026-11-17): the spot is what confirms the play, and its preview shows the
  * resulting down & distance right above the save button. The passer and the
  * receiver share one step (the same QB throws 95% of the passes); an
  * interception keeps the passer alone because the defender's details follow.
+ * A defender's number on an incomplete pass is a deflection, on a complete one
+ * a tackle — the old Deflection toggle is gone.
  * The distance can be typed as yards or as a **Feldposition** (A/B + yard
  * line), and the sheet previews the resulting down & distance from the same
  * `advance` the board uses. A touchdown prefills the distance to the goal line
@@ -366,14 +385,16 @@ export default function PlaySheet({
   initialResult = "gain",
   onSubmit,
   onClose,
+  onBack,
 }: PlaySheetProps) {
-  const [type, setType] = useState<PlayType>(initialType);
+  // The type is fixed by the tile that opened the wizard; the sheet only asks
+  // for the result and its details. A sack is a result, not a second type.
+  const type = initialType;
   const [result, setResult] = useState<PlayResult>(initialResult);
   const [stepIndex, setStepIndex] = useState(0);
   const [jersey, setJersey] = useState<number | null>(null);
   const [qb, setQb] = useState<number | null>(lastQuarterback);
   const [defender, setDefender] = useState<number | null>(null);
-  const [deflection, setDeflection] = useState(false);
   const [yardsText, setYardsText] = useState("0");
   const [loss, setLoss] = useState(false);
   const [distanceMode, setDistanceMode] = useState<"yards" | "end">("yards");
@@ -409,7 +430,7 @@ export default function PlaySheet({
       ? endSpot - drive.ballOn
       : null;
   let playYards =
-    typedSpot ?? (loss || type === "sack" ? -magnitude : magnitude);
+    typedSpot ?? (loss || type === "sack" || result === "sack" ? -magnitude : magnitude);
   if (result === "touchdown") {
     playYards = Math.abs(playYards);
   }
@@ -426,7 +447,7 @@ export default function PlaySheet({
     distanceMode === "end"
       ? endSpot === null || drive?.ballOn == null
       : yardsValue(yardsText) === null;
-  const qbMissing = type === "pass" && qb === null;
+  const qbMissing = type === "pass" && result !== "sack" && qb === null;
 
   const next = drive === null ? null : advance(drive, playYards, geometry);
   // A failed fourth down flips the ball; `advance` alone would show the new
@@ -453,15 +474,6 @@ export default function PlaySheet({
           ? !catchInvalid
           : true;
 
-  const changeType = (option: PlayType): void => {
-    setType(option);
-    const allowed = resultOptions(option).map((entry) => entry.value);
-    if (!allowed.includes(result)) {
-      setResult("gain");
-      setYardsText("0");
-    }
-  };
-
   const chooseResult = (option: PlayResult): void => {
     setResult(option);
     setLoss(false);
@@ -472,7 +484,7 @@ export default function PlaySheet({
     } else if (option === "safety" && drive?.ballOn != null) {
       setDistanceMode("yards");
       setYardsText(String(drive.ballOn));
-    } else if (option === "gain") {
+    } else if (option === "gain" || option === "sack") {
       setYardsText("0");
     }
   };
@@ -492,6 +504,7 @@ export default function PlaySheet({
     setPosting(true);
     setError(null);
     try {
+      const effectiveType: PlayType = result === "sack" ? "sack" : type;
       const interception =
         result === "interception"
           ? {
@@ -502,13 +515,18 @@ export default function PlaySheet({
           : null;
       await onSubmit(
         playEvents({
-          type,
+          type: effectiveType,
           complete: result !== "incomplete" && result !== "interception",
           yards: playYards,
-          qb,
+          qb: effectiveType === "pass" ? qb : null,
           player: result === "interception" ? null : jersey,
-          defender: type === "sack" ? null : defender,
-          deflection: type === "pass" && result === "incomplete" && deflection,
+          defender: effectiveType === "sack" ? null : defender,
+          // Numbers first: an incomplete pass with a defender is a deflection,
+          // a complete one is a tackle. There is no separate toggle any more.
+          deflection:
+            type === "pass" &&
+            result === "incomplete" &&
+            defender !== null,
           touchdown: result === "touchdown",
           safety: result === "safety",
           interception,
@@ -567,6 +585,7 @@ export default function PlaySheet({
       busy={posting}
       error={error}
       footer={footer}
+      onBack={index === 0 ? onBack : undefined}
       onClose={onClose}
       title={`Spielzug · ${teamName}`}
     >
@@ -574,26 +593,6 @@ export default function PlaySheet({
         Schritt {index + 1} von {steps.length} · {TITLES[type]} ·{" "}
         {resultLabel(type, result)}
       </p>
-
-      {step === "type" ? (
-        <>
-          <h3 className="sheetsection">Spielzug</h3>
-          <div aria-label="Spielzug" className="seg" role="group">
-            {(Object.keys(TITLES) as PlayType[]).map((option) => (
-              <button
-                aria-pressed={type === option}
-                className={type === option ? "sel" : undefined}
-                disabled={posting}
-                key={option}
-                onClick={() => changeType(option)}
-                type="button"
-              >
-                {TITLES[option]}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
 
       {step === "result" ? (
         <>
@@ -622,7 +621,7 @@ export default function PlaySheet({
               ? "Raumverlust bis zur eigenen Endzone"
               : result === "touchdown"
                 ? "Raumgewinn bis zur Endzone"
-                : type === "sack"
+                : type === "sack" || result === "sack"
                   ? "Raumverlust"
                   : "Raumgewinn / Verlust"}
           </h3>
@@ -650,7 +649,9 @@ export default function PlaySheet({
           {distanceMode === "yards" ? (
             <div className="sheetfield">
               <label className="sheetlabel" htmlFor="play-yards">
-                {type === "sack" || result === "safety"
+                {type === "sack" ||
+                result === "sack" ||
+                result === "safety"
                   ? "Raumverlust (Yards)"
                   : "Raumgewinn / Verlust (Yards)"}
               </label>
@@ -762,7 +763,7 @@ export default function PlaySheet({
       {step === "qbplayer" || step === "player" ? (
         <>
           <h3 className="sheetsection">
-            {type === "sack"
+            {type === "sack" || result === "sack"
               ? "Trikotnummer (Sack)"
               : step === "qbplayer"
                 ? "Trikotnummer (Passempfänger, optional)"
@@ -782,21 +783,8 @@ export default function PlaySheet({
 
       {step === "defender" ? (
         <>
-          {type === "pass" && result === "incomplete" ? (
-            <div aria-label="Deflection" className="seg" role="group">
-              <button
-                aria-pressed={deflection}
-                className={deflection ? "sel" : undefined}
-                disabled={posting}
-                onClick={() => setDeflection((current) => !current)}
-                type="button"
-              >
-                Deflection
-              </button>
-            </div>
-          ) : null}
           <h3 className="sheetsection">
-            {type === "pass" && result === "incomplete" && deflection
+            {type === "pass" && result === "incomplete"
               ? `Deflection ${opponentName} (optional)`
               : `Tackle ${opponentName} (optional)`}
           </h3>

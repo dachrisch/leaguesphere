@@ -10,7 +10,6 @@ import type { PlayResult, PlayType } from "./PlaySheet";
 import {
   ArrowRight,
   Football,
-  Interception,
   Play,
   PlusCircle,
   Shield,
@@ -27,8 +26,7 @@ export type SpielzugPick =
   | "challenge"
   | "fieldpos"
   | "safety"
-  | "overtime"
-  | "touchdown";
+  | "overtime";
 
 interface Tile {
   /** Number key that picks the tile, as shown in the label's hint. */
@@ -53,26 +51,13 @@ interface Tile {
 const PLAYS: Tile[] = [
   { key: "1", label: "Pass", Icon: Play, play: { type: "pass" } },
   { key: "2", label: "Run", Icon: ArrowRight, play: { type: "run" } },
-  { key: "3", label: "Sack", Icon: Shield, play: { type: "sack" } },
-  {
-    key: "4",
-    label: "Interception",
-    Icon: Interception,
-    play: { type: "pass", result: "interception" },
-  },
 ];
 
 const OTHERS: Tile[] = [
-  {
-    key: "5",
-    label: "Touchdown (Kurzform)",
-    Icon: Football,
-    pick: "touchdown",
-  },
-  { key: "6", label: "Turnover", Icon: SwapArrows, pick: "turnover" },
-  { key: "7", label: "1st Down", Icon: ArrowRight, pick: "first" },
-  { key: "8", label: "Safety", Icon: Shield, pick: "safety" },
-  { key: "9", label: "Challenge", Icon: Whistle, pick: "challenge" },
+  { key: "3", label: "Turnover", Icon: SwapArrows, pick: "turnover" },
+  { key: "4", label: "1st Down", Icon: ArrowRight, pick: "first" },
+  { key: "5", label: "Safety", Icon: Shield, pick: "safety" },
+  { key: "6", label: "Challenge", Icon: Whistle, pick: "challenge" },
 ];
 
 const PHASE: Tile[] = [
@@ -152,8 +137,12 @@ export default function SpielzugSheet({
     }
   };
 
-  const group = (aria: string, tiles: Tile[]): ReactNode => (
-    <div aria-label={aria} className="spielzuggrid" role="group">
+  const group = (aria: string, tiles: Tile[], large = false): ReactNode => (
+    <div
+      aria-label={aria}
+      className={large ? "spielzuggrid spielzuggrid-plays" : "spielzuggrid"}
+      role="group"
+    >
       {tiles.map((tile) => (
         <button
           className="action"
@@ -177,10 +166,10 @@ export default function SpielzugSheet({
   return (
     <Sheet onClose={onClose} title="Spielzug">
       <p className="sheetnote">
-        Pass, Run, Sack und Interception öffnen den Spielzug-Assistenten. Am
-        Rechner wählen die Ziffern einen Eintrag.
+        Pass und Run öffnen den Spielzug-Assistenten; Sack und Interception
+        sind dort Ergebnisse. Am Rechner wählen die Ziffern einen Eintrag.
       </p>
-      {group("Spielzug", PLAYS)}
+      {group("Spielzug", PLAYS, true)}
       <h3 className="sheetsection">Weitere Einträge</h3>
       {group("Weitere Einträge", OTHERS)}
       <h3 className="sheetsection">Spielphase</h3>

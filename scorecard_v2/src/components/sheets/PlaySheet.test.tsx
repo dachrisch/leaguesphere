@@ -165,9 +165,16 @@ describe("PlaySheet helpers", () => {
     expect(resultOptions("pass").map((option) => option.label)).toEqual([
       "Complete",
       "Incomplete",
+      "Sack",
       "Touchdown",
       "Safety",
       "Interception",
+    ]);
+    expect(resultOptions("run").map((option) => option.label)).toEqual([
+      "Raumgewinn",
+      "Sack",
+      "Touchdown",
+      "Safety",
     ]);
     expect(resultOptions("sack").map((option) => option.label)).toEqual([
       "Sack",
@@ -178,46 +185,49 @@ describe("PlaySheet helpers", () => {
   it("skips the steps that do not apply", () => {
     // The field position is the last step: numbers first, then the spot.
     expect(stepsFor("run", "gain")).toEqual([
-      "type",
       "result",
       "player",
       "defender",
       "distance",
     ]);
     expect(stepsFor("sack", "gain")).toEqual([
-      "type",
+      "result",
+      "player",
+      "distance",
+    ]);
+    expect(stepsFor("pass", "sack")).toEqual([
+      "result",
+      "player",
+      "distance",
+    ]);
+    expect(stepsFor("run", "sack")).toEqual([
       "result",
       "player",
       "distance",
     ]);
     expect(stepsFor("pass", "interception")).toEqual([
-      "type",
       "result",
       "qb",
       "interception",
     ]);
     // A touchdown has no tackler: the player carrying the ball scored.
     expect(stepsFor("run", "touchdown")).toEqual([
-      "type",
       "result",
       "player",
       "distance",
     ]);
     expect(stepsFor("pass", "touchdown")).toEqual([
-      "type",
       "result",
       "qbplayer",
       "distance",
     ]);
     expect(stepsFor("pass", "gain")).toEqual([
-      "type",
       "result",
       "qbplayer",
       "defender",
       "distance",
     ]);
     expect(stepsFor("pass", "incomplete")).toEqual([
-      "type",
       "result",
       "qbplayer",
       "defender",
@@ -239,7 +249,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit, onClose } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
     await next(user); // receiver → defender
@@ -264,7 +273,7 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ lastQuarterback: 12 });
 
-    await next(user, 2); // type → result → qb + receiver
+    await next(user); // result → qb + receiver
 
     expect(screen.getByText("#12")).toBeInTheDocument();
     expect(
@@ -276,7 +285,7 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet();
 
-    await next(user, 2); // type → result → qb
+    await next(user); // result → qb
 
     expect(screen.getByText("Bitte den Quarterback wählen.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Weiter" })).toBeDisabled();
@@ -286,7 +295,7 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user, 2); // type → result → qb + receiver
+    await next(user); // result → qb + receiver
     await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -308,10 +317,8 @@ describe("PlaySheet wizard", () => {
 
   it("records a run without a quarterback or a pass result", async () => {
     const user = userEvent.setup();
-    const { onSubmit } = renderSheet();
+    const { onSubmit } = renderSheet({ initialType: "run" });
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user); // type → result
     await next(user); // result → player
     await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
     await next(user); // player → defender
@@ -335,7 +342,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type
     await user.click(screen.getByRole("button", { name: "Incomplete" }));
     await next(user); // result → qb + receiver
     await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
@@ -359,7 +365,6 @@ describe("PlaySheet wizard", () => {
     const { onSubmit } = renderSheet();
 
     await user.click(screen.getByRole("button", { name: "Sack" }));
-    await next(user); // type → result
     await next(user); // result → player (no QB, no defender)
     await user.click(screen.getByRole("button", { name: "Trikot 12, Kern" }));
     await next(user); // player → field position
@@ -382,7 +387,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await user.click(
       await screen.findByRole("button", { name: "Trikot 7, Meier" }),
@@ -413,11 +417,10 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user);
     await user.click(screen.getByRole("button", { name: "Incomplete" }));
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
-    await user.click(screen.getByRole("button", { name: "Deflection" }));
+    // The number alone says deflection: the toggle is gone.
     await user.click(
       await screen.findByRole("button", { name: "Defense 11, Wolf" }),
     );
@@ -444,9 +447,8 @@ describe("PlaySheet wizard", () => {
     renderSheet();
 
     await user.click(screen.getByRole("button", { name: "Sack" }));
-    await next(user, 2); // type → result → player
+    await next(user); // result → player
 
-    expect(screen.queryByRole("group", { name: "Deflection" })).toBeNull();
     expect(
       screen.queryByRole("group", { name: "Trikotnummer Defense" }),
     ).toBeNull();
@@ -454,10 +456,8 @@ describe("PlaySheet wizard", () => {
 
   it("previews the next down & distance from the play", async () => {
     const user = userEvent.setup();
-    renderSheet({ drive: FIRST_AND_TEN });
+    renderSheet({ drive: FIRST_AND_TEN, initialType: "run" });
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user); // type → result
     await next(user); // result → player
     await next(user); // player → defender
     await next(user); // defender → field position
@@ -468,10 +468,8 @@ describe("PlaySheet wizard", () => {
 
   it("takes the end spot instead of the yards", async () => {
     const user = userEvent.setup();
-    const { onSubmit } = renderSheet({ drive: FIRST_AND_TEN });
+    const { onSubmit } = renderSheet({ drive: FIRST_AND_TEN, initialType: "run" });
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user); // type → result
     await next(user); // result → player
     await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
     await next(user); // player → defender
@@ -497,10 +495,8 @@ describe("PlaySheet wizard", () => {
 
   it("prefills the distance to the end zone on a touchdown", async () => {
     const user = userEvent.setup();
-    renderSheet({ drive: seriesAt(45) });
+    renderSheet({ drive: seriesAt(45), initialType: "run" });
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user);
     await user.click(screen.getByRole("button", { name: "Touchdown" }));
     await next(user); // result → player
     await next(user); // player → field position
@@ -515,10 +511,11 @@ describe("PlaySheet wizard", () => {
 
   it("previews a failed fourth down as a turnover", async () => {
     const user = userEvent.setup();
-    renderSheet({ drive: { down: 4, toGo: 5, ballOn: 20, goal: false } });
+    renderSheet({
+      drive: { down: 4, toGo: 5, ballOn: 20, goal: false },
+      initialType: "run",
+    });
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user); // type → result
     await next(user); // result → player
     await next(user); // player → defender
     await next(user); // defender → field position
@@ -531,10 +528,8 @@ describe("PlaySheet wizard", () => {
 
   it("prefills the run to the own goal line on a safety", async () => {
     const user = userEvent.setup();
-    const { onSubmit } = renderSheet({ drive: seriesAt(5) });
+    const { onSubmit } = renderSheet({ drive: seriesAt(5), initialType: "run" });
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user);
     await user.click(screen.getByRole("button", { name: "Safety" }));
     await next(user); // result → player
     await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
@@ -560,7 +555,6 @@ describe("PlaySheet wizard", () => {
       lastQuarterback: 12,
     });
 
-    await next(user); // type → result
     await user.click(screen.getByRole("button", { name: "Safety" }));
     await next(user); // result → qb + receiver
     await user.click(screen.getByRole("button", { name: "Trikot 23, Schulz" }));
@@ -586,7 +580,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type
     await user.click(screen.getByRole("button", { name: "Interception" }));
     await next(user, 2); // result → qb → interception
     await user.click(
@@ -617,7 +610,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ drive: FIRST_AND_TEN, lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -636,7 +628,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type
     await user.click(screen.getByRole("button", { name: "Interception" }));
     await next(user, 2); // result → qb → interception
     expect(screen.getByText("Trikotnummer Verteidiger (optional)")).toBeInTheDocument();
@@ -677,7 +668,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type
     await user.click(screen.getByRole("button", { name: "Interception" }));
     await next(user, 2); // result → qb → interception
     await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
@@ -695,7 +685,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type
     await user.click(screen.getByRole("button", { name: "Interception" }));
     await next(user, 2); // result → qb → interception
     await user.click(screen.getByRole("button", { name: "Defense 11, Wolf" }));
@@ -721,36 +710,34 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type → result
+    await next(user); // result → qb + receiver
     expect(screen.getByText(/Schritt 2 von/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Zurück" }));
 
     expect(screen.getByText(/Schritt 1 von/)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Pass" }),
+      screen.getByRole("button", { name: "Complete" }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("falls back to Raumgewinn when a type cannot produce the result", async () => {
+  it("leaves the wizard from the first step and steps back later", async () => {
     const user = userEvent.setup();
-    renderSheet({ lastQuarterback: 12 });
+    const onBack = vi.fn();
+    renderSheet({ lastQuarterback: 12, onBack });
 
-    await next(user); // type → result
-    await user.click(screen.getByRole("button", { name: "Interception" }));
+    await next(user); // result → qb + receiver
     await user.click(screen.getByRole("button", { name: "Zurück" }));
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user); // type → result
+    expect(onBack).not.toHaveBeenCalled();
+    expect(screen.getByText(/Schritt 1 von/)).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("button", { name: "Raumgewinn" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Zurück" }));
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("switches back from the end spot to yards and between halves", async () => {
     const user = userEvent.setup();
     renderSheet({ drive: FIRST_AND_TEN, lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -768,7 +755,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -787,7 +773,6 @@ describe("PlaySheet wizard", () => {
     });
     renderSheet({ lastQuarterback: 12, onSubmit });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
     await next(user); // receiver → defender
@@ -805,7 +790,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -820,7 +804,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ drive: seriesAt(30), lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -835,7 +818,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ drive: seriesAt(10), lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -851,7 +833,6 @@ describe("PlaySheet wizard", () => {
     const user = userEvent.setup();
     renderSheet({ drive: seriesAt(25), lastQuarterback: 12 });
 
-    await next(user); // type → result
     await next(user); // result → qb + receiver
     await next(user); // receiver → defender
     await next(user); // defender → field position
@@ -869,7 +850,6 @@ describe("the touchdown is the play's result", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user); // type
     await user.click(screen.getByRole("button", { name: "Touchdown" }));
     await next(user); // result → qb + receiver
     await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
@@ -890,10 +870,8 @@ describe("the touchdown is the play's result", () => {
 
   it("keeps the touchdown when no number is picked — a team score", async () => {
     const user = userEvent.setup();
-    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+    const { onSubmit } = renderSheet({ lastQuarterback: 12, initialType: "run" });
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-    await next(user); // type
     await user.click(screen.getByRole("button", { name: "Touchdown" }));
     await next(user, 2); // result → player → field position
     await user.click(
@@ -911,7 +889,6 @@ describe("the touchdown is the play's result", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
-    await next(user);
     await user.click(screen.getByRole("button", { name: "Touchdown" }));
     await user.click(screen.getByRole("button", { name: "Complete" }));
     await next(user); // result → qb + receiver

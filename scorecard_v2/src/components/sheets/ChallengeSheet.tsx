@@ -21,6 +21,8 @@ interface ChallengeSheetProps {
   teamName: string;
   onSubmit: (event: GameLogEventInput) => Promise<void>;
   onClose: () => void;
+  /** Back to the popup this one was opened from. */
+  onBack?: () => void;
 }
 
 /** A coach's challenge: one tap can be enough, the reason is optional. */
@@ -28,6 +30,7 @@ export default function ChallengeSheet({
   teamName,
   onSubmit,
   onClose,
+  onBack,
 }: ChallengeSheetProps) {
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
@@ -71,6 +74,7 @@ export default function ChallengeSheet({
           {posting ? "Speichern …" : "Challenge speichern"}
         </button>
       }
+      onBack={onBack}
       onClose={onClose}
       title={`Challenge · ${teamName}`}
     >

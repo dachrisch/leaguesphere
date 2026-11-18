@@ -125,8 +125,14 @@ no reload.
    sets `Gameinfo.status` and `gameHalftime`, so the half flips for every
    reader and the second half's plays are filed under half 2. While an extra point is
    open, the tiles and Halbzeit are locked.
-   A wide **Spielzug (Pass/Run/Sack)** button under the touchdown records the
-   play-by-play: the player, the yards gained or lost, and for a pass
+   A wide **Spielzug** button under the touchdown holds the two plays of almost
+   every snap as large buttons — **Pass** and **Run** — plus the rare entries
+   (turnover, 1st down, safety, challenge) and the phases (overtime, spot). The
+   wizard starts at **Ergebnis**: Pass offers Complete / Incomplete / Sack /
+   Touchdown / Safety / Interception, Run offers Raumgewinn / Sack / Touchdown /
+   Safety. **Sack** is therefore a result of either play, not a type of its
+   own, and has no defender step. The player, the yards gained or lost, and for
+   a pass
    **Complete/Incomplete** plus the **quarterback** (remembered per side on the
    device, so the usual thrower is pre-selected; the switch is one tap). A
    **Gewinn/Verlust** switch (and a typed minus) records a negative gain, for a
@@ -135,8 +141,10 @@ no reload.
    sack is a loss), `qb`, `complete` — travels in the event `payload` for the
    statistics that come later, while `input` carries the text the log and the
    ticker show. A completed pass or a run may name the defender who made the
-   tackle (the other team's roster); an incomplete pass first asks
-   **Deflection**, then the defender.
+   tackle (the other team's roster); an incomplete pass's number is a
+   **Deflection**, a complete one's a **Tackle** — there is no separate toggle.
+   The sheet header carries **Zurück** to the popup that opened this one, while
+   a later wizard step's **Zurück** stays inside the wizard.
    A **Challenge** next to the play records a coach's challenge — one tap is
    enough, a short reason is optional — as its own `challenge` event.
    **Overtime** is a two-step marker (`period/overtime`, no score, no third

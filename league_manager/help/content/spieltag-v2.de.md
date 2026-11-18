@@ -29,11 +29,13 @@ wie die bisherige Scorecard
    **Süd** (die Seitenlinie verläuft Ost–West); der Pfeil zeigt auf die
    Endzone, die angegriffen wird.
 3. Erfasse im laufenden Spiel (oben stehen Feld und Runde) jeden Spielzug
-   über die Kachel **Spielzug** und dort **Pass**, **Run** oder **Sack** – der
-   Assistent fragt in dieser Reihenfolge: **Spielzug** → **Ergebnis** →
+   über die Kachel **Spielzug** und dort **Pass** oder **Run** – der
+   Assistent startet direkt beim **Ergebnis** und fragt dann
    **Quarterback und Trikotnummer** (ein Schritt) → **Defense** →
-   **Feldposition** (zuletzt). Übersprungene Schritte (kein QB beim Lauf,
-   kein Tackle beim Sack, kein Tackler beim Touchdown) fallen weg. Im Schritt
+   **Feldposition** (zuletzt). **Sack** ist ein Ergebnis bei Pass und Run,
+   **Interception** ein Ergebnis beim Pass. Übersprungene Schritte (kein QB
+   beim Lauf, kein Tackle beim Sack, kein Tackler beim Touchdown) fallen weg.
+   Im Schritt
    **Feldposition** trägst du den Raumgewinn als **Yards** oder über die
    **Feldposition** (A/B + 0–25) ein; darunter steht die Vorschau, z. B.
    **2nd & M · A19** oder bei einem scheiternden vierten Versuch **Turnover
@@ -46,7 +48,11 @@ wie die bisherige Scorecard
    optional **Pick six (Touchdown)**. Sobald du **Return-Yards** einträgst,
    gilt der Return als beendet und der Touchdown wird wieder abgewählt.
    Die Verteidiger-Trikotnummer steht unter
-   **Defense**; bei einem unvollständigen Pass zuerst **Deflection** wählen.
+   **Defense**; bei einem unvollständigen Pass ist diese Nummer eine
+   **Deflection**, bei einem vollständigen ein **Tackle** – ein eigener
+   Schalter dafür entfällt. **Zurück** führt in jedem Dialog einen Schritt
+   zurück (bei mehreren Schritten zuerst im Assistenten, sonst zur vorherigen
+   Auswahl).
    Unter dem Ballbesitz steht der **Down & Distanz** (z. B. **2nd & M**) mit
    der Feldposition (z. B. **A12**). Das Feld ist 50 Yards lang: **A** ist die
    eigene Hälfte (0–25), **M** die Mittellinie und **B** die gegnerische
@@ -56,11 +62,11 @@ wie die bisherige Scorecard
    den Ball ab und schreibt eine eigene **Turnover**-Zeile in den
    Spielverlauf.
 
-   **Spielzug** sammelt die Einträge zum Spielzug: **Pass**, **Run**, **Sack**
-   und **Interception** öffnen den Assistenten; darunter stehen **Touchdown
-   (Kurzform)** für ein Spiel ohne Spielzug-Erfassung, **Turnover**, **1st
-   Down**, **Safety** und **Challenge**. Die **Spielphase** darunter bietet
-   **Overtime** und **Feldposition**. Die
+   **Spielzug** zeigt oben zwei große Kacheln: **Pass** und **Run**. Darunter
+   stehen **Turnover**, **1st Down**, **Safety** und **Challenge**; die
+   **Spielphase** darunter bietet **Overtime** und **Feldposition**. Sack und
+   Interception sind Ergebnisse im Pass-/Run-Assistenten, der **Touchdown**
+   hat seine eigene Kachel über dem Spielfeld. Die
    **Feldposition** setzt A/B + 0–25 und hält über Reloads, weil sie als
    Eintrag im Spielverlauf steht; sie setzt auch **Down** (1–4) und **Line to
    gain** (**M** oder **G**), wenn du sie von Hand korrigierst. **Challenge**

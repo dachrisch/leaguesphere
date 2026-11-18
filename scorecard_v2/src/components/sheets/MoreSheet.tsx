@@ -88,6 +88,8 @@ interface MoreSheetProps {
    */
   onSubmit: (events: GameLogEventInput[], team: string) => Promise<void>;
   onClose: () => void;
+  /** Back to the popup this one was opened from. */
+  onBack?: () => void;
 }
 
 /**
@@ -105,6 +107,7 @@ export default function MoreSheet({
   roster,
   onSubmit,
   onClose,
+  onBack,
 }: MoreSheetProps) {
   const [jersey, setJersey] = useState<number | null>(null);
   const [points, setPoints] = useState<SafetyPoints>(2);
@@ -166,6 +169,7 @@ export default function MoreSheet({
           {posting ? "Speichern …" : "Speichern"}
         </button>
       }
+      onBack={onBack}
       onClose={onClose}
       title={TITLES[mode]}
     >

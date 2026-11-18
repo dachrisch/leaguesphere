@@ -549,6 +549,11 @@ export default function TrackingScreen({
   const [officialsUnavailable, setOfficialsUnavailable] = useState(false);
   const [people, setPeople] = useState<TeamOfficial[]>([]);
   const [sheet, setSheet] = useState<SheetState | null>(null);
+  /**
+   * The sheets this one was opened from. Back returns to the previous popup
+   * (Spielzug → Pass → …), while the close button leaves the whole sequence.
+   */
+  const [sheetHistory, setSheetHistory] = useState<SheetState[]>([]);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   /** The one-tap entry the toast can still undo or complete, if any. */
@@ -1344,18 +1349,37 @@ export default function TrackingScreen({
     setHalftimeOpen(false);
   };
 
+  const closeSheet = (): void => {
+    setSheet(null);
+    setSheetHistory([]);
+    setReplacing(null);
+  };
+
   const openSheet = (next: SheetState): void => {
     disarm();
     setConfirmation(null);
     setQuick(null);
     setQuickError(null);
+    if (sheet !== null) {
+      setSheetHistory((history) => [...history, sheet]);
+    }
     setSheet(next);
+  };
+
+  /** Back to the popup this one was opened from, or close when there is none. */
+  const backSheet = (): void => {
+    if (sheetHistory.length === 0) {
+      closeSheet();
+      return;
+    }
+    setSheet(sheetHistory[sheetHistory.length - 1]);
+    setSheetHistory(sheetHistory.slice(0, -1));
   };
 
   /** A tile of the **Spielzug** sheet runs the handler its old row ran. */
   const pickFromSpielzug = (pick: SpielzugPick): void => {
     if (pick === "overtime") {
-      setSheet(null);
+      closeSheet();
       if (overtime) {
         openSinglePat();
       } else {
@@ -1364,22 +1388,18 @@ export default function TrackingScreen({
       return;
     }
     if (pick === "safety") {
-      setSheet({ kind: "more", mode: "safety" });
+      openSheet({ kind: "more", mode: "safety" });
       return;
     }
     if (pick === "challenge") {
-      setSheet({ kind: "challenge" });
+      openSheet({ kind: "challenge" });
       return;
     }
     if (pick === "fieldpos") {
-      setSheet({ kind: "fieldpos" });
+      openSheet({ kind: "fieldpos" });
       return;
     }
-    if (pick === "touchdown") {
-      setSheet({ kind: "touchdown" });
-      return;
-    }
-    setSheet({ kind: "series", mode: pick });
+    openSheet({ kind: "series", mode: pick });
   };
 
   /** The newest live row a one-tap entry wrote (rows are newest first). */
@@ -1436,11 +1456,6 @@ export default function TrackingScreen({
     } else {
       openSheet({ kind: "series", mode });
     }
-  };
-
-  const closeSheet = (): void => {
-    setSheet(null);
-    setReplacing(null);
   };
 
   /**
@@ -2419,7 +2434,8 @@ export default function TrackingScreen({
             initialResult={sheet.result}
             initialType={sheet.type}
             lastQuarterback={readQuarterback(game.id, possessionSide)}
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={submitPlay}
             opponentName={opponentName ?? "Gegner"}
             roster={roster}
@@ -2431,20 +2447,22 @@ export default function TrackingScreen({
             ballOn={drive.ballOn}
             down={drive.down}
             goal={drive.goal}
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={(event) => submit([event])}
             teamName={possessionName}
           />
         ) : sheet.kind === "challenge" ? (
           <ChallengeSheet
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={(event) => submit([event])}
             teamName={possessionName}
           />
         ) : sheet.kind === "touchdown" ? (
           <TouchdownSheet
             gain={touchdownGain}
-            onClose={() => setSheet(null)}
+            onClose={closeSheet}
             onSubmit={submitTouchdown}
             passcheck={game.passcheck === true}
             recent={recentJerseys}
@@ -2463,6 +2481,7 @@ export default function TrackingScreen({
               key={sheet.mode}
               half={half}
               mode={sheet.mode}
+              onBack={sheetHistory.length > 0 ? backSheet : undefined}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={possessionName}
@@ -2477,6 +2496,7 @@ export default function TrackingScreen({
               key={sheet.mode}
               half={half}
               mode={sheet.mode}
+              onBack={sheetHistory.length > 0 ? backSheet : undefined}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={opponentName ?? "–"}
@@ -2492,7 +2512,7 @@ export default function TrackingScreen({
             ballOn={drive.ballOn}
             history={unsportsmanlike}
             rules={rules}
-            onClose={() => setSheet(null)}
+            onClose={closeSheet}
             onSubmit={submit}
             opponentName={opponentName ?? ""}
             roster={roster}
@@ -2502,7 +2522,7 @@ export default function TrackingScreen({
         ) : sheet.kind === "spielzug" ? (
           <SpielzugSheet
             disabled={composerDisabled}
-            onClose={() => setSheet(null)}
+            onClose={closeSheet}
             onPick={pickFromSpielzug}
             onPlay={(type, result) =>
               openSheet({ kind: "play", type, result })
@@ -2512,7 +2532,8 @@ export default function TrackingScreen({
           <MoreSheet
             key={sheet.mode}
             mode={sheet.mode}
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={submit}
             opponentName={opponentName ?? ""}
             roster={roster}

@@ -188,6 +188,8 @@ interface SeriesSheetProps {
    */
   onSubmit: (events: GameLogEventInput[]) => Promise<void>;
   onClose: () => void;
+  /** Back to the popup this one was opened from. */
+  onBack?: () => void;
   /** Timeouts already recorded, for the history under the Auszeit fields. */
   timeouts?: TimeoutRecord[];
   /** The definition's timeouts per half (`timeouts.per_half`). */
@@ -220,6 +222,7 @@ export default function SeriesSheet({
   roster,
   onSubmit,
   onClose,
+  onBack,
   timeouts = [],
   perHalf = 2,
   half = 1,
@@ -349,6 +352,7 @@ export default function SeriesSheet({
           {posting ? "Speichern …" : "Speichern"}
         </button>
       }
+      onBack={onBack}
       onClose={onClose}
       title={info.title}
     >

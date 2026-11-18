@@ -2450,6 +2450,22 @@ button.game-row:active {
   }
 }
 
+/* Pass and Run are the two entries of almost every snap: two large buttons,
+   not the four small tiles the play group used to hold. */
+.spielzuggrid-plays {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.spielzuggrid-plays .action {
+  min-height: 92px;
+  font-size: var(--fs-md);
+}
+
+.spielzuggrid-plays .action-icon {
+  width: 26px;
+  height: 26px;
+}
+
 /* The number that picks a tile from the keyboard: only a device with a
    keyboard shows it, as the board's own hints do. */
 .spielzugkey {
@@ -2553,9 +2569,38 @@ button.game-row:active {
 }
 
 .sheettitle {
+  flex: 1 1 auto;
   min-width: 0;
   font-size: var(--fs-xl);
   letter-spacing: -0.01em;
+}
+
+/* The way back to the previous popup; the close button stays "leave all". */
+.sheetbackhead {
+  flex: 0 0 auto;
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.sheetbackhead:hover {
+  color: var(--fg);
+  background: var(--fill-soft);
+}
+
+.sheetbackhead[aria-disabled="true"] {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sheetbackhead[aria-disabled="true"]:hover {
+  color: var(--muted);
+  background: none;
 }
 
 .sheetclose {
