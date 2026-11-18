@@ -66,6 +66,50 @@ interface CrewSlot {
   name: string | null;
   known: boolean;
   duplicate: boolean;
+  /**
+   * Licence facts from the crew read, or from the person the picker took.
+   * `null` means the screen has no data and must say "unbekannt" instead of
+   * claiming a licence problem.
+   */
+  licence: CrewLicence | null;
+}
+
+/** The licence facts a crew row, a search result or a picked person carries. */
+interface CrewLicence {
+  license: string | null;
+  validUntil: string | null;
+  isValid: boolean;
+}
+
+function licenceOfRow(row: Official | undefined): CrewLicence | null {
+  if (row === undefined) {
+    return null;
+  }
+  if (
+    row.license === undefined &&
+    row.valid_until === undefined &&
+    row.is_valid === undefined
+  ) {
+    return null;
+  }
+  return {
+    license: row.license ?? null,
+    validUntil: row.valid_until ?? null,
+    isValid: row.is_valid === true,
+  };
+}
+
+function licenceOfPerson(
+  person: TeamOfficial | undefined,
+): CrewLicence | null {
+  if (person === undefined) {
+    return null;
+  }
+  return {
+    license: person.license,
+    validUntil: person.valid_until,
+    isValid: person.is_valid,
+  };
 }
 
 /** Body of `PUT /api/game/<pk>/officials` (`GameOfficialSerializer`). */
@@ -161,6 +205,7 @@ function slotsFromCrew(
       name: rows[0]?.name ?? null,
       known: true,
       duplicate: rows.length > 1,
+      licence: licenceOfRow(rows[0]),
     };
   });
 
@@ -176,6 +221,7 @@ function slotsFromCrew(
       name: rows[0]?.name ?? null,
       known: false,
       duplicate: rows.length > 1,
+      licence: licenceOfRow(rows[0]),
     });
   }
 
@@ -537,23 +583,29 @@ export default function GameSetupScreen({
           ? { state: "empty", label: "fehlt" }
           : { state: "missing", label: "keine Lizenz" };
       }
-      const person = teamByOfficial.get(slot.official);
-      if (person === undefined) {
-        // Not in this team's list: a guest official or a failed team request.
+      // The crew read answers the licence itself (it travels with the person
+      // from the picker too), so a guest official from another team and a
+      // freshly created person do not fall back to "unknown". The team
+      // directory stays as the fallback for an older server.
+      const licence =
+        slot.licence ?? licenceOfPerson(teamByOfficial.get(slot.official));
+      if (licence === null) {
         return { state: "unknown", label: "Lizenz unbekannt" };
       }
-      if (!person.license) {
+      if (licence.license === null) {
         return { state: "missing", label: "keine Lizenz" };
       }
-      if (person.is_valid) {
-        return { state: "valid", label: "Lizenz gültig" };
+      if (licence.isValid) {
+        return { state: "valid", label: `${licence.license} gültig` };
       }
       return {
         state: "expired",
         label:
-          person.valid_until === null
-            ? "abgelaufen"
-            : `abgelaufen seit ${formatLicenceDate(person.valid_until)}`,
+          licence.validUntil === null
+            ? `${licence.license} abgelaufen`
+            : `${licence.license} abgelaufen seit ${formatLicenceDate(
+                licence.validUntil,
+              )}`,
       };
     },
     [teamByOfficial],
@@ -571,14 +623,14 @@ export default function GameSetupScreen({
           if (slot.official === null) {
             return false;
           }
-          const person = teamByOfficial.get(slot.official);
-          return person !== undefined && !person.is_valid;
+          const state = licenceOf(slot).state;
+          return state === "expired" || state === "missing";
         })
         .map((slot) => ({
           name: displayName(slot) ?? "Unbekannt",
           role: slot.label,
         })),
-    [slots, teamByOfficial, displayName],
+    [slots, licenceOf, displayName],
   );
 
   /**
@@ -591,10 +643,10 @@ export default function GameSetupScreen({
       if (slot.official === null) {
         return false;
       }
-      const person = teamByOfficial.get(slot.official);
-      return person !== undefined && !person.is_valid;
+      const state = licenceOf(slot).state;
+      return state === "expired" || state === "missing";
     },
-    [teamByOfficial],
+    [licenceOf],
   );
 
   /**
@@ -635,7 +687,16 @@ export default function GameSetupScreen({
     setSlots((current) =>
       current.map((slot, position) =>
         position === index
-          ? { ...slot, official: person.id, name: personName(person) }
+          ? {
+              ...slot,
+              official: person.id,
+              name: personName(person),
+              // The search result already carries the licence. Keeping it means
+              // a freshly created or guest official shows the right badge even
+              // though the team directory loaded before they existed (and even
+              // though they belong to another team).
+              licence: licenceOfPerson(person),
+            }
           : slot,
       ),
     );
@@ -650,7 +711,9 @@ export default function GameSetupScreen({
   const enterFreeText = (index: number, name: string): void => {
     setSlots((current) =>
       current.map((slot, position) =>
-        position === index ? { ...slot, official: null, name } : slot,
+        position === index
+          ? { ...slot, official: null, name, licence: null }
+          : slot,
       ),
     );
     setDirty(true);
@@ -659,7 +722,9 @@ export default function GameSetupScreen({
   const clearSlot = (index: number): void => {
     setSlots((current) =>
       current.map((slot, position) =>
-        position === index ? { ...slot, official: null, name: null } : slot,
+        position === index
+          ? { ...slot, official: null, name: null, licence: null }
+          : slot,
       ),
     );
     setDirty(true);

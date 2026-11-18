@@ -63,11 +63,15 @@ no reload.
    keeps the initials disc.
 3. **Spiel vorbereiten** — a team card (both crests, the team descriptions,
    kick-off and field), then two numbered sections. **1. Offizielle**: crew and
-   licences as card rows (initials, role, person, a licence dot chip and a
-   chevron that opens the picker), the league's required positions first and a
-   `n/m besetzt` counter. An empty optional position is a compact dashed
-   **<Position> hinzufügen** row ("Optional · ohne Pflicht zur Besetzung");
-   once somebody is assigned it becomes a normal row. **2. Spielkonfiguration**:
+   licences as card rows (initials, role, person, a licence chip that names the
+   licence and its validity — `F1 gültig`, `F2 abgelaufen seit 18.01.2025` — and
+   a chevron that opens the picker), the league's required positions first and a
+   `n/m besetzt` counter. The licence travels with the crew read, so a guest
+   official from another team and a person created after the team directory was
+   loaded are not reported as "Lizenz unbekannt". An empty optional position is
+   a compact dashed **<Position> hinzufügen** row ("Optional · ohne Pflicht zur
+   Besetzung"); once somebody is assigned it becomes a normal row.
+   **2. Spielkonfiguration**:
    one card with **Münzwurf gewonnen von**, **Erster Ballbesitz** and
    **Spielrichtung**; the first two are full-width two-option switches, the
    direction is drawn on a field between the **Nord** and **Süd** end zones

@@ -1,7 +1,7 @@
 import json
 import pathlib
 import re
-from datetime import timedelta, time
+from datetime import date, timedelta, time
 from http import HTTPStatus
 from uuid import uuid4
 
@@ -26,7 +26,12 @@ from gamedays.constants import (
 )
 from gamedays.models import Gameinfo, Gameresult, GameOfficial, GameSetup, TeamLog, Team
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from gamedays.tests.setup_factories.factories import PersonFactory
+from gamedays.tests.setup_factories.factories import PersonFactory, TeamFactory
+from officials.tests.setup_factories.factories_officials import (
+    OfficialFactory,
+    OfficialLicenseFactory,
+    OfficialLicenseHistoryFactory,
+)
 from passcheck.models import PasscheckVerification
 from passcheck.tests.setup_factories.factories_passcheck import (
     PlayerFactory,
@@ -78,6 +83,36 @@ class TestRetrieveUpdateOfficials(WebTest):
         )
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 5
+
+    def test_officials_get_carries_the_current_license(self):
+        """The scorecard shows a licence for every linked official.
+
+        It cannot read the licence from the officials team's directory alone:
+        a guest official belongs to another team, and a directory loaded
+        before the person was created is stale. The crew read therefore
+        answers the licence itself.
+        """
+        DBSetup().g62_status_empty()
+        last_game = Gameinfo.objects.last()
+        official = OfficialFactory(team=TeamFactory())
+        created_at = date.today() - timedelta(days=30)
+        OfficialLicenseHistoryFactory(
+            official=official,
+            license=OfficialLicenseFactory(name="F1"),
+            created_at=created_at,
+        )
+        DBSetup().create_game_officials(last_game, official=official)
+
+        response = self.app.get(
+            reverse(API_GAME_OFFICIALS, kwargs={"pk": last_game.pk})
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        row = response.json[0]
+        assert row["official"] == official.pk
+        assert row["license"] == "F1"
+        assert row["is_valid"] is True
+        assert row["valid_until"] == (created_at + timedelta(days=365)).isoformat()
 
 
 class TestGameSetup(WebTest):

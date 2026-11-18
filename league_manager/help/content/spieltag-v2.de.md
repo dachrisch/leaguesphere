@@ -172,7 +172,10 @@ Dialog oder ein Eingabefeld aktiv ist oder das Spiel nur gelesen werden darf.
 
 **Offizielle eintragen:** Tippe in **Spiel vorbereiten** auf eine Position und
 suche nach dem Nachnamen. Die Vorschläge kommen aus dem ganzen Verzeichnis, mit
-Team und Lizenz. **Freitext** heißt: es ist nur ein Name gespeichert – er
+Team und Lizenz. Die Zeile zeigt danach die Lizenz mit ihrem Status, z. B.
+**F1 gültig** oder **F2 abgelaufen seit 18.01.2025** – auch für einen Gast aus
+einem anderen Team oder eine gerade erst angelegte Person. **Freitext** heißt:
+es ist nur ein Name gespeichert – er
 braucht Vor- und Nachnamen und wird nur angeboten, wenn niemand gefunden wurde.
 Wer schon in einer anderen Position steht, lässt sich nicht wählen. Eine
 abgelaufene Lizenz steht als Hinweis an der Zeile und warnt beim Start, sie

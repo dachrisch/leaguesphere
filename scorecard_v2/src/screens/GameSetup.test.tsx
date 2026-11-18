@@ -106,6 +106,9 @@ interface CrewOverrides {
   official?: number | null;
   name?: string | null;
   position?: string;
+  license?: string | null;
+  valid_until?: string | null;
+  is_valid?: boolean;
 }
 
 function crewRow(overrides: CrewOverrides = {}): Official {
@@ -216,6 +219,8 @@ function startedLog(inPossession: string = "Ravens"): GameLog {
 
 let crew: Official[];
 let teamList: TeamOfficial[];
+/** Search hits that are deliberately not part of the team directory. */
+let searchResults: TeamOfficial[];
 let positions: CrewPosition[];
 let setup: GameSetup;
 let startCalls: string[];
@@ -282,6 +287,7 @@ beforeEach(() => {
   setup = {};
   startCalls = [];
   requests = [];
+  searchResults = [];
   setupFailure = null;
   crewFailure = null;
 
@@ -314,7 +320,7 @@ beforeEach(() => {
         if (path.startsWith("/api/officials/search/list")) {
           const query =
             new URL(path, "http://localhost").searchParams.get("name") ?? "";
-          return teamList.filter((person) =>
+          return [...teamList, ...searchResults].filter((person) =>
             `${person.first_name} ${person.last_name}`
               .toLowerCase()
               .includes(query.toLowerCase()),
@@ -636,21 +642,21 @@ describe("GameSetup — guest officials", () => {
 });
 
 describe("GameSetup — licences", () => {
-  it("marks a valid licence", async () => {
+  it("marks a valid licence and names it", async () => {
     await renderSetup();
 
     const row = rowFor("Schiedsrichter");
-    expect(within(row).getByText("Lizenz gültig")).toHaveClass("lic-ok");
+    expect(within(row).getByText("B gültig")).toHaveClass("lic-ok");
     expect(within(row).queryByText(/abgelaufen/)).not.toBeInTheDocument();
   });
 
-  it("shows the expiry date of an expired licence", async () => {
+  it("shows the licence and the expiry date of an expired licence", async () => {
     teamList[0] = teamPerson({ is_valid: false, valid_until: "2025-03-04" });
     await renderSetup();
 
     const row = rowFor("Schiedsrichter");
     expect(
-      within(row).getByText("abgelaufen seit 04.03.2025"),
+      within(row).getByText("B abgelaufen seit 04.03.2025"),
     ).toHaveClass("lic-warn");
   });
 
@@ -663,7 +669,7 @@ describe("GameSetup — licences", () => {
     ).toHaveClass("lic-missing");
   });
 
-  it("says 'Lizenz unbekannt' when the official cannot be judged", async () => {
+  it("says 'Lizenz unbekannt' only when the crew has no licence data", async () => {
     crew[0] = crewRow({ official: 99, name: "Gast Schiri" });
     await renderSetup();
 
@@ -672,6 +678,64 @@ describe("GameSetup — licences", () => {
     ).toHaveClass("lic-unknown");
     // A guest official is not a known licence problem.
     expect(document.querySelector(".setupwarn")).toBeNull();
+  });
+
+  it("shows the licence the crew read carries for a guest official", async () => {
+    // The person belongs to another team, so the team directory cannot judge
+    // them; the crew read answers the licence itself.
+    crew[0] = crewRow({
+      official: 99,
+      name: "Vera Verdasi",
+      license: "F1",
+      valid_until: "2027-01-18",
+      is_valid: true,
+    });
+    await renderSetup();
+
+    const row = rowFor("Schiedsrichter");
+    expect(within(row).getByText("F1 gültig")).toHaveClass("lic-ok");
+    expect(within(row).queryByText("Lizenz unbekannt")).not.toBeInTheDocument();
+  });
+
+  it("uses the picked person's licence even when the team directory is stale", async () => {
+    // A person created after the directory was loaded: the search finds them,
+    // the directory does not. The picker's answer must not be thrown away.
+    searchResults = [
+      {
+        id: 21,
+        first_name: "Vera",
+        last_name: "Verdasi",
+        team: "Düsseldorf Firecats",
+        license: "F1",
+        valid_until: "2027-01-18",
+        is_valid: true,
+      },
+    ];
+    await renderSetup();
+
+    await pickCrew("Schiedsrichter", "Vera Verdasi");
+
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("F1 gültig"),
+    ).toHaveClass("lic-ok");
+  });
+
+  it("warns about an expired licence the crew read carries", async () => {
+    crew[0] = crewRow({
+      official: 99,
+      name: "Vera Verdasi",
+      license: "F2",
+      valid_until: "2025-01-18",
+      is_valid: false,
+    });
+    const { container } = await renderSetup();
+
+    expect(
+      within(rowFor("Schiedsrichter")).getByText(
+        "F2 abgelaufen seit 18.01.2025",
+      ),
+    ).toHaveClass("lic-warn");
+    expect(container.querySelectorAll(".offhint-warn")).toHaveLength(1);
   });
 
   it("says 'keine Lizenz' for an unlinked free-text official", async () => {
@@ -730,7 +794,9 @@ describe("GameSetup — local crew edits", () => {
     expect(crewButton("Schiedsrichter")).toHaveTextContent("Tom Weber");
     expect(apiPutMock).not.toHaveBeenCalled();
     expect(
-      within(rowFor("Schiedsrichter")).getByText("abgelaufen seit 04.03.2025"),
+      within(rowFor("Schiedsrichter")).getByText(
+        "C abgelaufen seit 04.03.2025",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -2174,6 +2240,39 @@ describe("GameSetup — loading", () => {
     expect(document.querySelector(".setupwarn")).toBeNull();
     expect(startButton()).toBeEnabled();
   });
+
+  it("shows the crew's licence even when the team list fails", async () => {
+    crew[0] = crewRow({
+      license: "F1",
+      valid_until: "2027-01-18",
+      is_valid: true,
+    });
+    apiGetMock.mockImplementation(async (path: string) => {
+      if (path === CREW_PATH) {
+        return crew;
+      }
+      if (path === TEAM_PATH) {
+        throw new ApiError(500, null);
+      }
+      if (path === SETUP_PATH) {
+        return {};
+      }
+      if (path === POSITIONS_PATH) {
+        return positions;
+      }
+      throw new Error(`unexpected GET ${path}`);
+    });
+    render(<GameSetupScreen game={GAME} onStarted={vi.fn()} />);
+
+    await screen.findByRole("group", { name: "Münzwurf gewonnen von" });
+
+    expect(
+      screen.getByText("Die Offiziellen des Teams konnten nicht geladen werden."),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("Schiedsrichter")).getByText("F1 gültig"),
+    ).toHaveClass("lic-ok");
+  });
 });
 
 describe("GameSetup — the remaining data shapes", () => {
@@ -2218,7 +2317,7 @@ describe("GameSetup — the remaining data shapes", () => {
     await renderSetup();
 
     expect(
-      within(rowFor("Schiedsrichter")).getByText("abgelaufen"),
+      within(rowFor("Schiedsrichter")).getByText("B abgelaufen"),
     ).toBeInTheDocument();
   });
 
@@ -2230,7 +2329,7 @@ describe("GameSetup — the remaining data shapes", () => {
     await renderSetup();
 
     expect(
-      within(rowFor("Schiedsrichter")).getByText("abgelaufen seit bald"),
+      within(rowFor("Schiedsrichter")).getByText("B abgelaufen seit bald"),
     ).toBeInTheDocument();
   });
 

@@ -107,6 +107,15 @@ export interface Official {
   official: number | null;
   name: string | null;
   position: string;
+  /**
+   * The licence the crew read resolves for this row (`license`,
+   * `valid_until`, `is_valid`). Optional: a free-text row and an older server
+   * carry none, and the screen then falls back to the team directory or says
+   * "Lizenz unbekannt".
+   */
+  license?: string | null;
+  valid_until?: string | null;
+  is_valid?: boolean;
 }
 
 /** The full crew of one game — the GET answers a (possibly empty) list. */
