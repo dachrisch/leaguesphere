@@ -68,6 +68,12 @@
     {
       "code": "illegaler_kontakt_defense",
       "name": "illegaler Kontakt Defense",
+      "short": "IC",
+      "name_en": "Illegal Contact (Defense)",
+      "aliases": [
+        "Holding",
+        "DH"
+      ],
       "subtext": "BS/1st 10",
       "yards": 10,
       "down": "first",
@@ -78,6 +84,8 @@
     {
       "code": "flag_guarding",
       "name": "Flag Guarding",
+      "short": "FG",
+      "name_en": "Flag Guarding",
       "subtext": "SF/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -88,6 +96,11 @@
     {
       "code": "fehlstart",
       "name": "Fehlstart",
+      "short": "FST",
+      "name_en": "False Start",
+      "aliases": [
+        "FS"
+      ],
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -98,6 +111,12 @@
     {
       "code": "abschirmen_blocken_offense",
       "name": "Abschirmen (Blocken) Offense",
+      "short": "BLK",
+      "name_en": "Illegal Blocking (Offense)",
+      "aliases": [
+        "Blocking",
+        "OH"
+      ],
       "subtext": "BS/5",
       "yards": 5,
       "down": "repeat",
@@ -108,6 +127,12 @@
     {
       "code": "illegaler_kontakt_offense",
       "name": "illegaler Kontakt Offense",
+      "short": "IC",
+      "name_en": "Illegal Contact (Offense)",
+      "aliases": [
+        "Holding",
+        "OH"
+      ],
       "subtext": "BS/LoD 10",
       "yards": 10,
       "down": "loss",
@@ -118,6 +143,12 @@
     {
       "code": "abschirmen_blocken_defense",
       "name": "Abschirmen (Blocken) Defense",
+      "short": "BLK",
+      "name_en": "Illegal Blocking (Defense)",
+      "aliases": [
+        "Blocking",
+        "DH"
+      ],
       "subtext": "BS/5",
       "yards": 5,
       "down": "repeat",
@@ -128,6 +159,11 @@
     {
       "code": "defense_passbehinderung",
       "name": "Defense Passbehinderung",
+      "short": "DPI",
+      "name_en": "Defensive Pass Interference",
+      "aliases": [
+        "PI"
+      ],
       "subtext": "BS/1st 10",
       "yards": 10,
       "down": "first",
@@ -138,6 +174,11 @@
     {
       "code": "behinderung_spieldurchfuehrung_defense",
       "name": "Behinderung Spieldurchführung Defense",
+      "short": "IG",
+      "name_en": "Interference with the Game (Defense)",
+      "aliases": [
+        "Game Interference"
+      ],
       "subtext": "BS/1st 10",
       "yards": 10,
       "down": "first",
@@ -148,6 +189,11 @@
     {
       "code": "passverzoegerung",
       "name": "Passverzögerung",
+      "short": "DOP",
+      "name_en": "Delay of Pass",
+      "aliases": [
+        "Delay of Game"
+      ],
       "subtext": "SL/LoD",
       "yards": 0,
       "down": "loss",
@@ -158,6 +204,11 @@
     {
       "code": "illegale_balluebergabe",
       "name": "illegale Ballübergabe",
+      "short": "IH",
+      "name_en": "Illegal Handoff",
+      "aliases": [
+        "Handoff"
+      ],
       "subtext": "SF/LoD",
       "yards": 5,
       "down": "loss",
@@ -168,6 +219,11 @@
     {
       "code": "illegaler_rueckwaertspass",
       "name": "illegaler Rückwärtspass",
+      "short": "IBP",
+      "name_en": "Illegal Backward Pass",
+      "aliases": [
+        "Backward Pass"
+      ],
       "subtext": "SF/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -178,6 +234,11 @@
     {
       "code": "illegales_touching_ballberuehrung",
       "name": "illegales Touching/Ballberührung",
+      "short": "IT",
+      "name_en": "Illegal Touching",
+      "aliases": [
+        "Touching"
+      ],
       "subtext": "SL/LoD",
       "yards": 0,
       "down": "loss",
@@ -188,6 +249,12 @@
     {
       "code": "vorwaertsschlagen_eines_rueckwaertspasses_durch_das_passende_team",
       "name": "Vorwärtsschlagen eines Rückwärtspasses durch das passende Team",
+      "short": "BAP",
+      "name_en": "Batting a Backward Pass",
+      "aliases": [
+        "BBP",
+        "Batting"
+      ],
       "subtext": "SF/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -198,6 +265,11 @@
     {
       "code": "illegaler_vorwaertspass",
       "name": "illegaler Vorwärtspass",
+      "short": "IFP",
+      "name_en": "Illegal Forward Pass",
+      "aliases": [
+        "Forward Pass"
+      ],
       "subtext": "SF/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -208,6 +280,11 @@
     {
       "code": "offense_passbehinderung",
       "name": "Offense Passbehinderung",
+      "short": "OPI",
+      "name_en": "Offensive Pass Interference",
+      "aliases": [
+        "PI"
+      ],
       "subtext": "BS/LoD 10",
       "yards": 10,
       "down": "loss",
@@ -218,6 +295,11 @@
     {
       "code": "behinderung_spieldurchfuehrung_offense",
       "name": "Behinderung Spieldurchführung Offense",
+      "short": "IG",
+      "name_en": "Interference with the Game (Offense)",
+      "aliases": [
+        "Game Interference"
+      ],
       "subtext": "BS/LoD 10",
       "yards": 10,
       "down": "loss",
@@ -228,6 +310,8 @@
     {
       "code": "springen",
       "name": "Springen",
+      "short": "LEA",
+      "name_en": "Leaping",
       "subtext": "SF/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -238,6 +322,8 @@
     {
       "code": "hechten",
       "name": "Hechten",
+      "short": "DIV",
+      "name_en": "Diving",
       "subtext": "SF/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -248,6 +334,11 @@
     {
       "code": "illegaler_kick_durch_runner",
       "name": "illegaler Kick durch Runner",
+      "short": "IK",
+      "name_en": "Illegal Kick by Runner",
+      "aliases": [
+        "Kick"
+      ],
       "subtext": "SF/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -258,6 +349,12 @@
     {
       "code": "illegaler_snap",
       "name": "illegaler Snap",
+      "short": "ISN",
+      "name_en": "Illegal Snap",
+      "aliases": [
+        "IS",
+        "Snap"
+      ],
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -268,6 +365,8 @@
     {
       "code": "spielverzoegerung_offense",
       "name": "Spielverzögerung Offense",
+      "short": "DOG",
+      "name_en": "Delay of Game (Offense)",
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -278,6 +377,8 @@
     {
       "code": "spielverzoegerung_defense",
       "name": "Spielverzögerung Defense",
+      "short": "DOG",
+      "name_en": "Delay of Game (Defense)",
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -288,6 +389,8 @@
     {
       "code": "encroachment",
       "name": "Encroachment",
+      "short": "ENC",
+      "name_en": "Encroachment",
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -298,6 +401,11 @@
     {
       "code": "illegaler_shift",
       "name": "illegaler Shift",
+      "short": "ISH",
+      "name_en": "Illegal Shift",
+      "aliases": [
+        "Shift"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -308,6 +416,11 @@
     {
       "code": "illegale_motion",
       "name": "illegale Motion",
+      "short": "IM",
+      "name_en": "Illegal Motion",
+      "aliases": [
+        "Motion"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -318,6 +431,11 @@
     {
       "code": "illegaler_lauf",
       "name": "illegaler Lauf",
+      "short": "IR",
+      "name_en": "Illegal Run",
+      "aliases": [
+        "Run"
+      ],
       "subtext": "SL/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -328,6 +446,11 @@
     {
       "code": "illegaler_laufspielzug",
       "name": "illegaler Laufspielzug",
+      "short": "IRP",
+      "name_en": "Illegal Run Play",
+      "aliases": [
+        "Run Play"
+      ],
       "subtext": "SL/LoD 5",
       "yards": 5,
       "down": "loss",
@@ -338,6 +461,12 @@
     {
       "code": "defense_offside",
       "name": "Defense Offside",
+      "short": "OFF",
+      "name_en": "Defensive Offside",
+      "aliases": [
+        "OFD",
+        "Offside"
+      ],
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -348,6 +477,11 @@
     {
       "code": "stoerende_signale",
       "name": "Störende Signale",
+      "short": "DS",
+      "name_en": "Disconcerting Signals",
+      "aliases": [
+        "Signals"
+      ],
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -358,6 +492,11 @@
     {
       "code": "illegales_blitzersignal",
       "name": "illegales Blitzersignal",
+      "short": "IBS",
+      "name_en": "Illegal Blitz Signal",
+      "aliases": [
+        "Blitz Signal"
+      ],
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -368,6 +507,11 @@
     {
       "code": "illegaler_blitz",
       "name": "illegaler Blitz",
+      "short": "IBL",
+      "name_en": "Illegal Blitz",
+      "aliases": [
+        "Blitz"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -378,6 +522,12 @@
     {
       "code": "illegales_flaggenziehen",
       "name": "illegales Flaggenziehen",
+      "short": "FLP",
+      "name_en": "Illegal Flag Pull",
+      "aliases": [
+        "FGP",
+        "Flag Pull"
+      ],
       "subtext": "BS/5",
       "yards": 5,
       "down": "repeat",
@@ -388,6 +538,11 @@
     {
       "code": "illegales_treten_eines_pass_defense",
       "name": "illegales Treten eines Pass Defense",
+      "short": "IKP",
+      "name_en": "Illegally Kicking a Pass (Defense)",
+      "aliases": [
+        "Kicking a Pass"
+      ],
       "subtext": "BS/5",
       "yards": 5,
       "down": "repeat",
@@ -398,6 +553,11 @@
     {
       "code": "illegales_treten_eines_pass_offense",
       "name": "illegales Treten eines Pass Offense",
+      "short": "IKP",
+      "name_en": "Illegally Kicking a Pass (Offense)",
+      "aliases": [
+        "Kicking a Pass"
+      ],
       "subtext": "BS/5",
       "yards": 5,
       "down": "repeat",
@@ -408,6 +568,11 @@
     {
       "code": "behinderung_an_der_seitenlinie_offense",
       "name": "Behinderung an der Seitenlinie Offense",
+      "short": "SLI",
+      "name_en": "Sideline Interference (Offense)",
+      "aliases": [
+        "Sideline"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -418,6 +583,11 @@
     {
       "code": "behinderung_an_der_seitenlinie_defense",
       "name": "Behinderung an der Seitenlinie Defense",
+      "short": "SLI",
+      "name_en": "Sideline Interference (Defense)",
+      "aliases": [
+        "Sideline"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -428,6 +598,11 @@
     {
       "code": "illegale_spielteilnahme_offense",
       "name": "illegale Spielteilnahme Offense",
+      "short": "IP",
+      "name_en": "Illegal Participation (Offense)",
+      "aliases": [
+        "Participation"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -438,6 +613,11 @@
     {
       "code": "illegale_spielteilnahme_defense",
       "name": "illegale Spielteilnahme Defense",
+      "short": "IP",
+      "name_en": "Illegal Participation (Defense)",
+      "aliases": [
+        "Participation"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -448,6 +628,12 @@
     {
       "code": "illegale_auswechslung_offense",
       "name": "illegale Auswechslung Offense",
+      "short": "ISUB",
+      "name_en": "Illegal Substitution (Offense)",
+      "aliases": [
+        "SUB",
+        "Substitution"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -458,6 +644,12 @@
     {
       "code": "illegale_auswechslung_defense",
       "name": "illegale Auswechslung Defense",
+      "short": "ISUB",
+      "name_en": "Illegal Substitution (Defense)",
+      "aliases": [
+        "SUB",
+        "Substitution"
+      ],
       "subtext": "SL/5",
       "yards": 5,
       "down": "repeat",
@@ -468,6 +660,13 @@
     {
       "code": "unsportliches_verhalten_offense",
       "name": "Unsportliches Verhalten Offense",
+      "short": "UNV",
+      "name_en": "Unsportsmanlike Conduct (Offense)",
+      "aliases": [
+        "UNS",
+        "USC",
+        "Unsportsmanlike"
+      ],
       "subtext": "DB/10 Notiz",
       "yards": 10,
       "down": "repeat",
@@ -478,6 +677,13 @@
     {
       "code": "unsportliches_verhalten_defense",
       "name": "Unsportliches Verhalten Defense",
+      "short": "UNV",
+      "name_en": "Unsportsmanlike Conduct (Defense)",
+      "aliases": [
+        "UNS",
+        "USC",
+        "Unsportsmanlike"
+      ],
       "subtext": "DB/10 Notiz",
       "yards": 10,
       "down": "repeat",
@@ -488,6 +694,13 @@
     {
       "code": "grob_unsportliches_verhalten_offense",
       "name": "Grob unsportliches Verhalten Offense",
+      "short": "DQ",
+      "name_en": "Disqualification (Offense)",
+      "aliases": [
+        "PF",
+        "UNR",
+        "Ejection"
+      ],
       "subtext": "Disqualifkation",
       "yards": 0,
       "down": "repeat",
@@ -499,6 +712,13 @@
     {
       "code": "grob_unsportliches_verhalten_defense",
       "name": "Grob unsportliches Verhalten Defense",
+      "short": "DQ",
+      "name_en": "Disqualification (Defense)",
+      "aliases": [
+        "PF",
+        "UNR",
+        "Ejection"
+      ],
       "subtext": "Disqualifkation",
       "yards": 0,
       "down": "repeat",
@@ -510,6 +730,11 @@
     {
       "code": "person_mit_illegaler_ausruestung_verlaesst_nicht_das_feld_offense",
       "name": "Person mit illegaler Ausrüstung verlässt nicht das Feld Offense",
+      "short": "IEQ",
+      "name_en": "Illegal Equipment (Offense)",
+      "aliases": [
+        "Equipment"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",
@@ -521,6 +746,11 @@
     {
       "code": "person_mit_illegaler_ausruestung_verlaesst_nicht_das_feld_defense",
       "name": "Person mit illegaler Ausrüstung verlässt nicht das Feld Defense",
+      "short": "IEQ",
+      "name_en": "Illegal Equipment (Defense)",
+      "aliases": [
+        "Equipment"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",
@@ -532,6 +762,11 @@
     {
       "code": "person_mit_fehlender_vorgeschriebener_ausruestung_verlaesst_nicht_das_feld_offense",
       "name": "Person mit fehlender vorgeschriebener Ausrüstung verlässt nicht das Feld Offense",
+      "short": "MEQ",
+      "name_en": "Missing Required Equipment (Offense)",
+      "aliases": [
+        "Equipment"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",
@@ -543,6 +778,11 @@
     {
       "code": "person_mit_fehlender_vorgeschriebener_ausruestung_verlaesst_nicht_das_feld_defense",
       "name": "Person mit fehlender vorgeschriebener Ausrüstung verlässt nicht das Feld Defense",
+      "short": "MEQ",
+      "name_en": "Missing Required Equipment (Defense)",
+      "aliases": [
+        "Equipment"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",
@@ -554,6 +794,11 @@
     {
       "code": "person_mit_blutender_wunde_verlaesst_nicht_das_feld_offense",
       "name": "Person mit blutender Wunde verlässt nicht das Feld Offense",
+      "short": "BLD",
+      "name_en": "Blood Injury (Offense)",
+      "aliases": [
+        "Blood"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",
@@ -565,6 +810,11 @@
     {
       "code": "person_mit_blutender_wunde_verlaesst_nicht_das_feld_defense",
       "name": "Person mit blutender Wunde verlässt nicht das Feld Defense",
+      "short": "BLD",
+      "name_en": "Blood Injury (Defense)",
+      "aliases": [
+        "Blood"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",
@@ -576,6 +826,11 @@
     {
       "code": "auszeit_ohne_verbleibende_auszeit_offense",
       "name": "Auszeit ohne verbleibende Auszeit Offense",
+      "short": "TO",
+      "name_en": "Excess Timeout (Offense)",
+      "aliases": [
+        "Timeout"
+      ],
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -586,6 +841,11 @@
     {
       "code": "auszeit_ohne_verbleibende_auszeit_defense",
       "name": "Auszeit ohne verbleibende Auszeit Defense",
+      "short": "TO",
+      "name_en": "Excess Timeout (Defense)",
+      "aliases": [
+        "Timeout"
+      ],
       "subtext": "DB/5",
       "yards": 5,
       "down": "repeat",
@@ -596,6 +856,11 @@
     {
       "code": "fehlgeschlagene_challenge_offense",
       "name": "Fehlgeschlagene Challenge Offense",
+      "short": "CHL",
+      "name_en": "Failed Challenge (Offense)",
+      "aliases": [
+        "Challenge"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",
@@ -607,6 +872,11 @@
     {
       "code": "fehlgeschlagene_challenge_defense",
       "name": "Fehlgeschlagene Challenge Defense",
+      "short": "CHL",
+      "name_en": "Failed Challenge (Defense)",
+      "aliases": [
+        "Challenge"
+      ],
       "subtext": "DB/TO",
       "yards": 0,
       "down": "repeat",

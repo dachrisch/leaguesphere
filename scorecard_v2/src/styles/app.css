@@ -3064,6 +3064,23 @@ button.game-row:active {
   white-space: nowrap;
 }
 
+/* The officials' short code, the same one the search index answers to. */
+.penaltyshort {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.penalty.sel .penaltyshort {
+  color: var(--on-strong);
+  border-color: color-mix(in srgb, var(--on-strong) 40%, transparent);
+}
+
 .penaltymore {
   min-height: var(--touch);
   padding: var(--space-1) var(--space-3);

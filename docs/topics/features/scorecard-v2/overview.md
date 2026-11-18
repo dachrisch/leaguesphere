@@ -198,7 +198,9 @@ no reload.
    picked, **Gegner +2** asks for the defender's jersey in its own step, and
    **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search (the
    five most common penalties stay in catalogue order, the rest are
-   alphabetical; the sheet prefills yardage and next down from the catalogue's
+   alphabetical; the search also matches the definition's short code — FST,
+   UNV — the English name and its aliases, and the short code is shown beside
+   the German name; the sheet prefills yardage and next down from the catalogue's
    `subtext` and keeps both editable), safety,
    overtime, Spielzeit, half-time, and **Rückgängig** per entry, plus
    **Ändern** to correct the jersey or the game time of a row in place (the

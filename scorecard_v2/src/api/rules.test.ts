@@ -56,6 +56,8 @@ export const RULES: GameRules = {
     {
       code: "illegal_handoff",
       name: "illegale Ballübergabe",
+      short: "IH",
+      name_en: "Illegal Handoff",
       subtext: "SF/LoD 5",
       yards: 5,
       down: "loss",

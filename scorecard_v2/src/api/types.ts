@@ -324,6 +324,11 @@ export interface Penalty {
   name: string;
   subtext: string;
   isPenaltyAgainstOpponent: boolean;
+  /** The definition's slug and its short/English search indexes. */
+  code?: string;
+  short?: string;
+  name_en?: string;
+  aliases?: string[];
   /**
    * The structured rules from `GET /api/config/scorecard/rules`. Absent when
    * only the legacy `/penalties` list answered: the sheet then parses

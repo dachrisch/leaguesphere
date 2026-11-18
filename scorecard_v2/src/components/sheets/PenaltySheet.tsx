@@ -50,9 +50,22 @@ export function filterPenalties(
   if (needle === "") {
     return penalties;
   }
-  return penalties.filter((penalty) =>
-    penalty.name.toLowerCase().includes(needle),
-  );
+  // The German name is the primary label, but an official also knows the
+  // short code (FST, UNV) and often the English name. All of them are the
+  // same search index; nothing here decides what is shown.
+  return penalties.filter((penalty) => {
+    const haystack = [
+      penalty.name,
+      penalty.short,
+      penalty.name_en,
+      penalty.code,
+      ...(penalty.aliases ?? []),
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(needle);
+  });
 }
 
 /**
@@ -373,6 +386,10 @@ export default function PenaltySheet({
       name: row.name,
       subtext: row.subtext,
       isPenaltyAgainstOpponent: row.side === "defense",
+      code: row.code,
+      short: row.short,
+      name_en: row.name_en,
+      aliases: row.aliases,
       yards: row.yards,
       down: row.down,
       enforcement: row.enforcement,
@@ -577,7 +594,12 @@ export default function PenaltySheet({
                     onClick={() => pickPenalty(penalty)}
                     type="button"
                   >
-                    <span className="penaltyname">{penalty.name}</span>
+                    <span className="penaltyname">
+                      {penalty.name}
+                      {penalty.short === undefined ? null : (
+                        <span className="penaltyshort">{penalty.short}</span>
+                      )}
+                    </span>
                     <span className="penaltysub">{penalty.subtext}</span>
                   </button>
                 );

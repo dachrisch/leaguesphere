@@ -64,9 +64,9 @@ wie die bisherige Scorecard
 
    **Spielzug** zeigt oben zwei große Kacheln: **Pass** und **Run**. Darunter
    stehen **Turnover**, **1st Down**, **Safety** und **Challenge**; die
-   **Spielphase** darunter bietet **Overtime** und **Feldposition**. Sack und
-   Interception sind Ergebnisse im Pass-/Run-Assistenten, der **Touchdown**
-   hat seine eigene Kachel über dem Spielfeld. Die
+   **Spielphase** darunter bietet **Overtime** und **Feldposition**. **Sack**
+   ist ein Ergebnis bei Pass und Run, **Interception** beim Pass; der
+   **Touchdown** hat seine eigene Kachel über dem Spielfeld. Die
    **Feldposition** setzt A/B + 0–25 und hält über Reloads, weil sie als
    Eintrag im Spielverlauf steht; sie setzt auch **Down** (1–4) und **Line to
    gain** (**M** oder **G**), wenn du sie von Hand korrigierst. **Challenge**
@@ -103,9 +103,12 @@ wie die bisherige Scorecard
    **1st Down** und **Turnover** werden sofort gespeichert; bei **1st Down**
    trägst du die Trikotnummer nach, wenn du die Kachel innerhalb von 10
    Sekunden noch einmal tippst (**Nr. ergänzen**). Eine **Interception** läuft
-   über **Spielzug** → **Interception**.
+   über **Spielzug** → **Pass** → **Interception**.
 
    Bei **Strafe** stehen die fünf häufigsten oben, der Rest alphabetisch.
+   Die Suche findet eine Strafe auch über ihre **Kurzform** (z. B. **FST**,
+   **UNV**) oder ihren **englischen Namen** (z. B. „False Start“); die Kurzform
+   steht klein neben dem deutschen Namen.
    **Yardage** und **Nächster Versuch** (Wiederholung, First Down, Loss of
    Down) sind aus der Strafe vorbelegt und bleiben änderbar. Die
    Trikotnummer ist standardmäßig **Ohne Nummer**; **Ganzes Team** steht als
