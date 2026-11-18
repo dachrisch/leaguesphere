@@ -368,10 +368,11 @@ interface PlaySheetProps {
  * `advance` the board uses. A touchdown prefills the distance to the goal line
  * and hides the loss switch; a safety prefills the run to the own goal line.
  *
- * An interception asks for the defender, the catch spot and the return — both
- * in the throwing offence's orientation, because the field only turns when the
- * intercepting team's series starts (`interceptionReturnSpot`) — and an
- * optional pick six.
+ * An interception asks for the defender and **where the play ended** (from the
+ * intercepting team's view, because that is where its series starts). The
+ * catch spot and the return are optional detail kept for the statistics, in
+ * the throwing offence's orientation; without any spot the next series starts
+ * on the own 5 (touchback). A pick six has no dead-ball spot.
  */
 export default function PlaySheet({
   teamName,
@@ -408,6 +409,11 @@ export default function PlaySheet({
     halfOf(drive?.ballOn ?? null, geometry),
   );
   const [catchYards, setCatchYards] = useState("");
+  // Where the play ends, from the intercepting team's view: it is the spot its
+  // series starts from, so it is what the official enters first (field report
+  // 2026-11-18: the catch spot alone left the next series guesswork).
+  const [deadBallSide, setDeadBallSide] = useState<"A" | "B">("A");
+  const [deadBallYards, setDeadBallYards] = useState("");
   const [returnYards, setReturnYards] = useState("");
   const [pickSix, setPickSix] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -439,10 +445,16 @@ export default function PlaySheet({
   }
   const catchSpot = spotFrom(catchSide, catchYards, geometry);
   const catchInvalid = catchYards.trim() !== "" && catchSpot === null;
+  // The explicit dead-ball spot wins; the catch + return are the fallback for
+  // an official who still enters them out of habit.
+  const deadBallSpot = spotFrom(deadBallSide, deadBallYards, geometry);
+  const deadBallInvalid =
+    deadBallYards.trim() !== "" && deadBallSpot === null;
   // A pick six is a touchdown, not a spot: its ball is dead in the end zone.
   const deadBall = pickSix
     ? null
-    : interceptionReturnSpot(catchSpot, yardsValue(returnYards), geometry);
+    : (deadBallSpot ??
+      interceptionReturnSpot(catchSpot, yardsValue(returnYards), geometry));
   const distanceMissing =
     distanceMode === "end"
       ? endSpot === null || drive?.ballOn == null
@@ -471,7 +483,7 @@ export default function PlaySheet({
       : step === "qb" || step === "qbplayer"
         ? !qbMissing
         : step === "interception"
-          ? !catchInvalid
+          ? !catchInvalid && !deadBallInvalid
           : true;
 
   const chooseResult = (option: PlayResult): void => {
@@ -814,7 +826,90 @@ export default function PlaySheet({
             players={defenders}
             value={defender}
           />
-          <h3 className="sheetsection">Gefangen an (optional)</h3>
+          <h3 className="sheetsection">
+            Ball tot bei (Sicht {opponentName})
+          </h3>
+          <div aria-label="Feldhälfte" className="seg" role="group">
+            <button
+              aria-label="Ball tot: A eigene Hälfte"
+              aria-pressed={deadBallSide === "A"}
+              className={deadBallSide === "A" ? "sel" : undefined}
+              disabled={posting || pickSix}
+              onClick={() => setDeadBallSide("A")}
+              type="button"
+            >
+              A · eigene
+            </button>
+            <button
+              aria-label="Ball tot: B gegnerische Hälfte"
+              aria-pressed={deadBallSide === "B"}
+              className={deadBallSide === "B" ? "sel" : undefined}
+              disabled={posting || pickSix}
+              onClick={() => setDeadBallSide("B")}
+              type="button"
+            >
+              B · gegnerische
+            </button>
+          </div>
+          <div className="sheetfield">
+            <label className="sheetlabel" htmlFor="interception-deadball">
+              Ball tot bei (0–25)
+            </label>
+            <input
+              autoComplete="off"
+              className="sheetinput sheetinput-num"
+              disabled={posting || pickSix}
+              id="interception-deadball"
+              inputMode="decimal"
+              onChange={(event) => setDeadBallYards(event.target.value)}
+              onFocus={(event) => event.target.select()}
+              pattern="[0-9.,]*"
+              type="text"
+              value={deadBallYards}
+            />
+          </div>
+          {pickSix ? (
+            <p className="sheetnote">
+              Pick six: Der Ball ist in der Endzone tot, der nächste Angriff
+              startet an der eigenen 5 (Touchback).
+            </p>
+          ) : deadBallInvalid ? (
+            <p className="sheetwarn" role="alert">
+              Die Feldposition liegt zwischen 0 und 25.
+            </p>
+          ) : (
+            <p className="sheetnote">
+              Wo der Spielzug endet – die nächste Serie startet dort.
+              {deadBall === null
+                ? " Ohne Angabe beginnt der neue Angriff an der eigenen 5 (Touchback)."
+                : ` Ballbesitz ab ${spotText(deadBall, geometry)}.`}
+            </p>
+          )}
+          <div aria-label="Pick six" className="seg" role="group">
+            <button
+              aria-pressed={pickSix}
+              className={pickSix ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => {
+                const next = !pickSix;
+                setPickSix(next);
+                // A touchdown has no return yardage to record.
+                if (next) {
+                  setReturnYards("");
+                }
+              }}
+              type="button"
+            >
+              Pick six (Touchdown)
+            </button>
+          </div>
+
+          <h3 className="sheetsection">Details (optional)</h3>
+          <p className="sheetnote">
+            Fangstelle und Return aus Sicht des werfenden Teams: A eigene
+            Hälfte, B angegriffene. Sie ändern den Ballbesitz nicht mehr – der
+            steht mit „Ball tot bei".
+          </p>
           <div aria-label="Feldhälfte" className="seg" role="group">
             <button
               aria-pressed={catchSide === "A"}
@@ -837,7 +932,7 @@ export default function PlaySheet({
           </div>
           <div className="sheetfield">
             <label className="sheetlabel" htmlFor="interception-catch">
-              Feldposition (0–25)
+              Gefangen an (0–25)
             </label>
             <input
               autoComplete="off"
@@ -855,16 +950,7 @@ export default function PlaySheet({
             <p className="sheetwarn" role="alert">
               Die Feldposition liegt zwischen 0 und 25.
             </p>
-          ) : (
-            <p className="sheetnote">
-              Fangstelle und Return aus Sicht des werfenden Teams: A eigene
-              Hälfte, B angegriffene. Ohne Angabe beginnt der neue Angriff an
-              der eigenen 5 (Touchback).
-              {deadBall === null
-                ? ""
-                : ` Ballbesitz ab ${spotText(deadBall, geometry)}.`}
-            </p>
-          )}
+          ) : null}
           <div className="sheetfield">
             <label className="sheetlabel" htmlFor="interception-return">
               Return-Yards (optional)
@@ -888,24 +974,6 @@ export default function PlaySheet({
               type="text"
               value={returnYards}
             />
-          </div>
-          <div aria-label="Pick six" className="seg" role="group">
-            <button
-              aria-pressed={pickSix}
-              className={pickSix ? "sel" : undefined}
-              disabled={posting}
-              onClick={() => {
-                const next = !pickSix;
-                setPickSix(next);
-                // A touchdown has no return yardage to record.
-                if (next) {
-                  setReturnYards("");
-                }
-              }}
-              type="button"
-            >
-              Pick six (Touchdown)
-            </button>
           </div>
           <p className="sheetnote">
             Interception durch {opponentName}. Der Ballbesitz wechselt im

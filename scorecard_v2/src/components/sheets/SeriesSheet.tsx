@@ -233,6 +233,7 @@ export default function SeriesSheet({
   const secondsId = useId();
   const yardsId = useId();
   const catchId = useId();
+  const deadBallId = useId();
   const returnId = useId();
 
   const [jersey, setJersey] = useState<number | null>(null);
@@ -244,6 +245,8 @@ export default function SeriesSheet({
    */
   const [catchSide, setCatchSide] = useState<"A" | "B">("A");
   const [catchYards, setCatchYards] = useState("");
+  const [deadBallSide, setDeadBallSide] = useState<"A" | "B">("A");
+  const [deadBallYards, setDeadBallYards] = useState("");
   const [returnYards, setReturnYards] = useState("");
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
@@ -297,12 +300,28 @@ export default function SeriesSheet({
       : Math.round(
           (catchSide === "A" ? catchLine : FIELD_LENGTH - catchLine) * 10,
         ) / 10;
+  // The dead ball is what the next series starts from, so it is entered from
+  // the intercepting team's view and wins over the catch + return details.
+  const deadBallLine = spotValue(deadBallYards);
+  const deadBallInvalid =
+    intercepts &&
+    deadBallLine !== null &&
+    (deadBallLine < 0 || deadBallLine > MIDFIELD);
+  const deadBallSpot =
+    deadBallLine === null
+      ? null
+      : Math.round(
+          (deadBallSide === "A" ? deadBallLine : FIELD_LENGTH - deadBallLine) *
+            10,
+        ) / 10;
   // The catch and the return are entered before the field turns; the row keeps
   // the dead ball the way the new offence reads it (`interceptionReturnSpot`).
   const deadBall = intercepts
-    ? interceptionReturnSpot(catchSpot, yardsValue(returnYards))
+    ? (deadBallSpot ??
+      interceptionReturnSpot(catchSpot, yardsValue(returnYards)))
     : null;
-  const ready = !posting && validation === null && !catchInvalid;
+  const ready =
+    !posting && validation === null && !catchInvalid && !deadBallInvalid;
 
   const save = async (): Promise<void> => {
     if (saving.current || !ready) {
@@ -494,7 +513,65 @@ export default function SeriesSheet({
 
       {intercepts ? (
         <>
-          <h3 className="sheetsection">Gefangen an (optional)</h3>
+          <h3 className="sheetsection">
+            Ball tot bei (Sicht {opponentName})
+          </h3>
+          <div aria-label="Feldhälfte" className="seg" role="group">
+            <button
+              aria-label="Ball tot: A eigene Hälfte"
+              aria-pressed={deadBallSide === "A"}
+              className={deadBallSide === "A" ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setDeadBallSide("A")}
+              type="button"
+            >
+              A · eigene
+            </button>
+            <button
+              aria-label="Ball tot: B gegnerische Hälfte"
+              aria-pressed={deadBallSide === "B"}
+              className={deadBallSide === "B" ? "sel" : undefined}
+              disabled={posting}
+              onClick={() => setDeadBallSide("B")}
+              type="button"
+            >
+              B · gegnerische
+            </button>
+          </div>
+          <div className="sheetfield">
+            <label className="sheetlabel" htmlFor={deadBallId}>
+              Ball tot bei (0–25)
+            </label>
+            <input
+              autoComplete="off"
+              className="sheetinput sheetinput-num"
+              disabled={posting}
+              id={deadBallId}
+              inputMode="decimal"
+              onChange={(changeEvent) => setDeadBallYards(changeEvent.target.value)}
+              pattern="[0-9.,]*"
+              type="text"
+              value={deadBallYards}
+            />
+          </div>
+          {deadBallInvalid ? (
+            <p className="sheetwarn" role="alert">
+              Die Feldposition liegt zwischen 0 und 25.
+            </p>
+          ) : (
+            <p className="sheetnote">
+              Wo der Spielzug endet – die nächste Serie startet dort.
+              {deadBall === null
+                ? " Ohne Angabe beginnt der neue Angriff an der eigenen 5 (Touchback)."
+                : ` Ballbesitz ab ${spotText(deadBall)}.`}
+            </p>
+          )}
+
+          <h3 className="sheetsection">Details (optional)</h3>
+          <p className="sheetnote">
+            Fangstelle und Return aus Sicht des werfenden Teams: A eigene
+            Hälfte, B angegriffene. Sie ändern den Ballbesitz nicht mehr.
+          </p>
           <div aria-label="Feldhälfte" className="seg" role="group">
             <button
               aria-pressed={catchSide === "A"}
@@ -517,7 +594,7 @@ export default function SeriesSheet({
           </div>
           <div className="sheetfield">
             <label className="sheetlabel" htmlFor={catchId}>
-              Feldposition (0–25)
+              Gefangen an (0–25)
             </label>
             <input
               autoComplete="off"
@@ -535,14 +612,7 @@ export default function SeriesSheet({
             <p className="sheetwarn" role="alert">
               Die Feldposition liegt zwischen 0 und 25.
             </p>
-          ) : (
-            <p className="sheetnote">
-              Fangstelle und Return aus Sicht des werfenden Teams: A eigene
-              Hälfte, B angegriffene. Ohne Angabe beginnt der neue Angriff an
-              der eigenen 5 (Touchback).
-              {deadBall === null ? "" : ` Ballbesitz ab ${spotText(deadBall)}.`}
-            </p>
-          )}
+          ) : null}
           <div className="sheetfield">
             <label className="sheetlabel" htmlFor={returnId}>
               Return-Yards (optional)

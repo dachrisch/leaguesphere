@@ -614,7 +614,7 @@ describe("PlaySheet wizard", () => {
     expect(yards).toHaveProperty("selectionEnd", 1);
   });
 
-  it("records an interception with the catch spot and the return", async () => {
+  it("records an interception with where the play ended", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ lastQuarterback: 12 });
 
@@ -622,11 +622,46 @@ describe("PlaySheet wizard", () => {
     await next(user, 2); // result → qb → interception
     expect(screen.getByText("Trikotnummer Verteidiger (optional)")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Defense 11, Wolf" }));
+    // The ball dies on the intercepting team's own 9 — the spot its series
+    // starts from is the number the official enters (field report 2026-11-18).
+    await user.click(
+      screen.getByRole("button", { name: "Ball tot: A eigene Hälfte" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /Ball tot bei/ }),
+      "9",
+    );
+
+    expect(screen.getByText(/Ballbesitz ab A9/)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ name: "Pass unvollständig" }),
+      expect.objectContaining({
+        name: "Interception",
+        player: 11,
+        payload: expect.objectContaining({
+          deadBall: 9,
+          defense: true,
+        }),
+      }),
+    ]);
+  });
+
+  it("falls back to the catch spot and the return", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Interception" }));
+    await next(user, 2); // result → qb → interception
     // Caught at B4 — in the throwing offence's orientation — and carried 5
     // yards the other way, to B9. The new offence starts on its own 9.
     await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
     await user.type(
-      screen.getByRole("textbox", { name: /Feldposition/ }),
+      screen.getByRole("textbox", { name: /Gefangen an/ }),
       "4",
     );
     await user.type(
@@ -644,12 +679,42 @@ describe("PlaySheet wizard", () => {
       expect.objectContaining({ name: "Pass unvollständig" }),
       expect.objectContaining({
         name: "Interception",
-        player: 11,
         payload: expect.objectContaining({
           deadBall: 9,
           returnYards: 5,
-          defense: true,
         }),
+      }),
+    ]);
+  });
+
+  it("lets the dead-ball spot beat the catch details", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await user.click(screen.getByRole("button", { name: "Interception" }));
+    await next(user, 2); // result → qb → interception
+    // The details still describe the catch, but the play ended on A11.
+    await user.type(
+      screen.getByRole("textbox", { name: /Gefangen an/ }),
+      "4",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /Return-Yards/ }),
+      "5",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /Ball tot bei/ }),
+      "11",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({ name: "Pass unvollständig" }),
+      expect.objectContaining({
+        name: "Interception",
+        payload: expect.objectContaining({ deadBall: 11, returnYards: 5 }),
       }),
     ]);
   });
@@ -660,15 +725,17 @@ describe("PlaySheet wizard", () => {
 
     await user.click(screen.getByRole("button", { name: "Interception" }));
     await next(user, 2); // result → qb → interception
-    await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
+    // The interceptor's opponent's half: 20 yards from the throwing team's
+    // goal line, which the board names B20.
+    await user.click(
+      screen.getByRole("button", { name: "Ball tot: B gegnerische Hälfte" }),
+    );
     await user.type(
-      screen.getByRole("textbox", { name: /Feldposition/ }),
+      screen.getByRole("textbox", { name: /Ball tot bei/ }),
       "20",
     );
 
-    // caught at B20 (the half the throwing offence was attacking) and downed
-    // there: the intercepting team's own 20 is A20
-    expect(screen.getByText(/Ballbesitz ab A20/)).toBeInTheDocument();
+    expect(screen.getByText(/Ballbesitz ab B20/)).toBeInTheDocument();
   });
 
   it("records a pick six without a dead-ball spot", async () => {

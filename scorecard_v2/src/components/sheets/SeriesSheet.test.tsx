@@ -440,7 +440,7 @@ describe("the interception sheet takes the spot and the return", () => {
     // which is B15 in the orientation that now counts.
     await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
     await user.type(
-      screen.getByRole("textbox", { name: /Feldposition/ }),
+      screen.getByRole("textbox", { name: /Gefangen an/ }),
       "20",
     );
     await user.type(
@@ -467,7 +467,7 @@ describe("the interception sheet takes the spot and the return", () => {
     // caught at B4 and returned 5 yards: the new offence starts on A9
     await user.click(screen.getByRole("button", { name: "B · gegnerische" }));
     await user.type(
-      screen.getByRole("textbox", { name: /Feldposition/ }),
+      screen.getByRole("textbox", { name: /Gefangen an/ }),
       "4",
     );
     await user.type(
@@ -494,7 +494,7 @@ describe("the interception spot can change sides", () => {
     await user.click(await screen.findByRole("button", { name: "B · gegnerische" }));
     await user.click(screen.getByRole("button", { name: "A · eigene" }));
     await user.type(
-      screen.getByRole("textbox", { name: /Feldposition/ }),
+      screen.getByRole("textbox", { name: /Gefangen an/ }),
       "20",
     );
     await user.click(screen.getByRole("button", { name: "Speichern" }));
