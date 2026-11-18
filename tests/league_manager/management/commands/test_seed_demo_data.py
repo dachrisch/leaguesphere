@@ -293,6 +293,32 @@ class TestSeedDemoDataFinals:
             assert player.pass_number.startswith("88")
             assert 1990 <= player.person.year_of_birth <= 2001
 
+    def test_finals_teams_have_distinct_surnames(self):
+        # The scorecard roster endpoint sends only the surname
+        # (``GameRosterAPIView._display_name`` -> ``last_name or first_name``),
+        # and the jersey picker plus the play-by-play show it under the number.
+        # A team whose players share one surname therefore reads as a data bug.
+        for snapshot in FINALS_GAMEDAYS:
+            for team_name, team_data in snapshot["teams"].items():
+                surnames = [entry["last_name"] for entry in team_data["passcheck"]]
+                assert len(set(surnames)) == len(surnames), team_name
+
+    def test_roster_names_are_distinct_per_side(self, client, django_user_model):
+        # The symptom the demo showed: every jersey tile of a team carries the
+        # same name, so the referee cannot tell the players apart.
+        call_command("seed_demo_data")
+        client.force_login(django_user_model.objects.create_user("roster-names"))
+
+        for snapshot in FINALS_GAMEDAYS:
+            for game_snapshot in snapshot["games"]:
+                rows = client.get(f"/api/game/{game_snapshot['pk']}/roster").json()
+                for side in ("home", "away"):
+                    names = [row["name"] for row in rows if row["side"] == side]
+                    assert len(set(names)) == len(names), (
+                        game_snapshot["pk"],
+                        side,
+                    )
+
     def test_reseeding_keeps_the_finals_rosters_stable(self):
         call_command("seed_demo_data")
         first = set(

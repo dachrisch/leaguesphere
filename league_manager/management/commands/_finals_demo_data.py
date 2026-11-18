@@ -16,6 +16,11 @@ numbers were replaced with synthetic values generated for this snapshot; the
 jersey numbers, teams and schedule are the real ones, which is what the
 demo/help-video recordings need.  Do not add real names back.
 
+Every player carries a distinct surname.  The scorecard roster
+(``GameRosterAPIView``) sends only ``last_name``, so a surname shared by a
+whole team makes the jersey picker and the play-by-play look like a data bug;
+keep this true when the snapshot is regenerated.
+
 The ``passcheck`` list of each team is the source for the roster the seed
 derives (see ``SeedDemoData._create_finals_roster``): one entry per player with
 the jersey they wore on that gameday.
@@ -92,7 +97,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 1,
                         "first_name": "Alexander",
-                        "last_name": "Albrecht",
+                        "last_name": "Jansen",
                         "sex": 2,
                         "year_of_birth": 1991,
                         "pass_number": "8800001",
@@ -100,7 +105,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 2,
                         "first_name": "Benjamin",
-                        "last_name": "Albrecht",
+                        "last_name": "Haupt",
                         "sex": 2,
                         "year_of_birth": 1992,
                         "pass_number": "8800002",
@@ -108,7 +113,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 3,
                         "first_name": "Christian",
-                        "last_name": "Albrecht",
+                        "last_name": "Schmid",
                         "sex": 2,
                         "year_of_birth": 1993,
                         "pass_number": "8800003",
@@ -116,7 +121,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 4,
                         "first_name": "Daniel",
-                        "last_name": "Albrecht",
+                        "last_name": "Paul",
                         "sex": 2,
                         "year_of_birth": 1994,
                         "pass_number": "8800004",
@@ -124,7 +129,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 5,
                         "first_name": "Elias",
-                        "last_name": "Albrecht",
+                        "last_name": "Braun",
                         "sex": 2,
                         "year_of_birth": 1995,
                         "pass_number": "8800005",
@@ -132,7 +137,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 6,
                         "first_name": "Fabian",
-                        "last_name": "Albrecht",
+                        "last_name": "Sommer",
                         "sex": 2,
                         "year_of_birth": 1996,
                         "pass_number": "8800006",
@@ -140,7 +145,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 7,
                         "first_name": "Gregor",
-                        "last_name": "Albrecht",
+                        "last_name": "Lorenz",
                         "sex": 2,
                         "year_of_birth": 1997,
                         "pass_number": "8800007",
@@ -148,7 +153,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 8,
                         "first_name": "Hannes",
-                        "last_name": "Albrecht",
+                        "last_name": "Dietrich",
                         "sex": 2,
                         "year_of_birth": 1998,
                         "pass_number": "8800008",
@@ -156,7 +161,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 9,
                         "first_name": "Ingo",
-                        "last_name": "Albrecht",
+                        "last_name": "Zimmermann",
                         "sex": 2,
                         "year_of_birth": 1999,
                         "pass_number": "8800009",
@@ -164,7 +169,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 10,
                         "first_name": "Jakob",
-                        "last_name": "Albrecht",
+                        "last_name": "Michel",
                         "sex": 2,
                         "year_of_birth": 2000,
                         "pass_number": "8800010",
@@ -172,7 +177,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 11,
                         "first_name": "Konrad",
-                        "last_name": "Albrecht",
+                        "last_name": "Altmann",
                         "sex": 2,
                         "year_of_birth": 2001,
                         "pass_number": "8800011",
@@ -180,7 +185,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 19,
                         "first_name": "Lukas",
-                        "last_name": "Albrecht",
+                        "last_name": "Hess",
                         "sex": 2,
                         "year_of_birth": 1990,
                         "pass_number": "8800012",
@@ -188,7 +193,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 25,
                         "first_name": "Martin",
-                        "last_name": "Albrecht",
+                        "last_name": "Winkler",
                         "sex": 2,
                         "year_of_birth": 1991,
                         "pass_number": "8800013",
@@ -196,7 +201,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 96,
                         "first_name": "Niklas",
-                        "last_name": "Albrecht",
+                        "last_name": "Falk",
                         "sex": 2,
                         "year_of_birth": 1992,
                         "pass_number": "8800014",
@@ -204,7 +209,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 97,
                         "first_name": "Oliver",
-                        "last_name": "Albrecht",
+                        "last_name": "Ludwig",
                         "sex": 2,
                         "year_of_birth": 1993,
                         "pass_number": "8800015",
@@ -219,7 +224,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 1,
                         "first_name": "Patrick",
-                        "last_name": "Albrecht",
+                        "last_name": "Pohl",
                         "sex": 2,
                         "year_of_birth": 1994,
                         "pass_number": "8800016",
@@ -227,7 +232,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 3,
                         "first_name": "Rafael",
-                        "last_name": "Albrecht",
+                        "last_name": "Römer",
                         "sex": 2,
                         "year_of_birth": 1995,
                         "pass_number": "8800017",
@@ -235,7 +240,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 4,
                         "first_name": "Sebastian",
-                        "last_name": "Albrecht",
+                        "last_name": "Westphal",
                         "sex": 2,
                         "year_of_birth": 1996,
                         "pass_number": "8800018",
@@ -243,7 +248,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 6,
                         "first_name": "Tobias",
-                        "last_name": "Albrecht",
+                        "last_name": "Kluge",
                         "sex": 2,
                         "year_of_birth": 1997,
                         "pass_number": "8800019",
@@ -251,7 +256,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 7,
                         "first_name": "Valentin",
-                        "last_name": "Albrecht",
+                        "last_name": "Böhm",
                         "sex": 2,
                         "year_of_birth": 1998,
                         "pass_number": "8800020",
@@ -259,7 +264,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 8,
                         "first_name": "Alexander",
-                        "last_name": "Bergmann",
+                        "last_name": "Simon",
                         "sex": 2,
                         "year_of_birth": 1999,
                         "pass_number": "8800021",
@@ -267,7 +272,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 10,
                         "first_name": "Benjamin",
-                        "last_name": "Bergmann",
+                        "last_name": "Herrmann",
                         "sex": 2,
                         "year_of_birth": 2000,
                         "pass_number": "8800022",
@@ -275,7 +280,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 14,
                         "first_name": "Christian",
-                        "last_name": "Bergmann",
+                        "last_name": "Roth",
                         "sex": 2,
                         "year_of_birth": 2001,
                         "pass_number": "8800023",
@@ -283,7 +288,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 15,
                         "first_name": "Daniel",
-                        "last_name": "Bergmann",
+                        "last_name": "Dahmen",
                         "sex": 2,
                         "year_of_birth": 1990,
                         "pass_number": "8800024",
@@ -291,7 +296,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 16,
                         "first_name": "Elias",
-                        "last_name": "Bergmann",
+                        "last_name": "Neumann",
                         "sex": 2,
                         "year_of_birth": 1991,
                         "pass_number": "8800025",
@@ -299,7 +304,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 18,
                         "first_name": "Fabian",
-                        "last_name": "Bergmann",
+                        "last_name": "Jäger",
                         "sex": 2,
                         "year_of_birth": 1992,
                         "pass_number": "8800026",
@@ -307,7 +312,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 22,
                         "first_name": "Gregor",
-                        "last_name": "Bergmann",
+                        "last_name": "Ernst",
                         "sex": 2,
                         "year_of_birth": 1993,
                         "pass_number": "8800027",
@@ -315,7 +320,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 25,
                         "first_name": "Hannes",
-                        "last_name": "Bergmann",
+                        "last_name": "Franz",
                         "sex": 2,
                         "year_of_birth": 1994,
                         "pass_number": "8800028",
@@ -323,7 +328,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 26,
                         "first_name": "Ingo",
-                        "last_name": "Bergmann",
+                        "last_name": "Wilke",
                         "sex": 2,
                         "year_of_birth": 1995,
                         "pass_number": "8800029",
@@ -338,7 +343,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 0,
                         "first_name": "Jakob",
-                        "last_name": "Bergmann",
+                        "last_name": "Meier",
                         "sex": 2,
                         "year_of_birth": 1996,
                         "pass_number": "8800030",
@@ -346,7 +351,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 1,
                         "first_name": "Konrad",
-                        "last_name": "Bergmann",
+                        "last_name": "Hofmann",
                         "sex": 2,
                         "year_of_birth": 1997,
                         "pass_number": "8800031",
@@ -354,7 +359,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 4,
                         "first_name": "Lukas",
-                        "last_name": "Bergmann",
+                        "last_name": "Weiß",
                         "sex": 2,
                         "year_of_birth": 1998,
                         "pass_number": "8800032",
@@ -362,7 +367,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 7,
                         "first_name": "Martin",
-                        "last_name": "Bergmann",
+                        "last_name": "Hahn",
                         "sex": 2,
                         "year_of_birth": 1999,
                         "pass_number": "8800033",
@@ -370,7 +375,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 11,
                         "first_name": "Niklas",
-                        "last_name": "Bergmann",
+                        "last_name": "Riedel",
                         "sex": 2,
                         "year_of_birth": 2000,
                         "pass_number": "8800034",
@@ -378,7 +383,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 13,
                         "first_name": "Oliver",
-                        "last_name": "Bergmann",
+                        "last_name": "Kraus",
                         "sex": 2,
                         "year_of_birth": 2001,
                         "pass_number": "8800035",
@@ -386,7 +391,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 14,
                         "first_name": "Patrick",
-                        "last_name": "Bergmann",
+                        "last_name": "Schrader",
                         "sex": 2,
                         "year_of_birth": 1990,
                         "pass_number": "8800036",
@@ -394,7 +399,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 15,
                         "first_name": "Rafael",
-                        "last_name": "Bergmann",
+                        "last_name": "Behrens",
                         "sex": 2,
                         "year_of_birth": 1991,
                         "pass_number": "8800037",
@@ -402,7 +407,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 16,
                         "first_name": "Sebastian",
-                        "last_name": "Bergmann",
+                        "last_name": "Werner",
                         "sex": 2,
                         "year_of_birth": 1992,
                         "pass_number": "8800038",
@@ -410,7 +415,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 19,
                         "first_name": "Tobias",
-                        "last_name": "Bergmann",
+                        "last_name": "Dreher",
                         "sex": 2,
                         "year_of_birth": 1993,
                         "pass_number": "8800039",
@@ -418,7 +423,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 21,
                         "first_name": "Valentin",
-                        "last_name": "Bergmann",
+                        "last_name": "Mayer",
                         "sex": 2,
                         "year_of_birth": 1994,
                         "pass_number": "8800040",
@@ -426,7 +431,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 26,
                         "first_name": "Alexander",
-                        "last_name": "Conrad",
+                        "last_name": "Merz",
                         "sex": 2,
                         "year_of_birth": 1995,
                         "pass_number": "8800041",
@@ -434,7 +439,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 27,
                         "first_name": "Benjamin",
-                        "last_name": "Conrad",
+                        "last_name": "Kern",
                         "sex": 2,
                         "year_of_birth": 1996,
                         "pass_number": "8800042",
@@ -442,7 +447,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 44,
                         "first_name": "Christian",
-                        "last_name": "Conrad",
+                        "last_name": "Schmitt",
                         "sex": 2,
                         "year_of_birth": 1997,
                         "pass_number": "8800043",
@@ -450,7 +455,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 48,
                         "first_name": "Daniel",
-                        "last_name": "Conrad",
+                        "last_name": "Schuler",
                         "sex": 2,
                         "year_of_birth": 1998,
                         "pass_number": "8800044",
@@ -465,7 +470,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 0,
                         "first_name": "Elias",
-                        "last_name": "Conrad",
+                        "last_name": "Wolff",
                         "sex": 2,
                         "year_of_birth": 1999,
                         "pass_number": "8800045",
@@ -473,7 +478,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 2,
                         "first_name": "Fabian",
-                        "last_name": "Conrad",
+                        "last_name": "Jung",
                         "sex": 2,
                         "year_of_birth": 2000,
                         "pass_number": "8800046",
@@ -481,7 +486,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 3,
                         "first_name": "Gregor",
-                        "last_name": "Conrad",
+                        "last_name": "Voigt",
                         "sex": 2,
                         "year_of_birth": 2001,
                         "pass_number": "8800047",
@@ -489,7 +494,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 5,
                         "first_name": "Hannes",
-                        "last_name": "Conrad",
+                        "last_name": "Scherer",
                         "sex": 2,
                         "year_of_birth": 1990,
                         "pass_number": "8800048",
@@ -497,7 +502,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 6,
                         "first_name": "Ingo",
-                        "last_name": "Conrad",
+                        "last_name": "Otto",
                         "sex": 2,
                         "year_of_birth": 1991,
                         "pass_number": "8800049",
@@ -505,7 +510,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 8,
                         "first_name": "Jakob",
-                        "last_name": "Conrad",
+                        "last_name": "Bartels",
                         "sex": 2,
                         "year_of_birth": 1992,
                         "pass_number": "8800050",
@@ -513,7 +518,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 21,
                         "first_name": "Konrad",
-                        "last_name": "Conrad",
+                        "last_name": "Barth",
                         "sex": 2,
                         "year_of_birth": 1993,
                         "pass_number": "8800051",
@@ -521,7 +526,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 22,
                         "first_name": "Lukas",
-                        "last_name": "Conrad",
+                        "last_name": "Frank",
                         "sex": 2,
                         "year_of_birth": 1994,
                         "pass_number": "8800052",
@@ -529,7 +534,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 23,
                         "first_name": "Martin",
-                        "last_name": "Conrad",
+                        "last_name": "Krüger",
                         "sex": 2,
                         "year_of_birth": 1995,
                         "pass_number": "8800053",
@@ -537,7 +542,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 28,
                         "first_name": "Niklas",
-                        "last_name": "Conrad",
+                        "last_name": "Scholz",
                         "sex": 2,
                         "year_of_birth": 1996,
                         "pass_number": "8800054",
@@ -545,7 +550,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 32,
                         "first_name": "Oliver",
-                        "last_name": "Conrad",
+                        "last_name": "Friedrich",
                         "sex": 2,
                         "year_of_birth": 1997,
                         "pass_number": "8800055",
@@ -553,7 +558,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 77,
                         "first_name": "Patrick",
-                        "last_name": "Conrad",
+                        "last_name": "Fuchs",
                         "sex": 2,
                         "year_of_birth": 1998,
                         "pass_number": "8800056",
@@ -561,7 +566,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 87,
                         "first_name": "Rafael",
-                        "last_name": "Conrad",
+                        "last_name": "Mann",
                         "sex": 2,
                         "year_of_birth": 1999,
                         "pass_number": "8800057",
@@ -569,7 +574,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 88,
                         "first_name": "Sebastian",
-                        "last_name": "Conrad",
+                        "last_name": "Winter",
                         "sex": 2,
                         "year_of_birth": 2000,
                         "pass_number": "8800058",
@@ -577,7 +582,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 96,
                         "first_name": "Tobias",
-                        "last_name": "Conrad",
+                        "last_name": "Kaiser",
                         "sex": 2,
                         "year_of_birth": 2001,
                         "pass_number": "8800059",
@@ -636,7 +641,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 4,
                         "first_name": "Amelie",
-                        "last_name": "Albrecht",
+                        "last_name": "Dörr",
                         "sex": 1,
                         "year_of_birth": 1990,
                         "pass_number": "8800060",
@@ -644,7 +649,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 7,
                         "first_name": "Bettina",
-                        "last_name": "Albrecht",
+                        "last_name": "Schulte",
                         "sex": 1,
                         "year_of_birth": 1991,
                         "pass_number": "8800061",
@@ -652,7 +657,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 8,
                         "first_name": "Carina",
-                        "last_name": "Albrecht",
+                        "last_name": "Maier",
                         "sex": 1,
                         "year_of_birth": 1992,
                         "pass_number": "8800062",
@@ -660,7 +665,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 9,
                         "first_name": "Diana",
-                        "last_name": "Albrecht",
+                        "last_name": "Breuer",
                         "sex": 1,
                         "year_of_birth": 1993,
                         "pass_number": "8800063",
@@ -668,7 +673,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 10,
                         "first_name": "Elisa",
-                        "last_name": "Albrecht",
+                        "last_name": "Möller",
                         "sex": 1,
                         "year_of_birth": 1994,
                         "pass_number": "8800064",
@@ -676,7 +681,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 12,
                         "first_name": "Franziska",
-                        "last_name": "Albrecht",
+                        "last_name": "Stein",
                         "sex": 1,
                         "year_of_birth": 1995,
                         "pass_number": "8800065",
@@ -684,7 +689,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 14,
                         "first_name": "Greta",
-                        "last_name": "Albrecht",
+                        "last_name": "Schäfer",
                         "sex": 1,
                         "year_of_birth": 1996,
                         "pass_number": "8800066",
@@ -692,7 +697,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 17,
                         "first_name": "Helena",
-                        "last_name": "Albrecht",
+                        "last_name": "Walter",
                         "sex": 1,
                         "year_of_birth": 1997,
                         "pass_number": "8800067",
@@ -700,7 +705,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 19,
                         "first_name": "Ida",
-                        "last_name": "Albrecht",
+                        "last_name": "Wegner",
                         "sex": 1,
                         "year_of_birth": 1998,
                         "pass_number": "8800068",
@@ -708,7 +713,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 21,
                         "first_name": "Jana",
-                        "last_name": "Albrecht",
+                        "last_name": "Busch",
                         "sex": 1,
                         "year_of_birth": 1999,
                         "pass_number": "8800069",
@@ -716,7 +721,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 22,
                         "first_name": "Katharina",
-                        "last_name": "Albrecht",
+                        "last_name": "Sturm",
                         "sex": 1,
                         "year_of_birth": 2000,
                         "pass_number": "8800070",
@@ -724,7 +729,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 23,
                         "first_name": "Lena",
-                        "last_name": "Albrecht",
+                        "last_name": "Vogt",
                         "sex": 1,
                         "year_of_birth": 2001,
                         "pass_number": "8800071",
@@ -732,7 +737,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 26,
                         "first_name": "Marlene",
-                        "last_name": "Albrecht",
+                        "last_name": "Engel",
                         "sex": 1,
                         "year_of_birth": 1990,
                         "pass_number": "8800072",
@@ -740,7 +745,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 27,
                         "first_name": "Nina",
-                        "last_name": "Albrecht",
+                        "last_name": "Lehmann",
                         "sex": 1,
                         "year_of_birth": 1991,
                         "pass_number": "8800073",
@@ -748,7 +753,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 33,
                         "first_name": "Olivia",
-                        "last_name": "Albrecht",
+                        "last_name": "Seidel",
                         "sex": 1,
                         "year_of_birth": 1992,
                         "pass_number": "8800074",
@@ -763,7 +768,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 1,
                         "first_name": "Paula",
-                        "last_name": "Albrecht",
+                        "last_name": "Ritter",
                         "sex": 1,
                         "year_of_birth": 1993,
                         "pass_number": "8800075",
@@ -771,7 +776,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 4,
                         "first_name": "Ronja",
-                        "last_name": "Albrecht",
+                        "last_name": "Schiller",
                         "sex": 1,
                         "year_of_birth": 1994,
                         "pass_number": "8800076",
@@ -779,7 +784,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 7,
                         "first_name": "Sophie",
-                        "last_name": "Albrecht",
+                        "last_name": "Brunner",
                         "sex": 1,
                         "year_of_birth": 1995,
                         "pass_number": "8800077",
@@ -787,7 +792,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 9,
                         "first_name": "Theresa",
-                        "last_name": "Albrecht",
+                        "last_name": "Kremer",
                         "sex": 1,
                         "year_of_birth": 1996,
                         "pass_number": "8800078",
@@ -795,7 +800,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 10,
                         "first_name": "Vera",
-                        "last_name": "Albrecht",
+                        "last_name": "Huber",
                         "sex": 1,
                         "year_of_birth": 1997,
                         "pass_number": "8800079",
@@ -803,7 +808,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 11,
                         "first_name": "Amelie",
-                        "last_name": "Bergmann",
+                        "last_name": "Ziegler",
                         "sex": 1,
                         "year_of_birth": 1998,
                         "pass_number": "8800080",
@@ -811,7 +816,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 12,
                         "first_name": "Bettina",
-                        "last_name": "Bergmann",
+                        "last_name": "Thiel",
                         "sex": 1,
                         "year_of_birth": 1999,
                         "pass_number": "8800081",
@@ -819,7 +824,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 14,
                         "first_name": "Carina",
-                        "last_name": "Bergmann",
+                        "last_name": "Kuhn",
                         "sex": 1,
                         "year_of_birth": 2000,
                         "pass_number": "8800082",
@@ -827,7 +832,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 16,
                         "first_name": "Diana",
-                        "last_name": "Bergmann",
+                        "last_name": "Beckmann",
                         "sex": 1,
                         "year_of_birth": 2001,
                         "pass_number": "8800083",
@@ -835,7 +840,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 18,
                         "first_name": "Elisa",
-                        "last_name": "Bergmann",
+                        "last_name": "Sauer",
                         "sex": 1,
                         "year_of_birth": 1990,
                         "pass_number": "8800084",
@@ -843,7 +848,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 19,
                         "first_name": "Franziska",
-                        "last_name": "Bergmann",
+                        "last_name": "Groß",
                         "sex": 1,
                         "year_of_birth": 1991,
                         "pass_number": "8800085",
@@ -851,7 +856,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 23,
                         "first_name": "Greta",
-                        "last_name": "Bergmann",
+                        "last_name": "Ackermann",
                         "sex": 1,
                         "year_of_birth": 1992,
                         "pass_number": "8800086",
@@ -859,7 +864,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 24,
                         "first_name": "Helena",
-                        "last_name": "Bergmann",
+                        "last_name": "Ulrich",
                         "sex": 1,
                         "year_of_birth": 1993,
                         "pass_number": "8800087",
@@ -867,7 +872,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 28,
                         "first_name": "Ida",
-                        "last_name": "Bergmann",
+                        "last_name": "Geiger",
                         "sex": 1,
                         "year_of_birth": 1994,
                         "pass_number": "8800088",
@@ -875,7 +880,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 31,
                         "first_name": "Jana",
-                        "last_name": "Bergmann",
+                        "last_name": "Fink",
                         "sex": 1,
                         "year_of_birth": 1995,
                         "pass_number": "8800089",
@@ -890,7 +895,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 11,
                         "first_name": "Katharina",
-                        "last_name": "Bergmann",
+                        "last_name": "Marquardt",
                         "sex": 1,
                         "year_of_birth": 1996,
                         "pass_number": "8800090",
@@ -898,7 +903,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 13,
                         "first_name": "Lena",
-                        "last_name": "Bergmann",
+                        "last_name": "Pfeiffer",
                         "sex": 1,
                         "year_of_birth": 1997,
                         "pass_number": "8800091",
@@ -906,7 +911,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 17,
                         "first_name": "Marlene",
-                        "last_name": "Bergmann",
+                        "last_name": "Keller",
                         "sex": 1,
                         "year_of_birth": 1998,
                         "pass_number": "8800092",
@@ -914,7 +919,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 21,
                         "first_name": "Nina",
-                        "last_name": "Bergmann",
+                        "last_name": "Lang",
                         "sex": 1,
                         "year_of_birth": 1999,
                         "pass_number": "8800093",
@@ -922,7 +927,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 27,
                         "first_name": "Olivia",
-                        "last_name": "Bergmann",
+                        "last_name": "Graf",
                         "sex": 1,
                         "year_of_birth": 2000,
                         "pass_number": "8800094",
@@ -930,7 +935,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 33,
                         "first_name": "Paula",
-                        "last_name": "Bergmann",
+                        "last_name": "Bachmann",
                         "sex": 1,
                         "year_of_birth": 2001,
                         "pass_number": "8800095",
@@ -938,7 +943,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 42,
                         "first_name": "Ronja",
-                        "last_name": "Bergmann",
+                        "last_name": "Baumann",
                         "sex": 1,
                         "year_of_birth": 1990,
                         "pass_number": "8800096",
@@ -946,7 +951,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 44,
                         "first_name": "Sophie",
-                        "last_name": "Bergmann",
+                        "last_name": "Brand",
                         "sex": 1,
                         "year_of_birth": 1991,
                         "pass_number": "8800097",
@@ -954,7 +959,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 72,
                         "first_name": "Theresa",
-                        "last_name": "Bergmann",
+                        "last_name": "König",
                         "sex": 1,
                         "year_of_birth": 1992,
                         "pass_number": "8800098",
@@ -962,7 +967,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 77,
                         "first_name": "Vera",
-                        "last_name": "Bergmann",
+                        "last_name": "Gärtner",
                         "sex": 1,
                         "year_of_birth": 1993,
                         "pass_number": "8800099",
@@ -970,7 +975,7 @@ FINALS_GAMEDAYS = [
                     {
                         "jersey": 82,
                         "first_name": "Amelie",
-                        "last_name": "Conrad",
+                        "last_name": "Stephan",
                         "sex": 1,
                         "year_of_birth": 1994,
                         "pass_number": "8800100",
