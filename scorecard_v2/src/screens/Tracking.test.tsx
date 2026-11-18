@@ -1201,7 +1201,9 @@ describe("undoing an extra point asks again", () => {
     answerAppend(original);
     renderTracking({ log: original });
 
-    await clickUndo(/Rückgängig: 1 Extrapunkt Ravens/);
+    // A miss is named as one in the log ("… nicht verwandelt …"), so the undo
+    // button that reopens the prompt carries that label.
+    await clickUndo(/Rückgängig: 1 Extrapunkt nicht verwandelt Ravens/);
 
     expect(
       await screen.findByRole("group", { name: "Extrapunkt Ravens" }),
@@ -1429,10 +1431,11 @@ describe("the touchdown's Raumgewinn", () => {
     const sheet = await openPlay(user, "Run");
     await wizardNext(user); // type → result
     await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user, 2); // distance → player
+    await wizardNext(user); // result → player (the field position comes last)
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
+    await wizardNext(user); // player → field position, pre-filled with the gain
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
     );
