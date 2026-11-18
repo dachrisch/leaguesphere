@@ -66,6 +66,19 @@ describe("HalftimeSheet", () => {
     expect(onSecondHalf).toHaveBeenCalledTimes(1);
   });
 
+  it("closes the sheet from the countdown when no second half is wired", async () => {
+    const user = userEvent.setup();
+    const { onClose } = renderSheet({ startedAt: Date.now() });
+
+    // The caller that does not start the second half still gets a way out of
+    // the running break.
+    await user.click(
+      screen.getByRole("button", { name: "2. Halbzeit starten" }),
+    );
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the coin toss, who starts and each team's second-half direction", () => {
     renderSheet({ setup: SETUP });
 

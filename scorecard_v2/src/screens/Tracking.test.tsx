@@ -2854,6 +2854,56 @@ describe("Tracking extra point after the try", () => {
     expect(apiPostMock.mock.calls.length).toBe(writes);
   });
 
+  it("goes back from the jersey step to the try result without writing", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    const writes = sentWrites().length;
+    await user.click(within(pat).getByRole("button", { name: "+1" }));
+    await user.click(
+      within(
+        screen.getByRole("dialog", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "Zurück" }),
+    );
+
+    // Back to the open try, not out of it: the result is still undecided.
+    expect(
+      screen.queryByRole("dialog", { name: "Extrapunkt Ravens" }),
+    ).toBeNull();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "Gegner +2" }),
+    ).toBeInTheDocument();
+    expect(sentWrites().length).toBe(writes);
+  });
+
+  it("closes the defensive try sheet with Schließen and keeps the try open", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    await user.click(within(pat).getByRole("button", { name: "Gegner +2" }));
+    const sheet = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+    await user.click(within(sheet).getByRole("button", { name: "Schließen" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "Gegner +2 · Wolves" }),
+    ).toBeNull();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "Gegner +2" }),
+    ).toBeInTheDocument();
+  });
+
   it("records the missed try in a value-0 row and hands the ball over", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
@@ -2959,6 +3009,34 @@ describe("Tracking extra point after the try", () => {
     // Nothing written, nothing decided: the try is still open.
     expect(
       within(pat).getByRole("button", { name: "nicht verwandelt" }),
+    ).toBeInTheDocument();
+    expect(sentWrites().length).toBe(writes);
+  });
+
+  it("returns to the try result with Zurück from the miss step", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    const writes = sentWrites().length;
+    await user.click(within(pat).getByRole("button", { name: "nicht verwandelt" }));
+    await user.click(
+      within(
+        screen.getByRole("dialog", { name: /nicht verwandelt/ }),
+      ).getByRole("button", { name: "Zurück" }),
+    );
+
+    // The miss details are optional: leaving them returns to the result, it
+    // does not leave the try.
+    expect(
+      screen.queryByRole("dialog", { name: /nicht verwandelt/ }),
+    ).toBeNull();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "nicht verwandelt" }),
     ).toBeInTheDocument();
     expect(sentWrites().length).toBe(writes);
   });
