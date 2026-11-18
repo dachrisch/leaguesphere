@@ -38,6 +38,8 @@ SIDES = ("offense", "defense")
 PENALTY_FIELDS = (
     "code",
     "name",
+    "short",
+    "name_en",
     "subtext",
     "yards",
     "down",
@@ -170,6 +172,14 @@ def _validate(definition: dict[str, Any], name: str) -> None:
             fail(f"penalties[{index}].enforcement {row['enforcement']!r} is invalid")
         if row["side"] not in SIDES:
             fail(f"penalties[{index}].side {row['side']!r} is invalid")
+        for key in ("short", "name_en"):
+            if not isinstance(row[key], str) or row[key].strip() == "":
+                fail(f"penalties[{index}].{key} must be a non-empty string")
+        aliases = row.get("aliases", [])
+        if not isinstance(aliases, list) or any(
+            not isinstance(alias, str) or alias.strip() == "" for alias in aliases
+        ):
+            fail(f"penalties[{index}].aliases must be a list of non-empty strings")
         if not isinstance(row["yards"], int) or row["yards"] < 0:
             fail(f"penalties[{index}].yards must be a whole number >= 0")
         if row["yards"] > field["length"]:

@@ -1029,6 +1029,14 @@ button.game-row:active {
   gap: var(--space-2);
 }
 
+/* The play's result: one short row for what the play was, a second for how it
+   scored or ended. Tiles keep their full touch height instead of shrinking to
+   fit six labels into one grid. */
+.segresults {
+  display: grid;
+  gap: var(--space-2);
+}
+
 /* Three short choices (the penalty's next down); the labels wrap rather than
    shrinking below the touch target. */
 .seg.seg-three {
@@ -1922,6 +1930,46 @@ button.game-row:active {
   background: var(--fill-soft);
 }
 
+/* The scoring icon follows the team that scored: home red, guests green. */
+.ev-home {
+  color: var(--home-text);
+  background: var(--home-wash);
+  border-color: color-mix(in srgb, var(--home) 30%, transparent);
+}
+
+.ev-away {
+  color: var(--away-text);
+  background: var(--away-wash);
+  border-color: color-mix(in srgb, var(--away) 30%, transparent);
+}
+
+/* A scoring row is washed in its team's colour across the whole line. */
+.row-home {
+  background: var(--home-wash);
+}
+
+.row-away {
+  background: var(--away-wash);
+}
+
+/* A failed try stays in "Nur Punkte", greyed out: the attempt is history,
+   the points are not. */
+.row.miss {
+  background: var(--fill-soft);
+}
+
+.row.miss .ev {
+  color: var(--muted);
+  background: var(--panel2);
+  border-color: var(--line);
+}
+
+.row.miss .rowprimary,
+.row.miss .rowsub,
+.row.miss .rowtime {
+  color: var(--muted);
+}
+
 .rowmain {
   display: flex;
   flex-direction: column;
@@ -2450,6 +2498,22 @@ button.game-row:active {
   }
 }
 
+/* Pass and Run are the two entries of almost every snap: two large buttons,
+   not the four small tiles the play group used to hold. */
+.spielzuggrid-plays {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.spielzuggrid-plays .action {
+  min-height: 92px;
+  font-size: var(--fs-md);
+}
+
+.spielzuggrid-plays .action-icon {
+  width: 26px;
+  height: 26px;
+}
+
 /* The number that picks a tile from the keyboard: only a device with a
    keyboard shows it, as the board's own hints do. */
 .spielzugkey {
@@ -2553,9 +2617,38 @@ button.game-row:active {
 }
 
 .sheettitle {
+  flex: 1 1 auto;
   min-width: 0;
   font-size: var(--fs-xl);
   letter-spacing: -0.01em;
+}
+
+/* The way back to the previous popup; the close button stays "leave all". */
+.sheetbackhead {
+  flex: 0 0 auto;
+  min-height: var(--touch);
+  padding: 0 var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.sheetbackhead:hover {
+  color: var(--fg);
+  background: var(--fill-soft);
+}
+
+.sheetbackhead[aria-disabled="true"] {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sheetbackhead[aria-disabled="true"]:hover {
+  color: var(--muted);
+  background: none;
 }
 
 .sheetclose {
@@ -2977,6 +3070,23 @@ button.game-row:active {
   font-size: var(--fs-xs);
   color: var(--muted);
   white-space: nowrap;
+}
+
+/* The officials' short code, the same one the search index answers to. */
+.penaltyshort {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.penalty.sel .penaltyshort {
+  color: var(--on-strong);
+  border-color: color-mix(in srgb, var(--on-strong) 40%, transparent);
 }
 
 .penaltymore {

@@ -533,6 +533,14 @@ export function penaltyOf(row: LogRow): PenaltySpot | null {
  * an undo rewinds the series. A penalty moves the spot and the down chain
  * without changing possession; a later **Feldposition** row always wins the
  * spot — and, being a correction, keeps the down the log has reached so far.
+ *
+ * A penalty or a **Feldposition** row is applied when the *next* row is known,
+ * not where it sits in the log. The possession change is not a row (it is the
+ * screen's `possession`), so the rows between the old drive's last play and
+ * the new team's first play belong to the **new** series: resetting to A5
+ * first and enforcing them afterwards keeps the spot they set (field report
+ * 2026-11-18: a penalty put Team A on A2,5, its 7,5-yard run then showed as
+ * A12,5 because the reset discarded the penalty).
  */
 export function driveAfter(
   rows: LogRow[],
@@ -541,26 +549,11 @@ export function driveAfter(
 ): DriveState {
   let state: DriveState = firstAndTen(g);
   let lastTeam: string | null = null;
+  /** The rows that move the ball without being a play, held until it is clear
+   * which series they belong to (see the function comment). */
+  let held: LogRow[] = [];
 
-  for (const row of [...rows].reverse()) {
-    if (row.isDeleted) {
-      continue;
-    }
-    if (row.event === "Touchdown") {
-      // The try belongs to the scoring team; the ball only changes hands when
-      // its result (or a miss, which the screen writes as a possession change)
-      // ends it.
-      state = tryAt(g.fieldLength - TRY_ONE, g);
-      lastTeam = row.team;
-      continue;
-    }
-    if (TRY_RESULT_EVENTS.has(row.event)) {
-      // +1/+2 ends the try; the kickoff hands the ball to the other team, so
-      // the next series starts at the own 5.
-      state = firstAndTen(g);
-      lastTeam = row.team;
-      continue;
-    }
+  const applyHeldRow = (row: LogRow): void => {
     if (row.event === FIELD_EVENT) {
       const ballOn = spotOf(row, g);
       if (ballOn !== null) {
@@ -578,56 +571,103 @@ export function driveAfter(
             : placeBall(state, ballOn, g, explicit);
       }
       lastTeam = row.team;
+      return;
+    }
+    const penalty = penaltyOf(row);
+    if (penalty !== null) {
+      state = applyPenalty(state, penalty.yardage, penalty.nextDown, g);
+    }
+  };
+
+  const flush = (): void => {
+    for (const row of held) {
+      applyHeldRow(row);
+    }
+    held = [];
+  };
+
+  for (const row of [...rows].reverse()) {
+    if (row.isDeleted) {
+      continue;
+    }
+    if (row.event === FIELD_EVENT || row.event === PENALTY_EVENT) {
+      held.push(row);
+      continue;
+    }
+    if (row.event === "Touchdown") {
+      // The try belongs to the scoring team; the ball only changes hands when
+      // its result (or a miss, which the screen writes as a possession change)
+      // ends it.
+      flush();
+      state = tryAt(g.fieldLength - TRY_ONE, g);
+      lastTeam = row.team;
+      continue;
+    }
+    if (TRY_RESULT_EVENTS.has(row.event)) {
+      // +1/+2 ends the try; the kickoff hands the ball to the other team, so
+      // the next series starts at the own 5.
+      flush();
+      state = firstAndTen(g);
+      lastTeam = row.team;
       continue;
     }
     if (row.event === FIRST_DOWN_EVENT) {
+      flush();
       state = seriesAt(state.ballOn ?? g.seriesStart, g);
       lastTeam = row.team;
       continue;
     }
-    if (row.event === PENALTY_EVENT) {
-      const penalty = penaltyOf(row);
-      if (penalty !== null) {
-        state = applyPenalty(state, penalty.yardage, penalty.nextDown, g);
+    if (PLAY_EVENTS.has(row.event)) {
+      if (lastTeam !== null && row.team !== lastTeam) {
+        // A new possession without a marker: the new offence starts at A5 —
+        // and only then the rows it already brought apply (its penalty, its
+        // corrected spot).
+        state = firstAndTen(g);
       }
+      flush();
+      state = advance(state, yardsOf(row), g);
+      lastTeam = row.team;
       continue;
     }
-    if (!PLAY_EVENTS.has(row.event)) {
-      if (KICKOFF_EVENTS.has(row.event)) {
-        state = firstAndTen(g);
-        lastTeam = null;
-      } else if (row.event === OVERTIME_EVENT) {
-        state = seriesToGoal(g.middle, g);
-        lastTeam = row.team;
-      } else if (row.event === "Interception") {
-        // R 5-1-1: the new series starts at the dead-ball spot, not at the own
-        // 5. The spot is the intercepting team's own-goal-based position; the
-        // sheet writes it, and an older row without one falls back to the own
-        // 5 (which is exactly a touchback).
-        state = seriesAt(interceptionSpot(row, g), g);
-        lastTeam = row.team;
-      } else if (TURNOVER_EVENTS.has(row.event)) {
-        state = firstAndTen(g);
-        lastTeam = row.team;
-      } else if (SAFETY_EVENTS.has(row.event)) {
-        // The defence scored and receives the free kick: the next series is
-        // theirs, from their own 5.
-        state = firstAndTen(g);
-        lastTeam = row.team;
-      }
-      continue;
-    }
-    if (lastTeam !== null && row.team !== lastTeam) {
-      // A new possession without a marker: the new offence starts at A5.
+    flush();
+    if (KICKOFF_EVENTS.has(row.event)) {
       state = firstAndTen(g);
+      lastTeam = null;
+    } else if (row.event === OVERTIME_EVENT) {
+      state = seriesToGoal(g.middle, g);
+      lastTeam = row.team;
+    } else if (row.event === "Interception") {
+      // R 5-1-1: the new series starts at the dead-ball spot, not at the own
+      // 5. The spot is the intercepting team's own-goal-based position; the
+      // sheet writes it, and an older row without one falls back to the own
+      // 5 (which is exactly a touchback).
+      state = seriesAt(interceptionSpot(row, g), g);
+      lastTeam = row.team;
+    } else if (TURNOVER_EVENTS.has(row.event)) {
+      state = firstAndTen(g);
+      lastTeam = row.team;
+    } else if (SAFETY_EVENTS.has(row.event)) {
+      // The defence scored and receives the free kick: the next series is
+      // theirs, from their own 5.
+      state = firstAndTen(g);
+      lastTeam = row.team;
     }
-    state = advance(state, yardsOf(row), g);
-    lastTeam = row.team;
   }
 
-  // A missed try writes no row; the possession change is what ends it. Until
-  // the next series starts (a play resets on the team change), the bar must
-  // not keep claiming the try while the other team has the ball.
+  // The tail belongs to the possession the screen knows: when the log's last
+  // play was the other team's, the ball is already with the new team, so its
+  // held rows apply to a fresh series at A5. The open try is the exception —
+  // it ends on the possession change, not on a row (a miss writes none).
+  if (
+    state.phase !== "try" &&
+    possession !== null &&
+    lastTeam !== null &&
+    possession !== lastTeam
+  ) {
+    state = firstAndTen(g);
+  }
+  flush();
+
   if (
     state.phase === "try" &&
     possession !== null &&

@@ -336,6 +336,33 @@ describe("driveAfter", () => {
     expect(drive).toEqual({ down: 2, toGo: 16, ballOn: 9, goal: false });
   });
 
+  it("keeps the spot a penalty set for the new possession", () => {
+    // Field report 2026-11-18: Team A's first series began on A2,5 after a
+    // penalty from the previous drive. The first play of A reset the ball to
+    // A5 before counting its yards, so the board said A12,5 while the play's
+    // own row said A10 (7,5 yards from A2,5).
+    const drive = driveAfter([
+      run(7.5, "Ravens"),
+      penalty(-5, "first_down", "Ravens"),
+      run(0, "Wolves"),
+    ]);
+
+    expect(drive).toEqual({ down: 2, toGo: 15, ballOn: 10, goal: false });
+    expect(`${driveText(drive)}${driveSpotText(drive)}`).toBe("2nd & M · A10");
+  });
+
+  it("starts the new possession before enforcing its penalty", () => {
+    // No play of the new team yet: the board already shows its first series,
+    // so the penalty has to be enforced from A5 - not from the old spot.
+    const drive = driveAfter(
+      [penalty(-5, "first_down", "Ravens"), run(20, "Wolves")],
+      DEFAULT_GEOMETRY,
+      "Ravens",
+    );
+
+    expect(drive).toEqual({ down: 1, toGo: 22.5, ballOn: 2.5, goal: false });
+  });
+
   it("starts over at A5 after a turnover", () => {
     expect(
       driveAfter([row({ key: "to", event: "Turnover", cop: true }), run(8)]),

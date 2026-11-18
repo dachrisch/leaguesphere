@@ -22,7 +22,6 @@ import type {
 } from "../api/types";
 import {
   forgetBreak,
-  intermissionSeconds,
   readBreakStart,
   rememberBreakStart,
   secondsLeft,
@@ -38,11 +37,14 @@ import {
   TRY_ONE,
   TRY_TWO,
 } from "../app/drive";
-import { readQuarterback, rememberQuarterback } from "../app/quarterback";
+import {
+  readQuarterback,
+  rememberQuarterback,
+  setQuarterback,
+} from "../app/quarterback";
 import { timeoutBudget, timeoutText } from "../app/timeouts";
 import { confirmTap, useWakeLock } from "../app/sideline";
 import AppHeader from "../components/AppHeader";
-import BreakCountdown from "../components/BreakCountdown";
 import EventLog, {
   isMarker,
   logRows,
@@ -96,6 +98,7 @@ import TouchdownSheet from "../components/sheets/TouchdownSheet";
 import TimeoutSheet from "../components/sheets/TimeoutSheet";
 import HalftimeSheet from "../components/sheets/HalftimeSheet";
 import MissedPatSheet from "../components/sheets/MissedPatSheet";
+import QuarterbackSheet from "../components/sheets/QuarterbackSheet";
 import { yardsText } from "../components/sheets/yards";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
 import {
@@ -153,6 +156,7 @@ type SheetState =
   | { kind: "series"; mode: SeriesMode }
   | { kind: "penalty" }
   | { kind: "more"; mode: MoreMode }
+  | { kind: "quarterback" }
   | { kind: "spielzug" };
 
 /** The log's event name for each one-tap entry, to find the row it wrote. */
@@ -549,6 +553,11 @@ export default function TrackingScreen({
   const [officialsUnavailable, setOfficialsUnavailable] = useState(false);
   const [people, setPeople] = useState<TeamOfficial[]>([]);
   const [sheet, setSheet] = useState<SheetState | null>(null);
+  /**
+   * The sheets this one was opened from. Back returns to the previous popup
+   * (Spielzug → Pass → …), while the close button leaves the whole sequence.
+   */
+  const [sheetHistory, setSheetHistory] = useState<SheetState[]>([]);
   const [posting, setPosting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   /** The one-tap entry the toast can still undo or complete, if any. */
@@ -591,6 +600,12 @@ export default function TrackingScreen({
     defaultJersey: number | null;
   } | null>(null);
   const [patJersey, setPatJersey] = useState<number | null>(null);
+  /**
+   * The try's defensive score: "+2 Gegner" asks for the defender's jersey in
+   * its own step instead of writing the row on the spot.
+   */
+  const [patDefense, setPatDefense] = useState(false);
+  const [patDefenseJersey, setPatDefenseJersey] = useState<number | null>(null);
   /** The try's quarterback; a team may change it just for the conversion. */
   const [patQb, setPatQb] = useState<number | null>(null);
   const [patBusy, setPatBusy] = useState(false);
@@ -1176,12 +1191,16 @@ export default function TrackingScreen({
     roster === null
       ? []
       : roster.filter((player) => player.side === patSide);
+  /** The defence on the try: the side that did not score the touchdown. */
+  const patDefensePlayers =
+    roster === null
+      ? []
+      : roster.filter((player) => player.side !== patSide);
 
   const half = log.isFirstHalf ? 1 : 2;
   // The definition may be missing, stale or not a definition at all (a test
   // double, an old server): the shipped values win over a crash.
   const timeoutsPerHalf = rules?.timeouts?.per_half ?? 2;
-  const intermission = intermissionSeconds(rules?.periods?.intermission_minutes);
   /** The side with the ball and what is left of its timeouts this half. */
   const possessionTimeouts =
     possessionName === null
@@ -1341,7 +1360,20 @@ export default function TrackingScreen({
     }
     halftimeInFlight.current = false;
     setHalftimePending(false);
+    // The dialog stays open: its countdown is the break now.
+  };
+
+  /** "2. Halbzeit starten": the break is over, back to the running game. */
+  const startSecondHalf = (): void => {
+    forgetBreak(game.id);
+    setBreakStartedAt(null);
     setHalftimeOpen(false);
+  };
+
+  const closeSheet = (): void => {
+    setSheet(null);
+    setSheetHistory([]);
+    setReplacing(null);
   };
 
   const openSheet = (next: SheetState): void => {
@@ -1349,13 +1381,26 @@ export default function TrackingScreen({
     setConfirmation(null);
     setQuick(null);
     setQuickError(null);
+    if (sheet !== null) {
+      setSheetHistory((history) => [...history, sheet]);
+    }
     setSheet(next);
+  };
+
+  /** Back to the popup this one was opened from, or close when there is none. */
+  const backSheet = (): void => {
+    if (sheetHistory.length === 0) {
+      closeSheet();
+      return;
+    }
+    setSheet(sheetHistory[sheetHistory.length - 1]);
+    setSheetHistory(sheetHistory.slice(0, -1));
   };
 
   /** A tile of the **Spielzug** sheet runs the handler its old row ran. */
   const pickFromSpielzug = (pick: SpielzugPick): void => {
     if (pick === "overtime") {
-      setSheet(null);
+      closeSheet();
       if (overtime) {
         openSinglePat();
       } else {
@@ -1364,22 +1409,22 @@ export default function TrackingScreen({
       return;
     }
     if (pick === "safety") {
-      setSheet({ kind: "more", mode: "safety" });
+      openSheet({ kind: "more", mode: "safety" });
       return;
     }
     if (pick === "challenge") {
-      setSheet({ kind: "challenge" });
+      openSheet({ kind: "challenge" });
       return;
     }
     if (pick === "fieldpos") {
-      setSheet({ kind: "fieldpos" });
+      openSheet({ kind: "fieldpos" });
       return;
     }
-    if (pick === "touchdown") {
-      setSheet({ kind: "touchdown" });
+    if (pick === "quarterback") {
+      openSheet({ kind: "quarterback" });
       return;
     }
-    setSheet({ kind: "series", mode: pick });
+    openSheet({ kind: "series", mode: pick });
   };
 
   /** The newest live row a one-tap entry wrote (rows are newest first). */
@@ -1438,11 +1483,6 @@ export default function TrackingScreen({
     }
   };
 
-  const closeSheet = (): void => {
-    setSheet(null);
-    setReplacing(null);
-  };
-
   /**
    * A paused extra point: the touchdown's team, the scorer as the default
    * jersey (he often converts too) and the op the try's flip names, so undoing
@@ -1457,6 +1497,8 @@ export default function TrackingScreen({
     setPendingPat({ team, jersey, originId, group: group ?? null });
     setPatTry(null);
     setPatMiss(null);
+    setPatDefense(false);
+    setPatDefenseJersey(null);
     setPatJersey(null);
     setPatQb(readQuarterback(game.id, patSideOf(team)));
     setPatError(null);
@@ -1509,6 +1551,8 @@ export default function TrackingScreen({
     setPendingPat(null);
     setPatTry(null);
     setPatMiss(null);
+    setPatDefense(false);
+    setPatDefenseJersey(null);
     setPatJersey(null);
     setPatQb(null);
     setFinishBlocked(false);
@@ -1654,7 +1698,7 @@ export default function TrackingScreen({
    * the try ends. `try_defense` in the payload is what tells a later statistics
    * pass that these two points were not a converted two-point try.
    */
-  const writeDefensiveTry = async (): Promise<void> => {
+  const writeDefensiveTry = async (jersey: number | null): Promise<void> => {
     const defence = opponentName;
     if (pendingPat === null || patBusy || defence === null) {
       return;
@@ -1663,17 +1707,16 @@ export default function TrackingScreen({
     setPatError(null);
     try {
       rememberPatOrigin();
-      await submit(
-        [
-          {
-            name: "2-Extra-Punkte",
-            input: "Gegner",
-            payload: { try_defense: true },
-          },
-        ],
-        defence,
-        { flipOrigin: pendingPat.originId },
-      );
+      const event: GameLogEventInput = {
+        name: "2-Extra-Punkte",
+        input: "Gegner",
+        payload: { try_defense: true },
+      };
+      if (jersey !== null) {
+        event.player = jersey;
+      }
+      await submit([event], defence, { flipOrigin: pendingPat.originId });
+      setPatDefense(false);
       closePat();
     } catch (failure) {
       setPatError(
@@ -2053,8 +2096,10 @@ export default function TrackingScreen({
           below the log instead of covering the newest rows. */}
       <div className="logwrap tracking-log">
         <EventLog
+          away={logTeamName(log.away)}
           disabled={halftimePending || readOnly || finished}
           error={undoError}
+          home={logTeamName(log.home)}
           onEdit={readOnly || finished ? undefined : openEdit}
           onUndo={(row) => void undo(row)}
           rows={rows}
@@ -2104,9 +2149,7 @@ export default function TrackingScreen({
               </p>
               <div className="patbar-opts">
                 {(
-                  overtime
-                    ? ([[1, "+1"], [0, "nicht verwandelt"]] as const)
-                    : ([[1, "+1"], [2, "+2"], [0, "nicht verwandelt"]] as const)
+                  [[1, "+1"], [2, "+2"], [0, "nicht verwandelt"]] as const
                 ).map(([points, label]) => (
                   <button
                     aria-pressed={false}
@@ -2126,7 +2169,11 @@ export default function TrackingScreen({
                   aria-pressed={false}
                   className="choice choice-dark"
                   disabled={patBusy || readOnly || possessionName === null}
-                  onClick={() => void writeDefensiveTry()}
+                  onClick={() => {
+                    setPatDefense(true);
+                    setPatDefenseJersey(null);
+                    setPatError(null);
+                  }}
                   type="button"
                 >
                   <span className="choice-label">Gegner +2</span>
@@ -2285,16 +2332,19 @@ export default function TrackingScreen({
             </p>
           )}
         </section>
-      ) : null}
-      {!log.isFirstHalf && breakStartedAt !== null && !finished ? (
-        <BreakCountdown
-          totalSeconds={intermission}
-          onDone={() => {
-            forgetBreak(game.id);
-            setBreakStartedAt(null);
-          }}
-          startedAt={breakStartedAt}
-        />
+      ) : breakStartedAt !== null && !finished ? (
+        // The break lives in its dialog; this only reopens it without putting
+        // a second countdown next to "Spiel beenden".
+        <section aria-label="Halbzeitpause" className="halfblock">
+          <button
+            className="halfbtn"
+            onClick={() => setHalftimeOpen(true)}
+            type="button"
+          >
+            <Pause size={18} />
+            Pause
+          </button>
+        </section>
       ) : null}
       <footer className="trackfoot">
         {finished ? null : (
@@ -2339,6 +2389,10 @@ export default function TrackingScreen({
               {patBusy ? "Speichern …" : "Speichern"}
             </button>
           }
+          onBack={() => {
+            setPatTry(null);
+            setPatError(null);
+          }}
           onClose={() => {
             setPatTry(null);
             setPatError(null);
@@ -2371,10 +2425,54 @@ export default function TrackingScreen({
         </Sheet>
       ) : null}
 
+      {patDefense ? (
+        <Sheet
+          busy={patBusy}
+          error={patError}
+          footer={
+            <button
+              className="startbtn"
+              disabled={patBusy || readOnly}
+              onClick={() => {
+                void writeDefensiveTry(patDefenseJersey);
+              }}
+              type="button"
+            >
+              {patBusy ? "Speichern …" : "Speichern"}
+            </button>
+          }
+          onBack={() => {
+            setPatDefense(false);
+            setPatError(null);
+          }}
+          onClose={() => {
+            setPatDefense(false);
+            setPatError(null);
+          }}
+          title={`Gegner +2 · ${opponentName ?? "Gegner"}`}
+        >
+          <p className="sheetnote">
+            Wer hat den Punkt für {opponentName ?? "Gegner"} erzielt? Ohne
+            Nummer zählt der Punkt fürs Team.
+          </p>
+          <JerseyPicker
+            disabled={patBusy || readOnly}
+            groupLabel="Trikotnummer Gegner"
+            label="Trikot"
+            onChange={setPatDefenseJersey}
+            optionalLabel="Ohne Nummer"
+            players={patDefensePlayers}
+            strict={game.passcheck === true}
+            value={patDefenseJersey}
+          />
+        </Sheet>
+      ) : null}
+
       {patMiss !== null ? (
         <MissedPatSheet
           initialJersey={patMiss.defaultJersey}
           lastQuarterback={patQb}
+          onBack={() => setPatMiss(null)}
           onClose={() => setPatMiss(null)}
           onSubmit={writeMissedPat}
           opponentName={opponentName ?? "Gegner"}
@@ -2410,6 +2508,7 @@ export default function TrackingScreen({
       possessionName !== null &&
       (sheet.kind === "touchdown" ||
         sheet.kind === "series" ||
+        sheet.kind === "quarterback" ||
         sheet.kind === "spielzug" ||
         opponentName !== null) ? (
         sheet.kind === "play" ? (
@@ -2419,7 +2518,8 @@ export default function TrackingScreen({
             initialResult={sheet.result}
             initialType={sheet.type}
             lastQuarterback={readQuarterback(game.id, possessionSide)}
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={submitPlay}
             opponentName={opponentName ?? "Gegner"}
             roster={roster}
@@ -2431,20 +2531,22 @@ export default function TrackingScreen({
             ballOn={drive.ballOn}
             down={drive.down}
             goal={drive.goal}
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={(event) => submit([event])}
             teamName={possessionName}
           />
         ) : sheet.kind === "challenge" ? (
           <ChallengeSheet
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={(event) => submit([event])}
             teamName={possessionName}
           />
         ) : sheet.kind === "touchdown" ? (
           <TouchdownSheet
             gain={touchdownGain}
-            onClose={() => setSheet(null)}
+            onClose={closeSheet}
             onSubmit={submitTouchdown}
             passcheck={game.passcheck === true}
             recent={recentJerseys}
@@ -2463,6 +2565,7 @@ export default function TrackingScreen({
               key={sheet.mode}
               half={half}
               mode={sheet.mode}
+              onBack={sheetHistory.length > 0 ? backSheet : undefined}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={possessionName}
@@ -2477,6 +2580,7 @@ export default function TrackingScreen({
               key={sheet.mode}
               half={half}
               mode={sheet.mode}
+              onBack={sheetHistory.length > 0 ? backSheet : undefined}
               onClose={closeSheet}
               onSubmit={submitSeries}
               opponentName={opponentName ?? "–"}
@@ -2492,17 +2596,28 @@ export default function TrackingScreen({
             ballOn={drive.ballOn}
             history={unsportsmanlike}
             rules={rules}
-            onClose={() => setSheet(null)}
+            onClose={closeSheet}
             onSubmit={submit}
             opponentName={opponentName ?? ""}
             roster={roster}
             side={possessionSide}
             teamName={possessionName}
           />
+        ) : sheet.kind === "quarterback" ? (
+          <QuarterbackSheet
+            onClose={closeSheet}
+            onSubmit={(jersey) =>
+              setQuarterback(game.id, possessionSide, jersey)
+            }
+            roster={roster}
+            side={possessionSide}
+            teamName={possessionName}
+            value={readQuarterback(game.id, possessionSide)}
+          />
         ) : sheet.kind === "spielzug" ? (
           <SpielzugSheet
             disabled={composerDisabled}
-            onClose={() => setSheet(null)}
+            onClose={closeSheet}
             onPick={pickFromSpielzug}
             onPlay={(type, result) =>
               openSheet({ kind: "play", type, result })
@@ -2512,7 +2627,8 @@ export default function TrackingScreen({
           <MoreSheet
             key={sheet.mode}
             mode={sheet.mode}
-            onClose={() => setSheet(null)}
+            onBack={sheetHistory.length > 0 ? backSheet : undefined}
+            onClose={closeSheet}
             onSubmit={submit}
             opponentName={opponentName ?? ""}
             roster={roster}
@@ -2526,6 +2642,7 @@ export default function TrackingScreen({
         <HalftimeSheet
           away={logTeamName(officialLog.away) ?? "–"}
           awayScore={officialLog.away.score}
+          busy={halftimePending}
           direction={(() => {
             const first = directionFromWire(setup?.direction ?? undefined);
             return first === "Nord" ? "Süd" : first === "Süd" ? "Nord" : null;
@@ -2538,6 +2655,7 @@ export default function TrackingScreen({
             rules?.periods?.intermission_minutes ?? 2
           }
           onClose={() => setHalftimeOpen(false)}
+          onSecondHalf={startSecondHalf}
           onStart={() => void startHalftime()}
           possession={
             secondHalfPossession(
@@ -2547,6 +2665,7 @@ export default function TrackingScreen({
             ) ?? opponentName
           }
           setup={setup}
+          startedAt={breakStartedAt}
         />
       ) : null}
 

@@ -114,6 +114,24 @@ describe("Sheet", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("offers a back button only when there is a previous popup", async () => {
+    const onBack = vi.fn();
+    const { rerender } = render(
+      <Sheet onClose={vi.fn()} title="Pass">
+        <p>Inhalt</p>
+      </Sheet>,
+    );
+    expect(screen.queryByRole("button", { name: "Zurück" })).toBeNull();
+
+    rerender(
+      <Sheet onBack={onBack} onClose={vi.fn()} title="Pass">
+        <p>Inhalt</p>
+      </Sheet>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Zurück" }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps Tab inside the sheet", async () => {
     render(<Opener />);
     const user = userEvent.setup();

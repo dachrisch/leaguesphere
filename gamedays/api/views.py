@@ -65,6 +65,7 @@ from gamedays.service.gameday_settings import (
     STANDING,
     WIN_POINTS,
 )
+from officials.service.game_official_licenses import resolve_current_licenses
 
 logger = logging.getLogger(__name__)
 
@@ -437,9 +438,25 @@ class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
     def get(self, request, *args, **kwargs):
         game_id = kwargs.get("pk")
         try:
-            officials = GameOfficial.objects.filter(gameinfo_id=game_id)
+            officials = list(
+                GameOfficial.objects.filter(gameinfo_id=game_id).order_by("pk")
+            )
             serializer = GameOfficialSerializer(instance=officials, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            # The scorecard cannot read a licence from the officials team's
+            # directory alone: a guest belongs to another team, and a directory
+            # loaded before the person was created is stale. Answer the licence
+            # with the crew itself - one bulk query for all rows.
+            licenses = resolve_current_licenses(
+                row.official_id for row in officials if row.official_id is not None
+            )
+            data = []
+            for row in serializer.data:
+                official_id = row.get("official")
+                license_data = (
+                    licenses[official_id] if official_id is not None else None
+                )
+                data.append({**row, **(license_data or {})})
+            return Response(data, status=status.HTTP_200_OK)
         except GameOfficial.DoesNotExist:
             raise NotFound(detail=f"No officials found for gameId {game_id}")
 

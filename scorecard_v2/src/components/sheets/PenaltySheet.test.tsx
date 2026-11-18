@@ -131,6 +131,35 @@ describe("PenaltySheet helpers", () => {
     expect(filterPenalties(PENALTIES, "  ")).toHaveLength(50);
   });
 
+  it("finds a penalty by its short code, English name or alias", () => {
+    const list: Penalty[] = [
+      {
+        name: "Fehlstart",
+        subtext: "DB/5",
+        isPenaltyAgainstOpponent: false,
+        short: "FST",
+        name_en: "False Start",
+        aliases: ["FS"],
+      },
+      {
+        name: "Unsportliches Verhalten Offense",
+        subtext: "DB/10 Notiz",
+        isPenaltyAgainstOpponent: false,
+        short: "UNV",
+        name_en: "Unsportsmanlike Conduct",
+        aliases: ["UNS"],
+      },
+    ];
+
+    expect(filterPenalties(list, "FST")).toEqual([list[0]]);
+    expect(filterPenalties(list, "false start")).toEqual([list[0]]);
+    expect(filterPenalties(list, "fs")).toEqual([list[0]]);
+    expect(filterPenalties(list, "UNV")).toEqual([list[1]]);
+    expect(filterPenalties(list, "unsportsmanlike")).toEqual([list[1]]);
+    // The German name stays the first index.
+    expect(filterPenalties(list, "fehlstart")).toEqual([list[0]]);
+  });
+
   it("defaults the team from the flag and leaves the choice open", () => {
     const defense = PENALTIES[0];
     const offense = PENALTIES[1];
@@ -268,6 +297,14 @@ describe("PenaltySheet helpers", () => {
 });
 
 describe("PenaltySheet", () => {
+  it("puts the cursor into the search field", () => {
+    renderSheet();
+
+    expect(
+      screen.getByRole("searchbox", { name: "Strafe suchen" }),
+    ).toHaveFocus();
+  });
+
   it("loads the catalogue from the config endpoint", async () => {
     renderSheet();
 
@@ -561,6 +598,55 @@ describe("PenaltySheet", () => {
       ],
       "Ravens",
     );
+  });
+
+  it("reads a comma yardage as a half yard", async () => {
+    const { onSubmit } = renderSheet();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /^Strafe 02/ }));
+    await user.click(screen.getByRole("button", { name: "Gewinn" }));
+    const yards = screen.getByRole("textbox", { name: "Yardage (0–50)" });
+    await user.clear(yards);
+    await user.type(yards, "2,5");
+    await user.click(saveButton());
+
+    // 2,5 is two and a half yards, not 25: a half-distance penalty is real.
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          name: "Strafe",
+          input: "Strafe 02",
+          payload: { yardage: 2.5, nextDown: "repeat" },
+        },
+      ],
+      "Ravens",
+    );
+  });
+
+  it("shows the short code next to the name and finds the row by it", async () => {
+    renderSheet({
+      penalties: [
+        {
+          name: "Fehlstart",
+          subtext: "DB/5",
+          isPenaltyAgainstOpponent: false,
+          short: "FST",
+          name_en: "False Start",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("FST")).toBeInTheDocument();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Strafe suchen" }),
+      "FST",
+    );
+
+    expect(
+      screen.getByRole("button", { name: /Fehlstart/ }),
+    ).toBeInTheDocument();
   });
 
   it("requires a jersey for a disqualification", async () => {
@@ -1052,6 +1138,8 @@ describe("the catalogue from the definition", () => {
       {
         code: "illegal_handoff",
         name: "illegale Ballübergabe",
+        short: "IH",
+        name_en: "Illegal Handoff",
         subtext: "SF/LoD",
         yards: 5,
         down: "loss",
@@ -1062,6 +1150,8 @@ describe("the catalogue from the definition", () => {
       {
         code: "shielding",
         name: "Abschirmen (Blocken) Defense",
+        short: "BLK",
+        name_en: "Illegal Blocking (Defense)",
         subtext: "BS/5",
         yards: 5,
         down: "repeat",

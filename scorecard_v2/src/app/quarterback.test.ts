@@ -4,6 +4,7 @@ import {
   forgetQuarterbacks,
   readQuarterback,
   rememberQuarterback,
+  setQuarterback,
 } from "./quarterback";
 
 beforeEach(() => {
@@ -54,6 +55,32 @@ describe("the remembered quarterback", () => {
 
   it("ignores a stored value that is not a number", () => {
     globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "kaputt");
+
+    expect(readQuarterback(42, "home")).toBeNull();
+  });
+});
+
+describe("changing the default quarterback", () => {
+  it("replaces a stored number", () => {
+    rememberQuarterback(42, "home", 12);
+
+    setQuarterback(42, "home", 23);
+
+    expect(readQuarterback(42, "home")).toBe(23);
+    // the other side and the other game keep what they had
+    expect(readQuarterback(42, "away")).toBeNull();
+  });
+
+  it("stores one for a game that never had one", () => {
+    setQuarterback(42, "away", 4);
+
+    expect(readQuarterback(42, "away")).toBe(4);
+  });
+
+  it("unsets it so the next pass asks again", () => {
+    rememberQuarterback(42, "home", 12);
+
+    setQuarterback(42, "home", null);
 
     expect(readQuarterback(42, "home")).toBeNull();
   });

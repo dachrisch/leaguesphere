@@ -87,6 +87,8 @@ interface FieldPositionSheetProps {
   goal?: boolean;
   onSubmit: (event: GameLogEventInput) => Promise<void>;
   onClose: () => void;
+  /** Back to the popup this one was opened from. */
+  onBack?: () => void;
 }
 
 /**
@@ -104,6 +106,7 @@ export default function FieldPositionSheet({
   goal = false,
   onSubmit,
   onClose,
+  onBack,
 }: FieldPositionSheetProps) {
   const current = ballOn ?? SERIES_START;
   const [side, setSide] = useState<FieldSide>(current > MIDFIELD ? "B" : "A");
@@ -162,6 +165,7 @@ export default function FieldPositionSheet({
           {posting ? "Speichern …" : "Feldposition speichern"}
         </button>
       }
+      onBack={onBack}
       onClose={onClose}
       title={`Feldposition · ${teamName}`}
     >

@@ -1429,13 +1429,10 @@ describe("the touchdown's Raumgewinn", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
-    await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user); // result → player (the field position comes last)
+    await user.click(within(sheet).getByRole("button", { name: "TD" }));
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → field position, pre-filled with the gain
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
     );
@@ -1579,8 +1576,14 @@ async function openPlay(
 ): Promise<HTMLElement> {
   await user.click(screen.getByRole("button", { name: "Spielzug" }));
   const menu = await screen.findByRole("dialog", { name: "Spielzug" });
-  await user.click(within(menu).getByRole("button", { name }));
-  return screen.findByRole("dialog", { name: "Spielzug · Ravens" });
+  // Sack and Interception are results of the Pass wizard now, not tiles.
+  const tile = name === "Sack" || name === "Interception" ? "Pass" : name;
+  await user.click(within(menu).getByRole("button", { name: tile }));
+  const sheet = await screen.findByRole("dialog", { name: "Spielzug · Ravens" });
+  if (name === "Sack" || name === "Interception") {
+    await user.click(within(sheet).getByRole("button", { name }));
+  }
+  return sheet;
 }
 
 /** Advance the play wizard one or more steps (its primary button). */
@@ -1627,6 +1630,69 @@ async function missTry(
 }
 
 describe("Tracking play-by-play", () => {
+  it("goes back from a play to the Spielzug sheet and to the play menu", async () => {
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Spielzug" }));
+    const menu = await screen.findByRole("dialog", { name: "Spielzug" });
+    await user.click(within(menu).getByRole("button", { name: "Pass" }));
+    const sheet = await screen.findByRole("dialog", {
+      name: "Spielzug · Ravens",
+    });
+
+    await user.click(within(sheet).getByRole("button", { name: "Zurück" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Spielzug" }),
+    ).toBeInTheDocument();
+  });
+
+  it("goes back from a Safety sheet to the Spielzug sheet", async () => {
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Spielzug" }));
+    const menu = await screen.findByRole("dialog", { name: "Spielzug" });
+    await user.click(within(menu).getByRole("button", { name: "Safety" }));
+    const sheet = await screen.findByRole("dialog", { name: /Safety/ });
+
+    await user.click(within(sheet).getByRole("button", { name: "Zurück" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Spielzug" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets the operator change the default quarterback", async () => {
+    globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "7");
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Spielzug" }));
+    const menu = await screen.findByRole("dialog", { name: "Spielzug" });
+    await user.click(within(menu).getByRole("button", { name: "QB" }));
+    const sheet = await screen.findByRole("dialog", { name: "QB · Ravens" });
+    await user.click(
+      within(sheet).getByRole("button", { name: "QB 23, Schulz" }),
+    );
+    await user.click(
+      within(sheet).getByRole("button", { name: "QB speichern" }),
+    );
+
+    // The change is the new default: the next pass preselects it.
+    expect(globalThis.localStorage.getItem("scorecard:v2:qb:42:home")).toBe(
+      "23",
+    );
+    const play = await openPlay(user, "Pass");
+    await user.click(within(play).getByRole("button", { name: "Incomplete" }));
+    expect(within(play).getByText("#23")).toBeInTheDocument();
+  });
+
   it("records a pass with yards and the remembered quarterback", async () => {
     globalThis.localStorage.setItem("scorecard:v2:qb:42:home", "12");
     apiGetMock.mockResolvedValue(ROSTER);
@@ -1635,12 +1701,10 @@ describe("Tracking play-by-play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → qb + receiver
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 7, Meier" }),
     );
-    await wizardNext(user); // receiver → defender
     await wizardNext(user); // defender → field position
     const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
     await user.clear(yards);
@@ -1690,7 +1754,6 @@ describe("Tracking play-by-play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → qb + receiver
     expect(within(sheet).getByText("#7")).toBeInTheDocument();
     await user.click(within(sheet).getByRole("button", { name: "ändern" }));
@@ -1709,7 +1772,6 @@ describe("Tracking play-by-play", () => {
     );
 
     const second = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → qb + receiver
 
     expect(within(second).getByText("#7")).toBeInTheDocument();
@@ -1875,12 +1937,10 @@ describe("Tracking play-by-play", () => {
     // Fourth down after three runs; one more yard is short of midfield.
     expect(screen.getByText(/4th & M/)).toBeInTheDocument();
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → player
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → defender
     await wizardNext(user); // defender → field position
     const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
     await user.clear(yards);
@@ -1922,12 +1982,10 @@ describe("Tracking play-by-play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await wizardNext(user); // result → player
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → defender
     await wizardNext(user); // defender → field position
     const yards = within(sheet).getByRole("textbox", { name: /Raumgewinn/ });
     await user.clear(yards);
@@ -2185,8 +2243,7 @@ describe("Tracking series and time entry", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user); // type → result
-    await wizardNext(user, 2); // result → qb → interception
+    await wizardNext(user); // qb → interception
     await user.click(
       await within(sheet).findByRole("button", { name: "Defense 11, Wolf" }),
     );
@@ -2665,9 +2722,8 @@ describe("Tracking extra point after the try", () => {
     const user = userEvent.setup();
 
     await openPlay(user, "Run");
-    await wizardNext(user); // type → result
-    await user.click(screen.getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user, 2); // result → player (no number) → field position
+    await user.click(screen.getByRole("button", { name: "TD" }));
+    await wizardNext(user); // player → field position
     await user.click(screen.getByRole("button", { name: "Spielzug speichern" }));
 
     // The six points stand without a name, so the try must still be asked —
@@ -2820,6 +2876,56 @@ describe("Tracking extra point after the try", () => {
     expect(apiPostMock.mock.calls.length).toBe(writes);
   });
 
+  it("goes back from the jersey step to the try result without writing", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    const writes = sentWrites().length;
+    await user.click(within(pat).getByRole("button", { name: "+1" }));
+    await user.click(
+      within(
+        screen.getByRole("dialog", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "Zurück" }),
+    );
+
+    // Back to the open try, not out of it: the result is still undecided.
+    expect(
+      screen.queryByRole("dialog", { name: "Extrapunkt Ravens" }),
+    ).toBeNull();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "Gegner +2" }),
+    ).toBeInTheDocument();
+    expect(sentWrites().length).toBe(writes);
+  });
+
+  it("closes the defensive try sheet with Schließen and keeps the try open", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    await user.click(within(pat).getByRole("button", { name: "Gegner +2" }));
+    const sheet = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+    await user.click(within(sheet).getByRole("button", { name: "Schließen" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "Gegner +2 · Wolves" }),
+    ).toBeNull();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "Gegner +2" }),
+    ).toBeInTheDocument();
+  });
+
   it("records the missed try in a value-0 row and hands the ball over", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
@@ -2925,6 +3031,34 @@ describe("Tracking extra point after the try", () => {
     // Nothing written, nothing decided: the try is still open.
     expect(
       within(pat).getByRole("button", { name: "nicht verwandelt" }),
+    ).toBeInTheDocument();
+    expect(sentWrites().length).toBe(writes);
+  });
+
+  it("returns to the try result with Zurück from the miss step", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    const pat = await scoreTouchdown(user);
+    const writes = sentWrites().length;
+    await user.click(within(pat).getByRole("button", { name: "nicht verwandelt" }));
+    await user.click(
+      within(
+        screen.getByRole("dialog", { name: /nicht verwandelt/ }),
+      ).getByRole("button", { name: "Zurück" }),
+    );
+
+    // The miss details are optional: leaving them returns to the result, it
+    // does not leave the try.
+    expect(
+      screen.queryByRole("dialog", { name: /nicht verwandelt/ }),
+    ).toBeNull();
+    expect(
+      within(
+        await screen.findByRole("group", { name: "Extrapunkt Ravens" }),
+      ).getByRole("button", { name: "nicht verwandelt" }),
     ).toBeInTheDocument();
     expect(sentWrites().length).toBe(writes);
   });
@@ -3815,7 +3949,7 @@ describe("Tracking safety and overtime", () => {
     expect(sentPossessions()).toEqual(["away"]);
   });
 
-  it("offers only the one-point try in overtime", async () => {
+  it("offers the full try choice after a touchdown in overtime", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     const otLog = makeLog({
       inPossession: "Ravens",
@@ -3832,10 +3966,9 @@ describe("Tracking safety and overtime", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
     const pat = await screen.findByRole("group", { name: "Extrapunkt Ravens" });
 
-    expect(within(pat).getByRole("button", { name: "+1" })).toBeInTheDocument();
-    expect(
-      within(pat).queryByRole("button", { name: "+2" }),
-    ).toBeNull();
+    for (const name of ["+1", "+2", "nicht verwandelt", "Gegner +2"]) {
+      expect(within(pat).getByRole("button", { name })).toBeInTheDocument();
+    }
   });
 });
 
@@ -3891,22 +4024,33 @@ describe("Tracking half-time", () => {
     expect(screen.getByText("2. Halbzeit gestartet")).toBeInTheDocument();
     // The second half has no half-time button any more.
     expect(screen.queryByRole("button", { name: "Halbzeit" })).toBeNull();
-    // The break countdown starts with the half.
-    expect(await screen.findByRole("timer")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Pause beenden" }));
+    // The dialog stays open and is the break: its countdown runs there, not
+    // next to "Spiel beenden".
+    const dialog = screen.getByRole("dialog", { name: "Halbzeit" });
+    expect(within(dialog).getByRole("timer")).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole("button", { name: "2. Halbzeit starten" }),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByRole("timer")).toBeNull();
   });
 
-  it("keeps counting a break that this device already started", () => {
+  it("keeps counting a break that this device already started", async () => {
     globalThis.localStorage.setItem(
       "scorecard:v2:break:42",
       String(Date.now() - 60_000),
     );
 
     renderTracking({ log: markerLog() });
+    const user = userEvent.setup();
 
+    // No timer next to the game end: the break reopens in its dialog.
+    expect(screen.queryByRole("timer")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Halbzeit" });
     // the intermission is the definition's two minutes (IFAF R 3-2-1)
-    expect(screen.getByRole("timer")).toHaveTextContent(/^0[01]:\d\d$/);
+    expect(within(dialog).getByRole("timer")).toHaveTextContent(/^0[01]:\d\d$/);
   });
 
   it("drops a break that is already over instead of showing 00:00", () => {
@@ -4716,6 +4860,28 @@ describe("the try is its own down", () => {
     expect(await screen.findByText("Versuch · B10")).toBeInTheDocument();
   });
 
+  it("goes back from the defence jersey step to the try choice", async () => {
+    apiGetMock.mockResolvedValue(ROSTER);
+    answerAppend(makeLog({ inPossession: "Ravens" }));
+    renderTracking();
+    const user = userEvent.setup();
+
+    await openSheet(user, /^Touchdown Ravens$/);
+    await pickJersey(user, 7);
+    await user.click(screen.getByRole("button", { name: "Speichern" }));
+    await user.click(await screen.findByRole("button", { name: "Gegner +2" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+
+    await user.click(within(dialog).getByRole("button", { name: "Zurück" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Gegner +2" }),
+    ).toBeInTheDocument();
+  });
+
   it("records two points for the defence that scored on the try", async () => {
     apiGetMock.mockResolvedValue(ROSTER);
     answerAppend(makeLog({ inPossession: "Ravens" }));
@@ -4728,6 +4894,12 @@ describe("the try is its own down", () => {
     await user.click(
       await screen.findByRole("button", { name: "Gegner +2" }),
     );
+    // The defence's jersey is its own step now.
+    const dialog = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Trikot 11, Wolf" }));
+    await user.click(within(dialog).getByRole("button", { name: "Speichern" }));
 
     await waitFor(() =>
       expect(apiPostMock).toHaveBeenCalledWith(
@@ -4738,6 +4910,7 @@ describe("the try is its own down", () => {
               type: "score",
               code: "pat2",
               side: "away",
+              player: 11,
               payload: expect.objectContaining({ try_defense: true }),
             }),
           ],
@@ -4759,13 +4932,17 @@ describe("a failed entry during the try", () => {
     await user.click(screen.getByRole("button", { name: "Speichern" }));
     const defence = await screen.findByRole("button", { name: "Gegner +2" });
 
-    // the write is refused: the prompt must stay and say why
+    // the write is refused: the jersey step must stay and say why
     apiPostMock.mockRejectedValueOnce(new ApiError(500, null, "Server weg"));
     await user.click(defence);
+    const dialog = await screen.findByRole("dialog", {
+      name: "Gegner +2 · Wolves",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Speichern" }));
 
-    expect(await screen.findByText("Server weg")).toBeInTheDocument();
+    expect(await within(dialog).findByText("Server weg")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Gegner +2" }),
+      screen.getByRole("dialog", { name: "Gegner +2 · Wolves" }),
     ).toBeInTheDocument();
   });
 });
@@ -4780,14 +4957,11 @@ describe("a scoring play", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Pass");
-    await wizardNext(user); // type → result
-    await user.click(within(sheet).getByRole("button", { name: "Touchdown" }));
-    await wizardNext(user); // result → qb + receiver
+    await user.click(within(sheet).getByRole("button", { name: "TD" }));
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    // A touchdown has no tackler: the field position is the last step.
-    await wizardNext(user); // receiver → field position
+    // A touchdown has no tackler: the jersey tap lands on the field position.
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
     );
@@ -4821,9 +4995,7 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user); // type → result
-    await user.click(within(sheet).getByRole("button", { name: "Interception" }));
-    await wizardNext(user, 2); // result → qb → interception
+    await wizardNext(user); // qb → interception
     await user.click(within(sheet).getByRole("button", { name: "Defense 11, Wolf" }));
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
@@ -4851,9 +5023,7 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Interception");
-    await wizardNext(user);
-    await user.click(within(sheet).getByRole("button", { name: "Interception" }));
-    await wizardNext(user, 2);
+    await wizardNext(user); // qb → interception
     await user.click(within(sheet).getByRole("button", { name: "Defense 11, Wolf" }));
     await user.click(
       within(sheet).getByRole("button", { name: "Pick six (Touchdown)" }),
@@ -4875,13 +5045,10 @@ describe("plays that change hands", () => {
     const user = userEvent.setup();
 
     const sheet = await openPlay(user, "Run");
-    await wizardNext(user); // type → result
     await user.click(within(sheet).getByRole("button", { name: "Safety" }));
-    await wizardNext(user); // result → player
     await user.click(
       await within(sheet).findByRole("button", { name: "Trikot 23, Schulz" }),
     );
-    await wizardNext(user); // player → defender
     await wizardNext(user); // defender → field position
     await user.click(
       within(sheet).getByRole("button", { name: "Spielzug speichern" }),
@@ -5309,9 +5476,6 @@ describe("Tracking Spielzug sheet", () => {
     for (const label of [
       "Pass",
       "Run",
-      "Sack",
-      "Interception",
-      "Touchdown (Kurzform)",
       "Turnover",
       "1st Down",
       "Safety",
@@ -5320,6 +5484,11 @@ describe("Tracking Spielzug sheet", () => {
       "Feldposition",
     ]) {
       expect(within(menu).getByRole("button", { name: label })).toBeEnabled();
+    }
+    // These are results of the Pass wizard or the board's own Touchdown
+    // button now, not entries of this sheet.
+    for (const label of ["Sack", "Interception", "Touchdown (Kurzform)"]) {
+      expect(within(menu).queryByRole("button", { name: label })).toBeNull();
     }
     expect(
       within(menu).getByRole("heading", { name: "Spielphase" }),
@@ -5339,7 +5508,6 @@ describe("Tracking Spielzug sheet", () => {
     ["1st Down", "First Down"],
     ["Safety", "Safety"],
     ["Feldposition", "Feldposition · Ravens"],
-    ["Touchdown (Kurzform)", "Wer hat gepunktet?"],
     ["Challenge", "Challenge · Ravens"],
   ])("opens %s from the sheet", async (item, title) => {
     apiGetMock.mockResolvedValue(ROSTER);

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import BreakCountdown from "../BreakCountdown";
 import {
@@ -65,6 +65,20 @@ export default function TimeoutSheet({
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const saving = useRef(false);
+  const minutesRef = useRef<HTMLInputElement>(null);
+  const secondsRef = useRef<HTMLInputElement>(null);
+
+  // The clock is what the dialog is opened for: start in the minutes field,
+  // exactly like the Spielzeit sheet, so the official can type mm:ss at once.
+  useEffect(() => {
+    minutesRef.current?.focus({ preventScroll: true });
+    minutesRef.current?.select();
+  }, []);
+
+  /** A tap on a clock field replaces its digits instead of inserting beside them. */
+  const selectClock = (event: { currentTarget: HTMLInputElement }): void => {
+    event.currentTarget.select();
+  };
 
   const exhausted = used >= perHalf;
   const given = minutes !== "" || secs !== "";
@@ -192,11 +206,20 @@ export default function TimeoutSheet({
             inputMode="numeric"
             maxLength={2}
             onChange={(event) => {
-              setMinutes(clockDigits(event.target.value));
+              const digits = clockDigits(event.target.value);
+              setMinutes(digits);
               setArmed(false);
+              // Two digits are the whole minutes field: hand over to seconds
+              // so nobody has to reach for the second box.
+              if (digits.length === 2) {
+                secondsRef.current?.focus({ preventScroll: true });
+              }
             }}
+            onClick={selectClock}
+            onFocus={selectClock}
             pattern="[0-9]*"
             placeholder="00"
+            ref={minutesRef}
             type="text"
             value={minutes}
           />
@@ -219,8 +242,11 @@ export default function TimeoutSheet({
               setSecs(clockDigits(event.target.value));
               setArmed(false);
             }}
+            onClick={selectClock}
+            onFocus={selectClock}
             pattern="[0-9]*"
             placeholder="00"
+            ref={secondsRef}
             type="text"
             value={secs}
           />

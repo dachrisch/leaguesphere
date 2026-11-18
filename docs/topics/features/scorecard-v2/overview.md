@@ -63,11 +63,15 @@ no reload.
    keeps the initials disc.
 3. **Spiel vorbereiten** — a team card (both crests, the team descriptions,
    kick-off and field), then two numbered sections. **1. Offizielle**: crew and
-   licences as card rows (initials, role, person, a licence dot chip and a
-   chevron that opens the picker), the league's required positions first and a
-   `n/m besetzt` counter. An empty optional position is a compact dashed
-   **<Position> hinzufügen** row ("Optional · ohne Pflicht zur Besetzung");
-   once somebody is assigned it becomes a normal row. **2. Spielkonfiguration**:
+   licences as card rows (initials, role, person, a licence chip that names the
+   licence and its validity — `F1 gültig`, `F2 abgelaufen seit 18.01.2025` — and
+   a chevron that opens the picker), the league's required positions first and a
+   `n/m besetzt` counter. The licence travels with the crew read, so a guest
+   official from another team and a person created after the team directory was
+   loaded are not reported as "Lizenz unbekannt". An empty optional position is
+   a compact dashed **<Position> hinzufügen** row ("Optional · ohne Pflicht zur
+   Besetzung"); once somebody is assigned it becomes a normal row.
+   **2. Spielkonfiguration**:
    one card with **Münzwurf gewonnen von**, **Erster Ballbesitz** and
    **Spielrichtung**; the first two are full-width two-option switches, the
    direction is drawn on a field between the **Nord** and **Süd** end zones
@@ -116,13 +120,23 @@ no reload.
    which writes the numbered row for the same team (an interception's ball
    does not move twice) and undoes the one-tap row. Entries with required
    input — touchdown, Spielzeit, penalty, safety, overtime — open
-   their sheet on the first tap. **Halbzeit** confirms the same way (first tap
-   arms **Halbzeit starten**, the second starts it); the marker it writes also
+   their sheet on the first tap. **Halbzeit** opens the confirmation dialog; its
+   **Halbzeit starten** writes
+   the marker, and the dialog stays open as the break, counting down in place.
+   **2. Halbzeit starten** ends the break and returns to the game; a closed
+   dialog is reopened by the **Pause** tile (no timer next to **Spiel
+   beenden**). The marker also
    sets `Gameinfo.status` and `gameHalftime`, so the half flips for every
    reader and the second half's plays are filed under half 2. While an extra point is
    open, the tiles and Halbzeit are locked.
-   A wide **Spielzug (Pass/Run/Sack)** button under the touchdown records the
-   play-by-play: the player, the yards gained or lost, and for a pass
+   A wide **Spielzug** button under the touchdown holds the two plays of almost
+   every snap as large buttons — **Pass** and **Run** — plus the rare entries
+   (turnover, 1st down, safety, challenge) and the phases (overtime, spot). The
+   wizard starts at **Ergebnis**: Pass offers Complete / Incomplete / Sack /
+   Touchdown / Safety / Interception, Run offers Raumgewinn / Sack / Touchdown /
+   Safety. **Sack** is therefore a result of either play, not a type of its
+   own, and has no defender step. The player, the yards gained or lost, and for
+   a pass
    **Complete/Incomplete** plus the **quarterback** (remembered per side on the
    device, so the usual thrower is pre-selected; the switch is one tap). A
    **Gewinn/Verlust** switch (and a typed minus) records a negative gain, for a
@@ -131,13 +145,16 @@ no reload.
    sack is a loss), `qb`, `complete` — travels in the event `payload` for the
    statistics that come later, while `input` carries the text the log and the
    ticker show. A completed pass or a run may name the defender who made the
-   tackle (the other team's roster); an incomplete pass first asks
-   **Deflection**, then the defender.
+   tackle (the other team's roster); an incomplete pass's number is a
+   **Deflection**, a complete one's a **Tackle** — there is no separate toggle.
+   The sheet header carries **Zurück** to the popup that opened this one, while
+   a later wizard step's **Zurück** stays inside the wizard.
    A **Challenge** next to the play records a coach's challenge — one tap is
    enough, a short reason is optional — as its own `challenge` event.
    **Overtime** is a two-step marker (`period/overtime`, no score, no third
    half); the tile then turns into **+1 XP**, which opens the same jersey step
-   for the converter, and the try after a touchdown offers only **+1**.
+   for the converter, and the try after a touchdown offers the same options as a
+   regular try (**+1**, **+2**, **nicht verwandelt**, **Gegner +2**).
    Under the possession switch the screen shows the **down & distance** and the
    spot (**2nd & M · A12**), derived from the plays in the log on the
    50-yard field: A is the own half (0–25), `M` is midfield and B is the
@@ -178,19 +195,25 @@ no reload.
    touchdown button (+1 / +2 / nicht verwandelt, nothing pre-selected),
    credited to the scoring team; **+1**/**+2** open the jersey step with the
    touchdown's scorer pre-selected, so the person who actually converted can be
-   picked, and **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search (the
+   picked, **Gegner +2** asks for the defender's jersey in its own step, and
+   **Spiel beenden** waits while it is open. First down, turnover, interception, penalty with search (the
    five most common penalties stay in catalogue order, the rest are
-   alphabetical; the sheet prefills yardage and next down from the catalogue's
+   alphabetical; the search also matches the definition's short code — FST,
+   UNV — the English name and its aliases, and the short code is shown beside
+   the German name; the sheet prefills yardage and next down from the catalogue's
    `subtext` and keeps both editable), safety,
    overtime, Spielzeit, half-time, and **Rückgängig** per entry, plus
    **Ändern** to correct the jersey or the game time of a row in place (the
    corrected event is written, then the old row is undone; the row keeps its
    team and half and never flips possession). **Nur Punkte** filters the log
-   down to the plays that scored. Each team's own timeout field lists its
+   down to the scoring entries — a missed try stays, greyed out — and every
+   scoring row (touchdown, extra point, safety, overtime) is washed in its
+   team's colour, with the points icon in the same colour. Each team's own
+   timeout field lists its
    with half and game time — the entry stores the *remaining game time*, like
    the old app, not a duration — and its tile carries the count of the side
-   with the ball. Starting the second half runs a five-minute **Pause**
-   countdown under the controls (**Pause beenden** ends it early); it is a
+   with the ball. The half-time dialog carries the **Pause** countdown while the
+   break runs (**2. Halbzeit starten** ends it early); it is a
    helper stored per device, not a game clock. The
    screen keeps the display on while the game is open (Wake Lock, where the
    browser offers it) and confirms each saved entry with a short vibration.

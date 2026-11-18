@@ -48,6 +48,19 @@ describe("TimeoutSheet", () => {
     expect(onSubmit).toHaveBeenCalledWith("01:05");
   });
 
+  it("hands the cursor to the seconds after two minute digits", async () => {
+    const user = userEvent.setup();
+    renderSheet();
+
+    const minutes = screen.getByRole("textbox", { name: "Minuten" });
+    const seconds = screen.getByRole("textbox", { name: "Sekunden" });
+
+    expect(minutes).toHaveFocus();
+    await user.type(minutes, "12");
+
+    expect(seconds).toHaveFocus();
+  });
+
   it("does nothing while disabled", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({ disabled: true });

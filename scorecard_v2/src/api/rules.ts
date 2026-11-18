@@ -23,6 +23,12 @@ export interface RulePenalty {
   code: string;
   /** The German label the scorecard shows; the event's `input` as well. */
   name: string;
+  /** The short code the officials write and search (`FST`, `UNV`). */
+  short: string;
+  /** The English name, the second search index. */
+  name_en: string;
+  /** Common alternative abbreviations/words, also searchable. */
+  aliases?: string[];
   /** The legacy one-line description (`BS/1st 10`). */
   subtext: string;
   /** Distance in yards; `0` is a real no-distance foul. */

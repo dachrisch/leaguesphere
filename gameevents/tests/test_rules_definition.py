@@ -127,6 +127,22 @@ def test_every_row_carries_the_structured_fields():
         assert row["rule"] != ""
 
 
+def test_every_row_carries_a_short_code_and_english_name():
+    """The officials search by the codes they write (FST, UNV) and by English."""
+    rows = penalty_rows()
+    for row in rows:
+        assert isinstance(row["short"], str) and row["short"].strip() != ""
+        assert isinstance(row["name_en"], str) and row["name_en"].strip() != ""
+        for alias in row.get("aliases", []):
+            assert isinstance(alias, str) and alias.strip() != ""
+
+    by_name = {row["name"]: row for row in rows}
+    assert by_name["Fehlstart"]["short"] == "FST"
+    assert by_name["Fehlstart"]["name_en"] == "False Start"
+    assert by_name["Unsportliches Verhalten Offense"]["short"] == "UNV"
+    assert "UNS" in by_name["Unsportliches Verhalten Defense"]["aliases"]
+
+
 def test_field_and_series_geometry_is_the_50_yard_field():
     field, series = load_rules()["field"], load_rules()["series"]
 
@@ -303,6 +319,18 @@ def _set(path, value):
         (_set(("penalties", 0, "down"), "sometimes"), "penalties[0].down"),
         (_set(("penalties", 0, "enforcement"), "XX"), "penalties[0].enforcement"),
         (_set(("penalties", 0, "side"), "both"), "penalties[0].side"),
+        (
+            _set(("penalties", 0, "short"), ""),
+            "penalties[0].short must be a non-empty string",
+        ),
+        (
+            _set(("penalties", 0, "name_en"), None),
+            "penalties[0].name_en must be a non-empty string",
+        ),
+        (
+            _set(("penalties", 0, "aliases"), [""]),
+            "penalties[0].aliases must be a list of non-empty strings",
+        ),
         (_set(("penalties", 0, "yards"), -1), "yards must be a whole number"),
         (_set(("penalties", 0, "yards"), 60), "exceeds the field length"),
         (

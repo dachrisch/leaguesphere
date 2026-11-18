@@ -29,6 +29,11 @@ export interface SheetProps {
   /** Close request — scrim, the close button and Escape all end up here. */
   onClose: () => void;
   /**
+   * Back to the popup this one was opened from. Rendered in the header; the
+   * close button stays "leave everything".
+   */
+  onBack?: () => void;
+  /**
    * A write is in flight. Dismissing the sheet now would hide a failure and
    * invite a duplicate score, so Escape, the scrim and the close button are
    * all inert until the write settles.
@@ -68,6 +73,7 @@ export interface SheetProps {
 export default function Sheet({
   title,
   onClose,
+  onBack,
   busy = false,
   error = null,
   footer,
@@ -208,6 +214,16 @@ export default function Sheet({
         tabIndex={-1}
       >
         <div className="sheethead">
+          {onBack === undefined ? null : (
+            <button
+              aria-disabled={busy}
+              className="sheetbackhead"
+              onClick={busy ? undefined : onBack}
+              type="button"
+            >
+              Zurück
+            </button>
+          )}
           <h2 className="sheettitle" id={titleId}>
             {title}
           </h2>
