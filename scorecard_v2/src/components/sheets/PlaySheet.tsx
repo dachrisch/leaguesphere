@@ -19,7 +19,7 @@ import { errorMessage } from "./errors";
 import { interceptionEvent } from "./SeriesSheet";
 import { spotValue } from "./FieldPositionSheet";
 import Sheet from "./Sheet";
-import { yardsText, yardsValue } from "./yards";
+import { yardsRangeError, yardsText, yardsValue } from "./yards";
 
 /** The three scrimmage plays the scorecard records. */
 export type PlayType = "pass" | "run" | "sack";
@@ -516,6 +516,14 @@ export default function PlaySheet({
     distanceMode === "end"
       ? endSpot === null || drive?.ballOn == null
       : yardsValue(yardsText) === null;
+  // A typed distance has to fit the field: `advance` would clamp it silently.
+  const distanceTooLong =
+    distanceMode === "yards" && !distanceMissing
+      ? yardsRangeError(playYards, {
+          ballOn: drive?.ballOn ?? null,
+          fieldLength: geometry.fieldLength,
+        })
+      : null;
   const qbMissing = type === "pass" && result !== "sack" && qb === null;
 
   const next = drive === null ? null : advance(drive, playYards, geometry);
@@ -536,7 +544,7 @@ export default function PlaySheet({
 
   const stepReady =
     step === "distance"
-      ? !distanceMissing
+      ? !distanceMissing && distanceTooLong === null
       : step === "qb" || step === "qbplayer"
         ? !qbMissing
         : step === "interception"
@@ -725,27 +733,34 @@ export default function PlaySheet({
           </div>
 
           {distanceMode === "yards" ? (
-            <div className="sheetfield">
-              <label className="sheetlabel" htmlFor="play-yards">
-                {type === "sack" ||
-                result === "sack" ||
-                result === "safety"
-                  ? "Raumverlust (Yards)"
-                  : "Raumgewinn / Verlust (Yards)"}
-              </label>
-              <input
-                autoComplete="off"
-                className="sheetinput sheetinput-num"
-                disabled={posting}
-                id="play-yards"
-                inputMode="numeric"
-                onChange={(event) => changeYards(event.target.value)}
-                onFocus={(event) => event.target.select()}
-                pattern="[0-9]*"
-                type="text"
-                value={yardsText}
-              />
-            </div>
+            <>
+              <div className="sheetfield">
+                <label className="sheetlabel" htmlFor="play-yards">
+                  {type === "sack" ||
+                  result === "sack" ||
+                  result === "safety"
+                    ? "Raumverlust (Yards)"
+                    : "Raumgewinn / Verlust (Yards)"}
+                </label>
+                <input
+                  autoComplete="off"
+                  className="sheetinput sheetinput-num"
+                  disabled={posting}
+                  id="play-yards"
+                  inputMode="decimal"
+                  onChange={(event) => changeYards(event.target.value)}
+                  onFocus={(event) => event.target.select()}
+                  pattern="[0-9.,]*"
+                  type="text"
+                  value={yardsText}
+                />
+              </div>
+              {distanceTooLong === null ? null : (
+                <p className="sheetwarn" role="alert">
+                  {distanceTooLong}
+                </p>
+              )}
+            </>
           ) : (
             <>
               <div aria-label="Feldhälfte" className="seg" role="group">

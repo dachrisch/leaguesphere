@@ -293,11 +293,15 @@ export default function EditSheet({
     field === "fieldpos" &&
     spotValueNumber !== null &&
     (spotValueNumber < 0 || spotValueNumber > MIDFIELD);
+  // An empty or unreadable distance must not become a 0-yard row: the sheet
+  // would silently "correct" the play to something else.
+  const playYardsInvalid = field === "play" && yardsValue(playYards) === null;
   const ready =
     !posting &&
     !clockMissing &&
     !spotMissing &&
     !spotOutOfRange &&
+    !playYardsInvalid &&
     (!required || value !== null);
 
   const save = async (): Promise<void> => {
@@ -466,18 +470,29 @@ export default function EditSheet({
               className="sheetinput sheetinput-num"
               disabled={posting}
               id={yardsId}
-              inputMode="numeric"
+              inputMode="decimal"
               onChange={(changeEvent) => {
                 if (changeEvent.target.value.includes("-")) {
                   setPlayLoss(true);
                 }
-                setPlayYards(changeEvent.target.value.replace(/\D/g, "").slice(0, 2));
+                // The comma is the half yard, not a character to filter away.
+                setPlayYards(
+                  changeEvent.target.value
+                    .replace(/-/g, "")
+                    .replace(/[^0-9.,]/g, "")
+                    .slice(0, 4),
+                );
               }}
-              pattern="[0-9]*"
+              pattern="[0-9.,]*"
               type="text"
               value={playYards}
             />
           </div>
+          {playYardsInvalid ? (
+            <p className="sheetwarn" role="alert">
+              Bitte eine Distanz zwischen 0 und 99 Yards angeben.
+            </p>
+          ) : null}
           {playTypeOf(event) === "pass" ? (
             <>
               <h3 className="sheetsection">Quarterback</h3>

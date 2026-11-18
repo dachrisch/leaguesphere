@@ -433,6 +433,48 @@ describe("correcting the play's numbers in the sheet", () => {
     });
   });
 
+  it("keeps a typed half yard with its comma", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Run",
+      payload: { yards: 8 },
+    });
+
+    const yards = screen.getByRole("textbox", { name: "Yards" });
+    await user.clear(yards);
+    await user.type(yards, "7,5");
+    await user.click(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    );
+
+    // "7,5" used to be stripped to "75" by the old digits-only filter.
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: "7,5 Yards",
+        payload: expect.objectContaining({ yards: 7.5 }),
+      }),
+    );
+  });
+
+  it("refuses an unreadable distance instead of writing zero", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      event: "Run",
+      payload: { yards: 8 },
+    });
+
+    await user.clear(screen.getByRole("textbox", { name: "Yards" }));
+
+    // An empty field is not "no gain": the row found on the field said 8.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Bitte eine Distanz zwischen 0 und 99 Yards angeben.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Änderung speichern" }),
+    ).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("switches a loss back to a gain", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderSheet({

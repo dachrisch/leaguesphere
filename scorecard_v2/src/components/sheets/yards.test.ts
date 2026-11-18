@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { yardsNumber, yardsText, yardsValue } from "./yards";
+import { yardsNumber, yardsRangeError, yardsText, yardsValue } from "./yards";
 
 /**
  * The yards field is typed on a phone by an official who says "seven and a
@@ -42,5 +42,47 @@ describe("the yards field", () => {
     expect(yardsNumber(7)).toBe("7");
     expect(yardsText(7.5)).toBe("7,5 Yards");
     expect(yardsText(2.5, { loss: true })).toBe("2,5 Yards Verlust");
+  });
+});
+
+/**
+ * A distance has to fit the field the ball is on. `advance` clamps a spot, so
+ * an entry running past a goal line used to be stored as the shorter play - a
+ * different play than the one the official saw (field report 2026-11-18).
+ */
+describe("the field's limits for a distance", () => {
+  const ten = { ballOn: 10, fieldLength: 50 };
+  const atTheGoal = { ballOn: 45, fieldLength: 50 };
+
+  it("accepts a play inside the field", () => {
+    expect(yardsRangeError(8, ten)).toBeNull();
+    expect(yardsRangeError(-10, ten)).toBeNull();
+    expect(yardsRangeError(5, atTheGoal)).toBeNull();
+  });
+
+  it("accepts the exact distance to a goal line", () => {
+    // the goal line is a touchdown, the own one a safety: both are plays
+    expect(yardsRangeError(40, ten)).toBeNull();
+    expect(yardsRangeError(-10, ten)).toBeNull();
+    expect(yardsRangeError(5, atTheGoal)).toBeNull();
+  });
+
+  it("refuses a gain past the opponent's goal line", () => {
+    expect(yardsRangeError(10, atTheGoal)).toBe(
+      "Der Raumgewinn reicht über die Endzone hinaus (höchstens 5 Yards).",
+    );
+    expect(yardsRangeError(41, ten)).toContain("höchstens 40 Yards");
+  });
+
+  it("refuses a loss past the own goal line", () => {
+    expect(yardsRangeError(-11, ten)).toBe(
+      "Der Raumverlust reicht in die eigene Endzone (höchstens 10 Yards).",
+    );
+    expect(yardsRangeError(-12.5, ten)).toContain("höchstens 10 Yards");
+  });
+
+  it("does not judge a spot it does not know", () => {
+    expect(yardsRangeError(99, { ballOn: null, fieldLength: 50 })).toBeNull();
+    expect(yardsRangeError(Number.NaN, ten)).toBeNull();
   });
 });

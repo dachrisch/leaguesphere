@@ -43,3 +43,32 @@ export function yardsText(yards: number, { loss = false } = {}): string {
     ? `${yardsNumber(yards)} Yards Verlust`
     : `${yardsNumber(yards)} Yards`;
 }
+
+/**
+ * Whether a typed distance fits the spot the ball is on, in the sheet's words.
+ *
+ * `advance` clamps a spot to the field, so a gain running past the opponent's
+ * goal line used to be stored as the shorter play — a different play than the
+ * one the official saw (field report 2026-11-18). The distance to a goal line
+ * is still allowed: it is a touchdown, and the other way round a safety.
+ * Without a known spot (no drive) there is nothing to check.
+ */
+export function yardsRangeError(
+  yards: number,
+  { ballOn, fieldLength }: { ballOn: number | null; fieldLength: number },
+): string | null {
+  if (ballOn === null || !Number.isFinite(yards)) {
+    return null;
+  }
+  if (yards > 0 && yards > fieldLength - ballOn) {
+    return `Der Raumgewinn reicht über die Endzone hinaus (höchstens ${yardsNumber(
+      fieldLength - ballOn,
+    )} Yards).`;
+  }
+  if (yards < 0 && Math.abs(yards) > ballOn) {
+    return `Der Raumverlust reicht in die eigene Endzone (höchstens ${yardsNumber(
+      ballOn,
+    )} Yards).`;
+  }
+  return null;
+}

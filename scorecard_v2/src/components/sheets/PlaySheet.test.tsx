@@ -1023,3 +1023,67 @@ describe("the touchdown is the play's result", () => {
     expect(screen.queryByRole("button", { name: "Touchdown" })).toBeNull();
   });
 });
+
+describe("the distance has to fit the field", () => {
+  async function toDistance(user: User): Promise<void> {
+    await next(user); // result → player
+    await next(user); // player → defender
+    await next(user); // defender → distance
+  }
+
+  it("warns instead of silently shortening a gain past the goal line", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({
+      drive: seriesAt(45),
+      initialType: "run",
+    });
+
+    await toDistance(user);
+    await setYards(user, "10");
+
+    // Five yards are left: a longer run would be clamped to a touchdown.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "höchstens 5 Yards",
+    );
+    expect(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    ).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("warns instead of silently shortening a loss into the own end zone", async () => {
+    const user = userEvent.setup();
+    renderSheet({ drive: FIRST_AND_TEN, initialType: "run" });
+
+    await toDistance(user);
+    await user.click(screen.getByRole("button", { name: "Verlust" }));
+    await setYards(user, "8");
+
+    // The ball sits on the own 5: more than that is a safety, not a play.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "höchstens 5 Yards",
+    );
+    expect(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    ).toBeDisabled();
+  });
+
+  it("records half yards typed with a comma", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderSheet({ lastQuarterback: 12 });
+
+    await next(user); // result → qb + receiver
+    await user.click(screen.getByRole("button", { name: "Trikot 7, Meier" }));
+    await next(user); // defender → distance
+    await setYards(user, "7,5");
+    await user.click(
+      screen.getByRole("button", { name: "Spielzug speichern" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith([
+      expect.objectContaining({
+        payload: expect.objectContaining({ yards: 7.5 }),
+      }),
+    ]);
+  });
+});

@@ -167,9 +167,9 @@ export default function TouchdownSheet({
           className="sheetinput sheetinput-num"
           disabled={posting}
           id="touchdown-yards"
-          inputMode="numeric"
+          inputMode="decimal"
           onChange={(event) => setYards(event.target.value)}
-          pattern="[0-9]*"
+          pattern="[0-9.,]*"
           type="text"
           value={yards}
         />

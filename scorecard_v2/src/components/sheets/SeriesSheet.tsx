@@ -463,9 +463,9 @@ export default function SeriesSheet({
             className="sheetinput sheetinput-num"
             disabled={posting}
             id={yardsId}
-            inputMode="numeric"
+            inputMode="decimal"
             onChange={(changeEvent) => setYards(changeEvent.target.value)}
-            pattern="[0-9]*"
+            pattern="[0-9.,]*"
             type="text"
             value={yards}
           />
