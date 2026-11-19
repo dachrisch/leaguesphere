@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.18.1](https://github.com/dachrisch/leaguesphere/compare/v5.18.0...v5.18.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @testing-library/user-event to v14.6.13 ([#2456](https://github.com/dachrisch/leaguesphere/issues/2456)) ([4525225](https://github.com/dachrisch/leaguesphere/commit/4525225af986dcde87b5acb538ced019fd4d1962))
+* **deps:** update dependency i18next to v27.2.2 ([#2460](https://github.com/dachrisch/leaguesphere/issues/2460)) ([c09629d](https://github.com/dachrisch/leaguesphere/commit/c09629deb8e58ac5bfa9b78de9fb3deb313028a5))
+* **deps:** update dependency react-i18next to v18.0.3 ([#2457](https://github.com/dachrisch/leaguesphere/issues/2457)) ([f8851c1](https://github.com/dachrisch/leaguesphere/commit/f8851c13689cd9e13271bfb609756f5eed045dc5))
+
 ## [5.18.0](https://github.com/dachrisch/leaguesphere/compare/v5.17.0...v5.18.0) (2026-11-18)
 
 
