@@ -14,7 +14,7 @@ export async function fetchGames(
   if (gameday) params.set("gameday", gameday);
   params.set("results", "all");
   const query = params.toString();
-  const response = await fetch(`/api/liveticker/${query ? `?${query}` : ""}`, {
+  const response = await fetch(`/api/liveticker/?${query}`, {
     signal,
     headers: { Accept: "application/json" },
   });

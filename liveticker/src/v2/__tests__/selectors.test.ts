@@ -147,6 +147,34 @@ describe("selectors", () => {
     ).toEqual([2, 1]);
   });
 
+  it("returns no finished game for an empty payload", () => {
+    expect(selectFinishedGame([])).toBeNull();
+  });
+
+  it("sorts a broken kickoff as the oldest one", () => {
+    const broken: Game = {
+      ...game,
+      gameId: 1,
+      status: "Geplant",
+      scheduled_at: "not-a-date",
+    };
+    const valid: Game = {
+      ...game,
+      gameId: 2,
+      status: "Geplant",
+      scheduled_at: "2026-08-15T09:00:00+02:00",
+    };
+    expect(selectUpcomingGames([valid, broken]).map((item) => item.gameId)).toEqual([
+      1, 2,
+    ]);
+    expect(
+      selectFinishedGames([
+        { ...broken, status: "beendet" },
+        { ...valid, status: "beendet" },
+      ]).map((item) => item.gameId),
+    ).toEqual([2, 1]);
+  });
+
   it("groups the games per gameday and keeps their league", () => {
     const secondGameday = { id: 9, name: "Zweiter Tag", address: "Feld 2" };
     const groups = groupGamesByGameday([

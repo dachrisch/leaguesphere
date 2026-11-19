@@ -210,6 +210,20 @@ describe("Liveticker v2 App", () => {
     expect(new URLSearchParams(window.location.search).get("all")).toBe("1");
   });
 
+  it("opens the full history from an expanded result", async () => {
+    renderApp([{ ...finishedGame, tick_count: 9 }], "?game=3");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Alle 9 Ereignisse" }),
+    );
+
+    expect(new URLSearchParams(window.location.search).get("all")).toBe("1");
+    expect(screen.getByRole("button", { name: "Weniger anzeigen" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
   it("opens the full history from an all=1 deep link", () => {
     renderApp([{ ...finishedGame, tick_count: 9 }], "?game=3&all=1");
 
@@ -221,6 +235,7 @@ describe("Liveticker v2 App", () => {
 
   it("expands and focuses the game from a deep link", () => {
     const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollIntoView;
     renderApp([finishedGame], "?game=3");
 
@@ -230,6 +245,98 @@ describe("Liveticker v2 App", () => {
     expect(resultRows()[0]).toHaveAttribute("aria-expanded", "true");
     expect(document.activeElement).toBe(heading);
     expect(scrollIntoView).toHaveBeenCalled();
+    Element.prototype.scrollIntoView = original;
+  });
+
+  it("focuses a deep link when scrolling is unavailable", () => {
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView =
+      undefined as unknown as typeof Element.prototype.scrollIntoView;
+    renderApp([finishedGame], "?game=3");
+
+    expect(
+      document.activeElement,
+    ).toBe(screen.getByRole("heading", { name: "Old Home – Old Away" }));
+    Element.prototype.scrollIntoView = original;
+  });
+
+  it("collapses the expanded result when its row is clicked again", async () => {
+    renderApp([finishedGame], "?game=3");
+
+    await userEvent.click(resultRows()[0]);
+
+    expect(new URLSearchParams(window.location.search).get("game")).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Old Home – Old Away" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the full team name in the result and the deep link", () => {
+    const anonymous: Game = {
+      ...finishedGame,
+      gameId: 7,
+      league: "",
+      gameday: { id: 2, name: "", address: "" },
+      home: { ...finishedGame.home, name: "", full_name: "Full Home" },
+      away: { ...finishedGame.away, name: "", full_name: "Full Away" },
+    };
+    renderApp([anonymous], "?game=7");
+
+    expect(screen.getAllByText("Full Home").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Full Away").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("heading", { name: "Full Home – Full Away" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "Liveticker" }).length).toBe(2);
+  });
+
+  it("renders half scores with dashes and omits an empty halftime line", () => {
+    const first: Game = {
+      ...finishedGame,
+      gameId: 8,
+      home: { ...finishedGame.home, fh: 7, sh: null },
+      away: { ...finishedGame.away, fh: null, sh: 6 },
+    };
+    const second: Game = {
+      ...finishedGame,
+      gameId: 9,
+      scheduled_at: minutesFromNow(-400),
+      home: { ...finishedGame.home, fh: null, sh: 7 },
+      away: { ...finishedGame.away, fh: 6, sh: null },
+    };
+    const noHalves: Game = {
+      ...finishedGame,
+      gameId: 10,
+      scheduled_at: minutesFromNow(-500),
+      home: { ...finishedGame.home, fh: null, sh: null, score: null },
+      away: { ...finishedGame.away, fh: null, sh: null, score: null },
+    };
+    renderApp([noHalves, second, first]);
+
+    const rows = resultRows();
+    expect(rows[0].textContent).toContain("Halbzeit 7:– · –:6");
+    expect(rows[1].textContent).toContain("Halbzeit –:6 · 7:–");
+    expect(rows[2].textContent).not.toContain("Halbzeit");
+    expect(rows[2].textContent).toContain("0 : 0");
+  });
+
+  it("marks delayed upcoming rows while live", () => {
+    const late: Game = {
+      ...upcomingGame,
+      gameId: 5,
+      scheduled_at: minutesFromNow(-10),
+    };
+    const later: Game = {
+      ...upcomingGame,
+      gameId: 6,
+      scheduled_at: minutesFromNow(120),
+    };
+    renderApp([liveGame, late, later]);
+
+    const delayed = document.querySelector(".lt-upcoming-delayed");
+    expect(delayed).not.toBeNull();
+    expect(delayed?.textContent).toContain("verspätet");
+    expect(document.querySelectorAll(".lt-upcoming-row")).toHaveLength(2);
   });
 
   it("restores the expanded game through popstate", async () => {

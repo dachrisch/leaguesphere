@@ -63,6 +63,40 @@ describe("ShareButton", () => {
     document.execCommand = original;
   });
 
+  it("falls back to copying when the native share fails", async () => {
+    const share = vi.fn(async () => {
+      throw new Error("not supported");
+    });
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { share, clipboard: { writeText } });
+
+    render(<ShareButton />);
+    await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
+
+    expect(writeText).toHaveBeenCalled();
+    expect(await screen.findByText("Link kopiert")).toBeInTheDocument();
+  });
+
+  it("reports when neither sharing nor copying works", async () => {
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText: vi.fn(async () => {
+          throw new Error("blocked");
+        }),
+      },
+    });
+    const original = document.execCommand;
+    document.execCommand = vi.fn(() => false);
+
+    render(<ShareButton />);
+    await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
+
+    expect(
+      await screen.findByText("Teilen nicht verfügbar"),
+    ).toBeInTheDocument();
+    document.execCommand = original;
+  });
+
   it("shares the deep link and names both teams", async () => {
     window.history.replaceState({}, "", "/liveticker/v2/?game=1");
     const share = vi.fn(async () => undefined);
@@ -80,19 +114,22 @@ describe("ShareButton", () => {
     expect(new URL(payload.url).searchParams.get("game")).toBe("1");
   });
 
-  it("adds the game to the link when it is not in the URL yet", async () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?league=L");
+  it("falls back to the full team name in the share title", async () => {
     const share = vi.fn(async () => undefined);
     vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
 
-    render(<ShareButton game={game} />);
+    render(
+      <ShareButton
+        game={{
+          ...game,
+          home: { ...game.home, name: "", full_name: "Full Home" },
+          away: { ...game.away, name: "", full_name: "Full Away" },
+        }}
+      />,
+    );
     await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
 
-    const [payload] = share.mock.calls[0] as unknown as [
-      { title: string; url: string },
-    ];
-    const url = new URL(payload.url);
-    expect(url.searchParams.get("league")).toBe("L");
-    expect(url.searchParams.get("game")).toBe("1");
+    const [payload] = share.mock.calls[0] as unknown as [{ title: string }];
+    expect(payload.title).toBe("Full Home – Full Away · Liveticker");
   });
 });
