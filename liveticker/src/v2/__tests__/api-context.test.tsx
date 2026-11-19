@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -11,6 +11,8 @@ import { game } from "./fixture";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
+  window.history.replaceState({}, "", "/");
 });
 
 function Probe() {
@@ -32,7 +34,7 @@ describe("fetchGames", () => {
     const result = await fetchGames("L", "G", controller.signal);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/liveticker/?league=L&gameday=G",
+      "/api/liveticker/?league=L&gameday=G&results=all",
       expect.objectContaining({ signal: controller.signal }),
     );
     expect(result).toHaveLength(1);
@@ -48,7 +50,7 @@ describe("fetchGames", () => {
     await fetchGames("L", "G", new AbortController().signal, [1, 2]);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/liveticker/?getAllTicksFor=1%2C2&league=L&gameday=G",
+      "/api/liveticker/?getAllTicksFor=1%2C2&league=L&gameday=G&results=all",
       expect.anything(),
     );
   });
@@ -145,5 +147,49 @@ describe("LivetickerProvider", () => {
         screen.getByText("Der Liveticker konnte nicht geladen werden."),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("asks again for a linked game that is not in the first payload", async () => {
+    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })
+      .mockResolvedValueOnce({ ok: true, json: async () => [game] });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <LivetickerProvider>
+        <Probe />
+      </LivetickerProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toContain("getAllTicksFor=1");
+  });
+
+  it("keeps the URL-selected game across a poll and leaves the URL alone", async () => {
+    vi.useFakeTimers();
+    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => [game] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <LivetickerProvider>
+        <Probe />
+      </LivetickerProvider>,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(window.location.search).toBe("?game=1");
   });
 });

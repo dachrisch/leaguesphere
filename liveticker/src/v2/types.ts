@@ -38,3 +38,9 @@ export interface Game {
   away: Team;
   ticks: Tick[];
 }
+
+export interface GamedayGroup {
+  gameday: Gameday;
+  league: string;
+  games: Game[];
+}

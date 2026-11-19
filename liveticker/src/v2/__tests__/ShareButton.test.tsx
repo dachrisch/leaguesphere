@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ShareButton } from "../components/ShareButton";
+import { game } from "./fixture";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
 describe("ShareButton", () => {
@@ -59,5 +61,38 @@ describe("ShareButton", () => {
     expect(execCommand).toHaveBeenCalled();
     expect(await screen.findByText("Link kopiert")).toBeInTheDocument();
     document.execCommand = original;
+  });
+
+  it("shares the deep link and names both teams", async () => {
+    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
+
+    render(<ShareButton game={game} />);
+    await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
+
+    const [payload] = share.mock.calls[0] as unknown as [
+      { title: string; url: string },
+    ];
+    expect(payload.title).toBe(
+      "Walldorf Wanderers – Düsseldorf Firecats · Liveticker",
+    );
+    expect(new URL(payload.url).searchParams.get("game")).toBe("1");
+  });
+
+  it("adds the game to the link when it is not in the URL yet", async () => {
+    window.history.replaceState({}, "", "/liveticker/v2/?league=L");
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
+
+    render(<ShareButton game={game} />);
+    await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
+
+    const [payload] = share.mock.calls[0] as unknown as [
+      { title: string; url: string },
+    ];
+    const url = new URL(payload.url);
+    expect(url.searchParams.get("league")).toBe("L");
+    expect(url.searchParams.get("game")).toBe("1");
   });
 });

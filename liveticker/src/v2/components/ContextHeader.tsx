@@ -3,9 +3,10 @@ import { formatBerlinClock, formatClock } from "../format";
 
 interface ContextHeaderProps {
   game: Game;
+  showGameday?: boolean;
 }
 
-export function ContextHeader({ game }: ContextHeaderProps) {
+export function ContextHeader({ game, showGameday = true }: ContextHeaderProps) {
   const parts = [
     game.gameday.address,
     game.field ? `Feld ${game.field}` : null,
@@ -15,8 +16,12 @@ export function ContextHeader({ game }: ContextHeaderProps) {
 
   return (
     <header className="lt-context">
-      <p className="lt-kicker">{game.league || "Liveticker"}</p>
-      <h1>{game.gameday.name || "Liveticker"}</h1>
+      {showGameday && (
+        <>
+          <p className="lt-kicker">{game.league || "Liveticker"}</p>
+          <h1>{game.gameday.name || "Liveticker"}</h1>
+        </>
+      )}
       <p className="lt-context-meta">
         {parts.join(" · ")}
         <span className="lt-sep"> · </span>

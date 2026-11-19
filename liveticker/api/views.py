@@ -98,7 +98,10 @@ class LivetickerAPIView(APIView):
         )
         gameday_ids = self._parse_input(request.query_params.get("gameday"))
         liveticker_service = LivetickerService(
-            league, games_with_all_ticks, gameday_ids
+            league,
+            games_with_all_ticks,
+            gameday_ids,
+            all_results=request.query_params.get("results") == "all",
         )
 
         return Response(liveticker_service.get_liveticker_as_json())
