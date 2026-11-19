@@ -98,18 +98,32 @@ class CharacterisationTest(TestCase):
                 "gameId": game.pk,
                 "status": "1. Halbzeit",
                 "standing": "Gruppe 1",
+                "stage": "",
+                "field": 1,
+                "league": "some_division",
+                "gameday": {
+                    "id": game.gameday_id,
+                    "name": "Test Spieltag",
+                    "address": "",
+                },
                 "time": "2026-10-28T10:00:00+00:00",
                 "home": {
                     "name": "char-home",
                     "full_name": "Char Home",
                     "score": 12,
                     "isInPossession": True,
+                    "logo": None,
+                    "fh": 6,
+                    "sh": 6,
                 },
                 "away": {
                     "name": "char-away",
                     "full_name": "Char Away",
                     "score": 6,
                     "isInPossession": False,
+                    "logo": None,
+                    "fh": 3,
+                    "sh": 3,
                 },
                 "ticks": [
                     {
