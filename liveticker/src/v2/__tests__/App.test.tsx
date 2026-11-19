@@ -1,60 +1,27 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "../App";
 import { LivetickerProvider } from "../context/LivetickerContext";
 import type { Game } from "../types";
-
-const game: Game = {
-  gameId: 1,
-  status: "1. Halbzeit",
-  standing: "Gruppe 1",
-  stage: "Vorrunde",
-  field: 1,
-  league: "Testliga",
-  gameday: { id: 2, name: "Testtag", address: "Testfeld" },
-  time: "2026-08-15T11:30:00+00:00",
-  scheduled_at: "2026-08-15T11:30:00+02:00",
-  tick_count: 1,
-  home: {
-    name: "Walldorf Wanderers",
-    full_name: "Walldorf Wanderers",
-    score: 7,
-    isInPossession: true,
-    logo: null,
-    fh: 7,
-    sh: 0,
-  },
-  away: {
-    name: "Düsseldorf Firecats",
-    full_name: "Düsseldorf Firecats",
-    score: 6,
-    isInPossession: false,
-    logo: null,
-    fh: 6,
-    sh: 0,
-  },
-  ticks: [
-    {
-      text: "Touchdown: #7 - 45 Yards",
-      type: "touchdown",
-      team: "home",
-      time: "2026-08-15T12:05:00+00:00",
-    },
-  ],
-};
+import { game } from "./fixture";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function renderApp(games: Game[]) {
+  render(
+    <LivetickerProvider initialGames={games}>
+      <App />
+    </LivetickerProvider>,
+  );
+}
+
 describe("Liveticker v2 App", () => {
   it("renders the context, score, halves and the event list", () => {
-    render(
-      <LivetickerProvider initialGames={[game]}>
-        <App />
-      </LivetickerProvider>,
-    );
+    renderApp([game]);
 
     expect(screen.getByRole("heading", { name: "Testtag" })).toBeInTheDocument();
     expect(screen.getByText(/Testliga/)).toBeInTheDocument();
@@ -64,16 +31,57 @@ describe("Liveticker v2 App", () => {
     expect(screen.getAllByText("7").length).toBeGreaterThan(0);
     expect(screen.getByText("Touchdown")).toBeInTheDocument();
     expect(screen.getByText("45 Yards")).toBeInTheDocument();
-    expect(screen.getByRole("list")).toHaveAttribute("aria-live", "polite");
+    expect(screen.getByRole("list", { name: "Ereignisse" })).toHaveAttribute(
+      "aria-live",
+      "polite",
+    );
   });
 
   it("shows the empty state when no game is live", () => {
-    render(
-      <LivetickerProvider initialGames={[]}>
-        <App />
-      </LivetickerProvider>,
-    );
-    expect(screen.getByRole("heading", { name: "Kein Spiel läuft" })).toBeInTheDocument();
+    renderApp([]);
+    expect(screen.getByRole("heading", { name: "Nächstes Spiel" })).toBeInTheDocument();
+    expect(screen.getByText("Kein Spiel läuft")).toBeInTheDocument();
+  });
+
+  it("renders two live games and switches the expanded one", async () => {
+    const second: Game = {
+      ...game,
+      gameId: 2,
+      gameday: { id: 3, name: "Zweiter Tag", address: "Feld 2" },
+      field: 2,
+      home: { ...game.home, name: "Munich Spatzen", score: 13 },
+      away: { ...game.away, name: "SG Kelkheim Lizzards", score: 12 },
+    };
+    renderApp([game, second]);
+    expect(screen.getByRole("heading", { name: "Testtag" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Feld 2/ }));
+    expect(screen.getByRole("heading", { name: "Zweiter Tag" })).toBeInTheDocument();
+  });
+
+  it("keeps the finished game history and hides possession", () => {
+    renderApp([
+      {
+        ...game,
+        status: "beendet",
+        home: { ...game.home, isInPossession: true },
+      },
+    ]);
+    expect(screen.getByText("Endstand")).toBeInTheDocument();
+    expect(screen.getByText("Touchdown")).toBeInTheDocument();
+    expect(screen.queryByText("Ballbesitz")).not.toBeInTheDocument();
+  });
+
+  it("marks a scheduled game as late after five minutes", () => {
+    renderApp([
+      {
+        ...game,
+        status: "Geplant",
+        time: "00:01",
+        ticks: [],
+      },
+    ]);
+    expect(screen.getByText("Verspätet")).toBeInTheDocument();
+    expect(screen.getByText("verspätet")).toBeInTheDocument();
   });
 
   it("shows the loading state", () => {

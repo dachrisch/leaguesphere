@@ -19,7 +19,7 @@ export function EventList({ game }: EventListProps) {
       {game.ticks.length === 0 ? (
         <p className="lt-empty">Noch keine Ereignisse.</p>
       ) : (
-        <ol className="lt-events" aria-live="polite">
+        <ol className="lt-events" aria-label="Ereignisse" aria-live="polite">
           {game.ticks.map((tick, index) => {
             const team = teamFor(tick.team);
             const meta = eventMeta(tick.type);

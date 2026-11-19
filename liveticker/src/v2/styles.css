@@ -398,3 +398,139 @@ p {
   font-size: 11px;
   color: var(--lt-muted);
 }
+
+.lt-live-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.lt-live-tab {
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  text-align: left;
+  background: var(--lt-surface);
+  border: 1px solid var(--lt-line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.lt-live-tab-active {
+  border-color: var(--lt-home);
+  box-shadow: inset 0 0 0 1px var(--lt-home);
+}
+
+.lt-live-field {
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lt-muted);
+}
+
+.lt-live-team {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--lt-display);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--lt-head);
+}
+
+.lt-live-status {
+  font-size: 9px;
+  color: var(--lt-muted);
+}
+
+.lt-final {
+  color: var(--lt-head);
+}
+
+.lt-no-live {
+  background: var(--lt-surface);
+  border: 1px solid var(--lt-line);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(16, 24, 32, 0.04), 0 10px 28px rgba(16, 24, 32, 0.05);
+  padding: 18px;
+}
+
+.lt-no-live-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.lt-no-live h1 {
+  font-family: var(--lt-display);
+  font-size: 26px;
+  line-height: 1.05;
+  color: var(--lt-head);
+}
+
+.lt-countdown {
+  font-family: var(--lt-display);
+  font-size: 23px;
+  font-weight: 700;
+  color: var(--lt-head);
+  white-space: nowrap;
+}
+
+.lt-delayed {
+  margin-top: 16px;
+  border-top: 1px solid var(--lt-line);
+  padding-top: 10px;
+}
+
+.lt-delayed h2 {
+  font-family: var(--lt-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--lt-head);
+  margin-bottom: 6px;
+}
+
+.lt-delayed-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid #eef1f3;
+  font-size: 11px;
+  color: var(--lt-ink);
+}
+
+.lt-delayed-row b {
+  color: #7a4b0a;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lt-share {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.lt-share-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: var(--lt-home);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lt-share-status {
+  min-height: 16px;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--lt-muted);
+}

@@ -3,9 +3,10 @@ import type { Game, Team } from "../types";
 interface TeamSideProps {
   team: Team;
   side: "home" | "away";
+  finished: boolean;
 }
 
-function TeamSide({ team, side }: TeamSideProps) {
+function TeamSide({ team, side, finished }: TeamSideProps) {
   const name = team.name || team.full_name;
   const initials = name.slice(0, 2).toUpperCase();
   return (
@@ -20,7 +21,9 @@ function TeamSide({ team, side }: TeamSideProps) {
       <div>
         <h3 className="lt-team-name">{name}</h3>
         <p className="lt-team-role">{side === "home" ? "Heim" : "Gast"}</p>
-        {team.isInPossession && <p className="lt-possession">Ballbesitz</p>}
+        {!finished && team.isInPossession && (
+          <p className="lt-possession">Ballbesitz</p>
+        )}
       </div>
     </div>
   );
@@ -31,21 +34,22 @@ interface ScoreboardProps {
 }
 
 export function Scoreboard({ game }: ScoreboardProps) {
+  const finished = game.status === "beendet";
   const showHalves = game.home.fh !== null || game.home.sh !== null;
   return (
     <section className="lt-board-card" aria-label="Spielstand">
-      <p className="lt-live-row">
-        <span className="lt-live-dot" aria-hidden="true" />
-        Live · {game.status}
+      <p className={finished ? "lt-live-row lt-final" : "lt-live-row"}>
+        {!finished && <span className="lt-live-dot" aria-hidden="true" />}
+        {finished ? "Endstand" : `Live · ${game.status}`}
       </p>
       <div className="lt-board">
-        <TeamSide team={game.home} side="home" />
+        <TeamSide team={game.home} side="home" finished={finished} />
         <div className="lt-score">
           <span>{game.home.score ?? 0}</span>
           <span className="lt-colon">:</span>
           <span>{game.away.score ?? 0}</span>
         </div>
-        <TeamSide team={game.away} side="away" />
+        <TeamSide team={game.away} side="away" finished={finished} />
       </div>
       {showHalves && (
         <table className="lt-halves" aria-label="Halbzeitergebnisse">

@@ -155,6 +155,7 @@ liveticker/static/liveticker/js/*.js
 liveticker/static/liveticker/js/*.css
 liveticker/static/liveticker/v2/js/*.js
 liveticker/static/liveticker/v2/js/*.css
+liveticker/static/liveticker/v2/js/*.html
 passcheck/static/passcheck/js/*.js
 passcheck/static/passcheck/js/*.css
 gameday_designer/static/gameday_designer/js/*.js
