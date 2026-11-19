@@ -13,6 +13,10 @@ const endpoints = [
   '/leaguetable/dffl/',
   '/officials/team/all/list/',
   '/gamedays/gameday/718/',
+  // The liveticker feed is polled by every open ticker. Measure both the
+  // league-wide feed and the gameday-scoped variant before lowering the TTL.
+  '/api/liveticker/',
+  '/api/liveticker/?gameday=718',
 ];
 
 export const options = {

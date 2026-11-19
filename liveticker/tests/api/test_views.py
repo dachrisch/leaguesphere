@@ -2,6 +2,7 @@ from datetime import datetime, time
 from http import HTTPStatus
 
 from django.core.cache import cache
+from django.test import override_settings
 from django.utils import timezone
 from django.urls import reverse
 from django_webtest import WebTest
@@ -16,6 +17,12 @@ class TestLivetickerAPIView(WebTest):
         cache.clear()
         response = self.app.get(reverse(API_LIVETICKER_ALL))
         assert response.json == []
+
+    @override_settings(LIVETICKER_CACHE_SECONDS=5)
+    def test_cache_ttl_comes_from_the_setting(self):
+        cache.clear()
+        response = self.app.get(reverse(API_LIVETICKER_ALL))
+        assert "max-age=5" in response.headers["Cache-Control"]
 
     def test_get_all_livetickers_only_scheduled(self):
         cache.clear()
