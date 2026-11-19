@@ -61,4 +61,5 @@ class TestLivetickerAPIView(WebTest):
         }
         assert response.json[0] == expected_result
         expected_result["gameId"] = first_game_gameday_two.pk
+        expected_result["gameday"]["id"] = gameday_two.pk
         assert response.json[2] == expected_result
