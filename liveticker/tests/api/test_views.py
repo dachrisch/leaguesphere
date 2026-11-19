@@ -32,12 +32,14 @@ class TestLivetickerAPIView(WebTest):
             "standing": "Gruppe 1",
             "time": "10:00",
             "home": {
-                "name": "AAAAAAA1",
+                "name": "A1",
+                "full_name": "AAAAAAA1",
                 "score": 3,
                 "isInPossession": True,
             },
             "away": {
-                "name": "AAAAAAA2",
+                "name": "A2",
+                "full_name": "AAAAAAA2",
                 "score": 2,
                 "isInPossession": False,
             },

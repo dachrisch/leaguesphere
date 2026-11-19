@@ -67,8 +67,18 @@ class TestLivetickerService(TestCase):
         all_liveticker = liveticker_service.get_liveticker_as_json()
         first_game = Gameinfo.objects.first()
         assert dict(all_liveticker[0]) == {
-            "away": {"isInPossession": False, "name": "AAAAAAA2", "score": 2},
-            "home": {"isInPossession": True, "name": "AAAAAAA1", "score": 3},
+            "away": {
+                "isInPossession": False,
+                "name": "A2",
+                "full_name": "AAAAAAA2",
+                "score": 2,
+            },
+            "home": {
+                "isInPossession": True,
+                "name": "A1",
+                "full_name": "AAAAAAA1",
+                "score": 3,
+            },
             "gameId": first_game.pk,
             "standing": "Gruppe 1",
             "status": "Geplant",

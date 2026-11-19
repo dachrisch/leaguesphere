@@ -225,17 +225,34 @@ class TestLivetickerSerializer:
             "standing": "Group 1",
             "time": "10:00",
             "home": {
-                "name": "home team",
+                "name": "home",
+                "full_name": "home team",
                 "score": 7,
                 "isInPossession": True,
             },
             "away": {
-                "name": "away team",
+                "name": "away",
+                "full_name": "away team",
                 "score": 25,
                 "isInPossession": False,
             },
             "ticks": [],
         }
+
+    def test_home_name_uses_the_short_name_and_keeps_the_description(self):
+        liveticker_entries = [
+            TestLivetickerSerializer.create_some_liveticker(
+                name_home="Wall",
+                full_name_home="Walldorf Wanderers",
+                name_away="Firecats",
+                full_name_away="Düsseldorf Firecats",
+            )
+        ]
+        serializer = LivetickerSerializer(instance=liveticker_entries, many=True)
+        assert serializer.data[0]["home"]["name"] == "Wall"
+        assert serializer.data[0]["home"]["full_name"] == "Walldorf Wanderers"
+        assert serializer.data[0]["away"]["name"] == "Firecats"
+        assert serializer.data[0]["away"]["full_name"] == "Düsseldorf Firecats"
 
     def test_game_with_game_started_time(self):
         ref_now = datetime(2022, 1, 7, 12, 0, 0, tzinfo=UTC)
@@ -293,6 +310,4 @@ class TestTeamlogSerializerPlayByPlay:
         )
 
     def test_a_touchdown_with_yards_keeps_the_scorer(self):
-        assert self.text_for("Touchdown", 7, "8 Yards") == (
-            "Touchdown: #7 - 8 Yards"
-        )
+        assert self.text_for("Touchdown", 7, "8 Yards") == ("Touchdown: #7 - 8 Yards")

@@ -170,7 +170,11 @@ class LivetickerSerializer(Serializer):
         self, full_team_name, team_name: str, score: int, in_possession: str
     ):
         return {
-            "name": full_team_name,
+            # ``name`` is the team's short name (Team.name, e.g. "Wall");
+            # ``full_name`` keeps the long description for clients that want
+            # the former display string.
+            "name": team_name,
+            "full_name": full_team_name,
             "score": score,
             "isInPossession": team_name == in_possession,
         }
