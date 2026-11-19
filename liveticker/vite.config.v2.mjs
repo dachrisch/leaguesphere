@@ -25,7 +25,7 @@ export default defineConfig({
         format: 'iife',
         entryFileNames: 'liveticker-v2.js',
         chunkFileNames: 'liveticker-v2-[name].js',
-        assetFileNames: 'liveticker-v2.[ext]',
+        assetFileNames: 'liveticker-v2-[name].[ext]',
         inlineDynamicImports: true,
       },
     },

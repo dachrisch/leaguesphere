@@ -26,6 +26,7 @@ export default function App() {
   if (loading) {
     return (
       <main className="lt-app">
+        <h1>Liveticker</h1>
         <p className="lt-status">Lade Liveticker …</p>
       </main>
     );
@@ -34,6 +35,7 @@ export default function App() {
   if (error) {
     return (
       <main className="lt-app">
+        <h1>Liveticker</h1>
         <p className="lt-status lt-error" role="alert">
           {error}
         </p>

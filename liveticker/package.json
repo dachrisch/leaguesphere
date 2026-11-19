@@ -8,6 +8,8 @@
     "test": "__tests__"
   },
   "dependencies": {
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.16.0",
     "prop-types": "^15.8.1",

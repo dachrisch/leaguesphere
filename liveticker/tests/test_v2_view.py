@@ -13,6 +13,7 @@ class TestLivetickerV2View(TestCase):
         assert "liveticker/v2.html" in [
             template.name for template in response.templates
         ]
+        assert 'lang="de"' in response.content.decode()
 
     @override_settings(LIVETICKER_V2_ENABLED=True)
     def test_v2_route_stays_reachable_with_the_flag_on(self):

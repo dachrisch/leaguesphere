@@ -12,7 +12,7 @@
   --lt-live: #c0392b;
   --lt-focus: #5f788a;
   --lt-display: "Barlow Condensed", system-ui, sans-serif;
-  --lt-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --lt-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 * {
@@ -407,6 +407,7 @@ p {
 }
 
 .lt-live-tab {
+  min-height: 44px;
   display: grid;
   gap: 3px;
   padding: 9px 11px;
@@ -517,6 +518,7 @@ p {
 }
 
 .lt-share-button {
+  min-height: 44px;
   border: 0;
   border-radius: 10px;
   padding: 10px 18px;
@@ -533,4 +535,11 @@ p {
   margin-top: 5px;
   font-size: 10px;
   color: var(--lt-muted);
+}
+
+.lt-app > h1 {
+  font-family: var(--lt-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--lt-head);
 }
