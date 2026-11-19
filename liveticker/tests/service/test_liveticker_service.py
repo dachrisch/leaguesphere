@@ -154,3 +154,44 @@ class TestTickTypeQueryBudget(TestCase):
             service._update_next_games_with_teamlog(payload)
 
         assert payload[0]["teamlog"][0]["event"] == "Touchdown"
+
+
+class TestLivetickerQueryBudget(TestCase):
+    def _games_with_ticks(self, count):
+        gameday = GamedayFactory()
+        games = []
+        for index in range(count):
+            game, home, _ = make_live_game(f"budget-{index}", gameday=gameday)
+            for tick in range(7):
+                TeamLogFactory(
+                    gameinfo=game,
+                    team=home,
+                    author=gameday.author,
+                    event="Touchdown",
+                    created_time=time(10, tick),
+                    half=1,
+                    sequence=tick,
+                )
+            games.append(game)
+        return gameday, games
+
+    def test_ticks_for_all_games_are_one_query(self):
+        gameday, games = self._games_with_ticks(5)
+        service = LivetickerService([], [], [gameday.pk])
+        payload = [{"id": game.pk} for game in games]
+
+        with self.assertNumQueries(1):
+            service._update_next_games_with_teamlog(payload)
+
+        assert [len(game["teamlog"]) for game in payload] == [5] * 5
+
+    def test_all_ticks_still_work_for_one_game(self):
+        gameday, games = self._games_with_ticks(2)
+        service = LivetickerService([], [games[0].pk], [gameday.pk])
+        payload = [{"id": game.pk} for game in games]
+
+        with self.assertNumQueries(1):
+            service._update_next_games_with_teamlog(payload)
+
+        assert len(payload[0]["teamlog"]) == 7
+        assert len(payload[1]["teamlog"]) == 5

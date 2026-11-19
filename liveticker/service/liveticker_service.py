@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import List
 
@@ -120,18 +121,29 @@ class LivetickerService:
             )
 
     def _update_next_games_with_teamlog(self, next_games_list):
-        game: dict
+        """Load the ticks for every selected game in one query.
+
+        The list is capped per game (five by default, all when the client asks
+        for a game), so the rows are fetched once for all games and then sliced
+        in memory. The query count must not grow with the number of games.
+        """
+        if not next_games_list:
+            return
+        game_ids = [game["id"] for game in next_games_list]
+        rows = (
+            TeamLog.objects.filter(gameinfo_id__in=game_ids)
+            .exclude(isDeleted=True)
+            .order_by("gameinfo_id", "-created_time")
+            .values("gameinfo_id", *TeamlogSerializer.ALL_VALUE_FIELDS)
+        )
+        by_game = defaultdict(list)
+        for row in rows:
+            by_game[row["gameinfo_id"]].append(row)
         for game in next_games_list:
-            number_of_ticks = self.number_of_ticks
-            if game["id"] in self.games_with_all_ticks:
-                number_of_ticks = None
-            teamlog = (
-                TeamLog.objects.filter(gameinfo=game["id"])
-                .exclude(isDeleted=True)
-                .order_by("-created_time")[slice(None, number_of_ticks)]
-                .values(*TeamlogSerializer.ALL_VALUE_FIELDS)
-            )
-            game.update({LivetickerSerializer.TEAMLOG: list(teamlog)})
+            teamlog = by_game.get(game["id"], [])
+            if game["id"] not in self.games_with_all_ticks:
+                teamlog = teamlog[: self.number_of_ticks]
+            game.update({LivetickerSerializer.TEAMLOG: teamlog})
 
     def _get_all_live_games(self, filter_conditions):
         next_games = (
