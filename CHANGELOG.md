@@ -1,5 +1,35 @@
 # Changelog
 
+## [5.19.0](https://github.com/dachrisch/leaguesphere/compare/v5.18.1...v5.19.0) (2026-11-19)
+
+
+### Features
+
+* **liveticker:** add game-day overview and shareable deep links ([92deee6](https://github.com/dachrisch/leaguesphere/commit/92deee68ec60a687e84e26e2ae694e7d20cddbc2))
+* **liveticker:** add multi-live states and sharing ([27eb4ed](https://github.com/dachrisch/leaguesphere/commit/27eb4edeb47363dee188254426d060d4d8d3283d))
+* **liveticker:** add the typed v2 shell at /liveticker/v2/ ([d8ae546](https://github.com/dachrisch/leaguesphere/commit/d8ae546c02927f095b5c02ad7d6ca4f921bde248))
+* **liveticker:** expose game context, halves and logos ([bc54dae](https://github.com/dachrisch/leaguesphere/commit/bc54dae683703e767e5072f23102ecc57982cc0f))
+* **liveticker:** expose tick type, scheduled_at and tick count ([7369a81](https://github.com/dachrisch/leaguesphere/commit/7369a8171c62643b2b5adba4bcf160b3259d2e53))
+* **liveticker:** finish the v2 accessibility and type polish ([7472158](https://github.com/dachrisch/leaguesphere/commit/74721585a99303e740a86a326516b2d6af2d8f5b))
+* **liveticker:** finish the v2 accessibility and type polish ([38a3a20](https://github.com/dachrisch/leaguesphere/commit/38a3a20f50449106d1033546c6f7703ca14f170c))
+* **liveticker:** game-day overview and shareable deep links ([f5e1492](https://github.com/dachrisch/leaguesphere/commit/f5e14924bb674e08885de4b3f2e9a7f30ad3387c))
+* **liveticker:** make the cache TTL configurable ([a443918](https://github.com/dachrisch/leaguesphere/commit/a4439189a8fcea7d50efa73362ebb1a5ec3f232b))
+* **liveticker:** map stable event types to codes and labels ([c6a0fff](https://github.com/dachrisch/leaguesphere/commit/c6a0ffff99fc3f8e9627020ac4b1729c0465be64))
+* **liveticker:** use absolute kickoff times and expandable history ([e0bb9da](https://github.com/dachrisch/leaguesphere/commit/e0bb9dad6219a535d15c8c55bd41af4fa000c7ba))
+
+
+### Bug Fixes
+
+* **deps:** update dependency webpack to v5.113.0 ([#2472](https://github.com/dachrisch/leaguesphere/issues/2472)) ([faed6b1](https://github.com/dachrisch/leaguesphere/commit/faed6b18ece63ecae999b5cbfb99f8b5938b49eb))
+* **liveticker:** keep the history after the final whistle ([f62238d](https://github.com/dachrisch/leaguesphere/commit/f62238de382de8967b1140de54586296baa184e4))
+* **liveticker:** show the short team name from Team.name ([e3e6474](https://github.com/dachrisch/leaguesphere/commit/e3e647409f675ab34ce068a2ec0876b8847ebbf5))
+* **snapshot:** keep the public live name stable ([a00db9e](https://github.com/dachrisch/leaguesphere/commit/a00db9e8fd1a35169c524b8d114f6b3c4552a006))
+
+
+### Performance Improvements
+
+* **liveticker:** load ticks for all games in one query ([da2534f](https://github.com/dachrisch/leaguesphere/commit/da2534fe61f19a51a77409d3cac08df00c16243a))
+
 ## [5.18.1](https://github.com/dachrisch/leaguesphere/compare/v5.18.0...v5.18.1) (2026-11-19)
 
 
