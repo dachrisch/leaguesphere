@@ -3,12 +3,14 @@ import PropTypes from 'prop-types';
 import TeamBox from './TeamBox';
 import DisplayAllTicks from './DisplayAllTicks';
 import Ticks from './Ticks';
-import { MdRefresh } from 'react-icons/md';
+import toLocalTime from '../../utils/time';
+import { MdAccessTime } from 'react-icons/md';
 
 const GameTicker = (props) => {
-  const { home, away, status, standing, ticks, updateGamesToDisplay, gameIndex } = props;
+  const { home, away, status, standing, ticks, time, updateGamesToDisplay, gameIndex } = props;
   const [loadAllTicks, setLoadAllTicks] = useState(false);
-  const time = new Date().toLocaleTimeString();
+  const isFinished = status === 'beendet';
+  const displayTime = toLocalTime(time);
   useEffect(() => {
     if (loadAllTicks) {
       updateGamesToDisplay(gameIndex, true);
@@ -21,7 +23,7 @@ const GameTicker = (props) => {
       <div className='card-header'>
         <div className='row'>
           <TeamBox img={home.img} name={home.name}
-            showPossession={home.isInPossession} />
+            showPossession={!isFinished && home.isInPossession} />
           <div className='col-4 align-self-center text-center'>
             <span className='text-muted smaller'>{standing}</span>
             <br />
@@ -31,11 +33,11 @@ const GameTicker = (props) => {
             <br />
             <span className='fs-6'>{status}</span>
             <br />
-            <span className='text-muted smaller'><MdRefresh title='Letzte Aktualisierung'
-              style={{ marginBottom: '2px' }} />{time} Uhr</span>
+            <span className='text-muted smaller'><MdAccessTime title='Anstoß'
+              style={{ marginBottom: '2px' }} />{displayTime} Uhr</span>
           </div>
           <TeamBox img={away.img} name={away.name}
-            showPossession={away.isInPossession} />
+            showPossession={!isFinished && away.isInPossession} />
         </div>
       </div>
       <Ticks entries={ticks} gameStatus={status} />
