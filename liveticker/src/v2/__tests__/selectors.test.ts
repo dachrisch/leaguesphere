@@ -1,11 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
+  groupGamesByGameday,
   isDelayed,
   minutesUntil,
   selectFinishedGame,
+  selectFinishedGames,
   selectLiveGames,
   selectNextGame,
+  selectUpcomingGames,
 } from "../selectors";
 import type { Game } from "../types";
 import { game } from "./fixture";
@@ -102,5 +105,60 @@ describe("selectors", () => {
     expect(
       selectNextGame([late, next], at("2026-08-15T06:52:00+00:00"))?.gameId,
     ).toBe(2);
+  });
+
+  it("sorts the upcoming games by kickoff", () => {
+    const later: Game = {
+      ...game,
+      gameId: 1,
+      status: "Geplant",
+      scheduled_at: "2026-08-15T11:00:00+02:00",
+    };
+    const earlier: Game = {
+      ...game,
+      gameId: 2,
+      status: "Geplant",
+      scheduled_at: "2026-08-15T09:00:00+02:00",
+    };
+    expect(
+      selectUpcomingGames([later, earlier, { ...game, gameId: 3 }]).map(
+        (item) => item.gameId,
+      ),
+    ).toEqual([2, 1]);
+  });
+
+  it("lists all finished games newest first", () => {
+    const older: Game = {
+      ...game,
+      gameId: 1,
+      status: "beendet",
+      scheduled_at: "2026-08-15T09:00:00+02:00",
+    };
+    const newer: Game = {
+      ...game,
+      gameId: 2,
+      status: "beendet",
+      scheduled_at: "2026-08-15T11:00:00+02:00",
+    };
+    expect(
+      selectFinishedGames([older, { ...game, gameId: 3 }, newer]).map(
+        (item) => item.gameId,
+      ),
+    ).toEqual([2, 1]);
+  });
+
+  it("groups the games per gameday and keeps their league", () => {
+    const secondGameday = { id: 9, name: "Zweiter Tag", address: "Feld 2" };
+    const groups = groupGamesByGameday([
+      game,
+      { ...game, gameId: 2, gameday: secondGameday, league: "Andere Liga" },
+      { ...game, gameId: 3 },
+    ]);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].games.map((item) => item.gameId)).toEqual([1, 3]);
+    expect(groups[0].league).toBe("Testliga");
+    expect(groups[1].gameday.name).toBe("Zweiter Tag");
+    expect(groups[1].league).toBe("Andere Liga");
   });
 });

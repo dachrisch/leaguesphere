@@ -195,3 +195,51 @@ class TestLivetickerQueryBudget(TestCase):
 
         assert len(payload[0]["teamlog"]) == 7
         assert len(payload[1]["teamlog"]) == 5
+
+
+class TestAllResults(TestCase):
+    def _finished_games(self, gameday, count):
+        games = []
+        for index in range(count):
+            game, _, _ = make_live_game(
+                f"finished-{index}",
+                gameday=gameday,
+                status="beendet",
+                scheduled=time(10, index),
+            )
+            Gameinfo.objects.filter(pk=game.pk).update(gameFinished=time(11, index))
+            games.append(game)
+        return games
+
+    def test_default_payload_keeps_the_latest_finished_slot(self):
+        gameday = GamedayFactory()
+        games = self._finished_games(gameday, 3)
+
+        payload = LivetickerService([], [], [gameday.pk]).get_liveticker_as_json()
+
+        assert [item["gameId"] for item in payload] == [games[-1].pk]
+
+    def test_all_results_returns_every_finished_game_newest_first(self):
+        gameday = GamedayFactory()
+        games = self._finished_games(gameday, 3)
+
+        payload = LivetickerService(
+            [], [], [gameday.pk], all_results=True
+        ).get_liveticker_as_json()
+
+        assert [item["gameId"] for item in payload] == [
+            game.pk for game in reversed(games)
+        ]
+        assert {item["status"] for item in payload} == {"beendet"}
+
+    def test_all_results_query_count_does_not_grow_with_games(self):
+        def count_queries(number_of_games):
+            gameday = GamedayFactory()
+            self._finished_games(gameday, number_of_games)
+            service = LivetickerService([], [], [gameday.pk], all_results=True)
+            with self.assertNumQueries(3):
+                payload = service.get_liveticker_as_json()
+            return len(payload)
+
+        assert count_queries(2) == 2
+        assert count_queries(6) == 6

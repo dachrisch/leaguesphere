@@ -466,7 +466,7 @@ p {
   gap: 14px;
 }
 
-.lt-no-live h1 {
+.lt-no-live h2 {
   font-family: var(--lt-display);
   font-size: 26px;
   line-height: 1.05;
@@ -542,4 +542,185 @@ p {
   font-size: 30px;
   font-weight: 700;
   color: var(--lt-head);
+}
+
+.lt-gameday + .lt-gameday {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--lt-line);
+}
+
+.lt-gameday-head {
+  margin-bottom: 14px;
+}
+
+.lt-gameday-head h2 {
+  font-family: var(--lt-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--lt-head);
+  margin-top: 2px;
+}
+
+.lt-section + .lt-section {
+  margin-top: 20px;
+}
+
+.lt-section-title {
+  margin-bottom: 8px;
+  font-family: var(--lt-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lt-muted);
+}
+
+.lt-game-detail {
+  margin-top: 10px;
+  scroll-margin-top: 16px;
+}
+
+.lt-game-title {
+  margin-bottom: 6px;
+  font-family: var(--lt-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--lt-head);
+}
+
+.lt-notice {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fdf3e2;
+  color: #7a4b0a;
+}
+
+.lt-upcoming {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--lt-surface);
+  border: 1px solid var(--lt-line);
+  border-radius: 12px;
+}
+
+.lt-upcoming-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid #eef1f3;
+  font-size: 12px;
+}
+
+.lt-upcoming-row:first-child {
+  border-top: 0;
+}
+
+.lt-upcoming-time {
+  color: var(--lt-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lt-upcoming-teams {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.lt-upcoming-field {
+  font-size: 11px;
+  color: var(--lt-muted);
+  white-space: nowrap;
+}
+
+.lt-delayed-badge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fdf3e2;
+  color: #7a4b0a;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.lt-results {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lt-result-row {
+  display: grid;
+  grid-template-areas:
+    "home score away"
+    "halves halves halves";
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--lt-line);
+  border-radius: 12px;
+  background: var(--lt-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lt-result-row[aria-expanded="true"] {
+  border-color: var(--lt-home);
+  box-shadow: inset 0 0 0 1px var(--lt-home);
+}
+
+.lt-result-team {
+  font-family: var(--lt-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--lt-head);
+  overflow-wrap: anywhere;
+}
+
+.lt-result-home {
+  grid-area: home;
+}
+
+.lt-result-away {
+  grid-area: away;
+  text-align: right;
+}
+
+.lt-result-score {
+  grid-area: score;
+  font-family: var(--lt-display);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--lt-head);
+}
+
+.lt-result-halves {
+  grid-area: halves;
+  font-size: 10.5px;
+  color: var(--lt-muted);
+}
+
+@media (max-width: 640px) {
+  .lt-upcoming-row {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .lt-upcoming-field {
+    display: none;
+  }
 }

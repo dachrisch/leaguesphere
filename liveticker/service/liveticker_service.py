@@ -23,10 +23,17 @@ PERIOD_STATUS = {1: "1. Halbzeit", 2: "2. Halbzeit"}
 
 
 class LivetickerService:
-    def __init__(self, league: List, games_with_all_ticks: List, gameday_ids: List):
+    def __init__(
+        self,
+        league: List,
+        games_with_all_ticks: List,
+        gameday_ids: List,
+        all_results: bool = False,
+    ):
         self.number_of_ticks = 5
         self._init_gamedays(gameday_ids, league)
         self.games_with_all_ticks = games_with_all_ticks
+        self.all_results = all_results
         self.event_feed_enabled = bool(getattr(settings, "SCORECARD_EVENT_FEED", False))
 
     def _init_gamedays(self, gameday_ids, league):
@@ -49,11 +56,14 @@ class LivetickerService:
     def get_liveticker_as_json(self):
         next_games_list = []
         for gameday_id in self.gameday_ids:
-            filter_conditions = Q(
-                gameday=gameday_id, status__in=["1. Halbzeit", "2. Halbzeit"]
-            )
+            filter_conditions = Q(gameday=gameday_id, status__in=LIVE_STATUSES)
             filter_conditions |= self._get_upcoming_slot_filter(gameday_id)
-            filter_conditions |= self._get_latest_slot_filter(gameday_id)
+            if self.all_results:
+                # The v2 game-day page lists every finished game of the day;
+                # the legacy widget keeps its single latest slot.
+                filter_conditions |= Q(gameday=gameday_id, gameFinished__isnull=False)
+            else:
+                filter_conditions |= self._get_latest_slot_filter(gameday_id)
             next_games_list += self._get_all_live_games(filter_conditions)
         if self.event_feed_enabled:
             self._apply_event_projection(next_games_list)

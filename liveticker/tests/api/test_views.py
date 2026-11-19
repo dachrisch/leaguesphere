@@ -9,6 +9,12 @@ from django_webtest import WebTest
 
 from gamedays.models import Gameinfo, Gameday
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from gamedays.tests.setup_factories.factories import (
+    GamedayFactory,
+    GameresultFactory,
+    GameinfoFactory,
+    TeamFactory,
+)
 from liveticker.api.urls import API_LIVETICKER_ALL
 
 
@@ -75,3 +81,38 @@ class TestLivetickerAPIView(WebTest):
         expected_result["gameId"] = first_game_gameday_two.pk
         expected_result["gameday"]["id"] = gameday_two.pk
         assert response.json[2] == expected_result
+
+    def test_results_all_returns_every_finished_game(self):
+        cache.clear()
+        gameday = GamedayFactory()
+        games = []
+        for index in range(3):
+            game = GameinfoFactory(
+                gameday=gameday,
+                scheduled=time(10, index),
+                status="beendet",
+                gameFinished=time(11, index),
+            )
+            GameresultFactory(
+                gameinfo=game,
+                team=TeamFactory(name=f"results-home-{index}"),
+                fh=0,
+                sh=0,
+                isHome=True,
+            )
+            GameresultFactory(
+                gameinfo=game,
+                team=TeamFactory(name=f"results-away-{index}"),
+                fh=0,
+                sh=0,
+            )
+            games.append(game)
+        Gameday.objects.filter(pk=gameday.pk).update(date=datetime.today().date())
+
+        legacy = self.app.get(reverse(API_LIVETICKER_ALL))
+        all_results = self.app.get(reverse(API_LIVETICKER_ALL), {"results": "all"})
+
+        assert [item["gameId"] for item in legacy.json] == [games[-1].pk]
+        assert {item["gameId"] for item in all_results.json} == {
+            game.pk for game in games
+        }

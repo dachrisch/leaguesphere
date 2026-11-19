@@ -12,6 +12,7 @@ export async function fetchGames(
   }
   if (league) params.set("league", league);
   if (gameday) params.set("gameday", gameday);
+  params.set("results", "all");
   const query = params.toString();
   const response = await fetch(`/api/liveticker/${query ? `?${query}` : ""}`, {
     signal,

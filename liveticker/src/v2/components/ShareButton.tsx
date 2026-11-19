@@ -1,10 +1,31 @@
 import { useState } from "react";
 
-export function ShareButton() {
-  const [status, setStatus] = useState("");
-  const url = typeof window === "undefined" ? "" : window.location.href;
+import type { Game } from "../types";
 
-  const copy = async (): Promise<boolean> => {
+interface ShareButtonProps {
+  game?: Game | null;
+}
+
+export function ShareButton({ game = null }: ShareButtonProps) {
+  const [status, setStatus] = useState("");
+
+  const deepLink = (): string => {
+    const url = new URL(window.location.href);
+    if (game) {
+      url.searchParams.set("game", String(game.gameId));
+    } else {
+      url.searchParams.delete("game");
+    }
+    return url.toString();
+  };
+
+  const title = game
+    ? `${game.home.name || game.home.full_name} – ${
+        game.away.name || game.away.full_name
+      } · Liveticker`
+    : "Liveticker";
+
+  const copy = async (url: string): Promise<boolean> => {
     try {
       await navigator.clipboard.writeText(url);
       return true;
@@ -20,9 +41,10 @@ export function ShareButton() {
   };
 
   const share = async () => {
+    const url = deepLink();
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Liveticker", url });
+        await navigator.share({ title, url });
         setStatus("Geteilt");
         return;
       } catch (reason) {
@@ -31,7 +53,7 @@ export function ShareButton() {
         }
       }
     }
-    setStatus((await copy()) ? "Link kopiert" : "Teilen nicht verfügbar");
+    setStatus((await copy(url)) ? "Link kopiert" : "Teilen nicht verfügbar");
   };
 
   return (
