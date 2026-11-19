@@ -12,6 +12,7 @@ from datetime import UTC, datetime, time
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from gameevents.models import GameState
 from gamedays.models import Gameresult, Gameinfo
@@ -107,6 +108,10 @@ class CharacterisationTest(TestCase):
                     "address": "",
                 },
                 "time": "2026-10-28T10:00:00+00:00",
+                "scheduled_at": timezone.make_aware(
+                    datetime.combine(game.gameday.date, time(10, 0))
+                ).isoformat(),
+                "tick_count": 9,
                 "home": {
                     "name": "char-home",
                     "full_name": "Char Home",
@@ -128,26 +133,31 @@ class CharacterisationTest(TestCase):
                 "ticks": [
                     {
                         "text": "Touchdown",
+                        "type": "touchdown",
                         "team": "away",
                         "time": "2026-10-28T10:09:00+00:00",
                     },
                     {
                         "text": "Interception",
+                        "type": "interception",
                         "team": "away",
                         "time": "2026-10-28T10:08:00+00:00",
                     },
                     {
                         "text": "Spielzeit - 12:00",
+                        "type": "clock",
                         "team": None,
                         "time": "2026-10-28T10:07:00+00:00",
                     },
                     {
                         "text": "Safety (+1): #7",
+                        "type": "safety",
                         "team": "away",
                         "time": "2026-10-28T10:06:00+00:00",
                     },
                     {
                         "text": "Auszeit - 12:00",
+                        "type": "timeout",
                         "team": "home",
                         "time": "2026-10-28T10:05:00+00:00",
                     },

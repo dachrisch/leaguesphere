@@ -1,8 +1,13 @@
+from datetime import datetime, time
+
 from django.test import TestCase
+from django.utils import timezone
 
 from gamedays.models import League, Gameinfo, Gameresult
 from gamedays.tests.setup_factories.db_setup import DBSetup
+from gamedays.tests.setup_factories.factories import GamedayFactory, TeamLogFactory
 from liveticker.service.liveticker_service import LivetickerService
+from liveticker.tests.event_feed_support import make_live_game
 
 
 class TestLivetickerService(TestCase):
@@ -98,6 +103,10 @@ class TestLivetickerService(TestCase):
             "status": "Geplant",
             "ticks": [],
             "time": "10:00",
+            "scheduled_at": timezone.make_aware(
+                datetime.combine(gameday.date, time(10, 0))
+            ).isoformat(),
+            "tick_count": 0,
         }
 
     def test_liveticker_get_default_5_ticks(self):
@@ -123,3 +132,25 @@ class TestLivetickerService(TestCase):
         liveticker_service = LivetickerService([], [first_game.pk], [])
         all_livetickers = liveticker_service.get_liveticker_as_json()
         assert len(all_livetickers[0]["ticks"]) == 19
+
+
+class TestTickTypeQueryBudget(TestCase):
+    def test_type_is_read_without_an_extra_query(self):
+        gameday = GamedayFactory()
+        game, home, _ = make_live_game("type-budget", gameday=gameday)
+        TeamLogFactory(
+            gameinfo=game,
+            team=home,
+            author=gameday.author,
+            event="Touchdown",
+            created_time=time(10, 0),
+            half=1,
+            sequence=1,
+        )
+        service = LivetickerService([], [], [gameday.pk])
+        payload = [{"id": game.pk}]
+
+        with self.assertNumQueries(1):
+            service._update_next_games_with_teamlog(payload)
+
+        assert payload[0]["teamlog"][0]["event"] == "Touchdown"

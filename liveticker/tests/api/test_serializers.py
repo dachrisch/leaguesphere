@@ -1,6 +1,7 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from liveticker.api.serializers import (
+    EVENT_TYPE_BY_NAME,
     TeamlogSerializer,
     LivetickerSerializer,
 )
@@ -47,6 +48,7 @@ class TestTeamlogSerializer:
         assert dict(serializer.data[0]) == {
             "team": "home",
             "text": "Touchdown: #7",
+            "type": "touchdown",
             "time": "2026-08-15T08:05:00+00:00",
         }
 
@@ -67,6 +69,7 @@ class TestTeamlogSerializer:
         assert dict(serializer.data[0]) == {
             "team": None,
             "text": "Spielzeit - 1:05",
+            "type": "clock",
             "time": "2026-08-15T08:05:00+00:00",
         }
 
@@ -151,6 +154,47 @@ class TestTeamlogSerializer:
         assert serializer.data[0]["team"] == "home"
 
 
+class TestTeamlogType:
+    def test_every_known_event_has_a_stable_type(self):
+        for event_name, expected in EVENT_TYPE_BY_NAME.items():
+            entry = TestTeamlogSerializer.create_some_teamlog(event=event_name)
+            serializer = TeamlogSerializer(
+                instance=[entry], home_team="name of team", many=True
+            )
+            assert serializer.data[0]["type"] == expected
+
+    def test_an_unknown_event_falls_back_to_other(self):
+        entry = TestTeamlogSerializer.create_some_teamlog(event="Something new")
+        serializer = TeamlogSerializer(
+            instance=[entry], home_team="name of team", many=True
+        )
+        assert serializer.data[0]["type"] == "other"
+
+    def test_the_type_set_covers_the_scorecard_vocabulary(self):
+        assert set(EVENT_TYPE_BY_NAME.values()) == {
+            "touchdown",
+            "extra_point",
+            "overtime_score",
+            "safety",
+            "turnover",
+            "interception",
+            "first_down",
+            "penalty",
+            "clock",
+            "timeout",
+            "pass",
+            "pass_incomplete",
+            "run",
+            "sack",
+            "challenge",
+            "field_position",
+            "period_start",
+            "period_half",
+            "period_overtime",
+            "period_end",
+        }
+
+
 class TestTeamlogSerializerMissedTry:
     """A conversion that failed is a story of its own: it says so and why."""
 
@@ -207,6 +251,8 @@ class TestLivetickerSerializer:
     def create_some_liveticker(**kwargs):
         allowed_keys = [
             "scheduled",
+            "scheduled_date",
+            "tick_count",
             "id",
             "status",
             "standing",
@@ -234,6 +280,8 @@ class TestLivetickerSerializer:
         ]
         defaults = {
             "scheduled": datetime(2021, 12, 7, 10, 00),
+            "scheduled_date": date(2021, 12, 7),
+            "tick_count": 1,
             "id": 7,
             "status": "Geplant",
             "standing": "Group 1",
@@ -282,6 +330,8 @@ class TestLivetickerSerializer:
                 "address": "Testfeld",
             },
             "time": "10:00",
+            "scheduled_at": "2021-12-07T10:00:00+01:00",
+            "tick_count": 1,
             "home": {
                 "name": "home",
                 "full_name": "home team",

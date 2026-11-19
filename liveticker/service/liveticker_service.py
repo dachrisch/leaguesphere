@@ -3,7 +3,8 @@ from datetime import datetime
 from typing import List
 
 from django.conf import settings
-from django.db.models import Subquery, OuterRef, F, Q
+from django.db.models import Count, Subquery, OuterRef, F, Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from gameevents.models import GameEvent, GameState
@@ -164,6 +165,17 @@ class LivetickerService:
                 gameday_name=F("gameday__name"),
                 gameday_address=F("gameday__address"),
                 league_name=F("gameday__league__name"),
+                scheduled_date=F("gameday__date"),
+                tick_count=Coalesce(
+                    Subquery(
+                        TeamLog.objects.filter(gameinfo=OuterRef("id"))
+                        .exclude(isDeleted=True)
+                        .values("gameinfo")
+                        .annotate(count=Count("pk"))
+                        .values("count")[:1]
+                    ),
+                    0,
+                ),
             )
             .order_by(f"-{SCHEDULED}")
             .values(*LivetickerSerializer.ALL_VALUE_FIELDS)

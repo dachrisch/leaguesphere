@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time
 from http import HTTPStatus
 
 from django.core.cache import cache
+from django.utils import timezone
 from django.urls import reverse
 from django_webtest import WebTest
 
@@ -39,6 +40,10 @@ class TestLivetickerAPIView(WebTest):
                 "address": "",
             },
             "time": "10:00",
+            "scheduled_at": timezone.make_aware(
+                datetime.combine(gameday_one.date, time(10, 0))
+            ).isoformat(),
+            "tick_count": 0,
             "home": {
                 "name": "A1",
                 "full_name": "AAAAAAA1",

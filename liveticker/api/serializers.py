@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from django.conf import settings
+from django.utils import timezone
 from rest_framework.fields import CharField, SerializerMethodField, IntegerField
 from rest_framework.serializers import Serializer
 
@@ -27,6 +30,34 @@ _EVENTS_WITH_INPUT = frozenset(
 _TRY_EVENTS = frozenset({"1-Extra-Punkt", "2-Extra-Punkte"})
 _MISSED_TRY = "nicht verwandelt"
 
+# Stable machine-readable tick kinds. The value is derived from the stored
+# TeamLog event name, never from the rendered text (which the serializer may
+# still localise). A kind the API does not know is ``other``.
+EVENT_TYPE_BY_NAME = {
+    "Touchdown": "touchdown",
+    "1-Extra-Punkt": "extra_point",
+    "2-Extra-Punkte": "extra_point",
+    "Overtime": "overtime_score",
+    "Safety (+1)": "safety",
+    "Safety (+2)": "safety",
+    "Turnover": "turnover",
+    "Interception": "interception",
+    "First Down": "first_down",
+    "Strafe": "penalty",
+    "Spielzeit": "clock",
+    "Auszeit": "timeout",
+    "Pass": "pass",
+    "Pass unvollständig": "pass_incomplete",
+    "Run": "run",
+    "Sack": "sack",
+    "Challenge": "challenge",
+    "Feldposition": "field_position",
+    "Spiel gestartet": "period_start",
+    "2. Halbzeit gestartet": "period_half",
+    "Overtime startet": "period_overtime",
+    "Spiel beendet": "period_end",
+}
+
 
 class TeamlogSerializer(Serializer):
     EVENT = "event"
@@ -38,6 +69,7 @@ class TeamlogSerializer(Serializer):
     ALL_VALUE_FIELDS = [EVENT, PLAYER, INPUT, VALUE, CREATED_TIME, TEAM_NAME]
 
     text = SerializerMethodField()
+    type = SerializerMethodField()
     team = SerializerMethodField()
     time = SerializerMethodField()
 
@@ -65,6 +97,9 @@ class TeamlogSerializer(Serializer):
         if detail.startswith(_MISSED_TRY):
             return detail
         return f"{_MISSED_TRY} · {detail}"
+
+    def get_type(self, obj: dict):
+        return EVENT_TYPE_BY_NAME.get(obj[self.EVENT], "other")
 
     def get_text(self, obj: dict):
         text = obj[self.EVENT]
@@ -100,6 +135,8 @@ class TeamlogSerializer(Serializer):
 class LivetickerSerializer(Serializer):
     GAME_STARTED = "gameStarted"
     SCHEDULED = "scheduled"
+    SCHEDULED_DATE = "scheduled_date"
+    TICK_COUNT = "tick_count"
     ID = "id"
     NAME_HOME = "name_home"
     FULL_NAME_HOME = "full_name_home"
@@ -133,6 +170,8 @@ class LivetickerSerializer(Serializer):
         FULL_NAME_HOME,
         FULL_NAME_AWAY,
         SCHEDULED,
+        SCHEDULED_DATE,
+        TICK_COUNT,
         GAME_STARTED,
         GAMEDAY,
         GAMEDAY_NAME,
@@ -156,6 +195,8 @@ class LivetickerSerializer(Serializer):
     league = SerializerMethodField()
     gameday = SerializerMethodField()
     time = SerializerMethodField(source=GAME_STARTED)
+    scheduled_at = SerializerMethodField()
+    tick_count = IntegerField()
     home = SerializerMethodField()
     away = SerializerMethodField()
     ticks = SerializerMethodField()
@@ -171,6 +212,19 @@ class LivetickerSerializer(Serializer):
             ref_now=self.ref_now,
             many=True,
         ).data
+
+    def get_scheduled_at(self, obj: dict):
+        date = obj.get(self.SCHEDULED_DATE)
+        scheduled = obj.get(self.SCHEDULED)
+        if date is None or scheduled is None:
+            return None
+        scheduled_time = (
+            scheduled.time() if isinstance(scheduled, datetime) else scheduled
+        )
+        aware = timezone.make_aware(
+            datetime.combine(date, scheduled_time), timezone.get_current_timezone()
+        )
+        return aware.isoformat()
 
     def get_time(self, obj: dict):
         if obj.get(self.GAME_STARTED) is None:
