@@ -100,12 +100,14 @@ class CharacterisationTest(TestCase):
                 "standing": "Gruppe 1",
                 "time": "2026-10-28T10:00:00+00:00",
                 "home": {
-                    "name": "Char Home",
+                    "name": "char-home",
+                    "full_name": "Char Home",
                     "score": 12,
                     "isInPossession": True,
                 },
                 "away": {
-                    "name": "Char Away",
+                    "name": "char-away",
+                    "full_name": "Char Away",
                     "score": 6,
                     "isInPossession": False,
                 },
