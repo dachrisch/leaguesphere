@@ -62,7 +62,7 @@ class TestLivetickerService(TestCase):
         assert dict(all_livetickers[2])["status"] == "beendet"
 
     def test_liveticker_init_correct(self):
-        DBSetup().g62_status_empty()
+        gameday = DBSetup().g62_status_empty()
         liveticker_service = LivetickerService([], [], [])
         all_liveticker = liveticker_service.get_liveticker_as_json()
         first_game = Gameinfo.objects.first()
@@ -72,15 +72,29 @@ class TestLivetickerService(TestCase):
                 "name": "A2",
                 "full_name": "AAAAAAA2",
                 "score": 2,
+                "logo": None,
+                "fh": 1,
+                "sh": 1,
             },
             "home": {
                 "isInPossession": True,
                 "name": "A1",
                 "full_name": "AAAAAAA1",
                 "score": 3,
+                "logo": None,
+                "fh": 2,
+                "sh": 1,
             },
             "gameId": first_game.pk,
             "standing": "Gruppe 1",
+            "stage": "Vorrunde",
+            "field": 1,
+            "league": "some_division",
+            "gameday": {
+                "id": gameday.pk,
+                "name": "Test Spieltag",
+                "address": "",
+            },
             "status": "Geplant",
             "ticks": [],
             "time": "10:00",

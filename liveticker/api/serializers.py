@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework.fields import CharField, SerializerMethodField, IntegerField
 from rest_framework.serializers import Serializer
 
@@ -108,6 +109,18 @@ class LivetickerSerializer(Serializer):
     SCORE_AWAY = "score_away"
     IN_POSSESSION = "in_possession"
     TEAMLOG = "teamlog"
+    GAMEDAY = "gameday"
+    GAMEDAY_NAME = "gameday_name"
+    GAMEDAY_ADDRESS = "gameday_address"
+    LEAGUE_NAME = "league_name"
+    FIELD = "field"
+    STAGE = "stage"
+    LOGO_HOME = "logo_home"
+    LOGO_AWAY = "logo_away"
+    FH_HOME = "fh_home"
+    SH_HOME = "sh_home"
+    FH_AWAY = "fh_away"
+    SH_AWAY = "sh_away"
     ALL_VALUE_FIELDS = [
         "status",
         "standing",
@@ -121,11 +134,27 @@ class LivetickerSerializer(Serializer):
         FULL_NAME_AWAY,
         SCHEDULED,
         GAME_STARTED,
+        GAMEDAY,
+        GAMEDAY_NAME,
+        GAMEDAY_ADDRESS,
+        LEAGUE_NAME,
+        FIELD,
+        STAGE,
+        LOGO_HOME,
+        LOGO_AWAY,
+        FH_HOME,
+        SH_HOME,
+        FH_AWAY,
+        SH_AWAY,
     ]
 
     gameId = IntegerField(source=ID)
     status = CharField()
     standing = CharField()
+    stage = CharField()
+    field = IntegerField()
+    league = SerializerMethodField()
+    gameday = SerializerMethodField()
     time = SerializerMethodField(source=GAME_STARTED)
     home = SerializerMethodField()
     away = SerializerMethodField()
@@ -149,26 +178,52 @@ class LivetickerSerializer(Serializer):
             return obj[self.SCHEDULED].strftime("%H:%M")
         return utc_time_as_iso(obj[self.GAME_STARTED], ref_now=self.ref_now)
 
+    def get_league(self, obj: dict):
+        return obj[self.LEAGUE_NAME]
+
+    def get_gameday(self, obj: dict):
+        return {
+            "id": obj[self.GAMEDAY],
+            "name": obj[self.GAMEDAY_NAME],
+            "address": obj[self.GAMEDAY_ADDRESS],
+        }
+
     def get_home(self, obj: dict):
         return self._get_team_dict(
-            obj[self.FULL_NAME_HOME],
-            obj[self.NAME_HOME],
-            obj[self.SCORE_HOME],
-            obj[self.IN_POSSESSION],
+            full_team_name=obj[self.FULL_NAME_HOME],
+            team_name=obj[self.NAME_HOME],
+            score=obj[self.SCORE_HOME],
+            in_possession=obj[self.IN_POSSESSION],
+            logo=obj[self.LOGO_HOME],
+            first_half=obj[self.FH_HOME],
+            second_half=obj[self.SH_HOME],
         )
 
     def get_away(self, obj: dict):
         return self._get_team_dict(
-            obj[self.FULL_NAME_AWAY],
-            obj[self.NAME_AWAY],
-            obj[self.SCORE_AWAY],
-            obj[self.IN_POSSESSION],
+            full_team_name=obj[self.FULL_NAME_AWAY],
+            team_name=obj[self.NAME_AWAY],
+            score=obj[self.SCORE_AWAY],
+            in_possession=obj[self.IN_POSSESSION],
+            logo=obj[self.LOGO_AWAY],
+            first_half=obj[self.FH_AWAY],
+            second_half=obj[self.SH_AWAY],
         )
 
     # noinspection PyMethodMayBeStatic
     def _get_team_dict(
-        self, full_team_name, team_name: str, score: int, in_possession: str
+        self,
+        full_team_name,
+        team_name: str,
+        score: int,
+        in_possession: str,
+        logo: str | None,
+        first_half: int | None,
+        second_half: int | None,
     ):
+        logo_url = None
+        if logo:
+            logo_url = f"{settings.MEDIA_URL}{logo}"
         return {
             # ``name`` is the team's short name (Team.name, e.g. "Wall");
             # ``full_name`` keeps the long description for clients that want
@@ -177,4 +232,7 @@ class LivetickerSerializer(Serializer):
             "full_name": full_team_name,
             "score": score,
             "isInPossession": team_name == in_possession,
+            "logo": logo_url,
+            "fh": first_half,
+            "sh": second_half,
         }

@@ -151,6 +151,19 @@ class LivetickerService:
                 ),
                 score_home=self._get_gameresult_score_subquery(is_home=True),
                 score_away=self._get_gameresult_score_subquery(is_home=False),
+                logo_home=self._get_gameresult_team_subquery(
+                    is_home=True, team_column="team__logo"
+                ),
+                logo_away=self._get_gameresult_team_subquery(
+                    is_home=False, team_column="team__logo"
+                ),
+                fh_home=self._get_gameresult_half_subquery(is_home=True, column="fh"),
+                sh_home=self._get_gameresult_half_subquery(is_home=True, column="sh"),
+                fh_away=self._get_gameresult_half_subquery(is_home=False, column="fh"),
+                sh_away=self._get_gameresult_half_subquery(is_home=False, column="sh"),
+                gameday_name=F("gameday__name"),
+                gameday_address=F("gameday__address"),
+                league_name=F("gameday__league__name"),
             )
             .order_by(f"-{SCHEDULED}")
             .values(*LivetickerSerializer.ALL_VALUE_FIELDS)
@@ -163,6 +176,14 @@ class LivetickerService:
             Gameresult.objects.filter(gameinfo=OuterRef("id"), isHome=is_home)
             .annotate(score=(F("fh") + F("sh")))
             .values("score")[:1]
+        )
+
+    # noinspection PyMethodMayBeStatic
+    def _get_gameresult_half_subquery(self, is_home, column):
+        return Subquery(
+            Gameresult.objects.filter(gameinfo=OuterRef("id"), isHome=is_home).values(
+                column
+            )[:1]
         )
 
     def _get_upcoming_slot_filter(self, gameday_id) -> Q:

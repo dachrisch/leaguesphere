@@ -124,6 +124,32 @@ class TestTeamlogSerializer:
         assert serializer.data[0]["team"] == "home"
         assert serializer.data[1]["team"] == "away"
 
+    def test_a_penalty_is_attributed_to_the_penalised_team(self):
+        teamlog_entries = [
+            TestTeamlogSerializer.create_some_teamlog(
+                event="Strafe",
+                input="Fehlstart",
+                team__name="not home team name",
+            )
+        ]
+        serializer = TeamlogSerializer(
+            instance=teamlog_entries, home_team="name of team", many=True
+        )
+        assert serializer.data[0]["team"] == "away"
+
+    def test_a_penalty_against_the_home_team_is_home(self):
+        teamlog_entries = [
+            TestTeamlogSerializer.create_some_teamlog(
+                event="Strafe",
+                input="Fehlstart",
+                team__name="name of team",
+            )
+        ]
+        serializer = TeamlogSerializer(
+            instance=teamlog_entries, home_team="name of team", many=True
+        )
+        assert serializer.data[0]["team"] == "home"
+
 
 class TestTeamlogSerializerMissedTry:
     """A conversion that failed is a story of its own: it says so and why."""
@@ -193,12 +219,26 @@ class TestLivetickerSerializer:
             "teamlog",
             "full_name_home",
             "full_name_away",
+            "gameday",
+            "gameday_name",
+            "gameday_address",
+            "league_name",
+            "field",
+            "stage",
+            "logo_home",
+            "logo_away",
+            "fh_home",
+            "sh_home",
+            "fh_away",
+            "sh_away",
         ]
         defaults = {
             "scheduled": datetime(2021, 12, 7, 10, 00),
             "id": 7,
             "status": "Geplant",
             "standing": "Group 1",
+            "stage": "Vorrunde",
+            "field": 1,
             "gameStarted": None,
             "name_home": "home",
             "full_name_home": "home team",
@@ -207,6 +247,16 @@ class TestLivetickerSerializer:
             "score_home": 7,
             "score_away": 25,
             "in_possession": "home",
+            "gameday": 3,
+            "gameday_name": "Test Spieltag",
+            "gameday_address": "Testfeld",
+            "league_name": "some_division",
+            "logo_home": None,
+            "logo_away": None,
+            "fh_home": 4,
+            "sh_home": 3,
+            "fh_away": 10,
+            "sh_away": 15,
             "teamlog": [TestTeamlogSerializer.create_some_teamlog(**kwargs)],
         }
 
@@ -223,18 +273,32 @@ class TestLivetickerSerializer:
             "gameId": 7,
             "status": "Geplant",
             "standing": "Group 1",
+            "stage": "Vorrunde",
+            "field": 1,
+            "league": "some_division",
+            "gameday": {
+                "id": 3,
+                "name": "Test Spieltag",
+                "address": "Testfeld",
+            },
             "time": "10:00",
             "home": {
                 "name": "home",
                 "full_name": "home team",
                 "score": 7,
                 "isInPossession": True,
+                "logo": None,
+                "fh": 4,
+                "sh": 3,
             },
             "away": {
                 "name": "away",
                 "full_name": "away team",
                 "score": 25,
                 "isInPossession": False,
+                "logo": None,
+                "fh": 10,
+                "sh": 15,
             },
             "ticks": [],
         }
