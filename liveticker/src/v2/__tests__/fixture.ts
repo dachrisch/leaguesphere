@@ -9,6 +9,8 @@ export const game: Game = {
   league: "Testliga",
   gameday: { id: 2, name: "Testtag", address: "Testfeld" },
   time: "2026-08-15T11:30:00+00:00",
+  scheduled_at: "2026-08-15T11:30:00+02:00",
+  tick_count: 1,
   home: {
     name: "Walldorf Wanderers",
     full_name: "Walldorf Wanderers",
@@ -30,6 +32,7 @@ export const game: Game = {
   ticks: [
     {
       text: "Touchdown: #7 - 45 Yards",
+      type: "touchdown",
       team: "home",
       time: "2026-08-15T12:05:00+00:00",
     },

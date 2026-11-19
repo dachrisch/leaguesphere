@@ -12,6 +12,7 @@ export interface Team {
 
 export interface Tick {
   text: string;
+  type: string;
   team: Side;
   time: string;
 }
@@ -31,6 +32,8 @@ export interface Game {
   league: string;
   gameday: Gameday;
   time: string;
+  scheduled_at: string;
+  tick_count: number;
   home: Team;
   away: Team;
   ticks: Tick[];

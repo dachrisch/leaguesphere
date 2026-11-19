@@ -89,6 +89,7 @@ describe("EventList", () => {
           ticks: [
             {
               text: "Auszeit - 12:00",
+              type: "timeout",
               team: "away",
               time: "2026-08-15T12:00:00+00:00",
             },
@@ -107,6 +108,7 @@ describe("EventList", () => {
           ticks: [
             {
               text: "Spiel gestartet",
+              type: "period_start",
               team: null,
               time: "2026-08-15T12:00:00+00:00",
             },
@@ -114,7 +116,7 @@ describe("EventList", () => {
         }}
       />,
     );
-    expect(screen.getByText("Spiel gestartet")).toBeInTheDocument();
+    expect(screen.getByText("Anpfiff")).toBeInTheDocument();
     expect(screen.queryByText("Walldorf Wanderers")).not.toBeInTheDocument();
   });
 });

@@ -392,3 +392,9 @@ p {
     transition: none !important;
   }
 }
+
+.lt-event-detail {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--lt-muted);
+}

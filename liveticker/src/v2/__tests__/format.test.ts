@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { eventCode, formatClock, germanEventText } from "../format";
+import { formatClock } from "../format";
 import { selectLiveGame } from "../selectors";
 import type { Game, Team } from "../types";
 
@@ -23,22 +23,7 @@ describe("format", () => {
     expect(formatClock("not-a-date")).toBe("not-a-date");
   });
 
-  it("maps the event vocabulary to the two-letter codes", () => {
-    expect(eventCode("Touchdown: #7 - 45 Yards")).toBe("TD");
-    expect(eventCode("1-Extra-Punkt: #7")).toBe("XP");
-    expect(eventCode("Run: #11 - 12 Yards")).toBe("LA");
-    expect(eventCode("Strafe - Fehlstart")).toBe("ST");
-    expect(eventCode("Auszeit - 12:00")).toBe("AZ");
-    expect(eventCode("2. Halbzeit gestartet")).toBe("HZ");
-    expect(eventCode("Spiel gestartet")).toBe("AN");
-    expect(eventCode("Unbekannt")).toBe("•");
-  });
 
-  it("uses German event names where the old text was English", () => {
-    expect(germanEventText("Run: #11 - 12 Yards")).toBe("Lauf: #11 - 12 Yards");
-    expect(germanEventText("1-Extra-Punkt: #7")).toBe("Extrapunkt: #7");
-    expect(germanEventText("2-Extra-Punkte: #7")).toBe("2 Extrapunkte: #7");
-  });
 });
 
 describe("selectLiveGame", () => {
@@ -49,6 +34,8 @@ describe("selectLiveGame", () => {
     league: "Testliga",
     gameday: { id: 1, name: "Testtag", address: "" },
     time: "10:00",
+    scheduled_at: "2026-08-15T10:00:00+02:00",
+    tick_count: 0,
     ticks: [],
   };
   const team: Team = {

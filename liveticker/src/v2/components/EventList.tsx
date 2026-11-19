@@ -1,5 +1,6 @@
 import type { Game } from "../types";
-import { eventCode, formatClock, germanEventText } from "../format";
+import { eventDetail, eventMeta } from "../eventTypes";
+import { formatClock } from "../format";
 
 interface EventListProps {
   game: Game;
@@ -21,13 +22,16 @@ export function EventList({ game }: EventListProps) {
         <ol className="lt-events" aria-live="polite">
           {game.ticks.map((tick, index) => {
             const team = teamFor(tick.team);
+            const meta = eventMeta(tick.type);
+            const detail = meta.label ? eventDetail(tick.text) : "";
             return (
               <li key={`${tick.time}-${index}`} className="lt-event">
                 <span className="lt-code" aria-hidden="true">
-                  {eventCode(tick.text)}
+                  {meta.code}
                 </span>
                 <div className="lt-event-body">
-                  <p className="lt-event-text">{germanEventText(tick.text)}</p>
+                  <p className="lt-event-text">{meta.label ?? tick.text}</p>
+                  {detail && <p className="lt-event-detail">{detail}</p>}
                   {team && <p className="lt-event-team">{team}</p>}
                 </div>
                 <time className="lt-event-time">{formatClock(tick.time)}</time>
