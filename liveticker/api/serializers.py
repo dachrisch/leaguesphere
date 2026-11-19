@@ -6,6 +6,7 @@ from rest_framework.fields import CharField, SerializerMethodField, IntegerField
 from rest_framework.serializers import Serializer
 
 from gamedays.service.utils import utc_time_as_iso
+from gameevents.service.legacy import LEGACY_EVENTS
 
 # The rows whose ``input`` is part of the story rather than bookkeeping (the
 # play-by-play, the clocks and the penalty name).
@@ -30,33 +31,48 @@ _EVENTS_WITH_INPUT = frozenset(
 _TRY_EVENTS = frozenset({"1-Extra-Punkt", "2-Extra-Punkte"})
 _MISSED_TRY = "nicht verwandelt"
 
-# Stable machine-readable tick kinds. The value is derived from the stored
-# TeamLog event name, never from the rendered text (which the serializer may
-# still localise). A kind the API does not know is ``other``.
-EVENT_TYPE_BY_NAME = {
-    "Touchdown": "touchdown",
-    "1-Extra-Punkt": "extra_point",
-    "2-Extra-Punkte": "extra_point",
-    "Overtime": "overtime_score",
-    "Safety (+1)": "safety",
-    "Safety (+2)": "safety",
-    "Turnover": "turnover",
-    "Interception": "interception",
-    "First Down": "first_down",
-    "Strafe": "penalty",
-    "Spielzeit": "clock",
-    "Auszeit": "timeout",
+# The API kind for a legacy event's (kind, sub-kind). ``gameevents`` already
+# owns the name -> kind table (``LEGACY_EVENTS``), so the liveticker derives its
+# types from it instead of repeating the names: a new name that reuses an
+# existing kind reaches the ticker without a second edit.
+EVENT_TYPE_BY_LEGACY_KIND = {
+    ("score", "touchdown"): "touchdown",
+    ("score", "pat1"): "extra_point",
+    ("score", "pat2"): "extra_point",
+    ("score", "overtime"): "overtime_score",
+    ("score", "safety"): "safety",
+    ("possession", "turnover"): "turnover",
+    ("possession", "interception"): "interception",
+    ("series", "first_down"): "first_down",
+    ("penalty", None): "penalty",
+    ("time", "clock"): "clock",
+    ("timeout", None): "timeout",
+    ("period", "start"): "period_start",
+    ("period", "half_time"): "period_half",
+    ("period", "end"): "period_end",
+}
+
+# Names the legacy scorecard writer never posts: the v2 scorecard logs these
+# directly, so ``LEGACY_EVENTS`` cannot describe them. They stay explicit here
+# rather than being folded into ``other``.
+LIVETICKER_EVENT_TYPES = {
     "Pass": "pass",
     "Pass unvollständig": "pass_incomplete",
     "Run": "run",
     "Sack": "sack",
     "Challenge": "challenge",
     "Feldposition": "field_position",
-    "Spiel gestartet": "period_start",
-    "2. Halbzeit gestartet": "period_half",
     "Overtime startet": "period_overtime",
-    "Spiel beendet": "period_end",
 }
+
+# Stable machine-readable tick kinds. The value is derived from the stored
+# TeamLog event name, never from the rendered text (which the serializer may
+# still localise). A kind the API does not know is ``other``.
+EVENT_TYPE_BY_NAME = {
+    name: EVENT_TYPE_BY_LEGACY_KIND.get((spec.type, spec.code), "other")
+    for name, spec in LEGACY_EVENTS.items()
+}
+EVENT_TYPE_BY_NAME.update(LIVETICKER_EVENT_TYPES)
 
 
 class TeamlogSerializer(Serializer):

@@ -1,7 +1,9 @@
 from datetime import UTC, date, datetime
 
+from gameevents.service.legacy import LEGACY_EVENTS
 from liveticker.api.serializers import (
     EVENT_TYPE_BY_NAME,
+    LIVETICKER_EVENT_TYPES,
     TeamlogSerializer,
     LivetickerSerializer,
 )
@@ -169,6 +171,48 @@ class TestTeamlogType:
             instance=[entry], home_team="name of team", many=True
         )
         assert serializer.data[0]["type"] == "other"
+
+    def test_every_legacy_event_has_a_specific_type(self):
+        for name in LEGACY_EVENTS:
+            assert EVENT_TYPE_BY_NAME[name] != "other", name
+
+    def test_the_derived_types_are_the_published_contract(self):
+        assert EVENT_TYPE_BY_NAME == {
+            "Touchdown": "touchdown",
+            "1-Extra-Punkt": "extra_point",
+            "2-Extra-Punkte": "extra_point",
+            "Overtime": "overtime_score",
+            "Safety (+1)": "safety",
+            "Safety (+2)": "safety",
+            "Turnover": "turnover",
+            "Interception": "interception",
+            "First Down": "first_down",
+            "Strafe": "penalty",
+            "Spielzeit": "clock",
+            "Auszeit": "timeout",
+            "Pass": "pass",
+            "Pass unvollständig": "pass_incomplete",
+            "Run": "run",
+            "Sack": "sack",
+            "Challenge": "challenge",
+            "Feldposition": "field_position",
+            "Spiel gestartet": "period_start",
+            "2. Halbzeit gestartet": "period_half",
+            "Overtime startet": "period_overtime",
+            "Spiel beendet": "period_end",
+        }
+
+    def test_the_extra_table_only_names_events_the_legacy_map_lacks(self):
+        assert set(LIVETICKER_EVENT_TYPES) == {
+            "Pass",
+            "Pass unvollständig",
+            "Run",
+            "Sack",
+            "Challenge",
+            "Feldposition",
+            "Overtime startet",
+        }
+        assert not set(LIVETICKER_EVENT_TYPES) & set(LEGACY_EVENTS)
 
     def test_the_type_set_covers_the_scorecard_vocabulary(self):
         assert set(EVENT_TYPE_BY_NAME.values()) == {
