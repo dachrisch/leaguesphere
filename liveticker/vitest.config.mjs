@@ -24,7 +24,10 @@ export default defineConfig({
     environment: 'jsdom',
 
     // Setup files to run before each test file
-    setupFiles: ['./src/__tests__/setup/jest.setup.js'],
+    setupFiles: [
+      './src/__tests__/setup/jest.setup.js',
+      './src/v2/setupTests.ts',
+    ],
 
     // Test file patterns
     include: ['**/__tests__/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
