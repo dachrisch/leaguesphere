@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ContextHeader } from "../components/ContextHeader";
 import { EventList } from "../components/EventList";
@@ -12,6 +12,13 @@ describe("ContextHeader", () => {
     expect(screen.getByRole("heading", { name: "Testtag" })).toBeInTheDocument();
     expect(screen.getByText(/Testliga/)).toBeInTheDocument();
     expect(screen.getByText(/Feld 1/)).toBeInTheDocument();
+  });
+
+  it("falls back to the legacy kickoff when scheduled_at is missing", () => {
+    const { container } = render(
+      <ContextHeader game={{ ...game, scheduled_at: "", time: "10:00" }} />,
+    );
+    expect(container.textContent).toContain("Anstoß 10:00");
   });
 
   it("does not add empty context parts", () => {
@@ -98,6 +105,34 @@ describe("EventList", () => {
       />,
     );
     expect(screen.getByText("Düsseldorf Firecats")).toBeInTheDocument();
+  });
+
+  it("exposes the all-events toggle with its aria state", async () => {
+    const toggle = vi.fn();
+    const { rerender } = render(
+      <EventList
+        game={{ ...game, tick_count: 9 }}
+        allExpanded={false}
+        onToggleAll={toggle}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "Alle 9 Ereignisse" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveAttribute("aria-controls", "events-1");
+    button.click();
+    expect(toggle).toHaveBeenCalled();
+    rerender(
+      <EventList game={{ ...game, tick_count: 9 }} allExpanded onToggleAll={toggle} />,
+    );
+    expect(screen.getByRole("button", { name: "Weniger anzeigen" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("works without an explicit toggle handler", () => {
+    render(<EventList game={{ ...game, tick_count: 9 }} />);
+    screen.getByRole("button", { name: "Alle 9 Ereignisse" }).click();
   });
 
   it("renders a neutral event without a team name", () => {

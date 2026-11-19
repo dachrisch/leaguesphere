@@ -1,5 +1,5 @@
 import type { Game } from "../types";
-import { formatClock } from "../format";
+import { formatBerlinClock, formatClock } from "../format";
 
 interface ContextHeaderProps {
   game: Game;
@@ -20,7 +20,7 @@ export function ContextHeader({ game }: ContextHeaderProps) {
       <p className="lt-context-meta">
         {parts.join(" · ")}
         <span className="lt-sep"> · </span>
-        Anstoß {formatClock(game.time)}
+        Anstoß {game.scheduled_at ? formatBerlinClock(game.scheduled_at) : formatClock(game.time)}
       </p>
     </header>
   );

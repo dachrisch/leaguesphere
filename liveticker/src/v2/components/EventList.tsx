@@ -4,9 +4,16 @@ import { formatClock } from "../format";
 
 interface EventListProps {
   game: Game;
+  allExpanded?: boolean;
+  onToggleAll?: () => void;
 }
 
-export function EventList({ game }: EventListProps) {
+export function EventList({
+  game,
+  allExpanded = false,
+  onToggleAll = () => undefined,
+}: EventListProps) {
+  const eventsId = `events-${game.gameId}`;
   const teamFor = (side: "home" | "away" | null): string | null => {
     if (side === "home") return game.home.name;
     if (side === "away") return game.away.name;
@@ -19,7 +26,12 @@ export function EventList({ game }: EventListProps) {
       {game.ticks.length === 0 ? (
         <p className="lt-empty">Noch keine Ereignisse.</p>
       ) : (
-        <ol className="lt-events" aria-label="Ereignisse" aria-live="polite">
+        <ol
+          id={eventsId}
+          className="lt-events"
+          aria-label="Ereignisse"
+          aria-live="polite"
+        >
           {game.ticks.map((tick, index) => {
             const team = teamFor(tick.team);
             const meta = eventMeta(tick.type);
@@ -39,6 +51,17 @@ export function EventList({ game }: EventListProps) {
             );
           })}
         </ol>
+      )}
+      {(allExpanded || game.tick_count > game.ticks.length) && (
+        <button
+          type="button"
+          className="lt-all-events"
+          aria-expanded={allExpanded}
+          aria-controls={eventsId}
+          onClick={onToggleAll}
+        >
+          {allExpanded ? "Weniger anzeigen" : `Alle ${game.tick_count} Ereignisse`}
+        </button>
       )}
     </section>
   );

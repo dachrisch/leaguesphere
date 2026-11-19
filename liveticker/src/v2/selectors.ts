@@ -17,30 +17,30 @@ export function selectFinishedGame(games: Game[]): Game | null {
   return games.find(isFinished) ?? null;
 }
 
-export function toMinutes(value: string): number | null {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
-  if (!match) return null;
-  return Number(match[1]) * 60 + Number(match[2]);
-}
+const FIVE_MINUTES = 5 * 60 * 1000;
 
 export function isDelayed(game: Game, now: Date): boolean {
-  if (game.status !== "Geplant") return false;
-  const scheduled = toMinutes(game.time);
-  if (scheduled === null) return false;
-  const current = now.getHours() * 60 + now.getMinutes();
-  return current - scheduled >= 5;
+  if (game.status !== "Geplant" || !game.scheduled_at) return false;
+  const scheduled = Date.parse(game.scheduled_at);
+  if (Number.isNaN(scheduled)) return false;
+  return now.getTime() - scheduled >= FIVE_MINUTES;
 }
 
 export function minutesUntil(game: Game, now: Date): number | null {
-  const scheduled = toMinutes(game.time);
-  if (scheduled === null) return null;
-  const current = now.getHours() * 60 + now.getMinutes();
-  return Math.max(0, scheduled - current);
+  if (!game.scheduled_at) return null;
+  const scheduled = Date.parse(game.scheduled_at);
+  if (Number.isNaN(scheduled)) return null;
+  return Math.max(0, Math.ceil((scheduled - now.getTime()) / 60000));
 }
 
 export function selectNextGame(games: Game[], now: Date): Game | null {
   const scheduled = games
-    .filter((game) => game.status === "Geplant" && toMinutes(game.time) !== null)
-    .sort((a, b) => (toMinutes(a.time) ?? 0) - (toMinutes(b.time) ?? 0));
+    .filter(
+      (game) => game.status === "Geplant" && !Number.isNaN(Date.parse(game.scheduled_at)),
+    )
+    .sort(
+      (a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at),
+    );
   return scheduled.find((game) => !isDelayed(game, now)) ?? scheduled[0] ?? null;
 }
+

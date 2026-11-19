@@ -1,5 +1,5 @@
 import type { Game } from "../types";
-import { formatClock } from "../format";
+import { formatBerlinClock } from "../format";
 import { isDelayed, minutesUntil, selectNextGame } from "../selectors";
 
 interface NoLiveProps {
@@ -22,7 +22,7 @@ export function NoLive({ games, now }: NoLiveProps) {
           <h1>Nächstes Spiel</h1>
           {next && (
             <p className="lt-context-meta">
-              {formatClock(next.time)} · Feld {next.field} · {next.home.name} –{" "}
+              {formatBerlinClock(next.scheduled_at)} · Feld {next.field} · {next.home.name} –{" "}
               {next.away.name}
             </p>
           )}
@@ -36,7 +36,7 @@ export function NoLive({ games, now }: NoLiveProps) {
           <h2>Verspätet</h2>
           {delayed.map((game) => (
             <p key={game.gameId} className="lt-delayed-row">
-              <span>{formatClock(game.time)}</span>
+              <span>{formatBerlinClock(game.scheduled_at)}</span>
               <span>
                 Feld {game.field} · {game.home.name} – {game.away.name}
               </span>

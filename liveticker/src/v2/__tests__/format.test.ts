@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { formatClock } from "../format";
+import { formatBerlinClock, formatClock } from "../format";
 import { selectLiveGame } from "../selectors";
 import type { Game, Team } from "../types";
 
@@ -15,6 +15,17 @@ afterAll(() => {
 describe("format", () => {
   it("formats a UTC timestamp as German 24h time", () => {
     expect(formatClock("2026-08-15T12:05:00+00:00")).toBe("14:05");
+  });
+
+  it("formats the Berlin kickoff regardless of the viewer time zone", () => {
+    vi.stubEnv("TZ", "America/New_York");
+    expect(formatBerlinClock("2026-08-15T08:45:00+00:00")).toBe("10:45");
+    vi.stubEnv("TZ", "Europe/Berlin");
+  });
+
+  it("handles a missing or unparsable kickoff", () => {
+    expect(formatBerlinClock(null)).toBe("—");
+    expect(formatBerlinClock("not-a-date")).toBe("not-a-date");
   });
 
   it("passes scheduled wall-clock times through", () => {

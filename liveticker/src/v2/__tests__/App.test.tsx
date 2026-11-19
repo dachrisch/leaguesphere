@@ -37,6 +37,28 @@ describe("Liveticker v2 App", () => {
     );
   });
 
+  it("expands the full history through the all-events control", async () => {
+    renderApp([{ ...game, tick_count: 9 }]);
+    const button = screen.getByRole("button", { name: "Alle 9 Ereignisse" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveAttribute("aria-controls", "events-1");
+    await userEvent.click(button);
+    expect(screen.getByRole("button", { name: "Weniger anzeigen" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("expands the finished game history too", async () => {
+    renderApp([{ ...game, status: "beendet", tick_count: 9 }]);
+    const button = screen.getByRole("button", { name: "Alle 9 Ereignisse" });
+    await userEvent.click(button);
+    expect(screen.getByRole("button", { name: "Weniger anzeigen" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
   it("shows the empty state when no game is live", () => {
     renderApp([]);
     expect(screen.getByRole("heading", { name: "Nächstes Spiel" })).toBeInTheDocument();

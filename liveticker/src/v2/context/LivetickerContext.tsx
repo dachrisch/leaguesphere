@@ -14,6 +14,8 @@ interface LivetickerValue {
   games: Game[];
   loading: boolean;
   error: string | null;
+  allTicksFor: number[];
+  toggleAllTicks: (gameId: number) => void;
 }
 
 const LivetickerContext = createContext<LivetickerValue | null>(null);
@@ -37,6 +39,7 @@ export function LivetickerProvider({
   const [games, setGames] = useState<Game[]>(initialGames ?? []);
   const [loading, setLoading] = useState(initialGames === undefined);
   const [error, setError] = useState<string | null>(null);
+  const [allTicksFor, setAllTicksFor] = useState<number[]>([]);
 
   useEffect(() => {
     if (initialGames !== undefined) return;
@@ -47,7 +50,12 @@ export function LivetickerProvider({
       controller?.abort();
       controller = new AbortController();
       try {
-        const next = await fetchGames(league, gameday, controller.signal);
+        const next = await fetchGames(
+          league,
+          gameday,
+          controller.signal,
+          allTicksFor,
+        );
         if (active) {
           setGames(next);
           setError(null);
@@ -71,11 +79,19 @@ export function LivetickerProvider({
       window.clearInterval(interval);
       controller?.abort();
     };
-  }, [gameday, initialGames, league]);
+  }, [allTicksFor, gameday, initialGames, league]);
+
+  const toggleAllTicks = (gameId: number) => {
+    setAllTicksFor((current) =>
+      current.includes(gameId)
+        ? current.filter((id) => id !== gameId)
+        : [...current, gameId],
+    );
+  };
 
   const value = useMemo(
-    () => ({ games, loading, error }),
-    [error, games, loading],
+    () => ({ games, loading, error, allTicksFor, toggleAllTicks }),
+    [allTicksFor, error, games, loading],
   );
   return (
     <LivetickerContext.Provider value={value}>

@@ -10,7 +10,7 @@ import { useLiveticker } from "./context/LivetickerContext";
 import { selectFinishedGame, selectLiveGames } from "./selectors";
 
 export default function App() {
-  const { games, loading, error } = useLiveticker();
+  const { games, loading, error, allTicksFor, toggleAllTicks } = useLiveticker();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [now, setNow] = useState(() => new Date());
   const liveGames = selectLiveGames(games);
@@ -53,7 +53,11 @@ export default function App() {
         )}
         <ContextHeader game={selected} />
         <Scoreboard game={selected} />
-        <EventList game={selected} />
+        <EventList
+          game={selected}
+          allExpanded={allTicksFor.includes(selected.gameId)}
+          onToggleAll={() => toggleAllTicks(selected.gameId)}
+        />
         <ShareButton />
       </main>
     );
@@ -64,7 +68,11 @@ export default function App() {
       <main className="lt-app">
         <ContextHeader game={finishedGame} />
         <Scoreboard game={finishedGame} />
-        <EventList game={finishedGame} />
+        <EventList
+          game={finishedGame}
+          allExpanded={allTicksFor.includes(finishedGame.gameId)}
+          onToggleAll={() => toggleAllTicks(finishedGame.gameId)}
+        />
         <ShareButton />
       </main>
     );
