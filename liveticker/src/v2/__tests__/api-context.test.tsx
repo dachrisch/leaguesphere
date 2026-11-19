@@ -63,6 +63,24 @@ describe("LivetickerProvider", () => {
     await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
   });
 
+  it("ignores an aborted request", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new DOMException("aborted", "AbortError");
+      }),
+    );
+    render(
+      <LivetickerProvider>
+        <Probe />
+      </LivetickerProvider>,
+    );
+    await waitFor(() => expect(screen.getByText("0")).toBeInTheDocument());
+    expect(
+      screen.queryByText("Der Liveticker konnte nicht geladen werden."),
+    ).not.toBeInTheDocument();
+  });
+
   it("reports a failed request", async () => {
     vi.stubGlobal(
       "fetch",

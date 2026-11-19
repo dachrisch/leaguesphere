@@ -46,6 +46,20 @@ describe("Scoreboard", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
 
+  it("falls back to the full name and shows a missing half as a dash", () => {
+    render(
+      <Scoreboard
+        game={{
+          ...game,
+          home: { ...game.home, name: "", fh: null, sh: 0, isInPossession: false },
+          away: { ...game.away, fh: 0, sh: null },
+        }}
+      />,
+    );
+    expect(screen.getAllByText("Walldorf Wanderers").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("–").length).toBeGreaterThan(0);
+  });
+
   it("omits the half table when no halves were entered", () => {
     render(
       <Scoreboard
@@ -65,6 +79,24 @@ describe("EventList", () => {
   it("shows an empty state without ticks", () => {
     render(<EventList game={{ ...game, ticks: [] }} />);
     expect(screen.getByText("Noch keine Ereignisse.")).toBeInTheDocument();
+  });
+
+  it("names the away team on an away event", () => {
+    render(
+      <EventList
+        game={{
+          ...game,
+          ticks: [
+            {
+              text: "Auszeit - 12:00",
+              team: "away",
+              time: "2026-08-15T12:00:00+00:00",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("Düsseldorf Firecats")).toBeInTheDocument();
   });
 
   it("renders a neutral event without a team name", () => {

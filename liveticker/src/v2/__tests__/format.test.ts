@@ -20,6 +20,7 @@ describe("format", () => {
   it("passes scheduled wall-clock times through", () => {
     expect(formatClock("10:00")).toBe("10:00");
     expect(formatClock(null)).toBe("—");
+    expect(formatClock("not-a-date")).toBe("not-a-date");
   });
 
   it("maps the event vocabulary to the two-letter codes", () => {
