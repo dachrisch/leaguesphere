@@ -32,4 +32,20 @@ describe('Ticks component', () => {
     expect(screen.getByText('Turnover')).toBeInTheDocument();
     expect(screen.getByText('Touchdown: #7 Extra-Punkt: -')).toBeInTheDocument();
   });
+
+  it('does not show the empty hint for a finished game without entries', () => {
+    render(<Ticks entries={[]} gameStatus="beendet"/>);
+    expect(screen.getByText('Spiel ist bereits beendet.')).toBeInTheDocument();
+    expect(screen.queryByText('Keine Einträge bisher vorhanden.')).not.toBeInTheDocument();
+  });
+
+  it('centers a neutral entry without a team', () => {
+    render(
+      <Ticks
+        entries={[{text: 'Spiel gestartet', team: null, time: '2026-08-15T12:00:00+00:00'}]}
+        gameStatus="1. Halbzeit"
+      />,
+    );
+    expect(screen.getByText('Spiel gestartet')).toHaveClass('text-center');
+  });
 });
