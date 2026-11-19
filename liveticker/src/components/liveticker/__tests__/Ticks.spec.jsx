@@ -39,6 +39,11 @@ describe('Ticks component', () => {
     expect(screen.queryByText('Keine Einträge bisher vorhanden.')).not.toBeInTheDocument();
   });
 
+  it('shows the empty hint for a live game without entries', () => {
+    render(<Ticks entries={[]} gameStatus="1. Halbzeit"/>);
+    expect(screen.getByText('Keine Einträge bisher vorhanden.')).toBeInTheDocument();
+  });
+
   it('centers a neutral entry without a team', () => {
     render(
       <Ticks
