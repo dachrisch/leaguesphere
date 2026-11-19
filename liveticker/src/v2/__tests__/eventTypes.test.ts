@@ -18,6 +18,34 @@ describe("eventTypes", () => {
     }
   });
 
+  it("lists exactly the types the backend can send", () => {
+    expect([...BACKEND_TYPES].sort()).toEqual(
+      [
+        "touchdown",
+        "extra_point",
+        "overtime_score",
+        "safety",
+        "turnover",
+        "interception",
+        "first_down",
+        "penalty",
+        "clock",
+        "timeout",
+        "pass",
+        "pass_incomplete",
+        "run",
+        "sack",
+        "challenge",
+        "field_position",
+        "period_start",
+        "period_half",
+        "period_overtime",
+        "period_end",
+        "other",
+      ].sort(),
+    );
+  });
+
   it("falls back to the neutral code for an unknown type", () => {
     expect(eventMeta("something-new")).toEqual({ code: "•", label: null });
   });
@@ -34,7 +62,6 @@ describe("eventTypes", () => {
     expect(eventMeta("extra_point").code).toBe("XP");
     expect(eventMeta("run").code).toBe("LA");
     expect(eventMeta("pass").code).toBe("PA");
-    expect(eventMeta("field_goal").code).toBe("FG");
     expect(eventMeta("safety").code).toBe("SF");
     expect(eventMeta("interception").code).toBe("IN");
     expect(eventMeta("penalty").code).toBe("ST");
