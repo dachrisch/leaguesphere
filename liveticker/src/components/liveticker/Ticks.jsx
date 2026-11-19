@@ -21,25 +21,21 @@ const Ticks = (props) => {
           <div className='text-center'>Spiel ist bereits beendet.</div>
         </li>
       )}
-      {gameStatus !== 'beendet' && (
-        <>
-          {entries.length === 0 && (
-            <li className={`list-group-item`}>
-              <div className='text-center'>
-                Keine Einträge bisher vorhanden.
-              </div>
-            </li>
-          )}
-          {entries.map((entry, index) => (
-            <li key={index} className={`list-group-item`}>
-              <div className='text-center text-muted smaller'>
-                {toLocalTime(entry.time)} Uhr
-              </div>
-              <div className={getAlignmentFor(entry.team)}>{entry.text}</div>
-            </li>
-          ))}
-        </>
+      {entries.length === 0 && gameStatus !== 'beendet' && (
+        <li className={`list-group-item`}>
+          <div className='text-center'>
+            Keine Einträge bisher vorhanden.
+          </div>
+        </li>
       )}
+      {entries.map((entry, index) => (
+        <li key={index} className={`list-group-item`}>
+          <div className='text-center text-muted smaller'>
+            {toLocalTime(entry.time)} Uhr
+          </div>
+          <div className={getAlignmentFor(entry.team)}>{entry.text}</div>
+        </li>
+      ))}
     </ul>
   );
 };

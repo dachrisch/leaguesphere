@@ -254,6 +254,12 @@ JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30
 # nothing user-visible until stage has proven the projection.
 SCORECARD_EVENT_FEED = os.environ.get("SCORECARD_EVENT_FEED", "false") == "true"
 
+# --- liveticker -------------------------------------------------------------
+# The feed is polled by every open ticker. Keep the page cache at 60 s until a
+# measured k6 run on stage justifies a lower TTL; the setting lets that change
+# ship without touching the view.
+LIVETICKER_CACHE_SECONDS = int(os.environ.get("LIVETICKER_CACHE_SECONDS", "60"))
+
 # --- temporary database access (dbaccess) ----------------------------------
 # Feature switch for the request/approval surface. Off unless the deployment
 # says otherwise, so a stack without a provisioner sidecar cannot accept

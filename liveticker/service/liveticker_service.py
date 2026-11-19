@@ -1,9 +1,11 @@
 import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import List
 
 from django.conf import settings
-from django.db.models import Subquery, OuterRef, F, Q
+from django.db.models import Count, Subquery, OuterRef, F, Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from gameevents.models import GameEvent, GameState
@@ -119,18 +121,29 @@ class LivetickerService:
             )
 
     def _update_next_games_with_teamlog(self, next_games_list):
-        game: dict
+        """Load the ticks for every selected game in one query.
+
+        The list is capped per game (five by default, all when the client asks
+        for a game), so the rows are fetched once for all games and then sliced
+        in memory. The query count must not grow with the number of games.
+        """
+        if not next_games_list:
+            return
+        game_ids = [game["id"] for game in next_games_list]
+        rows = (
+            TeamLog.objects.filter(gameinfo_id__in=game_ids)
+            .exclude(isDeleted=True)
+            .order_by("gameinfo_id", "-created_time")
+            .values("gameinfo_id", *TeamlogSerializer.ALL_VALUE_FIELDS)
+        )
+        by_game = defaultdict(list)
+        for row in rows:
+            by_game[row["gameinfo_id"]].append(row)
         for game in next_games_list:
-            number_of_ticks = self.number_of_ticks
-            if game["id"] in self.games_with_all_ticks:
-                number_of_ticks = None
-            teamlog = (
-                TeamLog.objects.filter(gameinfo=game["id"])
-                .exclude(isDeleted=True)
-                .order_by("-created_time")[slice(None, number_of_ticks)]
-                .values(*TeamlogSerializer.ALL_VALUE_FIELDS)
-            )
-            game.update({LivetickerSerializer.TEAMLOG: list(teamlog)})
+            teamlog = by_game.get(game["id"], [])
+            if game["id"] not in self.games_with_all_ticks:
+                teamlog = teamlog[: self.number_of_ticks]
+            game.update({LivetickerSerializer.TEAMLOG: teamlog})
 
     def _get_all_live_games(self, filter_conditions):
         next_games = (
@@ -151,6 +164,30 @@ class LivetickerService:
                 ),
                 score_home=self._get_gameresult_score_subquery(is_home=True),
                 score_away=self._get_gameresult_score_subquery(is_home=False),
+                logo_home=self._get_gameresult_team_subquery(
+                    is_home=True, team_column="team__logo"
+                ),
+                logo_away=self._get_gameresult_team_subquery(
+                    is_home=False, team_column="team__logo"
+                ),
+                fh_home=self._get_gameresult_half_subquery(is_home=True, column="fh"),
+                sh_home=self._get_gameresult_half_subquery(is_home=True, column="sh"),
+                fh_away=self._get_gameresult_half_subquery(is_home=False, column="fh"),
+                sh_away=self._get_gameresult_half_subquery(is_home=False, column="sh"),
+                gameday_name=F("gameday__name"),
+                gameday_address=F("gameday__address"),
+                league_name=F("gameday__league__name"),
+                scheduled_date=F("gameday__date"),
+                tick_count=Coalesce(
+                    Subquery(
+                        TeamLog.objects.filter(gameinfo=OuterRef("id"))
+                        .exclude(isDeleted=True)
+                        .values("gameinfo")
+                        .annotate(count=Count("pk"))
+                        .values("count")[:1]
+                    ),
+                    0,
+                ),
             )
             .order_by(f"-{SCHEDULED}")
             .values(*LivetickerSerializer.ALL_VALUE_FIELDS)
@@ -163,6 +200,14 @@ class LivetickerService:
             Gameresult.objects.filter(gameinfo=OuterRef("id"), isHome=is_home)
             .annotate(score=(F("fh") + F("sh")))
             .values("score")[:1]
+        )
+
+    # noinspection PyMethodMayBeStatic
+    def _get_gameresult_half_subquery(self, is_home, column):
+        return Subquery(
+            Gameresult.objects.filter(gameinfo=OuterRef("id"), isHome=is_home).values(
+                column
+            )[:1]
         )
 
     def _get_upcoming_slot_filter(self, gameday_id) -> Q:

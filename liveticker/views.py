@@ -12,6 +12,12 @@ class LivetickerView(TemplateView):
     template_name = "liveticker/index.html"
 
 
+class LivetickerV2View(TemplateView):
+    """The parallel TypeScript app; the legacy route stays untouched."""
+
+    template_name = "liveticker/v2.html"
+
+
 class SwissStandingsPublicView(TemplateView):
     """
     Public round-standings page for a Swiss gameday (no sign-in).

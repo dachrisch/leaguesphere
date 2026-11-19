@@ -251,12 +251,10 @@ def _scope_aggregates(filters):
 def scope_teams(filters):
     """Teams referenced in scope: every result's team plus the team filter."""
     gamedays = snapshot_gameday_queryset(filters)
-    return (
-        Team.objects.filter(
-            Q(gameresult__gameinfo__gameday__in=gamedays)
-            | Q(pk__in=[team.pk for team in filters["teams"]])
-        ).distinct()
-    )
+    return Team.objects.filter(
+        Q(gameresult__gameinfo__gameday__in=gamedays)
+        | Q(pk__in=[team.pk for team in filters["teams"]])
+    ).distinct()
 
 
 def scope_league_season_configs(filters):
@@ -473,11 +471,7 @@ def build_game_log(game, gameday_date=None, seq_by_row=None):
             rows,
             team_names,
             gameday_ref_now(gameday_date),
-            (
-                event_seqs_for_rows(rows, game.pk)
-                if seq_by_row is None
-                else seq_by_row
-            ),
+            (event_seqs_for_rows(rows, game.pk) if seq_by_row is None else seq_by_row),
         ),
         "home_id": team_id(home_result),
         "away_id": team_id(away_result),
@@ -534,6 +528,13 @@ def build_live_by_game(gamedays):
     if not gameday_ids:
         return {}
     entries = LivetickerService([], [], gameday_ids).get_liveticker_as_json()
+    for entry in entries:
+        # The public snapshot's live block is additive-only: keep the long
+        # team description in ``name`` even though the internal ticker now
+        # uses the short Team.name. ``full_name`` stays available.
+        for side in ("home", "away"):
+            team = entry[side]
+            team["name"] = team.get("full_name") or team["name"]
     return {entry["gameId"]: entry for entry in entries}
 
 

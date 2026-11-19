@@ -59,7 +59,7 @@ ARG APP_DIR="/liveticker-app"
 WORKDIR ${APP_DIR}
 
 COPY liveticker ${APP_DIR}
-RUN rm -rf static/liveticker/js
+RUN rm -rf static/liveticker/js static/liveticker/v2
 
 RUN npm ci
 RUN npm run build

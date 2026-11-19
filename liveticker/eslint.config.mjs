@@ -1,6 +1,9 @@
 import eslint from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
+
+const tsFiles = ["src/v2/**/*.{ts,tsx}"];
 
 export default [
     eslint.configs.recommended,
@@ -19,6 +22,24 @@ export default [
                 },
             },
         },
+        plugins: {
+            "react-hooks": reactHooks,
+        },
+        rules: {
+            ...reactHooks.configs.recommended.rules,
+            "linebreak-style": 0,
+            "max-len": ["error", {
+                code: 120,
+                ignoreComments: true,
+            }],
+        },
+    },
+    ...tseslint.configs.recommended.map((config) => ({
+        ...config,
+        files: tsFiles,
+    })),
+    {
+        files: tsFiles,
         plugins: {
             "react-hooks": reactHooks,
         },

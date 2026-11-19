@@ -1,3 +1,5 @@
+from functools import wraps
+
 from django.conf import settings
 from django.db.models import Count, Max, Sum
 from django.utils.decorators import method_decorator
@@ -68,11 +70,26 @@ def generate_liveticker_etag(request):
     return build_etag(*parts)
 
 
+def cache_liveticker(view):
+    """Cache the feed with the TTL from ``LIVETICKER_CACHE_SECONDS``.
+
+    The value is read per request so ``override_settings`` and a later,
+    k6-measured TTL change need no import-time rebuild of the decorator.
+    """
+
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        seconds = getattr(settings, "LIVETICKER_CACHE_SECONDS", 60)
+        return cache_page(seconds)(view)(request, *args, **kwargs)
+
+    return wrapped
+
+
 class LivetickerAPIView(APIView):
     # condition sits outside cache_page: ETag revalidation must see fresh
-    # data, while plain requests reuse the 60s page cache.
+    # data, while plain requests reuse the configured page cache.
     @method_decorator(condition(etag_func=generate_liveticker_etag))
-    @method_decorator(cache_page(60))
+    @method_decorator(cache_liveticker)
     def get(self, request):
         league = request.query_params.get("league")
         league = [] if league is None or league == "" else league.split(",")

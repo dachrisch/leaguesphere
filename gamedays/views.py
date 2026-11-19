@@ -29,7 +29,7 @@ from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
 from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting
 from league_table.service.leaguetable_repository import LeagueTableRepository
 from league_table.service.leaguetable_settings import TOP_N_PLAYER
-from liveticker.constants import LIVETICKER_HOME
+from liveticker.constants import LIVETICKER_HOME, LIVETICKER_V2_HOME
 from .constants import (
     LEAGUE_GAMEDAY_DETAIL,
     LEAGUE_GAMEDAY_LIST_AND_YEAR,
@@ -340,7 +340,10 @@ class GamedayDetailView(DetailView):
             ],
             "url_pattern_official": url_pattern_official,
             "url_pattern_official_signup": url_pattern_official_signup,
-            "url_pattern_liveticker": f"{UrlService.build_absolute_url(LIVETICKER_HOME)}?league={gameday.league.slug}&gameday={gameday.pk}",
+            "url_pattern_liveticker": (
+                f"{UrlService.build_absolute_url(LIVETICKER_V2_HOME if getattr(settings, 'LIVETICKER_V2_ENABLED', False) else LIVETICKER_HOME)}"
+                f"?league={gameday.league.slug}&gameday={gameday.pk}"
+            ),
             "extended_info": config.get("show_player_names", False),
         }
 
