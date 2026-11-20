@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.19.1](https://github.com/dachrisch/leaguesphere/compare/v5.19.0...v5.19.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **deps:** update dependency django-rest-knox to v6 ([#2474](https://github.com/dachrisch/leaguesphere/issues/2474)) ([97f00eb](https://github.com/dachrisch/leaguesphere/commit/97f00eb91bda5a8f60f1233de74cc85c76761e9c))
+
 ## [5.19.0](https://github.com/dachrisch/leaguesphere/compare/v5.18.1...v5.19.0) (2026-11-19)
 
 
