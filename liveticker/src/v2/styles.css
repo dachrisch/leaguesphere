@@ -157,6 +157,39 @@ a {
   justify-content: center;
 }
 
+.lt-share-icon {
+  position: relative;
+}
+
+.lt-share-toast {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--lt-head);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(16, 24, 32, 0.18);
+  animation: lt-toast-in 120ms ease-out;
+}
+
+@keyframes lt-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .lt-share-button {
   display: inline-flex;
   align-items: center;
@@ -188,15 +221,6 @@ a {
 .lt-share-glyph {
   width: 20px;
   height: 20px;
-}
-
-.lt-share-icon .lt-share-status {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 .lt-share-status {
@@ -862,6 +886,17 @@ a {
 }
 
 /* ---- desktop / tablet -------------------------------------------------- */
+
+@media (max-width: 479px) {
+  .lt-topbar-league,
+  .lt-topbar-sep {
+    display: none;
+  }
+
+  .lt-topbar-title {
+    font-size: 20px;
+  }
+}
 
 @media (min-width: 640px) {
   .lt-app {

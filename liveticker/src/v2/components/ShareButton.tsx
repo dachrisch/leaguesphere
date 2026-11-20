@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { Game } from "../types";
 
@@ -9,6 +9,22 @@ interface ShareButtonProps {
 
 export function ShareButton({ game = null, variant = "text" }: ShareButtonProps) {
   const [status, setStatus] = useState("");
+  const [toast, setToast] = useState("");
+  const isIcon = variant === "icon";
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(""), 2500);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const feedback = (message: string) => {
+    if (isIcon) {
+      setToast(message);
+    } else {
+      setStatus(message);
+    }
+  };
 
   const deepLink = (): string => {
     const url = new URL(window.location.href);
@@ -46,7 +62,11 @@ export function ShareButton({ game = null, variant = "text" }: ShareButtonProps)
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
-        setStatus("Geteilt");
+        if (isIcon) {
+          setToast("");
+        } else {
+          setStatus("Geteilt");
+        }
         return;
       } catch (reason) {
         if (reason instanceof DOMException && reason.name === "AbortError") {
@@ -54,11 +74,16 @@ export function ShareButton({ game = null, variant = "text" }: ShareButtonProps)
         }
       }
     }
-    setStatus((await copy(url)) ? "Link kopiert" : "Teilen nicht verfügbar");
+    feedback((await copy(url)) ? "Link kopiert" : "Teilen fehlgeschlagen");
   };
 
   return (
-    <div className={variant === "icon" ? "lt-share lt-share-icon" : "lt-share"}>
+    <div className={isIcon ? "lt-share lt-share-icon" : "lt-share"}>
+      {isIcon && toast && (
+        <span className="lt-share-toast" role="status" aria-live="polite">
+          {toast}
+        </span>
+      )}
       <button
         type="button"
         className="lt-share-button"
@@ -66,7 +91,7 @@ export function ShareButton({ game = null, variant = "text" }: ShareButtonProps)
         title="Ticker teilen"
         onClick={() => void share()}
       >
-        {variant === "icon" ? (
+        {isIcon ? (
           <svg
             className="lt-share-glyph"
             viewBox="0 0 24 24"
@@ -86,9 +111,11 @@ export function ShareButton({ game = null, variant = "text" }: ShareButtonProps)
           "Ticker teilen"
         )}
       </button>
-      <p className="lt-share-status" role="status" aria-live="polite">
-        {status}
-      </p>
+      {!isIcon && (
+        <p className="lt-share-status" role="status" aria-live="polite">
+          {status}
+        </p>
+      )}
     </div>
   );
 }

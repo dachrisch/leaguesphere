@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +7,7 @@ import { game } from "./fixture";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   window.history.replaceState({}, "", "/");
 });
 
@@ -92,9 +93,65 @@ describe("ShareButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
 
     expect(
-      await screen.findByText("Teilen nicht verfügbar"),
+      await screen.findByText("Teilen fehlgeschlagen"),
     ).toBeInTheDocument();
     document.execCommand = original;
+  });
+
+  it("shows a transient toast when the icon copies the link", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+
+    render(<ShareButton variant="icon" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
+    });
+
+    expect(screen.getByText("Link kopiert")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(screen.queryByText("Link kopiert")).not.toBeInTheDocument();
+  });
+
+  it("shows a transient toast on the icon error path", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText: vi.fn(async () => {
+          throw new Error("blocked");
+        }),
+      },
+    });
+    const original = document.execCommand;
+    document.execCommand = vi.fn(() => false);
+
+    render(<ShareButton variant="icon" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
+    });
+
+    expect(screen.getByText("Teilen fehlgeschlagen")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(
+      screen.queryByText("Teilen fehlgeschlagen"),
+    ).not.toBeInTheDocument();
+    document.execCommand = original;
+  });
+
+  it("stays quiet on the icon when the native share sheet opens", async () => {
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
+
+    render(<ShareButton variant="icon" />);
+    await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
+
+    expect(share).toHaveBeenCalled();
+    expect(screen.queryByText("Geteilt")).not.toBeInTheDocument();
+    expect(screen.queryByText("Link kopiert")).not.toBeInTheDocument();
   });
 
   it("shares the deep link and names both teams", async () => {
