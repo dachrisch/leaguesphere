@@ -64,12 +64,58 @@ def test_a_requester_without_the_permission_cannot_approve(client, requester):
 
 
 @pytest.mark.django_db
-def test_an_approver_cannot_approve_their_own_request(client, approver):
+def test_an_approver_may_self_approve_with_a_reason(client, approver):
+    """Self-approval is allowed for whoever may approve - and leaves no approver.
+
+    `approver IS NULL` is what makes the missing second signature visible: the
+    database constraint still forbids naming the requester as the approver, so a
+    self-approved row cannot be mistaken for a two-person decision.
+    """
     access_request = _request(approver)
     client.force_login(approver)
 
     response = client.post(
-        reverse("dbaccess-decide", args=[access_request.pk]), {"decision": "approve"}
+        reverse("dbaccess-decide", args=[access_request.pk]),
+        {"decision": "approve", "reason": "hotfix, nobody else awake"},
+    )
+
+    assert response.status_code == 302
+    access_request.refresh_from_db()
+    assert access_request.state == AccessRequest.State.APPROVED
+    assert access_request.approver is None
+    event = access_request.events.get(action="self-approved")
+    assert event.actor == "approver"
+    assert event.detail == "hotfix, nobody else awake"
+
+
+@pytest.mark.django_db
+def test_self_approval_without_a_reason_is_refused(client, approver):
+    access_request = _request(approver)
+    client.force_login(approver)
+
+    response = client.post(
+        reverse("dbaccess-decide", args=[access_request.pk]),
+        {"decision": "approve", "reason": "   "},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    access_request.refresh_from_db()
+    assert access_request.state == AccessRequest.State.REQUESTED
+    assert not access_request.events.filter(action="self-approved").exists()
+    assert b"reason" in response.content
+
+
+@pytest.mark.django_db
+def test_a_staff_user_without_the_permission_still_cannot_self_approve(
+    client, requester
+):
+    access_request = _request(requester)
+    client.force_login(requester)
+
+    response = client.post(
+        reverse("dbaccess-decide", args=[access_request.pk]),
+        {"decision": "approve", "reason": "because"},
     )
 
     assert response.status_code == 403
@@ -78,8 +124,7 @@ def test_an_approver_cannot_approve_their_own_request(client, approver):
 
 
 @pytest.mark.django_db
-def test_the_detail_page_does_not_offer_a_decision_on_your_own_request(client, approver):
-    """The button the two-person rule forbids must not be there at all."""
+def test_the_detail_page_offers_self_approval_with_a_warning(client, approver):
     access_request = _request(approver)
     client.force_login(approver)
 
@@ -87,8 +132,24 @@ def test_the_detail_page_does_not_offer_a_decision_on_your_own_request(client, a
 
     assert response.status_code == 200
     assert response.context["is_mine"] is True
-    assert response.context["can_approve"] is False
-    assert reverse("dbaccess-decide", args=[access_request.pk]).encode() not in response.content
+    assert response.context["can_approve"] is True
+    assert response.context["is_self_approval"] is True
+    assert reverse("dbaccess-decide", args=[access_request.pk]).encode() in response.content
+    assert b"without a second signature" in response.content
+
+
+@pytest.mark.django_db
+def test_a_self_approved_request_says_so_on_its_page(client, approver):
+    access_request = _request(approver)
+    access_request.state = AccessRequest.State.APPROVED
+    access_request.save(update_fields=["state"])
+    access_request.log("approver", "self-approved", "hotfix")
+    client.force_login(approver)
+
+    response = client.get(reverse("dbaccess-detail", args=[access_request.pk]))
+
+    assert response.context["self_approved"] is True
+    assert b"self-approved" in response.content
 
 
 @pytest.mark.django_db
@@ -294,7 +355,9 @@ def test_the_audit_trail_shortens_the_recorded_table_list(client, requester):
     tables = [f"wpdatabase_{n}" for n in range(1, 16)]
     access_request = _request(requester, tables_csv=",".join(tables))
     access_request.log(
-        requester.username, "requested", detail=f"tables: {access_request.tables_csv}; ttl: 2h"
+        requester.username,
+        "requested",
+        detail=f"tables: {access_request.tables_csv}; ttl: 2h",
     )
     client.force_login(requester)
 
@@ -303,7 +366,9 @@ def test_the_audit_trail_shortens_the_recorded_table_list(client, requester):
     ).content.decode()
 
     assert "+11 more" in html
-    assert "wpdatatable" not in html or "wpdatabase_1, wpdatabase_2, wpdatabase_3" in html
+    assert (
+        "wpdatatable" not in html or "wpdatabase_1, wpdatabase_2, wpdatabase_3" in html
+    )
 
 
 @pytest.mark.django_db
@@ -342,4 +407,3 @@ def test_the_reveal_page_shows_the_whole_dbeaver_config(client, requester, setti
     assert "Public Key" in body
     assert "dbeaver stage tunnel key (lehel)" in body
     assert response.context["tunnel"]["ssh_port"] == "22"
-

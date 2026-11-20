@@ -116,19 +116,25 @@ class RequestDetailView(StaffRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         is_mine = self.object.requester_id == self.request.user.id
         may_approve = can_approve(self.request.user)
-        # The two-person rule is enforced in DecideView; the button simply must
-        # not be offered to the person who asked.
-        context["can_approve"] = may_approve and not is_mine and (
-            self.object.approver_id is None
-        )
+        # Whoever may approve may approve their own request too; the price is a
+        # reason and a row that names no approver (see DecideView).
+        context["can_approve"] = may_approve and self.object.approver_id is None
         context["is_mine"] = is_mine
+        context["is_self_approval"] = (
+            is_mine and may_approve and self.object.approver_id is None
+        )
+        # `approver IS NULL` alone is not enough: a rejection names no approver
+        # either when the requester decided. The event is the record.
+        context["self_approved"] = self.object.approver_id is None and (
+            self.object.events.filter(action="self-approved").exists()
+        )
         context["may_reveal"] = self.object.can_be_revealed_by(self.request.user)
         context["events"] = self.object.events.all()[:25]
         return context
 
 
 class DecideView(StaffRequiredMixin, DetailView):
-    """Approve or reject. POST only, and never your own request."""
+    """Approve or reject. POST only; a self-approval needs a reason."""
 
     model = AccessRequest
     http_method_names = ["post"]
@@ -136,6 +142,7 @@ class DecideView(StaffRequiredMixin, DetailView):
     def post(self, request, *args, **kwargs):
         access_request = get_object_or_404(AccessRequest, pk=kwargs["pk"])
         decision = request.POST.get("decision")
+        reason = (request.POST.get("reason") or "").strip()
 
         if not can_approve(request.user):
             return _forbidden(
@@ -144,29 +151,36 @@ class DecideView(StaffRequiredMixin, DetailView):
                 "Approving and rejecting are limited to people holding the "
                 "dbaccess.approve_requests permission.",
             )
-        if access_request.requester_id == request.user.id:
-            return _forbidden(
-                request,
-                "You cannot decide your own request",
-                "Temporary production access needs a second person to agree. "
-                "Someone else has to approve or reject this one.",
-                access_request=access_request,
-            )
         if access_request.state != AccessRequest.State.REQUESTED:
             messages.error(request, "Only a requested session can be decided.")
             return redirect("dbaccess-detail", pk=access_request.pk)
 
-        if decision == "approve":
-            access_request.state = AccessRequest.State.APPROVED
-            access_request.approver = request.user
-        else:
-            access_request.state = AccessRequest.State.REJECTED
+        is_mine = access_request.requester_id == request.user.id
+        approving = decision == "approve"
+
+        # Self-approval is allowed for whoever may approve, but it is the only
+        # remaining brake on this flow: without a written reason there is no
+        # record of why a production credential needed no second person.
+        if is_mine and approving and not reason:
+            messages.error(
+                request,
+                "Approving your own request needs a reason - it is the only record "
+                "of why no second person signed.",
+            )
+            return redirect("dbaccess-detail", pk=access_request.pk)
+
+        access_request.state = (
+            AccessRequest.State.APPROVED if approving else AccessRequest.State.REJECTED
+        )
+        # Never write the requester into `approver`: the database constraint
+        # forbids it, and an empty approver is exactly what marks a self-approval.
+        if not is_mine:
             access_request.approver = request.user
         access_request.save(update_fields=["state", "approver", "updated_at"])
         access_request.log(
             request.user.username,
-            decision or "unknown",
-            detail=request.POST.get("reason", "")[:500],
+            "self-approved" if (approving and is_mine) else (decision or "unknown"),
+            detail=reason[:500],
             from_ip=_ip(request),
         )
         return redirect("dbaccess-detail", pk=access_request.pk)

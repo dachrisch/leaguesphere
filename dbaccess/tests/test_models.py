@@ -73,7 +73,7 @@ def _request(**kwargs):
 
 @pytest.mark.django_db
 def test_requester_cannot_be_their_own_approver():
-    """The two-person rule is a constraint, not a view check."""
+    """A self-approval leaves `approver` empty; the requester's name is refused."""
     user = UserFactory(username="solo")
 
     with pytest.raises(IntegrityError), transaction.atomic():

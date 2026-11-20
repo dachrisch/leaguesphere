@@ -95,7 +95,6 @@ def _shorten_detail_tables(detail: str) -> str:
     return text
 
 
-
 class AccessRequestQuerySet(models.QuerySet):
     def pending(self):
         return self.filter(state=AccessRequest.State.REQUESTED)
@@ -171,7 +170,12 @@ class AccessRequest(models.Model):
             ("approve_requests", "Can approve temporary database access requests"),
         ]
         constraints = [
-            # A two-person rule a view can bypass is not a rule.
+            # The second signature. A self-approval leaves `approver` NULL, so
+            # this constraint keeps holding for every decided row: the approver
+            # column never names the requester. Together with the
+            # `self-approved` event that is what keeps "no second person"
+            # visible in the row itself - neither a view nor an admin edit can
+            # turn an absent signature into a present one.
             models.CheckConstraint(
                 condition=models.Q(approver__isnull=True)
                 | ~models.Q(approver=models.F("requester")),

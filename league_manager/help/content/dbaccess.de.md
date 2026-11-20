@@ -2,8 +2,8 @@
 
 Diese Anleitung ist **nur für Staff** sichtbar. Du beantragst damit ein
 befristetes Konto für die Produktionsdatenbank, statt ein dauerhaftes Passwort
-weiterzugeben. Eine zweite Person muss zustimmen, und das Konto erlischt
-spätestens nach acht Stunden von selbst.
+weiterzugeben. Normalerweise muss eine zweite Person zustimmen, und das Konto
+erlischt spätestens nach acht Stunden von selbst.
 
 ## Zugang beantragen
 
@@ -13,9 +13,11 @@ spätestens nach acht Stunden von selbst.
    das ganze Schema.
 3. Klicke **Submit for approval**. Den Kontonamen `dbeaver_prod_<dein Login>`
    vergibt LeagueSphere automatisch.
-4. Eine andere Person mit der Berechtigung `dbaccess.approve_requests` öffnet
-   die Anfrage und klickt **Approve**. Deine eigene Anfrage kannst du nicht
-   freigeben.
+4. Üblicherweise öffnet eine andere Person mit der Berechtigung
+   `dbaccess.approve_requests` die Anfrage und klickt **Approve**. Hast du diese
+   Berechtigung selbst (oder bist Superuser), kannst du die eigene Anfrage über
+   **Approve my own request** freigeben – mit Pflicht-Begründung. Im Verlauf
+   steht dann `self-approved` statt `approve`.
 5. Klicke nach der Arbeit **Revoke now**. Ohne Freigabe wird nie ein Konto
    angelegt; nach Ablauf entfernt es sich selbst.
 
@@ -64,8 +66,11 @@ Im Reiter **SSH** schaltest du den Tunnel ein:
 Die Seite verlangt einen Staff-Login. Ohne Staff-Recht bekommst du weder eine
 Anfrage noch eine Freigabe.
 
-**Warum kann ich meine eigene Anfrage nicht genehmigen?**
-Zwei Personen sind der Sinn des Ablaufs: Wer fragt, entscheidet nicht.
+**Was bedeutet `self-approved` im Verlauf?**
+Du hast deine eigene Anfrage freigegeben. Das darf, wer freigeben darf, verlangt
+aber eine Begründung und wird ohne zweite Unterschrift protokolliert. Als
+Genehmiger steht dabei nie der Antragsteller – es fehlt also bewusst eine zweite
+Person.
 
 **Das Passwort lässt sich nicht mehr anzeigen.**
 Das geht nur im Zustand **Active** – also nach der Freigabe und vor Ablauf oder

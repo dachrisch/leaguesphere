@@ -10,7 +10,7 @@
                 <p class="text-muted small mb-0">
                     Asked by {{ access_request.requester }}
                     on {{ access_request.created_at|date:"d.m.Y H:i" }}
-                    {% if access_request.approver %} &middot; decided by {{ access_request.approver }}{% endif %}
+                    {% if access_request.approver %} &middot; decided by {{ access_request.approver }}{% elif self_approved %} &middot; <span class="text-warning-emphasis">self-approved</span>{% endif %}
                 </p>
             </div>
             <div class="fs-6">{% include "dbaccess/_state_badge.html" with state=access_request.state %}</div>
@@ -95,10 +95,39 @@
                     </div>
                     <div class="card-body">
                         {% if access_request.state == 'requested' %}
-                            {% if is_mine %}
+                            {% if is_self_approval %}
+                                <div class="alert alert-warning small" role="alert">
+                                    This is your own request. Approving it happens
+                                    <strong>without a second signature</strong>, is recorded as
+                                    <code>self-approved</code>, and needs a reason below.
+                                </div>
+                                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="decision" value="approve">
+                                    <label class="form-label small fw-semibold" for="self-approve-reason">
+                                        Reason for self-approval
+                                    </label>
+                                    <textarea class="form-control form-control-sm mb-2" id="self-approve-reason"
+                                              name="reason" rows="3" required></textarea>
+                                    <button class="btn btn-warning w-100" type="submit">
+                                        Approve my own request
+                                    </button>
+                                </form>
+                                <hr>
+                                <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="decision" value="deny">
+                                    <label class="form-label small fw-semibold" for="deny-reason-own">
+                                        Reason for rejection
+                                    </label>
+                                    <textarea class="form-control form-control-sm mb-2" id="deny-reason-own"
+                                              name="reason" rows="2" required></textarea>
+                                    <button class="btn btn-outline-danger w-100" type="submit">Reject</button>
+                                </form>
+                            {% elif is_mine %}
                                 <p class="small text-muted mb-0">
-                                    You asked for this one, so somebody else has to approve or
-                                    reject it. A second person is the point of the whole flow.
+                                    You asked for this one and cannot approve it without the
+                                    approver permission. Somebody who has it has to decide.
                                 </p>
                             {% elif can_approve %}
                                 <form method="post" action="{% url 'dbaccess-decide' access_request.pk %}">
