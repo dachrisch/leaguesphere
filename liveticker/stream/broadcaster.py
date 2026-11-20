@@ -15,6 +15,8 @@ only when that version changes, once per distinct query -- never per client.
 import asyncio
 import hashlib
 import logging
+import os
+import signal
 import weakref
 from dataclasses import dataclass
 
@@ -41,6 +43,35 @@ logger = logging.getLogger(__name__)
 # A connection error means the socket is unusable (the classic case is MySQL's
 # ``wait_timeout`` giving 2006 "server has gone away" after an idle night).
 DEAD_CONNECTION_ERRORS = (OperationalError, InterfaceError)
+
+
+def terminate_worker(failures, exc):
+    """End this worker process so a fresh one starts with fresh connections.
+
+    Chosen mechanism: signal the **worker** (our own PID) with SIGTERM. With
+    ``gunicorn -w 1 -k uvicorn.workers.UvicornWorker`` the gunicorn master
+    respawns an exited worker automatically, so the process that owns the
+    stuck poller is replaced without touching the master or Docker. SIGTERM is
+    gunicorn's graceful shutdown: uvicorn's worker closes the open SSE
+    responses, so clients reconnect with ``Last-Event-ID`` instead of hanging
+    on a half-dead stream. Killing the master would restart the whole service
+    (and its port binding) for the same effect; exiting the worker is the
+    smaller hammer and also works if the container ever runs a bare uvicorn.
+
+    Crash-loop guard: if the database is down, each replacement worker fails
+    again after ``LIVETICKER_STREAM_MAX_TICK_FAILURES`` ticks (10 s at the
+    default poll, longer with a larger poll interval). That is bounded and
+    visible in the logs; Docker's restart policy is the outer bound when the
+    master itself dies.
+    """
+    logger.error(
+        "liveticker stream poller failed %d times in a row (%s); exiting the "
+        "worker so gunicorn restarts it with fresh DB connections",
+        failures,
+        exc,
+        exc_info=exc,
+    )
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 def _run_with_clean_connection(func, *args):
@@ -116,6 +147,11 @@ class Snapshot:
     data: str
 
 
+# Queue sentinel: the worker is shutting down, finish this response so the
+# client reconnects (with Last-Event-ID) to the replacement worker.
+STREAM_CLOSED = object()
+
+
 class Subscription:
     """One connected client's mailbox.
 
@@ -126,12 +162,29 @@ class Subscription:
 
     def __init__(self):
         self.queue: asyncio.Queue = asyncio.Queue(maxsize=1)
+        # Two different lifetimes: ``stream_ended`` means the sentinel is
+        # queued (the response is finishing), ``closed`` means the subscriber
+        # was removed. Overloading one flag made the final unsubscribe a no-op.
         self.closed = False
+        self.stream_ended = False
 
     def offer(self, snapshot):
+        if self.stream_ended:
+            # A finishing stream must not get its sentinel overwritten by a
+            # snapshot from a still-running poller.
+            return
+        self._replace(snapshot)
+
+    def close(self):
+        if self.stream_ended:
+            return
+        self.stream_ended = True
+        self._replace(STREAM_CLOSED)
+
+    def _replace(self, item):
         while True:
             try:
-                self.queue.put_nowait(snapshot)
+                self.queue.put_nowait(item)
                 return
             except asyncio.QueueFull:
                 try:
@@ -194,6 +247,8 @@ class Broadcaster:
         world_version=compute_world_version,
         sleep=asyncio.sleep,
         max_tick_failures=None,
+        exit_on_failure=None,
+        exit_hook=terminate_worker,
     ):
         self.poll_seconds = (
             float(getattr(settings, "LIVETICKER_STREAM_POLL_SECONDS", 1.0))
@@ -210,6 +265,12 @@ class Broadcaster:
             if max_tick_failures is None
             else max_tick_failures
         )
+        self.exit_on_failure = (
+            bool(getattr(settings, "LIVETICKER_STREAM_EXIT_ON_FAILURE", True))
+            if exit_on_failure is None
+            else exit_on_failure
+        )
+        self._exit_hook = exit_hook
         self._payload_builder = payload_builder
         self._world_version = world_version
         self._sleep = sleep
@@ -217,6 +278,8 @@ class Broadcaster:
         self._clients = 0
         self._last_world_version = None
         self._consecutive_failures = 0
+        self._ticks_attempted = 0
+        self._exit_requested = False
         self._task = None
 
     # -- subscriptions ----------------------------------------------------
@@ -271,17 +334,41 @@ class Broadcaster:
         )
 
     async def tick(self):
+        self._ticks_attempted += 1
         try:
             await self._tick()
         except asyncio.CancelledError:
             raise
-        except Exception:
-            # Counted for the health check: a stream that cannot refresh is
-            # serving stale data while every client still looks "live".
+        except Exception as exc:
+            # Counted for the health check and the exit decision: a stream
+            # that cannot refresh is serving stale data while every client
+            # still looks "live".
             self._consecutive_failures += 1
+            self._handle_tick_failure(exc)
             raise
         else:
             self._consecutive_failures = 0
+
+    def _handle_tick_failure(self, exc):
+        if not self.exit_on_failure or self._exit_requested:
+            return
+        if self._ticks_attempted == 0:
+            # Never kill a worker that has not polled yet: an initial payload
+            # failure is a request error, not a stuck poller.
+            return
+        if self._consecutive_failures < self.max_tick_failures:
+            return
+        self._exit_requested = True
+        # End the open responses first: SIGTERM alone leaves uvicorn waiting
+        # for long-lived SSE connections that only end when the client gives
+        # up. A sentinel per subscriber finishes each response immediately.
+        self.close_streams()
+        self._exit_hook(self._consecutive_failures, exc)
+
+    def close_streams(self):
+        for active in list(self._queries.values()):
+            for subscription in list(active.subscribers):
+                subscription.close()
 
     async def _tick(self):
         queries = list(self._queries.values())
@@ -311,8 +398,10 @@ class Broadcaster:
             active.payload = payload
 
     async def _run(self):
-        while True:
+        while not self._exit_requested:
             await self._sleep(self.poll_seconds)
+            if self._exit_requested:
+                return
             try:
                 await self.tick()
             except asyncio.CancelledError:

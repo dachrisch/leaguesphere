@@ -9,16 +9,18 @@ import asyncio
 from unittest import mock
 
 from django.db.utils import OperationalError
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from liveticker.stream import broadcaster as broadcaster_module
 from liveticker.stream.broadcaster import (
+    STREAM_CLOSED,
     Broadcaster,
     ClientLimitExceeded,
     Snapshot,
     StreamQuery,
     payload_version,
 )
+from liveticker.stream.views import _events
 
 
 class FakeClock:
@@ -53,8 +55,9 @@ def make_broadcaster(**kwargs):
         return state["version"]
 
     state["version"] = "1"
+    payload_builder = kwargs.pop("payload_builder", build)
     broadcaster = Broadcaster(
-        payload_builder=build, world_version=world_version, **kwargs
+        payload_builder=payload_builder, world_version=world_version, **kwargs
     )
     return broadcaster, state
 
@@ -291,7 +294,7 @@ class TickFailureTests(SimpleTestCase):
         await broadcaster.aclose()
 
     async def test_consecutive_failures_flip_the_health_flag(self):
-        broadcaster, _ = make_broadcaster(max_tick_failures=2)
+        broadcaster, _ = make_broadcaster(max_tick_failures=2, exit_on_failure=False)
         query = StreamQuery.from_params(gameday="1")
         await broadcaster.subscribe(query)
 
@@ -327,6 +330,135 @@ class TickFailureTests(SimpleTestCase):
                 await broadcaster.tick()
 
         assert broadcaster.consecutive_failures == 3
+        await broadcaster.aclose()
+
+
+class ExitOnFailureTests(SimpleTestCase):
+    """Docker restarts on exit, not on an unhealthy healthcheck."""
+
+    def make(self, **kwargs):
+        hook = mock.Mock()
+        broadcaster, state = make_broadcaster(exit_hook=hook, **kwargs)
+        return broadcaster, state, hook
+
+    @staticmethod
+    def dead(queries):
+        raise OperationalError(2006, "MySQL server has gone away")
+
+    async def test_reaching_the_limit_calls_the_exit_hook_exactly_once(self):
+        broadcaster, _, hook = self.make(max_tick_failures=2)
+        query = StreamQuery.from_params(gameday="1")
+        subscription = await broadcaster.subscribe(query)
+        subscription.queue.get_nowait()
+        broadcaster._world_version = self.dead
+
+        for _ in range(2):
+            with self.assertRaises(OperationalError):
+                await broadcaster.tick()
+
+        assert hook.call_count == 1
+        _, exception = hook.call_args.args
+        assert isinstance(exception, OperationalError)
+        assert broadcaster.is_healthy is False
+        # Open streams end with a sentinel so uvicorn can finish shutting
+        # down instead of waiting for an SSE client that never disconnects.
+        assert subscription.stream_ended is True
+        assert subscription.queue.get_nowait() is STREAM_CLOSED
+
+        # The hook is a process exit in production; a mocked one must not be
+        # called again on every further failure.
+        with self.assertRaises(OperationalError):
+            await broadcaster.tick()
+        assert hook.call_count == 1
+        await broadcaster.aclose()
+
+    async def test_a_success_before_the_limit_resets_the_counter(self):
+        broadcaster, _, hook = self.make(max_tick_failures=3)
+        await broadcaster.subscribe(StreamQuery.from_params(gameday="1"))
+        broadcaster._world_version = self.dead
+
+        for _ in range(2):
+            with self.assertRaises(OperationalError):
+                await broadcaster.tick()
+        assert hook.call_count == 0
+
+        broadcaster._world_version = lambda queries: "2"
+        await broadcaster.tick()
+        assert broadcaster.consecutive_failures == 0
+
+        broadcaster._world_version = self.dead
+        for _ in range(2):
+            with self.assertRaises(OperationalError):
+                await broadcaster.tick()
+        assert hook.call_count == 0
+        await broadcaster.aclose()
+
+    async def test_the_switch_off_never_calls_the_hook(self):
+        broadcaster, _, hook = self.make(max_tick_failures=1, exit_on_failure=False)
+        await broadcaster.subscribe(StreamQuery.from_params(gameday="1"))
+        broadcaster._world_version = self.dead
+
+        with self.assertRaises(OperationalError):
+            await broadcaster.tick()
+
+        assert broadcaster.consecutive_failures == 1
+        assert hook.call_count == 0
+        await broadcaster.aclose()
+
+    async def test_no_exit_before_the_first_tick_ever_ran(self):
+        # A failing initial payload build is a request error, not a poll
+        # failure: a worker that has never ticked must not kill itself.
+        def broken(query):
+            raise OperationalError(2006, "gone")
+
+        hook = mock.Mock()
+        broadcaster, _ = make_broadcaster(
+            payload_builder=broken,
+            max_tick_failures=1,
+            exit_hook=hook,
+        )
+
+        with self.assertRaises(OperationalError):
+            await broadcaster.subscribe(StreamQuery.from_params(gameday="1"))
+
+        assert hook.call_count == 0
+        assert broadcaster.consecutive_failures == 0
+        assert broadcaster.client_count == 0
+        await broadcaster.aclose()
+
+    @override_settings(LIVETICKER_STREAM_EXIT_ON_FAILURE=False)
+    async def test_the_default_reads_the_setting(self):
+        broadcaster, _ = make_broadcaster(max_tick_failures=1, exit_hook=mock.Mock())
+        assert broadcaster.exit_on_failure is False
+        await broadcaster.aclose()
+
+
+class StreamShutdownTests(SimpleTestCase):
+    async def test_the_event_generator_ends_and_unsubscribes_on_the_sentinel(self):
+        broadcaster, _ = make_broadcaster()
+        query = StreamQuery.from_params(gameday="1")
+        subscription = await broadcaster.subscribe(query)
+        subscription.queue.get_nowait()
+        broadcaster.close_streams()
+
+        frames = []
+        async for frame in _events(subscription, query, broadcaster, 5.0):
+            frames.append(frame)
+
+        assert frames == []
+        assert broadcaster.client_count == 0
+        assert broadcaster.active_queries == ()
+        await broadcaster.aclose()
+
+    async def test_a_closed_subscription_ignores_later_snapshots(self):
+        broadcaster, _ = make_broadcaster()
+        subscription = await broadcaster.subscribe(StreamQuery.from_params(gameday="1"))
+        subscription.queue.get_nowait()
+
+        subscription.close()
+        subscription.offer(Snapshot("v9", "[9]"))
+
+        assert subscription.queue.get_nowait() is STREAM_CLOSED
         await broadcaster.aclose()
 
 

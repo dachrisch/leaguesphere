@@ -11,6 +11,7 @@ from django.http import Http404, HttpResponse, HttpResponseNotAllowed, JsonRespo
 from django.http import StreamingHttpResponse
 
 from liveticker.stream.broadcaster import (
+    STREAM_CLOSED,
     ClientLimitExceeded,
     StreamQuery,
     get_broadcaster,
@@ -94,6 +95,10 @@ async def _events(subscription, query, broadcaster, heartbeat_seconds):
                 # and load balancers from closing an idle connection.
                 yield ": ping\n\n"
                 continue
+            if snapshot is STREAM_CLOSED:
+                # Worker shutdown: finish the response so the client's
+                # EventSource reconnects to the replacement worker.
+                return
             yield sse_frame(snapshot)
     finally:
         broadcaster.unsubscribe(query, subscription)

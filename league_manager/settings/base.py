@@ -294,6 +294,13 @@ LIVETICKER_STREAM_RETRY_AFTER_SECONDS = int(
 LIVETICKER_STREAM_MAX_TICK_FAILURES = int(
     os.environ.get("LIVETICKER_STREAM_MAX_TICK_FAILURES", "10")
 )
+# Docker restarts a container when it EXITS, not when its healthcheck is
+# unhealthy, and there is no autoheal service. A poller that keeps failing is
+# therefore not fixed by /health/stream/ alone: the worker exits itself after
+# the failure limit above and gunicorn respawns it (fresh DB connections).
+LIVETICKER_STREAM_EXIT_ON_FAILURE = (
+    os.environ.get("LIVETICKER_STREAM_EXIT_ON_FAILURE", "true") == "true"
+)
 
 # --- temporary database access (dbaccess) ----------------------------------
 # Feature switch for the request/approval surface. Off unless the deployment
