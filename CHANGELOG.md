@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.19.2](https://github.com/dachrisch/leaguesphere/compare/v5.19.1...v5.19.2) (2026-11-20)
+
+
+### Bug Fixes
+
+* **liveticker:** polish the v2 app (fonts, buttons, mobile density) ([df78e2e](https://github.com/dachrisch/leaguesphere/commit/df78e2e705d433e9cdca76403128e3e823d18b42))
+* **liveticker:** polish the v2 app (fonts, buttons, mobile density) ([58384cd](https://github.com/dachrisch/leaguesphere/commit/58384cd383f842609e0e413cdb79ed4cc93f5af7))
+* **liveticker:** scope and cache the feed by its data version ([606140f](https://github.com/dachrisch/leaguesphere/commit/606140f54a2336224ce253f431f96ca97641ba4d))
+
 ## [5.19.1](https://github.com/dachrisch/leaguesphere/compare/v5.19.0...v5.19.1) (2026-11-20)
 
 
