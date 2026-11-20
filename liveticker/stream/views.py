@@ -7,7 +7,7 @@ response must not hold one of the WSGI app's few gunicorn request slots.
 import asyncio
 
 from django.conf import settings
-from django.http import Http404, HttpResponse, HttpResponseNotAllowed
+from django.http import Http404, HttpResponse, HttpResponseNotAllowed, JsonResponse
 from django.http import StreamingHttpResponse
 
 from liveticker.stream.broadcaster import (
@@ -51,6 +51,28 @@ class EventStreamResponse(StreamingHttpResponse):
             else:
                 loop.create_task(events.aclose())
         super().close()
+
+
+async def liveticker_stream_health(request):
+    """Health probe for the stream worker itself.
+
+    ``/health/`` answers for the site (maintenance mode, DB reachability via
+    the app), but cannot tell whether this process' poller is still delivering
+    snapshots. The compose healthcheck polls this instead, so a stream worker
+    whose ticks have been failing since MySQL killed the idle connection is
+    restarted rather than silently serving stale data to clients that still
+    show "Live".
+    """
+    broadcaster = get_broadcaster()
+    healthy = broadcaster.is_healthy
+    body = {
+        "status": "healthy" if healthy else "unhealthy",
+        "clients": broadcaster.client_count,
+        "queries": len(broadcaster.active_queries),
+        "consecutive_tick_failures": broadcaster.consecutive_failures,
+        "max_tick_failures": broadcaster.max_tick_failures,
+    }
+    return JsonResponse(body, status=200 if healthy else 503)
 
 
 def sse_frame(snapshot):

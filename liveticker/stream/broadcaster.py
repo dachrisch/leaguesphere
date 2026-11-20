@@ -26,6 +26,8 @@ from dataclasses import dataclass
 # loop's default executor either way.
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.db import close_old_connections, connection
+from django.db.utils import InterfaceError, OperationalError
 from rest_framework.renderers import JSONRenderer
 
 from liveticker.service.liveticker_service import (
@@ -35,6 +37,31 @@ from liveticker.service.liveticker_service import (
 from liveticker.service.version import liveticker_version
 
 logger = logging.getLogger(__name__)
+
+# A connection error means the socket is unusable (the classic case is MySQL's
+# ``wait_timeout`` giving 2006 "server has gone away" after an idle night).
+DEAD_CONNECTION_ERRORS = (OperationalError, InterfaceError)
+
+
+def _run_with_clean_connection(func, *args):
+    """Run ORM work and manage the executor thread's DB connection.
+
+    The poller is not a request, so Django never emits request_started/
+    request_finished for it and never returns the thread's connection to
+    ``CONN_MAX_AGE``. Closing old connections before and after each unit of
+    work is what makes the age/error checks run at all. On a dead connection
+    the socket is dropped explicitly, so the next tick reconnects instead of
+    reusing the corpse forever.
+    """
+    close_old_connections()
+    try:
+        return func(*args)
+    except DEAD_CONNECTION_ERRORS:
+        close_old_connections()
+        connection.close()
+        raise
+    finally:
+        close_old_connections()
 
 
 class ClientLimitExceeded(Exception):
@@ -90,11 +117,27 @@ class Snapshot:
 
 
 class Subscription:
-    """One connected client's mailbox."""
+    """One connected client's mailbox.
+
+    Latest-wins: a slow client is only ever behind by the newest state, not by
+    a backlog. The queue holds at most one snapshot; offering a newer one
+    drops the unread older one.
+    """
 
     def __init__(self):
-        self.queue: asyncio.Queue = asyncio.Queue()
+        self.queue: asyncio.Queue = asyncio.Queue(maxsize=1)
         self.closed = False
+
+    def offer(self, snapshot):
+        while True:
+            try:
+                self.queue.put_nowait(snapshot)
+                return
+            except asyncio.QueueFull:
+                try:
+                    self.queue.get_nowait()
+                except asyncio.QueueEmpty:  # pragma: no cover - consumer race
+                    continue
 
 
 class _ActiveQuery:
@@ -150,6 +193,7 @@ class Broadcaster:
         payload_builder=build_payload,
         world_version=compute_world_version,
         sleep=asyncio.sleep,
+        max_tick_failures=None,
     ):
         self.poll_seconds = (
             float(getattr(settings, "LIVETICKER_STREAM_POLL_SECONDS", 1.0))
@@ -161,12 +205,18 @@ class Broadcaster:
             if max_clients is None
             else max_clients
         )
+        self.max_tick_failures = (
+            int(getattr(settings, "LIVETICKER_STREAM_MAX_TICK_FAILURES", 10))
+            if max_tick_failures is None
+            else max_tick_failures
+        )
         self._payload_builder = payload_builder
         self._world_version = world_version
         self._sleep = sleep
         self._queries = {}
         self._clients = 0
         self._last_world_version = None
+        self._consecutive_failures = 0
         self._task = None
 
     # -- subscriptions ----------------------------------------------------
@@ -193,7 +243,7 @@ class Broadcaster:
         # Last-Event-ID) has nothing to resend: it keeps its state and waits
         # for the next change or heartbeat.
         if last_event_id != active.version:
-            subscription.queue.put_nowait(Snapshot(active.version, active.payload))
+            subscription.offer(Snapshot(active.version, active.payload))
         return subscription
 
     def unsubscribe(self, query, subscription):
@@ -214,36 +264,49 @@ class Broadcaster:
 
     # -- one poll cycle ---------------------------------------------------
 
+    async def _in_thread(self, func, *args):
+        """Run one unit of ORM work through the connection-managing helper."""
+        return await sync_to_async(_run_with_clean_connection, thread_sensitive=False)(
+            func, *args
+        )
+
     async def tick(self):
+        try:
+            await self._tick()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # Counted for the health check: a stream that cannot refresh is
+            # serving stale data while every client still looks "live".
+            self._consecutive_failures += 1
+            raise
+        else:
+            self._consecutive_failures = 0
+
+    async def _tick(self):
         queries = list(self._queries.values())
         if not queries:
             return
-        version = await sync_to_async(self._world_version, thread_sensitive=False)(
-            [q.query for q in queries]
-        )
+        version = await self._in_thread(self._world_version, [q.query for q in queries])
         if version == self._last_world_version:
             return
         self._last_world_version = version
         for active in queries:
             async with active.lock:
-                payload = await sync_to_async(
-                    self._payload_builder, thread_sensitive=False
-                )(active.query)
+                payload = await self._in_thread(self._payload_builder, active.query)
                 event_id = payload_version(payload)
                 if event_id == active.version:
                     continue
                 active.version = event_id
                 active.payload = payload
             for subscription in list(active.subscribers):
-                subscription.queue.put_nowait(Snapshot(event_id, payload))
+                subscription.offer(Snapshot(event_id, payload))
 
     async def _ensure_payload(self, active):
         async with active.lock:
             if active.version is not None:
                 return
-            payload = await sync_to_async(
-                self._payload_builder, thread_sensitive=False
-            )(active.query)
+            payload = await self._in_thread(self._payload_builder, active.query)
             active.version = payload_version(payload)
             active.payload = payload
 
@@ -281,6 +344,14 @@ class Broadcaster:
     @property
     def client_count(self):
         return self._clients
+
+    @property
+    def consecutive_failures(self):
+        return self._consecutive_failures
+
+    @property
+    def is_healthy(self):
+        return self._consecutive_failures < self.max_tick_failures
 
     @property
     def active_queries(self):

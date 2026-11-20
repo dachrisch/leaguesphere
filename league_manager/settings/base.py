@@ -288,6 +288,12 @@ LIVETICKER_STREAM_MAX_CLIENTS = int(
 LIVETICKER_STREAM_RETRY_AFTER_SECONDS = int(
     os.environ.get("LIVETICKER_STREAM_RETRY_AFTER_SECONDS", "5")
 )
+# Consecutive failed poll cycles that mark the stream worker unhealthy. At the
+# default 1 s poll this is ~10 s, long enough to ride out one blip and short
+# enough that a dead DB connection cannot serve stale data for a night.
+LIVETICKER_STREAM_MAX_TICK_FAILURES = int(
+    os.environ.get("LIVETICKER_STREAM_MAX_TICK_FAILURES", "10")
+)
 
 # --- temporary database access (dbaccess) ----------------------------------
 # Feature switch for the request/approval surface. Off unless the deployment

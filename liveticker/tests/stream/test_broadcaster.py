@@ -6,12 +6,16 @@ tests pin the fan-out behaviour rather than the query shape (which
 """
 
 import asyncio
+from unittest import mock
 
+from django.db.utils import OperationalError
 from django.test import SimpleTestCase
 
+from liveticker.stream import broadcaster as broadcaster_module
 from liveticker.stream.broadcaster import (
     Broadcaster,
     ClientLimitExceeded,
+    Snapshot,
     StreamQuery,
     payload_version,
 )
@@ -204,3 +208,150 @@ class BroadcasterTests(SimpleTestCase):
         query = StreamQuery.from_params(gameday="1,x,2")
 
         assert query.gameday == (1, 2)
+
+
+class OrmConnectionTests(SimpleTestCase):
+    """The poller is not a request: its connection lifecycle is its own job."""
+
+    def test_every_unit_of_work_is_wrapped_in_close_old_connections(self):
+        calls = []
+
+        def work():
+            calls.append("work")
+            return "result"
+
+        with (
+            mock.patch.object(
+                broadcaster_module,
+                "close_old_connections",
+                side_effect=lambda: calls.append("close"),
+            ),
+            mock.patch.object(broadcaster_module, "connection") as connection,
+        ):
+            result = broadcaster_module._run_with_clean_connection(work)
+
+        assert result == "result"
+        assert calls == ["close", "work", "close"]
+        connection.close.assert_not_called()
+
+    def test_a_dead_connection_is_dropped_and_the_error_propagates(self):
+        def work():
+            raise OperationalError(2006, "MySQL server has gone away")
+
+        with (
+            mock.patch.object(broadcaster_module, "close_old_connections"),
+            mock.patch.object(broadcaster_module, "connection") as connection,
+        ):
+            with self.assertRaises(OperationalError):
+                broadcaster_module._run_with_clean_connection(work)
+
+        # The next tick must open a fresh connection instead of reusing the
+        # corpse (MySQL wait_timeout => 2006).
+        connection.close.assert_called_once_with()
+
+    def test_an_interface_error_is_dropped_too(self):
+        from django.db.utils import InterfaceError
+
+        def work():
+            raise InterfaceError("connection already closed")
+
+        with (
+            mock.patch.object(broadcaster_module, "close_old_connections"),
+            mock.patch.object(broadcaster_module, "connection") as connection,
+        ):
+            with self.assertRaises(InterfaceError):
+                broadcaster_module._run_with_clean_connection(work)
+
+        connection.close.assert_called_once_with()
+
+
+class TickFailureTests(SimpleTestCase):
+    async def test_a_dead_connection_on_one_tick_recovers_on_the_next(self):
+        broadcaster, state = make_broadcaster()
+        query = StreamQuery.from_params(gameday="1")
+        subscription = await broadcaster.subscribe(query)
+        subscription.queue.get_nowait()
+
+        def dead(queries):
+            raise OperationalError(2006, "MySQL server has gone away")
+
+        broadcaster._world_version = dead
+        with self.assertRaises(OperationalError):
+            await broadcaster.tick()
+        assert broadcaster.consecutive_failures == 1
+
+        state["version"] = "2"
+        state["payload"] = '[{"gameId": 7}]'
+        broadcaster._world_version = lambda queries: "2"
+        await broadcaster.tick()
+
+        snapshot = subscription.queue.get_nowait()
+        assert snapshot.data == '[{"gameId": 7}]'
+        assert broadcaster.consecutive_failures == 0
+        await broadcaster.aclose()
+
+    async def test_consecutive_failures_flip_the_health_flag(self):
+        broadcaster, _ = make_broadcaster(max_tick_failures=2)
+        query = StreamQuery.from_params(gameday="1")
+        await broadcaster.subscribe(query)
+
+        def dead(queries):
+            raise OperationalError(2006, "gone")
+
+        broadcaster._world_version = dead
+        with self.assertRaises(OperationalError):
+            await broadcaster.tick()
+        assert broadcaster.consecutive_failures == 1
+        assert broadcaster.is_healthy is True
+
+        with self.assertRaises(OperationalError):
+            await broadcaster.tick()
+        assert broadcaster.consecutive_failures == 2
+        assert broadcaster.is_healthy is False
+
+        broadcaster._world_version = lambda queries: "2"
+        await broadcaster.tick()
+        assert broadcaster.consecutive_failures == 0
+        assert broadcaster.is_healthy is True
+        await broadcaster.aclose()
+
+    async def test_failures_accumulate_until_the_threshold(self):
+        broadcaster, _ = make_broadcaster(max_tick_failures=10)
+        await broadcaster.subscribe(StreamQuery.from_params(gameday="1"))
+        broadcaster._world_version = mock.Mock(
+            side_effect=OperationalError(2006, "gone")
+        )
+
+        for _ in range(3):
+            with self.assertRaises(OperationalError):
+                await broadcaster.tick()
+
+        assert broadcaster.consecutive_failures == 3
+        await broadcaster.aclose()
+
+
+class LatestWinsQueueTests(SimpleTestCase):
+    async def test_a_paused_consumer_receives_only_the_latest_snapshot(self):
+        broadcaster, _ = make_broadcaster()
+        subscription = await broadcaster.subscribe(StreamQuery.from_params(gameday="1"))
+        subscription.queue.get_nowait()  # consume the initial snapshot
+
+        for index in range(3):
+            subscription.offer(Snapshot(f"v{index}", f"[{index}]"))
+
+        assert subscription.queue.qsize() == 1
+        latest = await subscription.queue.get()
+        assert latest.data == "[2]"
+        assert latest.event_id == "v2"
+        await broadcaster.aclose()
+
+    async def test_a_fast_consumer_still_gets_every_snapshot(self):
+        broadcaster, _ = make_broadcaster()
+        subscription = await broadcaster.subscribe(StreamQuery.from_params(gameday="1"))
+        subscription.queue.get_nowait()
+
+        subscription.offer(Snapshot("a", "[0]"))
+        assert (await subscription.queue.get()).data == "[0]"
+        subscription.offer(Snapshot("b", "[1]"))
+        assert (await subscription.queue.get()).data == "[1]"
+        await broadcaster.aclose()

@@ -142,6 +142,26 @@ class LivetickerStreamViewTests(TransactionTestCase):
 
         assert response.status_code == 404
 
+    async def test_health_endpoint_reports_the_stream_state(self):
+        response = await self.async_client.get(reverse("liveticker-stream-health"))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "healthy"
+        assert body["consecutive_tick_failures"] == 0
+        assert body["clients"] == 0
+
+    async def test_health_endpoint_turns_unhealthy_after_the_failure_limit(self):
+        broadcaster = get_broadcaster()
+        broadcaster._consecutive_failures = broadcaster.max_tick_failures
+
+        response = await self.async_client.get(reverse("liveticker-stream-health"))
+
+        assert response.status_code == 503
+        body = response.json()
+        assert body["status"] == "unhealthy"
+        assert body["consecutive_tick_failures"] == broadcaster.max_tick_failures
+
     async def test_non_get_is_rejected(self):
         response = await self.async_client.post(self.url)
 

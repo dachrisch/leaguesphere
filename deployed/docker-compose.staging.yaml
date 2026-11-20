@@ -176,7 +176,7 @@ services:
     env_file: ls.env.staging
     # The image healthcheck polls :8000; this service listens on :8001.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -A healthcheck -H 'Accept: application/json' http://localhost:8001/health/?format=json"]
+      test: ["CMD-SHELL", "curl -fsS -A healthcheck -H 'Accept: application/json' http://localhost:8001/health/stream/"]
       interval: 15s
       timeout: 5s
       retries: 10
