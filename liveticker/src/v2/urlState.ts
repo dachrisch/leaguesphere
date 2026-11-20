@@ -1,41 +1,58 @@
 import { useSyncExternalStore } from "react";
 
+/**
+ * The ticker's path state. Query parameters are deliberately absent: the
+ * scorecard addresses a game the same way, and a shared URL must survive
+ * without filters. ``all`` (full event history) is UI state in the context,
+ * not part of the address.
+ */
 export interface UrlState {
-  league: string;
-  gameday: string;
+  gameday: number | null;
   gameId: number | null;
-  all: boolean;
 }
 
-function parse(search: string): UrlState {
-  const params = new URLSearchParams(search);
-  const rawGame = params.get("game");
-  const gameId =
-    rawGame !== null && /^\d+$/.test(rawGame) ? Number(rawGame) : null;
-  return {
-    league: params.get("league") ?? "",
-    gameday: params.get("gameday") ?? "",
-    gameId,
-    all: params.get("all") === "1",
-  };
+const ROOT_PATH = /^\/liveticker\/v2\/?$/;
+const GAMEDAY_PATH = /^\/liveticker\/v2\/gameday\/(\d+)\/?$/;
+const GAME_PATH = /^\/liveticker\/v2\/gameday\/(\d+)\/game\/(\d+)\/?$/;
+
+function parse(pathname: string): UrlState {
+  if (ROOT_PATH.test(pathname)) {
+    return { gameday: null, gameId: null };
+  }
+  const gameday = GAMEDAY_PATH.exec(pathname);
+  if (gameday) {
+    return { gameday: Number(gameday[1]), gameId: null };
+  }
+  const game = GAME_PATH.exec(pathname);
+  if (game) {
+    return { gameday: Number(game[1]), gameId: Number(game[2]) };
+  }
+  return { gameday: null, gameId: null };
 }
 
-let cachedSearch: string | null = null;
-let cachedState: UrlState = {
-  league: "",
-  gameday: "",
-  gameId: null,
-  all: false,
-};
+let cachedPath: string | null = null;
+let cachedState: UrlState = { gameday: null, gameId: null };
 
-/** The current URL state, re-parsed only when the query string changed. */
+/** The current URL state, re-parsed only when the path changed. */
 export function readUrlState(): UrlState {
-  const search = window.location.search;
-  if (search !== cachedSearch) {
-    cachedSearch = search;
-    cachedState = parse(search);
+  const pathname = window.location.pathname;
+  if (pathname !== cachedPath) {
+    cachedPath = pathname;
+    cachedState = parse(pathname);
   }
   return cachedState;
+}
+
+/** The canonical path for a state; the only URL shape the app writes. */
+export function tickerPath(state: {
+  gameday: number | null;
+  gameId?: number | null;
+}): string {
+  if (state.gameday === null) return "/liveticker/v2/";
+  if (state.gameId != null) {
+    return `/liveticker/v2/gameday/${state.gameday}/game/${state.gameId}/`;
+  }
+  return `/liveticker/v2/gameday/${state.gameday}/`;
 }
 
 const listeners = new Set<() => void>();
@@ -60,34 +77,42 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-function push(mutate: (url: URL) => void): void {
-  const url = new URL(window.location.href);
-  mutate(url);
-  window.history.pushState({}, "", url.toString());
+/** Keep the server-rendered canonical/OG tags in step with client navigation. */
+function updateCanonical(path: string): void {
+  if (typeof document === "undefined") return;
+  const absolute = `${window.location.origin}${path}`;
+  document
+    .querySelector('link[rel="canonical"]')
+    ?.setAttribute("href", absolute);
+  document
+    .querySelector('meta[property="og:url"]')
+    ?.setAttribute("content", absolute);
+}
+
+function navigate(path: string, mode: "push" | "replace"): void {
+  if (window.location.pathname === path && window.location.search === "") {
+    return;
+  }
+  if (mode === "replace") {
+    window.history.replaceState({}, "", path);
+  } else {
+    window.history.pushState({}, "", path);
+  }
+  updateCanonical(path);
   notify();
 }
 
-/** Select the expanded game, or clear it with ``null``. */
-export function selectGame(gameId: number | null, all = false): void {
-  push((url) => {
-    if (gameId === null) {
-      url.searchParams.delete("game");
-    } else {
-      url.searchParams.set("game", String(gameId));
-    }
-    if (all) {
-      url.searchParams.set("all", "1");
-    } else {
-      url.searchParams.delete("all");
-    }
-  });
+/** User picked a game (or cleared it with ``null``): push a new history entry. */
+export function selectGame(gamedayId: number, gameId: number | null): void {
+  navigate(tickerPath({ gameday: gamedayId, gameId }), "push");
 }
 
-/** Open or close the full event history of one game. */
-export function toggleAll(gameId: number): void {
-  const state = readUrlState();
-  const open = state.gameId === gameId && state.all;
-  selectGame(gameId, !open);
+/**
+ * The app auto-selected a game: replace the current entry so Back is not
+ * polluted with intermediate automatic selections.
+ */
+export function replaceGame(gamedayId: number, gameId: number): void {
+  navigate(tickerPath({ gameday: gamedayId, gameId }), "replace");
 }
 
 export function useUrlState(): UrlState {

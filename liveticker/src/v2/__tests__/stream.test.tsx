@@ -1,13 +1,13 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "../App";
 import { LivetickerProvider } from "../context/LivetickerContext";
 import type { Game } from "../types";
-import { toggleAll } from "../urlState";
 import { game } from "./fixture";
 
-const PARAMS = "?league=testliga&gameday=2";
+const GAMEDAY_PATH = "/liveticker/v2/gameday/2/";
+const gamePath = (id: number) => `/liveticker/v2/gameday/2/game/${id}/`;
 
 const liveGame: Game = { ...game, gameId: 1 };
 
@@ -86,8 +86,8 @@ class MockEventSource {
   }
 }
 
-function renderTicker(search = PARAMS) {
-  window.history.replaceState({}, "", `/liveticker/v2/${search}`);
+function renderTicker(path = GAMEDAY_PATH) {
+  window.history.replaceState({}, "", path);
   render(
     <LivetickerProvider streamEnabled>
       <App />
@@ -130,9 +130,9 @@ describe("live stream", () => {
 
     const source = MockEventSource.last();
     expect(source.url).toContain("/api/liveticker/stream/?");
-    expect(source.url).toContain("league=testliga");
     expect(source.url).toContain("gameday=2");
     expect(source.url).toContain("results=all");
+    expect(source.url).not.toContain("league=");
 
     act(() => {
       source.open();
@@ -143,14 +143,16 @@ describe("live stream", () => {
     expect(connectionText()).toContain("Live");
   });
 
-  it("reconnects with getAllTicksFor when the expanded game changes the query", () => {
-    renderTicker(`${PARAMS}&game=1`);
+  it("reconnects with getAllTicksFor when the full history is opened", async () => {
+    renderTicker(gamePath(1));
     act(() => {
       MockEventSource.last().open();
-      MockEventSource.last().snapshot([liveGame]);
+      MockEventSource.last().snapshot([{ ...liveGame, tick_count: 5 }]);
     });
 
-    act(() => toggleAll(1));
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Alle 5 Ereignisse" }));
+    });
 
     expect(MockEventSource.instances).toHaveLength(2);
     expect(MockEventSource.last().url).toContain("getAllTicksFor=1");

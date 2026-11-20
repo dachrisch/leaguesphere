@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { Game } from "../types";
+import { tickerPath } from "../urlState";
 
 interface ShareButtonProps {
   game?: Game | null;
@@ -27,13 +28,14 @@ export function ShareButton({ game = null, variant = "text" }: ShareButtonProps)
   };
 
   const deepLink = (): string => {
-    const url = new URL(window.location.href);
     if (game) {
-      url.searchParams.set("game", String(game.gameId));
-    } else {
-      url.searchParams.delete("game");
+      return (
+        window.location.origin +
+        tickerPath({ gameday: game.gameday.id, gameId: game.gameId })
+      );
     }
-    return url.toString();
+    // No game: the current page is already a path; never append a query.
+    return window.location.origin + window.location.pathname;
   };
 
   const title = game

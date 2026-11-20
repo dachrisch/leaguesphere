@@ -155,7 +155,11 @@ describe("ShareButton", () => {
   });
 
   it("shares the deep link and names both teams", async () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    window.history.replaceState(
+      {},
+      "",
+      "/liveticker/v2/gameday/2/game/1/",
+    );
     const share = vi.fn(async () => undefined);
     vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
 
@@ -168,7 +172,9 @@ describe("ShareButton", () => {
     expect(payload.title).toBe(
       "Walldorf Wanderers – Düsseldorf Firecats · Liveticker",
     );
-    expect(new URL(payload.url).searchParams.get("game")).toBe("1");
+    const shared = new URL(payload.url);
+    expect(shared.pathname).toBe("/liveticker/v2/gameday/2/game/1/");
+    expect(shared.search).toBe("");
   });
 
   it("falls back to the full team name in the share title", async () => {

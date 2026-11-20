@@ -29,10 +29,13 @@
 {% block og_title %}Liveticker – Live-Ergebnisse{% endblock %}
 {% block og_description %}{{ page_description }}{% endblock %}
 {% block og_type %}website{% endblock %}
-{% block og_url %}{{ request.scheme }}://{{ request.get_host }}{{ request.get_full_path }}{% endblock %}
+{% block og_url %}{{ canonical_url }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
 
 {% block content %}
     <div id="liveticker-v2-app"
+         data-gameday-id="{{ gameday_id }}"
+         data-game-id="{{ game_id }}"
          data-stream-enabled="{% if stream_enabled %}true{% else %}false{% endif %}"></div>
     <noscript>Der Liveticker benötigt JavaScript.</noscript>
 {% endblock %}

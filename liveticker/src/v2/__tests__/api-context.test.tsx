@@ -158,7 +158,11 @@ describe("LivetickerProvider", () => {
   });
 
   it("asks again for a linked game that is not in the first payload", async () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    window.history.replaceState(
+      {},
+      "",
+      "/liveticker/v2/gameday/2/game/1/",
+    );
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => [] })
@@ -177,7 +181,11 @@ describe("LivetickerProvider", () => {
   });
 
   it("asks once and then reports a linked game that is still missing", async () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    window.history.replaceState(
+      {},
+      "",
+      "/liveticker/v2/gameday/2/game/1/",
+    );
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => [] }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -219,7 +227,11 @@ describe("LivetickerProvider", () => {
   });
 
   it("reuses the retried tick request when the history is opened", async () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    window.history.replaceState(
+      {},
+      "",
+      "/liveticker/v2/gameday/2/game/1/",
+    );
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => [] })
@@ -236,10 +248,9 @@ describe("LivetickerProvider", () => {
 
     await userEvent.click(toggle);
 
-    await waitFor(() =>
-      expect(new URLSearchParams(window.location.search).get("all")).toBe("1"),
-    );
-    expect(screen.getByText("1")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
+    // "Alle Ereignisse" stays UI state: no query parameter is written.
+    expect(window.location.search).toBe("");
   });
 
   it("requires a provider", () => {
@@ -252,7 +263,11 @@ describe("LivetickerProvider", () => {
 
   it("keeps the URL-selected game across a poll and leaves the URL alone", async () => {
     vi.useFakeTimers();
-    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    window.history.replaceState(
+      {},
+      "",
+      "/liveticker/v2/gameday/2/game/1/",
+    );
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => [game] }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -272,6 +287,9 @@ describe("LivetickerProvider", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(window.location.search).toBe("?game=1");
+    expect(window.location.pathname).toBe(
+      "/liveticker/v2/gameday/2/game/1/",
+    );
+    expect(window.location.search).toBe("");
   });
 });

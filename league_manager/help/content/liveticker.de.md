@@ -25,7 +25,10 @@ Neu eingetroffene Ereignisse werden kurz hervorgehoben.
 ## Teilen
 
 Das Teilen-Symbol kopiert einen Link auf den gewählten Spieltag oder das
-gewählte Spiel. Beim Öffnen des Links ist das Spiel direkt aufgeklappt.
+gewählte Spiel. Beim Öffnen des Links ist das Spiel direkt aufgeklappt. Die
+Adresse hat dabei die Form
+`/liveticker/v2/gameday/<Spieltag>/game/<Spiel>/`; die Startseite des
+Livetickers bleibt `/liveticker/v2/`.
 
 ## Häufige Fragen
 
