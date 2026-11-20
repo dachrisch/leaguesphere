@@ -122,6 +122,17 @@ HELP_TOPICS = [
         order=30,
     ),
     HelpTopic(
+        slug="liveticker",
+        group="funktionen",
+        title={"de": "Liveticker", "en": "Live ticker"},
+        summary={
+            "de": "Live-Ergebnisse und Spielverlauf eines Spieltags, ohne Neuladen.",
+            "en": "Live scores and play-by-play for a gameday, without reloading.",
+        },
+        icon="bi-broadcast-pin",
+        order=15,
+    ),
+    HelpTopic(
         slug="share-widget",
         group="funktionen",
         title={"de": "Website einbinden", "en": "Embed on your website"},

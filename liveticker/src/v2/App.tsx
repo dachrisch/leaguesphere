@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 
 import { GamedaySection } from "./components/GamedaySection";
+import { ConnectionStatus } from "./components/ConnectionStatus";
 import { NoLive } from "./components/NoLive";
 import { useLiveticker } from "./context/LivetickerContext";
 import { groupGamesByGameday } from "./selectors";
 import { selectGame, useUrlState } from "./urlState";
 
 export default function App() {
-  const { games, loading, error, toggleAllTicks, linkedGameMissing } =
-    useLiveticker();
+  const {
+    games,
+    loading,
+    error,
+    toggleAllTicks,
+    linkedGameMissing,
+    connection,
+    highlighted,
+  } = useLiveticker();
   const { gameId, all } = useUrlState();
   const [now, setNow] = useState(() => new Date());
   const deepLinkGame = useRef(gameId);
@@ -58,6 +66,7 @@ export default function App() {
   return (
     <main className="lt-app">
       <h1 className="lt-sr">Liveticker</h1>
+      <ConnectionStatus status={connection} />
       {linkedGameMissing && (
         <p className="lt-status lt-notice" role="status">
           Spiel nicht mehr im Ticker
@@ -75,6 +84,7 @@ export default function App() {
             all={all}
             onSelect={selectGame}
             onToggleAll={toggleAllTicks}
+            highlighted={highlighted}
           />
         ))
       )}

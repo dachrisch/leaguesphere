@@ -70,6 +70,9 @@ gameevents/migrations/.* run-images true
 # --- liveticker + scorecard backends (live shard) ---
 (liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-python-live true
 (liveticker/.*\.py|liveticker/(api|service|tests)/.*|scorecard/.*\.py|scorecard_v2/.*\.py) run-images true
+# The SSE endpoint (liveticker/stream/) is covered by the liveticker rules
+# above; this line keeps that intent explicit as the module grows.
+liveticker/stream/.* run-python-live true
 ((liveticker|scorecard)/migrations/.*) run-images true
 # Both scorecards (and the ticker) are built on the gamedays APIs: their tests
 # assert the wire contract, so an API change must run them even when the

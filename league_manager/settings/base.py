@@ -259,6 +259,48 @@ SCORECARD_EVENT_FEED = os.environ.get("SCORECARD_EVENT_FEED", "false") == "true"
 # measured k6 run on stage justifies a lower TTL; the setting lets that change
 # ship without touching the view.
 LIVETICKER_CACHE_SECONDS = int(os.environ.get("LIVETICKER_CACHE_SECONDS", "60"))
+# Version 2 of the public ticker (TypeScript app under /liveticker/v2/). It
+# switches the gameday page link and the site-menu target; the route itself
+# stays reachable either way so a shared link never 404s.
+LIVETICKER_V2_ENABLED = os.environ.get("LIVETICKER_V2_ENABLED", "false") == "true"
+
+# --- liveticker live stream (SSE) ------------------------------------------
+# Off by default: production keeps the 60 s polling until stage has proven the
+# stream. The same flag gates the endpoint and the client (the template hands
+# it to the app as a data attribute), so they cannot disagree.
+LIVETICKER_STREAM_ENABLED = (
+    os.environ.get("LIVETICKER_STREAM_ENABLED", "false") == "true"
+)
+# One aggregate pass per process per tick, independent of connected clients.
+LIVETICKER_STREAM_POLL_SECONDS = float(
+    os.environ.get("LIVETICKER_STREAM_POLL_SECONDS", "1.0")
+)
+# Comment-frame interval; also what keeps an idle connection open through
+# proxies.
+LIVETICKER_STREAM_HEARTBEAT_SECONDS = float(
+    os.environ.get("LIVETICKER_STREAM_HEARTBEAT_SECONDS", "15")
+)
+# Per ASGI process. One worker, so this is the whole deployment's budget;
+# beyond it the endpoint answers 503 + Retry-After and the client polls.
+LIVETICKER_STREAM_MAX_CLIENTS = int(
+    os.environ.get("LIVETICKER_STREAM_MAX_CLIENTS", "2000")
+)
+LIVETICKER_STREAM_RETRY_AFTER_SECONDS = int(
+    os.environ.get("LIVETICKER_STREAM_RETRY_AFTER_SECONDS", "5")
+)
+# Consecutive failed poll cycles that mark the stream worker unhealthy. At the
+# default 1 s poll this is ~10 s, long enough to ride out one blip and short
+# enough that a dead DB connection cannot serve stale data for a night.
+LIVETICKER_STREAM_MAX_TICK_FAILURES = int(
+    os.environ.get("LIVETICKER_STREAM_MAX_TICK_FAILURES", "10")
+)
+# Docker restarts a container when it EXITS, not when its healthcheck is
+# unhealthy, and there is no autoheal service. A poller that keeps failing is
+# therefore not fixed by /health/stream/ alone: the worker exits itself after
+# the failure limit above and gunicorn respawns it (fresh DB connections).
+LIVETICKER_STREAM_EXIT_ON_FAILURE = (
+    os.environ.get("LIVETICKER_STREAM_EXIT_ON_FAILURE", "true") == "true"
+)
 
 # --- temporary database access (dbaccess) ----------------------------------
 # Feature switch for the request/approval surface. Off unless the deployment

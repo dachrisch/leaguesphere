@@ -70,6 +70,7 @@ from league_manager.views import (
     HelpTopicView,
 )
 from journey.progress_view import GameProgressPageView
+from liveticker.stream.views import liveticker_stream_health
 from league_manager.sitemaps import (
     StaticViewSitemap,
     LeaguetableSitemap,
@@ -188,6 +189,12 @@ urlpatterns = [
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path("accounts/", include("accounts.urls")),
     path(r"health/", HealthCheckView.as_view()),
+    # Liveness for the separate SSE worker (see deployed/docker-compose*.yaml).
+    path(
+        r"health/stream/",
+        liveticker_stream_health,
+        name="liveticker-stream-health",
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if getattr(settings, "DEBUG_TOOLBAR", False):

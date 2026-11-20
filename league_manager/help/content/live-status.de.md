@@ -13,8 +13,9 @@ In der Fortschrittsansicht trägt jeder Spieltag ein Abzeichen:
 
 ## Live verfolgen
 
-Läuft ein Spiel, kannst du den Verlauf im **Liveticker** mitlesen. Ergebnisse
-aktualisieren sich dort automatisch, ohne dass du die Seite neu laden musst.
+Läuft ein Spiel, kannst du den Verlauf im [Liveticker](/help/liveticker/)
+mitlesen. Ergebnisse aktualisieren sich dort automatisch, ohne dass du die
+Seite neu laden musst.
 
 ## Fortschritt eines Spieltags
 
@@ -28,4 +29,5 @@ Wenn heute keine Spiele geplant sind, bleibt die Liste leer. Der nächste
 Spieltag erscheint, sobald er veröffentlicht ist.
 
 **Wie oft aktualisiert sich der Status?**
-Der Status wird laufend aktualisiert, Live-Ergebnisse etwa im Minutentakt.
+Der Status wird laufend aktualisiert; im Liveticker kommen neue Ergebnisse
+sofort an, ersatzweise im Minutentakt.

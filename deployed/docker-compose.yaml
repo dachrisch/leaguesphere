@@ -108,6 +108,50 @@ services:
       retries: 5
       start_period: 90s
 
+  # Server-Sent-Events endpoint for the v2 liveticker. A stream holds its
+  # request slot for its whole lifetime, so it must not share the WSGI pool:
+  # `app` is 4 workers x 2 threads = 8 slots, and a handful of open tickers
+  # would starve the site. One ASGI worker serves every stream
+  # asynchronously; a second worker would double the DB polling and split the
+  # client cap, so the cap is the whole deployment's and the process count is
+  # deliberately 1.
+  liveticker-stream:
+    image: leaguesphere/backend:latest
+    container_name: ${COMPOSE_PROJECT_NAME}.liveticker-stream
+    # --timeout 0: gunicorn's request timeout counts "worker did not notify",
+    # which is meaningless for a worker whose connections are long-lived SSE
+    # responses by design. The healthcheck is the liveness signal instead.
+    command: gunicorn -b 0.0.0.0:8001 -w 1 -k uvicorn.workers.UvicornWorker --timeout 0 --graceful-timeout 30 --max-requests 5000 --max-requests-jitter 500 league_manager.asgi:application
+    # Small on purpose: the payloads are built for a handful of distinct
+    # queries and fanned out as references; the memory is queues and sockets.
+    mem_limit: 256m
+    memswap_limit: 512m
+    environment:
+      DJANGO_SETTINGS_MODULE: league_manager.settings.prod
+      # Never migrate from this service: the app owns the schema, and two
+      # containers racing migrate on a blue-green swap is how you get a
+      # half-applied schema on the stream's first boot.
+      RUN_MIGRATIONS: "false"
+    env_file: ls.env
+    networks:
+      - backend
+      - database
+    # The image healthcheck polls :8000; this service listens on :8001.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -A healthcheck -H 'Accept: application/json' http://localhost:8001/health/stream/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+      - com.centurylinklabs.watchtower.scope=prod
+      # Stateless ASGI worker against shared MySQL: a green replacement can
+      # start alongside blue while existing streams drain.
+      - com.centurylinklabs.watchtower.update-strategy=blue-green
+    restart: unless-stopped
+
   db:
     # Pinned to the MINOR, the patch floats (D1): `mariadb:13.0` lets
     # watchtower's `db` scope deliver 13.0.x fixes in the daily 06:00 window

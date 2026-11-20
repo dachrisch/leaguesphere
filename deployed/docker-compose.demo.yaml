@@ -86,12 +86,43 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: league_manager.settings.demo
       RUN_MIGRATIONS: true
+      LIVETICKER_V2_ENABLED: "true"
+      LIVETICKER_STREAM_ENABLED: "true"
     networks:
       - backend
       - egress
       - db_nonprod_backend
     volumes:
       - media:/app/league_manager/media
+    restart: unless-stopped
+
+  # SSE worker for the v2 liveticker. Separate from `demo-app` because a
+  # long-lived stream would pin one of that container's 2 request slots;
+  # see docker-compose.yaml for the full reasoning and the --timeout note.
+  liveticker-stream:
+    image: leaguesphere/backend:demo
+    container_name: ${COMPOSE_PROJECT_NAME}.liveticker-stream
+    command: gunicorn -b 0.0.0.0:8001 -w 1 -k uvicorn.workers.UvicornWorker --timeout 0 --graceful-timeout 30 league_manager.asgi:application
+    mem_limit: 192m
+    environment:
+      DJANGO_SETTINGS_MODULE: league_manager.settings.demo
+      RUN_MIGRATIONS: "false"
+      LIVETICKER_STREAM_ENABLED: "true"
+    env_file: ls.env.demo
+    # The image healthcheck polls :8000; this service listens on :8001.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -A healthcheck -H 'Accept: application/json' http://localhost:8001/health/stream/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    labels:
+      - traefik.enable=false
+      - io.portainer.accesscontrol.teams=leaguesphere
+      - com.centurylinklabs.watchtower.scope=dev
+    networks:
+      - backend
+      - db_nonprod_backend
     restart: unless-stopped
 
 networks:
