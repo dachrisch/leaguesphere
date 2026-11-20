@@ -22,6 +22,26 @@ LIVE_STATUSES = ("1. Halbzeit", "2. Halbzeit")
 PERIOD_STATUS = {1: "1. Halbzeit", 2: "2. Halbzeit"}
 
 
+def resolve_gameday_ids(gameday_ids, league):
+    """The gamedays a request can return, in the same way the service picks them.
+
+    Shared with the ETag so the validator only touches the games that can be in
+    this response instead of every Gameinfo row in the database.
+    """
+    if not league:
+        leagues = League.objects.all()
+    else:
+        leagues = League.objects.filter(slug__in=league)
+    if gameday_ids:
+        return list(gameday_ids)
+    date = settings.DEBUG_DATE if settings.DEBUG else datetime.today().date()
+    return list(
+        Gameday.objects.filter(date=date, league__in=leagues).values_list(
+            "pk", flat=True
+        )
+    )
+
+
 class LivetickerService:
     def __init__(
         self,
@@ -37,21 +57,7 @@ class LivetickerService:
         self.event_feed_enabled = bool(getattr(settings, "SCORECARD_EVENT_FEED", False))
 
     def _init_gamedays(self, gameday_ids, league):
-        if not league:
-            league = League.objects.all()
-        else:
-            league = League.objects.filter(slug__in=league)
-        if not gameday_ids:
-            today_gamedays = Gameday.objects.filter(
-                date=datetime.today().date(), league__in=league
-            )
-            if settings.DEBUG:
-                today_gamedays = Gameday.objects.filter(
-                    date=settings.DEBUG_DATE, league__in=league
-                )
-            self.gameday_ids = [gameday.pk for gameday in today_gamedays]
-        else:
-            self.gameday_ids = gameday_ids
+        self.gameday_ids = resolve_gameday_ids(gameday_ids, league)
 
     def get_liveticker_as_json(self):
         next_games_list = []
