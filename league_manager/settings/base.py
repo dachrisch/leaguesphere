@@ -264,6 +264,31 @@ LIVETICKER_CACHE_SECONDS = int(os.environ.get("LIVETICKER_CACHE_SECONDS", "60"))
 # stays reachable either way so a shared link never 404s.
 LIVETICKER_V2_ENABLED = os.environ.get("LIVETICKER_V2_ENABLED", "false") == "true"
 
+# --- liveticker live stream (SSE) ------------------------------------------
+# Off by default: production keeps the 60 s polling until stage has proven the
+# stream. The same flag gates the endpoint and the client (the template hands
+# it to the app as a data attribute), so they cannot disagree.
+LIVETICKER_STREAM_ENABLED = (
+    os.environ.get("LIVETICKER_STREAM_ENABLED", "false") == "true"
+)
+# One aggregate pass per process per tick, independent of connected clients.
+LIVETICKER_STREAM_POLL_SECONDS = float(
+    os.environ.get("LIVETICKER_STREAM_POLL_SECONDS", "1.0")
+)
+# Comment-frame interval; also what keeps an idle connection open through
+# proxies.
+LIVETICKER_STREAM_HEARTBEAT_SECONDS = float(
+    os.environ.get("LIVETICKER_STREAM_HEARTBEAT_SECONDS", "15")
+)
+# Per ASGI process. One worker, so this is the whole deployment's budget;
+# beyond it the endpoint answers 503 + Retry-After and the client polls.
+LIVETICKER_STREAM_MAX_CLIENTS = int(
+    os.environ.get("LIVETICKER_STREAM_MAX_CLIENTS", "2000")
+)
+LIVETICKER_STREAM_RETRY_AFTER_SECONDS = int(
+    os.environ.get("LIVETICKER_STREAM_RETRY_AFTER_SECONDS", "5")
+)
+
 # --- temporary database access (dbaccess) ----------------------------------
 # Feature switch for the request/approval surface. Off unless the deployment
 # says otherwise, so a stack without a provisioner sidecar cannot accept
