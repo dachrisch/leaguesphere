@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.25.0](https://github.com/dachrisch/leaguesphere/compare/v5.24.0...v5.25.0) (2026-11-20)
+
+
+### Features
+
+* **liveticker:** enable v2 and the event stream in production ([3140556](https://github.com/dachrisch/leaguesphere/commit/31405565279fe250df1ae82386463e7895d57c1c))
+* **liveticker:** enable v2 and the event stream in production ([17af74e](https://github.com/dachrisch/leaguesphere/commit/17af74ed00051054103baf79a5ab0a403b42d42d))
+
+
+### Bug Fixes
+
+* **deps:** update js dev deps to v8.1.3 ([#2497](https://github.com/dachrisch/leaguesphere/issues/2497)) ([3fd16a0](https://github.com/dachrisch/leaguesphere/commit/3fd16a0d28d97503478fe3a43fdd2938319c0106))
+
 ## [5.24.0](https://github.com/dachrisch/leaguesphere/compare/v5.23.0...v5.24.0) (2026-11-20)
 
 
