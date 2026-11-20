@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.24.0](https://github.com/dachrisch/leaguesphere/compare/v5.23.0...v5.24.0) (2026-11-20)
+
+
+### Features
+
+* **dbaccess:** request INSERT and DELETE explicitly ([fa51a44](https://github.com/dachrisch/leaguesphere/commit/fa51a44c0081558c72d06fdde8986d1b130be455))
+* **dbaccess:** request INSERT and DELETE explicitly ([e80b32d](https://github.com/dachrisch/leaguesphere/commit/e80b32dacda84a05970aabd89f4aff66e028e352))
+
 ## [5.23.0](https://github.com/dachrisch/leaguesphere/compare/v5.22.1...v5.23.0) (2026-11-20)
 
 
