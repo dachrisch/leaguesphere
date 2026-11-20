@@ -1,26 +1,32 @@
 import type { Game, Team } from "../types";
+import {
+  formatBerlinClock,
+  formatClock,
+  halftimeLabel,
+  statusLabel,
+  teamBadges,
+} from "../format";
 
 interface TeamSideProps {
   team: Team;
   side: "home" | "away";
   finished: boolean;
+  badge: string;
 }
 
-function TeamSide({ team, side, finished }: TeamSideProps) {
+function TeamSide({ team, side, finished, badge }: TeamSideProps) {
   const name = team.name || team.full_name;
-  const initials = name.slice(0, 2).toUpperCase();
   return (
     <div className={`lt-team lt-team-${side}`}>
       {team.logo ? (
         <img className="lt-crest" src={team.logo} alt="" />
       ) : (
         <span className="lt-crest" aria-hidden="true">
-          {initials}
+          {badge}
         </span>
       )}
       <div>
         <h3 className="lt-team-name">{name}</h3>
-        <p className="lt-team-role">{side === "home" ? "Heim" : "Gast"}</p>
         {!finished && team.isInPossession && (
           <p className="lt-possession">Ballbesitz</p>
         )}
@@ -35,23 +41,48 @@ interface ScoreboardProps {
 
 export function Scoreboard({ game }: ScoreboardProps) {
   const finished = game.status === "beendet";
-  const showHalves = game.home.fh !== null || game.home.sh !== null;
+  const homeName = game.home.name || game.home.full_name;
+  const awayName = game.away.name || game.away.full_name;
+  const badges = teamBadges(homeName, awayName);
+  const halves = halftimeLabel(game.home, game.away);
+  const kickoff = game.scheduled_at
+    ? formatBerlinClock(game.scheduled_at)
+    : formatClock(game.time);
+  const status = finished ? "Endstand" : `LIVE · ${statusLabel(game.status)}`;
+  const meta = [
+    status,
+    game.field ? `Feld ${game.field}` : null,
+    game.stage,
+    `Anstoß ${kickoff}`,
+  ].filter((part): part is string => Boolean(part));
+
   return (
     <section className="lt-board-card" aria-label="Spielstand">
-      <p className={finished ? "lt-live-row lt-final" : "lt-live-row"}>
+      <p className={finished ? "lt-board-meta lt-final" : "lt-board-meta"}>
         {!finished && <span className="lt-live-dot" aria-hidden="true" />}
-        {finished ? "Endstand" : `Live · ${game.status}`}
+        {meta.join(" · ")}
       </p>
       <div className="lt-board">
-        <TeamSide team={game.home} side="home" finished={finished} />
+        <TeamSide
+          team={game.home}
+          side="home"
+          finished={finished}
+          badge={badges.home}
+        />
         <div className="lt-score">
           <span>{game.home.score ?? 0}</span>
           <span className="lt-colon">:</span>
           <span>{game.away.score ?? 0}</span>
         </div>
-        <TeamSide team={game.away} side="away" finished={finished} />
+        <TeamSide
+          team={game.away}
+          side="away"
+          finished={finished}
+          badge={badges.away}
+        />
       </div>
-      {showHalves && (
+      {halves && <p className="lt-halves-line">{halves}</p>}
+      {halves && (
         <table className="lt-halves" aria-label="Halbzeitergebnisse">
           <thead>
             <tr>
@@ -64,12 +95,12 @@ export function Scoreboard({ game }: ScoreboardProps) {
           </thead>
           <tbody>
             <tr>
-              <td>{game.home.name}</td>
+              <td>{homeName}</td>
               <td>{game.home.fh ?? "–"}</td>
               <td>{game.home.sh ?? "–"}</td>
             </tr>
             <tr>
-              <td>{game.away.name}</td>
+              <td>{awayName}</td>
               <td>{game.away.fh ?? "–"}</td>
               <td>{game.away.sh ?? "–"}</td>
             </tr>

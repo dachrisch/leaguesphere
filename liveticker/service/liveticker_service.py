@@ -57,12 +57,16 @@ class LivetickerService:
         next_games_list = []
         for gameday_id in self.gameday_ids:
             filter_conditions = Q(gameday=gameday_id, status__in=LIVE_STATUSES)
-            filter_conditions |= self._get_upcoming_slot_filter(gameday_id)
             if self.all_results:
-                # The v2 game-day page lists every finished game of the day;
-                # the legacy widget keeps its single latest slot.
+                # The v2 game-day page lists every finished and every still
+                # scheduled game of the day; the legacy widget keeps its
+                # single latest/upcoming slots.
                 filter_conditions |= Q(gameday=gameday_id, gameFinished__isnull=False)
+                filter_conditions |= Q(
+                    gameday=gameday_id, status=Gameinfo.STATUS_PUBLISHED
+                )
             else:
+                filter_conditions |= self._get_upcoming_slot_filter(gameday_id)
                 filter_conditions |= self._get_latest_slot_filter(gameday_id)
             next_games_list += self._get_all_live_games(filter_conditions)
         if self.event_feed_enabled:

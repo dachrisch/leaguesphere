@@ -83,17 +83,22 @@ function resultRows(): HTMLButtonElement[] {
 }
 
 describe("Liveticker v2 App", () => {
-  it("renders live, upcoming and results in that order", () => {
+  it("renders the live chips, upcoming and results in that order", () => {
     renderApp([liveGame, upcomingGame, finishedGame]);
 
     const headings = headingTexts();
-    expect(headings).toContain("Live");
     expect(headings).toContain("Als Nächstes");
     expect(headings).toContain("Ergebnisse");
-    expect(headings.indexOf("Live")).toBeLessThan(headings.indexOf("Als Nächstes"));
     expect(headings.indexOf("Als Nächstes")).toBeLessThan(
       headings.indexOf("Ergebnisse"),
     );
+    const chips = document.querySelector(".lt-live-strip");
+    const next = screen.getByText("Als Nächstes");
+    expect(chips).not.toBeNull();
+    expect(
+      (chips as Element).compareDocumentPosition(next) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByText(/Next Home/)).toBeInTheDocument();
     expect(resultRows()).toHaveLength(1);
   });
@@ -127,7 +132,7 @@ describe("Liveticker v2 App", () => {
         name: "Walldorf Wanderers – Düsseldorf Firecats",
       }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /Feld 2/ }));
+    await userEvent.click(screen.getByRole("button", { name: /F2/ }));
 
     expect(
       screen.getByRole("heading", {
@@ -155,7 +160,8 @@ describe("Liveticker v2 App", () => {
     const rows = resultRows();
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain("Old Home");
-    expect(rows[0].textContent).toContain("Halbzeit");
+    expect(rows[0].textContent).toContain("Endstand");
+    expect(rows[0].textContent).toContain("1. HZ 14:7 · 2. HZ 7:7");
     expect(rows[1].textContent).toContain("Older Home");
   });
 
@@ -176,8 +182,8 @@ describe("Liveticker v2 App", () => {
 
     expect(screen.getByRole("heading", { name: "Testtag" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Zweiter Tag" })).toBeInTheDocument();
-    expect(screen.getByText("Testliga")).toBeInTheDocument();
-    expect(screen.getByText("Andere Liga")).toBeInTheDocument();
+    expect(screen.getAllByText("Testliga").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Andere Liga").length).toBeGreaterThan(0);
     expect(resultRows()).toHaveLength(1);
   });
 
@@ -185,7 +191,7 @@ describe("Liveticker v2 App", () => {
     renderApp([liveGame]);
 
     expect(screen.getByRole("heading", { name: "Testtag" })).toBeInTheDocument();
-    expect(screen.getByText(/Testliga/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Testliga/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Testfeld/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Walldorf Wanderers").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Düsseldorf Firecats").length).toBeGreaterThan(0);
@@ -314,9 +320,9 @@ describe("Liveticker v2 App", () => {
     renderApp([noHalves, second, first]);
 
     const rows = resultRows();
-    expect(rows[0].textContent).toContain("Halbzeit 7:– · –:6");
-    expect(rows[1].textContent).toContain("Halbzeit –:6 · 7:–");
-    expect(rows[2].textContent).not.toContain("Halbzeit");
+    expect(rows[0].textContent).toContain("1. HZ 7:– · 2. HZ –:6");
+    expect(rows[1].textContent).toContain("1. HZ –:6 · 2. HZ 7:–");
+    expect(rows[2].textContent).not.toContain("1. HZ");
     expect(rows[2].textContent).toContain("0 : 0");
   });
 
@@ -378,6 +384,78 @@ describe("Liveticker v2 App", () => {
     }[];
     expect(payload[0].title).toBe("Old Home – Old Away · Liveticker");
     expect(new URL(payload[0].url).searchParams.get("game")).toBe("3");
+  });
+
+  it("shows a compact gameday bar with live count and share", () => {
+    renderApp([liveGame, upcomingGame, finishedGame]);
+
+    const topbar = document.querySelector(".lt-topbar");
+    expect(topbar).not.toBeNull();
+    expect(topbar?.textContent).toContain("Testliga");
+    expect(topbar?.textContent).toContain("Testtag");
+    expect(topbar?.textContent).toContain("1 LIVE");
+    expect(
+      topbar?.querySelector("button[aria-label='Ticker teilen']"),
+    ).not.toBeNull();
+  });
+
+  it("renders short team names in the live chips", () => {
+    renderApp([liveGame]);
+
+    const chip = document.querySelector(".lt-live-tab");
+    expect(chip?.textContent).toContain("F1");
+    expect(chip?.textContent).toContain("Wanderers");
+    expect(chip?.textContent).toContain("7:6");
+    expect(chip?.textContent).toContain("Firecats");
+    expect(chip?.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("fills the gameday card with date, address and counts", () => {
+    renderApp([liveGame, upcomingGame, finishedGame]);
+
+    const card = document.querySelector(".lt-gameday-card");
+    expect(card?.textContent).toContain("Testtag");
+    expect(card?.textContent).toContain("Testfeld");
+    expect(card?.textContent).toContain("Spiele");
+    expect(card?.textContent).toContain("3");
+    expect(card?.textContent).toContain("1");
+  });
+
+  it("labels results as Endstand and bolds the winner", () => {
+    renderApp([finishedGame]);
+
+    const row = resultRows()[0];
+    expect(row.textContent).toContain("Endstand");
+    expect(row.textContent).toContain("1. HZ 14:7 · 2. HZ 7:7");
+    expect(row.querySelector(".lt-result-home")).toHaveClass("lt-winner");
+    expect(row.querySelector(".lt-result-away")).not.toHaveClass("lt-winner");
+  });
+
+  it("bolds an away win as well", () => {
+    renderApp([
+      {
+        ...finishedGame,
+        gameId: 11,
+        home: { ...finishedGame.home, score: 7 },
+        away: { ...finishedGame.away, score: 14 },
+      },
+    ]);
+
+    const row = resultRows()[0];
+    expect(row.querySelector(".lt-result-away")).toHaveClass("lt-winner");
+    expect(row.querySelector(".lt-result-home")).not.toHaveClass("lt-winner");
+  });
+
+  it("keeps the share action in the gameday bar", async () => {
+    const share = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
+    renderApp([finishedGame], "?game=3");
+
+    const button = screen.getByRole("button", { name: "Ticker teilen" });
+    expect(button.closest(".lt-topbar")).not.toBeNull();
+    await userEvent.click(button);
+
+    expect(share).toHaveBeenCalledTimes(1);
   });
 
   it("shows the loading state", () => {

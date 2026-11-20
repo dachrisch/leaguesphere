@@ -53,6 +53,35 @@ describe("Scoreboard", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
 
+  it("puts field, stage and kickoff into the top line", () => {
+    render(<Scoreboard game={game} />);
+
+    expect(screen.getByText(/LIVE · 1\. HZ · Feld 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Anstoß 11:30/)).toBeInTheDocument();
+  });
+
+  it("shows both halves as one labelled line", () => {
+    render(<Scoreboard game={game} />);
+
+    expect(screen.getByText("1. HZ 7:6 · 2. HZ 0:0")).toBeInTheDocument();
+  });
+
+  it("derives badges from the distinctive team word", () => {
+    render(
+      <Scoreboard
+        game={{
+          ...game,
+          home: { ...game.home, name: "Demo Wolves", logo: null },
+          away: { ...game.away, name: "Demo Eagles", logo: null },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("WO")).toBeInTheDocument();
+    expect(screen.getByText("EA")).toBeInTheDocument();
+    expect(screen.queryByText("DE")).not.toBeInTheDocument();
+  });
+
   it("falls back to the full name and shows a missing half as a dash", () => {
     render(
       <Scoreboard
@@ -105,6 +134,44 @@ describe("EventList", () => {
       />,
     );
     expect(screen.getByText("Düsseldorf Firecats")).toBeInTheDocument();
+  });
+
+  it("shows the detail of a first down and a run with its player", () => {
+    render(
+      <EventList
+        game={{
+          ...game,
+          ticks: [
+            {
+              text: "First Down - 12 Yards · 2nd & M · A17",
+              type: "first_down",
+              team: "home",
+              time: "2026-08-15T12:00:00+00:00",
+            },
+            {
+              text: "Run: #7 - 12 Yards · 2nd & M · A17",
+              type: "run",
+              team: "home",
+              time: "2026-08-15T12:01:00+00:00",
+            },
+            {
+              text: "1-Extra-Punkt: #3 - nicht verwandelt · Deflection #2",
+              type: "extra_point",
+              team: "away",
+              time: "2026-08-15T12:02:00+00:00",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("First Down")).toBeInTheDocument();
+    expect(screen.getByText("12 Yards · 2nd & M · A17")).toBeInTheDocument();
+    expect(screen.getByText("Lauf")).toBeInTheDocument();
+    expect(screen.getByText("#7 - 12 Yards · 2nd & M · A17")).toBeInTheDocument();
+    expect(
+      screen.getByText("#3 - nicht verwandelt · Deflection #2"),
+    ).toBeInTheDocument();
   });
 
   it("exposes the all-events toggle with its aria state", async () => {

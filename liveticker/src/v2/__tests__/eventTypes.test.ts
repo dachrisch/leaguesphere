@@ -50,10 +50,16 @@ describe("eventTypes", () => {
     expect(eventMeta("something-new")).toEqual({ code: "•", label: null });
   });
 
-  it("extracts the detail without guessing the event type", () => {
+  it("extracts the detail with the player and the down/position", () => {
     expect(eventDetail("Run: #11 - 12 Yards · Tackle #4")).toBe(
-      "12 Yards · Tackle #4",
+      "#11 - 12 Yards · Tackle #4",
     );
+    expect(eventDetail("First Down - 12 Yards · 2nd & M · A17")).toBe(
+      "12 Yards · 2nd & M · A17",
+    );
+    expect(
+      eventDetail("1-Extra-Punkt: #3 - nicht verwandelt · Deflection #2"),
+    ).toBe("#3 - nicht verwandelt · Deflection #2");
     expect(eventDetail("Spiel gestartet")).toBe("");
   });
 

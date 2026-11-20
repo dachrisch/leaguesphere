@@ -5,6 +5,10 @@ import path from 'path';
 // Separate entry/output so the legacy JS/Redux bundle and its static output
 // stay byte-identical while /liveticker/v2/ is built next to it.
 export default defineConfig({
+  // Fonts and other assets sit next to the stylesheet in Django's static
+  // output. Without a base Vite writes font URLs at the site root
+  // (/liveticker-v2-*.woff2), which 404s under STATIC_URL.
+  base: '/static/liveticker/v2/js/',
   plugins: [react()],
   server: {
     port: 3001,

@@ -1,4 +1,5 @@
 from functools import wraps
+from hashlib import sha1
 
 from django.conf import settings
 from django.db.models import Count, Max, Sum
@@ -9,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from gameevents.models import GameState
-from gamedays.models import Gameresult, TeamLog
+from gamedays.models import Gameresult, Gameinfo, TeamLog
 from league_manager.utils.etag import build_etag
 from liveticker.service.liveticker_service import LivetickerService
 
@@ -30,6 +31,32 @@ def generate_liveticker_etag(request):
     byte-identical to the pre-event-store one.
     """
     etag_data = request.GET.urlencode() or "all"
+    # Every Gameinfo field the payload renders or uses for selection. A plain
+    # count/pk aggregate misses an in-place kickoff or field edit (and a
+    # ``QuerySet.update`` does not advance ``updated_at``), which used to keep
+    # answering 304 with the old kickoff.
+    gameinfo_digest = sha1()
+    for row in (
+        Gameinfo.objects.order_by("pk")
+        .values_list(
+            "pk",
+            "scheduled",
+            "gameStarted",
+            "gameFinished",
+            "field",
+            "status",
+            "in_possession",
+            "stage",
+            "standing",
+            "updated_at",
+            "gameday__date",
+            "gameday__name",
+            "gameday__address",
+            "gameday__league__name",
+        )
+        .iterator()
+    ):
+        gameinfo_digest.update(repr(row).encode())
     results = Gameresult.objects.aggregate(
         count=Count("pk"),
         latest=Max("pk"),
@@ -41,6 +68,7 @@ def generate_liveticker_etag(request):
     )
     parts = [
         etag_data,
+        gameinfo_digest.hexdigest(),
         results["count"],
         results["latest"],
         results["sum_fh"],
@@ -79,6 +107,12 @@ def cache_liveticker(view):
 
     @wraps(view)
     def wrapped(request, *args, **kwargs):
+        # A conditional request only reaches this wrapper after the ETag
+        # mismatched, so the stored page (keyed by URL alone) is stale by
+        # definition: bypass it and render the current state. Plain polls keep
+        # using the TTL cache.
+        if request.META.get("HTTP_IF_NONE_MATCH"):
+            return view(request, *args, **kwargs)
         seconds = getattr(settings, "LIVETICKER_CACHE_SECONDS", 60)
         return cache_page(seconds)(view)(request, *args, **kwargs)
 

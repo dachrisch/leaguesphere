@@ -59,6 +59,11 @@ export function eventMeta(type: string): EventMeta {
 
 /** The detail part of the legacy rendered tick, without guessing its type. */
 export function eventDetail(text: string): string {
+  const colon = text.indexOf(":");
+  if (colon !== -1) {
+    const afterColon = text.slice(colon + 1).trim();
+    if (afterColon) return afterColon;
+  }
   const separator = text.indexOf(" - ");
   return separator === -1 ? "" : text.slice(separator + 3).trim();
 }
