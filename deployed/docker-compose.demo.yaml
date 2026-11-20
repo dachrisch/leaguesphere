@@ -86,6 +86,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: league_manager.settings.demo
       RUN_MIGRATIONS: true
+      LIVETICKER_V2_ENABLED: "true"
     networks:
       - backend
       - egress

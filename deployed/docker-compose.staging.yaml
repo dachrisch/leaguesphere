@@ -148,6 +148,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: league_manager.settings.stage
       RUN_MIGRATIONS: true
+      LIVETICKER_V2_ENABLED: "true"
     networks:
       - backend
       - db_nonprod_backend

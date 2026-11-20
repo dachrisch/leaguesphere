@@ -1,13 +1,42 @@
-{% load static %}<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
     <link href='{% static "liveticker/v2/js/liveticker-v2-style.css" %}' rel="stylesheet"/>
-    <title>LeagueSphere - Liveticker</title>
-</head>
-<body>
-<div id="liveticker-v2-app"></div>
-<script src='{% static "liveticker/v2/js/liveticker-v2.js" %}'></script>
-</body>
-</html>
+    <style>
+        /* Page-scoped only: the v2 app owns its own background and reset rules
+           (they are scoped under #liveticker-v2-app), but the document body is
+           still the site's. The fixed navbar needs less room here than the
+           5rem site default because the compact ticker bar follows it directly. */
+        body {
+            background: #f3f5f7;
+            padding-top: 3.5rem;
+        }
+
+        /* The app brings its own page gutter; the Bootstrap container would
+           add a second one and cap the desktop layout at 1140px. */
+        main.container {
+            max-width: none;
+            padding-left: 0;
+            padding-right: 0;
+        }
+    </style>
+{% endblock %}
+
+{% block meta_description %}
+    <meta name="description" content="{{ page_description }}">
+{% endblock %}
+{% block og_title %}Liveticker – Live-Ergebnisse{% endblock %}
+{% block og_description %}{{ page_description }}{% endblock %}
+{% block og_type %}website{% endblock %}
+{% block og_url %}{{ request.scheme }}://{{ request.get_host }}{{ request.get_full_path }}{% endblock %}
+
+{% block content %}
+    <div id="liveticker-v2-app"
+         data-stream-enabled="{% if stream_enabled %}true{% else %}false{% endif %}"></div>
+    <noscript>Der Liveticker benötigt JavaScript.</noscript>
+{% endblock %}
+
+{% block extra_js %}
+    <script src='{% static "liveticker/v2/js/liveticker-v2.js" %}'></script>
+{% endblock %}

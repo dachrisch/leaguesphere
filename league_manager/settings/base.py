@@ -259,6 +259,10 @@ SCORECARD_EVENT_FEED = os.environ.get("SCORECARD_EVENT_FEED", "false") == "true"
 # measured k6 run on stage justifies a lower TTL; the setting lets that change
 # ship without touching the view.
 LIVETICKER_CACHE_SECONDS = int(os.environ.get("LIVETICKER_CACHE_SECONDS", "60"))
+# Version 2 of the public ticker (TypeScript app under /liveticker/v2/). It
+# switches the gameday page link and the site-menu target; the route itself
+# stays reachable either way so a shared link never 404s.
+LIVETICKER_V2_ENABLED = os.environ.get("LIVETICKER_V2_ENABLED", "false") == "true"
 
 # --- temporary database access (dbaccess) ----------------------------------
 # Feature switch for the request/approval surface. Off unless the deployment

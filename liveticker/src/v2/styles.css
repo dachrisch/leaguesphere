@@ -1,4 +1,8 @@
-:root {
+/* Everything is scoped to the app mount point: the page now renders inside the
+   site chrome (Bootstrap navbar and footer), and the older unscoped resets
+   (`body`, `button`, `*`) restyled the navbar from here. Component class names
+   stay flat; only the reset/variable layer needs the scope. */
+#liveticker-v2-app {
   --lt-bg: #f3f5f7;
   --lt-surface: #ffffff;
   --lt-ink: #26313a;
@@ -20,20 +24,8 @@
   --lt-radius: 18px;
   --lt-shadow: 0 1px 2px rgba(16, 24, 32, 0.05),
     0 12px 30px rgba(16, 24, 32, 0.06);
-}
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  background: var(--lt-bg);
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  overflow-x: hidden;
+  min-height: 100%;
   background: var(--lt-bg);
   color: var(--lt-ink);
   font-family: var(--lt-body);
@@ -42,30 +34,37 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2,
-h3,
-p,
-dl,
-dd {
+#liveticker-v2-app,
+#liveticker-v2-app *,
+#liveticker-v2-app *::before,
+#liveticker-v2-app *::after {
+  box-sizing: border-box;
+}
+
+#liveticker-v2-app h1,
+#liveticker-v2-app h2,
+#liveticker-v2-app h3,
+#liveticker-v2-app p,
+#liveticker-v2-app dl,
+#liveticker-v2-app dd {
   margin: 0;
 }
 
-button {
+#liveticker-v2-app button {
   font: inherit;
   color: inherit;
 }
 
-button:disabled {
+#liveticker-v2-app button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-a {
+#liveticker-v2-app a {
   color: inherit;
 }
 
-:focus-visible {
+#liveticker-v2-app :focus-visible {
   outline: 2px solid var(--lt-focus);
   outline-offset: 2px;
   border-radius: 6px;
@@ -959,9 +958,9 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  #liveticker-v2-app *,
+  #liveticker-v2-app *::before,
+  #liveticker-v2-app *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
