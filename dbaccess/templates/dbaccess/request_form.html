@@ -5,9 +5,10 @@
         <a class="small text-decoration-none" href="{% url 'dbaccess-list' %}">&larr; Temporary database access</a>
         <h1 class="h4 mt-2 mb-1">Request temporary production access</h1>
         <p class="text-muted small mb-4">
-            A second person has to approve this. The account is created within about fifteen
-            seconds of approval and stops working at the hard cap, whether or not anyone
-            remembers it.
+            A second person normally approves this; whoever may approve can also approve
+            their own request, with a reason and a <code>self-approved</code> mark in the
+            trail. The account is created within about fifteen seconds of approval and
+            stops working at the hard cap, whether or not anyone remembers it.
         </p>
 
         <form method="post" novalidate>
