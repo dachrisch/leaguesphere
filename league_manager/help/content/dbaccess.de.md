@@ -25,7 +25,9 @@ erlischt spätestens nach acht Stunden von selbst.
 
 Sobald die Anfrage **Active** ist, zeigt **Show password** die
 Verbindungsdetails. Übernimm Benutzername, Datenbank und Passwort von dort – sie
-gelten nur für diese eine Sitzung.
+gelten nur für diese eine Sitzung. Den Knopf siehst **nur du** als
+antragstellende Person: Genehmiger, andere Staff-Accounts und Admins können das
+Passwort nicht abrufen.
 
 Im Reiter **Main** der Verbindung:
 

@@ -128,7 +128,16 @@ class RequestDetailView(StaffRequiredMixin, DetailView):
         context["self_approved"] = self.object.approver_id is None and (
             self.object.events.filter(action="self-approved").exists()
         )
-        context["may_reveal"] = self.object.can_be_revealed_by(self.request.user)
+        may_reveal = self.object.can_be_revealed_by(self.request.user)
+        context["may_reveal"] = may_reveal
+        # Ending a session is not reading it: the approver and anyone with the
+        # approver permission may stop it, they just cannot see the password.
+        context["may_revoke"] = (
+            may_reveal or may_approve
+        ) and self.object.state in (
+            AccessRequest.State.ACTIVE,
+            AccessRequest.State.APPROVED,
+        )
         context["events"] = self.object.events.all()[:25]
         return context
 

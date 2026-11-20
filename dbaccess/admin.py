@@ -32,6 +32,10 @@ class AccessRequestAdmin(admin.ModelAdmin):
     list_display = ("person", "state", "requester", "approver", "ttl_hours", "created_at")
     list_filter = ("state",)
     search_fields = ("person", "db_user", "requester__username")
+    # The credential is not an admin field: `secret` holds plaintext until the
+    # first reveal, and a superuser reading it here would be a second way to the
+    # password that the requester-only rule deliberately closes.
+    exclude = ("secret", "secret_ct")
     readonly_fields = (
         "db_user",
         "grant_host",
