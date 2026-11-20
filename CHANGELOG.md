@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.21.0](https://github.com/dachrisch/leaguesphere/compare/v5.20.0...v5.21.0) (2026-11-20)
+
+
+### Features
+
+* **dbaccess:** only the requester may reveal the credential ([#2480](https://github.com/dachrisch/leaguesphere/issues/2480)) ([cccac7d](https://github.com/dachrisch/leaguesphere/commit/cccac7d88ca773369fd753204dbec4866dd21cac))
+
 ## [5.20.0](https://github.com/dachrisch/leaguesphere/compare/v5.19.2...v5.20.0) (2026-11-20)
 
 
