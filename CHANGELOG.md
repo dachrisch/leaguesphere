@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.22.1](https://github.com/dachrisch/leaguesphere/compare/v5.22.0...v5.22.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **liveticker:** forward Host and client headers to the stream service ([4c80e01](https://github.com/dachrisch/leaguesphere/commit/4c80e0175ba9c6cc350a48aec2ed6d8c962f9736))
+* **liveticker:** forward Host and client headers to the stream service ([2e90b7d](https://github.com/dachrisch/leaguesphere/commit/2e90b7db1c5748dc312297f2e66e655110a3f932))
+
 ## [5.22.0](https://github.com/dachrisch/leaguesphere/compare/v5.21.1...v5.22.0) (2026-11-20)
 
 
