@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.23.0](https://github.com/dachrisch/leaguesphere/compare/v5.22.1...v5.23.0) (2026-11-20)
+
+
+### Features
+
+* **liveticker:** path URLs and immediate deep link for the selected game ([c9a0d54](https://github.com/dachrisch/leaguesphere/commit/c9a0d5424f31dce2aefd6a64c65d13b24153a3fb))
+
 ## [5.22.1](https://github.com/dachrisch/leaguesphere/compare/v5.22.0...v5.22.1) (2026-11-20)
 
 
