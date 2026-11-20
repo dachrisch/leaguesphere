@@ -9,16 +9,25 @@ erlischt spätestens nach acht Stunden von selbst.
 
 1. Öffne `/dbaccess/` und klicke **New request**.
 2. Trage den Zweck, die Laufzeit und – falls vorhanden – das Ticket ein. Unter
-   **Tables** wählst du die Tabellen aus, die du ändern willst; lesen darfst du
-   das ganze Schema.
-3. Klicke **Submit for approval**. Den Kontonamen `dbeaver_prod_<dein Login>`
+   **Tables** wählst du die Tabellen aus, die du ändern willst. Lesen darfst du
+   alle Tabellen der Freigabeliste – **nicht** das ganze Schema: Identitäten,
+   Sitzungen, Tokens und der Zugangs-Verlauf bleiben ausgenommen.
+3. Unter **What it may do** stehen zwei Kästchen, beide standardmäßig aus:
+   **INSERT** erlaubt neue Zeilen, **DELETE** erlaubt das Löschen von Zeilen –
+   jeweils nur in den ausgewählten Tabellen. Ohne Haken bleibt es bei
+   **Lesen + UPDATE**, wie bisher.
+4. Klicke **Submit for approval**. Den Kontonamen `dbeaver_prod_<dein Login>`
    vergibt LeagueSphere automatisch.
-4. Üblicherweise öffnet eine andere Person mit der Berechtigung
-   `dbaccess.approve_requests` die Anfrage und klickt **Approve**. Hast du diese
-   Berechtigung selbst (oder bist Superuser), kannst du die eigene Anfrage über
+5. Üblicherweise öffnet eine andere Person mit der Berechtigung
+   `dbaccess.approve_requests` die Anfrage und klickt **Approve**. Sie sieht
+   dabei die volle Rechte-Menge („Lesen + UPDATE“, „+ INSERT“, „+ DELETE“) –
+   auch **DELETE** ist als irreversibel markiert. Hast du diese Berechtigung
+   selbst (oder bist Superuser), kannst du die eigene Anfrage über
    **Approve my own request** freigeben – mit Pflicht-Begründung. Im Verlauf
-   steht dann `self-approved` statt `approve`.
-5. Klicke nach der Arbeit **Revoke now**. Ohne Freigabe wird nie ein Konto
+   steht dann `self-approved` statt `approve`; die Rechte-Menge steht in beiden
+   Fällen im Ereignis. Für INSERT und DELETE gelten dieselben Regeln, es gibt
+   keine zusätzliche zweite Unterschrift.
+6. Klicke nach der Arbeit **Revoke now**. Ohne Freigabe wird nie ein Konto
    angelegt; nach Ablauf entfernt es sich selbst.
 
 ## In DBeaver verbinden
@@ -60,7 +69,23 @@ Im Reiter **SSH** schaltest du den Tunnel ein:
 - Die `bak_<tabelle>_<datum>`-Kopien entstehen vor der Sitzung automatisch. Ist der
   Tabellenname zu lang für MariaDBs Grenze von 64 Zeichen, heißt die Kopie
   `bak_<gekürzt>_<hash>_<datum>`. Lege keine eigenen an – das Konto hat kein `CREATE`.
-- Schreiben darfst du nur in die ausgewählten Tabellen, alles andere ist lesbar.
+- Das Konto darf **nur** die ausgewählten Tabellen schreiben, und dort genau die
+  beantragte Rechte-Menge: immer `UPDATE`, zusätzlich `INSERT` und/oder `DELETE`,
+  wenn angehakt. Alle anderen Tabellen der Freigabeliste sind nur lesbar.
+
+## INSERT, DELETE und der Weg zurück
+
+- **INSERT** legt neue Zeilen an. Diese Zeilen stehen **nicht** in der
+  Sicherungskopie – sie existierte schon vor dem Einfügen. Ein falsch
+  eingefügter Datensatz muss also von Hand korrigiert oder gelöscht werden
+  (Löschen nur, wenn DELETE mitbeantragt wurde).
+- **DELETE** entfernt Zeilen. Das ist der einzige Schritt ohne automatischen
+  Rückweg: Die `bak_<tabelle>_<datum>`-Kopie ist die einzige Sicherung, und die
+  Wiederherstellung ist ein manuelles `INSERT … SELECT` daraus. Fremdschlüssel
+  können mit einem `DELETE` weitere Zeilen mitreißen – prüfe die Zeilenzahl
+  vorher mit demselben `SELECT`, das du zum Eingrenzen benutzt.
+- Beide Rechte gelten nur für diese eine Sitzung und nur für die auf dem Antrag
+  gewählten Tabellen. Eine neue Sitzung ist ein neuer Antrag.
 
 ## Häufige Fragen
 
@@ -73,6 +98,12 @@ Du hast deine eigene Anfrage freigegeben. Das darf, wer freigeben darf, verlangt
 aber eine Begründung und wird ohne zweite Unterschrift protokolliert. Als
 Genehmiger steht dabei nie der Antragsteller – es fehlt also bewusst eine zweite
 Person.
+
+**Was bedeutet „Read + UPDATE + INSERT + DELETE“?**
+Das ist die Rechte-Menge, die der Genehmiger freigibt: Lesen und UPDATE auf den
+gewählten Tabellen, dazu die ausdrücklich angehakten Rechte. Ohne Haken steht
+dort nur „Read + UPDATE“. Fehlt `INSERT` oder `DELETE` in der Anzeige, hat das
+Konto dieses Recht auch nicht.
 
 **Das Passwort lässt sich nicht mehr anzeigen.**
 Das geht nur im Zustand **Active** – also nach der Freigabe und vor Ablauf oder

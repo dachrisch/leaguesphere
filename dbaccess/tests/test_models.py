@@ -91,7 +91,30 @@ def test_expiry_is_created_at_plus_ttl():
     """The value is for display; the reaper recomputes it from created_at."""
     access_request = _request(ttl_hours=2)
 
-    assert access_request.expires_at == access_request.created_at + dt.timedelta(hours=2)
+    assert access_request.expires_at == access_request.created_at + dt.timedelta(
+        hours=2
+    )
+
+
+@pytest.mark.django_db
+def test_the_privilege_set_defaults_to_read_and_update():
+    access_request = _request()
+
+    assert access_request.privileges() == ["read", "update"]
+    assert access_request.privilege_summary == "read+update"
+    assert access_request.privileges_label() == "Read + UPDATE"
+
+
+@pytest.mark.django_db
+def test_the_privilege_set_names_insert_and_delete_when_asked():
+    insert = _request(may_insert=True)
+    delete = _request(may_delete=True)
+    both = _request(may_insert=True, may_delete=True)
+
+    assert insert.privilege_summary == "read+update+insert"
+    assert delete.privilege_summary == "read+update+delete"
+    assert both.privilege_summary == "read+update+insert+delete"
+    assert both.privileges_label() == "Read + UPDATE + INSERT + DELETE"
 
 
 @pytest.mark.django_db
@@ -167,6 +190,17 @@ def test_the_audit_detail_shortens_the_sidecars_activation_line():
     event = AccessEvent(detail="dbeaver_prod_x@172.25.% on a b c d e f")
 
     assert event.detail_short == "dbeaver_prod_x@172.25.% on a b c d +2 more"
+
+
+def test_the_audit_detail_shortens_an_activation_line_that_names_the_privileges():
+    event = AccessEvent(
+        detail="dbeaver_prod_x@172.25.% on a b c d e f; privileges: read+update+delete"
+    )
+
+    assert (
+        event.detail_short
+        == "dbeaver_prod_x@172.25.% on a b c d +2 more; privileges: read+update+delete"
+    )
 
 
 def test_the_audit_detail_leaves_prose_alone():

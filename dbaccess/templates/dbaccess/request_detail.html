@@ -26,7 +26,18 @@
                         <h2 class="h6">What needs fixing</h2>
                         <p class="mb-4">{{ access_request.purpose|linebreaksbr }}</p>
 
-                        <h2 class="h6">Tables it may update</h2>
+                        <h2 class="h6">Privileges on the picked tables</h2>
+                        <div class="mb-2">
+                            {% include "dbaccess/_privileges.html" with access_request=access_request %}
+                        </div>
+                        {% if access_request.may_delete %}
+                            <div class="alert alert-danger small" role="alert">
+                                <strong>DELETE is irreversible:</strong> deleted rows come
+                                back only from the <code>bak_&lt;table&gt;_&lt;date&gt;</code>
+                                backup copy. Newly INSERTed rows are not in that copy.
+                            </div>
+                        {% endif %}
+                        <h2 class="h6">Tables</h2>
                         <div class="mb-4">
                             {% include "dbaccess/_tables.html" with tables=access_request.tables limit=10 expandable=True %}
                         </div>
@@ -95,6 +106,19 @@
                     </div>
                     <div class="card-body">
                         {% if access_request.state == 'requested' %}
+                            {% if can_approve %}
+                                <p class="small mb-2">
+                                    You are approving:
+                                    {% include "dbaccess/_privileges.html" with access_request=access_request %}
+                                </p>
+                                {% if access_request.may_delete %}
+                                    <div class="alert alert-danger small" role="alert">
+                                        This signature also covers <strong>DELETE</strong> on the
+                                        picked tables. That cannot be undone from the app; the only
+                                        way back is the backup copy.
+                                    </div>
+                                {% endif %}
+                            {% endif %}
                             {% if is_self_approval %}
                                 <div class="alert alert-warning small" role="alert">
                                     This is your own request. Approving it happens

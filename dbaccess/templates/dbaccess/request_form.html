@@ -28,8 +28,8 @@
                     </div>
                     <p class="form-text mb-0 mt-2">
                         Taken from your login (<code>{{ request.user.username }}</code>), so every
-                        temporary account traces back to one named person. It can read the whole
-                        schema and update only the tables you pick below.
+                        temporary account traces back to one named person. It can read the
+                        allow-listed tables and update only the tables you pick below.
                     </p>
                 </div>
             </div>
@@ -78,6 +78,26 @@
                     {% for error in form.tables.errors %}
                         <div class="text-danger small mt-1">{{ error }}</div>
                     {% endfor %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-body-tertiary small text-uppercase text-muted fw-semibold">
+                    What it may do
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Every request includes <strong>read + UPDATE</strong> on the picked
+                        tables. Tick either box to ask for more; both stay off by default and
+                        apply only to the tables above.
+                    </p>
+                    {% include "dbaccess/_field.html" with field=form.may_insert %}
+                    {% include "dbaccess/_field.html" with field=form.may_delete %}
+                    <div class="alert alert-danger small mb-0" role="alert">
+                        <strong>DELETE is irreversible.</strong> Deleted rows come back only
+                        from the <code>bak_&lt;table&gt;_&lt;date&gt;</code> backup copy taken
+                        before the session. Newly INSERTed rows are <em>not</em> in that copy.
+                    </div>
                 </div>
             </div>
 

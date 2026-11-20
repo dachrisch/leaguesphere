@@ -71,7 +71,7 @@ def test_an_approver_may_self_approve_with_a_reason(client, approver):
     database constraint still forbids naming the requester as the approver, so a
     self-approved row cannot be mistaken for a two-person decision.
     """
-    access_request = _request(approver)
+    access_request = _request(approver, may_insert=True, may_delete=True)
     client.force_login(approver)
 
     response = client.post(
@@ -85,7 +85,8 @@ def test_an_approver_may_self_approve_with_a_reason(client, approver):
     assert access_request.approver is None
     event = access_request.events.get(action="self-approved")
     assert event.actor == "approver"
-    assert event.detail == "hotfix, nobody else awake"
+    assert "privileges: read+update+insert+delete" in event.detail
+    assert "hotfix, nobody else awake" in event.detail
 
 
 @pytest.mark.django_db
@@ -134,7 +135,10 @@ def test_the_detail_page_offers_self_approval_with_a_warning(client, approver):
     assert response.context["is_mine"] is True
     assert response.context["can_approve"] is True
     assert response.context["is_self_approval"] is True
-    assert reverse("dbaccess-decide", args=[access_request.pk]).encode() in response.content
+    assert (
+        reverse("dbaccess-decide", args=[access_request.pk]).encode()
+        in response.content
+    )
     assert b"without a second signature" in response.content
 
 
@@ -162,7 +166,10 @@ def test_the_detail_page_offers_the_decision_to_another_approver(
     response = client.get(reverse("dbaccess-detail", args=[access_request.pk]))
 
     assert response.context["can_approve"] is True
-    assert reverse("dbaccess-decide", args=[access_request.pk]).encode() in response.content
+    assert (
+        reverse("dbaccess-decide", args=[access_request.pk]).encode()
+        in response.content
+    )
 
 
 @pytest.mark.django_db
@@ -178,7 +185,25 @@ def test_a_second_person_can_approve_and_it_is_recorded(client, requester, appro
     access_request.refresh_from_db()
     assert access_request.state == AccessRequest.State.APPROVED
     assert access_request.approver == approver
-    assert access_request.events.filter(action="approve", actor="approver").exists()
+    event = access_request.events.get(action="approve", actor="approver")
+    assert "privileges: read+update" in event.detail
+
+
+@pytest.mark.django_db
+def test_approving_an_insert_and_delete_request_records_both(
+    client, requester, approver
+):
+    """The approver's signature covers a privilege set, not just a session."""
+    access_request = _request(requester, may_insert=True, may_delete=True)
+    client.force_login(approver)
+
+    client.post(
+        reverse("dbaccess-decide", args=[access_request.pk]),
+        {"decision": "approve"},
+    )
+
+    event = access_request.events.get(action="approve")
+    assert "privileges: read+update+insert+delete" in event.detail
 
 
 @pytest.mark.django_db
@@ -229,7 +254,9 @@ def test_the_approver_cannot_reveal(client, requester, approver, settings):
 
 
 @pytest.mark.django_db
-def test_a_superuser_who_is_not_the_requester_cannot_reveal(client, requester, settings):
+def test_a_superuser_who_is_not_the_requester_cannot_reveal(
+    client, requester, settings
+):
     settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
     root = UserFactory(username="root", is_staff=True, is_superuser=True)
     access_request = _request(
@@ -279,9 +306,7 @@ def test_the_approver_can_still_end_the_session(client, requester, approver):
 
 
 @pytest.mark.django_db
-def test_the_revoke_button_is_hidden_from_someone_who_cannot_use_it(
-    client, requester
-):
+def test_the_revoke_button_is_hidden_from_someone_who_cannot_use_it(client, requester):
     access_request = _request(requester, state=AccessRequest.State.ACTIVE)
     client.force_login(UserFactory(username="nosy", is_staff=True))
 
@@ -294,7 +319,9 @@ def test_the_revoke_button_is_hidden_from_someone_who_cannot_use_it(
 @pytest.mark.django_db
 def test_reveal_hands_the_password_over_once_and_logs_it(client, requester, settings):
     settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
-    access_request = _request(requester, state=AccessRequest.State.ACTIVE, secret="pw123")
+    access_request = _request(
+        requester, state=AccessRequest.State.ACTIVE, secret="pw123"
+    )
     client.force_login(requester)
 
     response = client.post(reverse("dbaccess-reveal", args=[access_request.pk]))
@@ -315,7 +342,9 @@ def test_the_reveal_page_uses_the_configured_tunnel_and_database(
     settings.DBACCESS_TUNNEL_USER = "dbeaver_stage"
     settings.DBACCESS_TUNNEL_PORT = "33064"
     settings.DBACCESS_TUNNEL_KEY_ITEM = "dbeaver stage tunnel key (lehel)"
-    access_request = _request(requester, state=AccessRequest.State.ACTIVE, secret="pw123")
+    access_request = _request(
+        requester, state=AccessRequest.State.ACTIVE, secret="pw123"
+    )
     client.force_login(requester)
 
     response = client.post(reverse("dbaccess-reveal", args=[access_request.pk]))
@@ -370,7 +399,9 @@ def test_the_form_only_offers_grantable_tables(client, requester):
 
 
 @pytest.mark.django_db
-def test_a_long_table_list_wraps_instead_of_widening_the_row(client, requester, approver):
+def test_a_long_table_list_wraps_instead_of_widening_the_row(
+    client, requester, approver
+):
     """A comma-joined cell has no break point and widens the whole table."""
     tables = [f"wpdatabase_{n}" for n in range(1, 4)]
     _request(requester, tables_csv=",".join(tables))
@@ -378,7 +409,9 @@ def test_a_long_table_list_wraps_instead_of_widening_the_row(client, requester, 
 
     html = client.get(reverse("dbaccess-list")).content.decode()
 
-    assert "wpdatabase_1,wpdatabase_2" not in html, "the list still emits one unbreakable cell"
+    assert (
+        "wpdatabase_1,wpdatabase_2" not in html
+    ), "the list still emits one unbreakable cell"
     for table in tables:
         assert table in html, table
     assert "text-break" in html
