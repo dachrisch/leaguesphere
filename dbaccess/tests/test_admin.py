@@ -51,3 +51,28 @@ def test_the_change_page_renders_for_a_superuser(client):
 
     assert response.status_code == 200
     assert b"requested" in response.content
+
+
+@pytest.mark.django_db
+def test_the_change_page_does_not_expose_the_credential(client):
+    """The admin must not be a second way to the plaintext password."""
+    superuser = UserFactory(username="root", is_staff=True, is_superuser=True)
+    access_request = AccessRequest.objects.create(
+        requester=superuser,
+        person="nn",
+        purpose="x",
+        tables_csv="divisions",
+        ttl_hours=1,
+        state=AccessRequest.State.ACTIVE,
+        secret="pw-plaintext",
+    )
+    client.force_login(superuser)
+
+    response = client.get(
+        reverse("admin:dbaccess_accessrequest_change", args=[access_request.pk])
+    )
+
+    fields = response.context["adminform"].form.fields
+    assert "secret" not in fields
+    assert "secret_ct" not in fields
+    assert b"pw-plaintext" not in response.content

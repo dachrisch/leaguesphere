@@ -179,7 +179,7 @@
                             </form>
                         {% endif %}
 
-                        {% if access_request.state == 'active' or access_request.state == 'approved' %}
+                        {% if may_revoke %}
                             <form method="post" action="{% url 'dbaccess-revoke' access_request.pk %}" class="mt-3">
                                 {% csrf_token %}
                                 <button class="btn btn-outline-danger w-100" type="submit">Revoke now</button>

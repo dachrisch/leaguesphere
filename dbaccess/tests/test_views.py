@@ -209,6 +209,89 @@ def test_reveal_is_refused_for_an_unrelated_staff_user(client, requester):
 
 
 @pytest.mark.django_db
+def test_the_approver_cannot_reveal(client, requester, approver, settings):
+    """A second signature is a decision, not a right to the password."""
+    settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
+    access_request = _request(
+        requester,
+        approver=approver,
+        state=AccessRequest.State.ACTIVE,
+        secret="pw123",
+    )
+    client.force_login(approver)
+
+    response = client.post(reverse("dbaccess-reveal", args=[access_request.pk]))
+
+    assert response.status_code == 403
+    access_request.refresh_from_db()
+    assert access_request.secret == "pw123"
+    assert not access_request.events.filter(action="revealed").exists()
+
+
+@pytest.mark.django_db
+def test_a_superuser_who_is_not_the_requester_cannot_reveal(client, requester, settings):
+    settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
+    root = UserFactory(username="root", is_staff=True, is_superuser=True)
+    access_request = _request(
+        requester, state=AccessRequest.State.ACTIVE, secret="pw123"
+    )
+    client.force_login(root)
+
+    response = client.post(reverse("dbaccess-reveal", args=[access_request.pk]))
+
+    assert response.status_code == 403
+    access_request.refresh_from_db()
+    assert access_request.secret == "pw123"
+
+
+@pytest.mark.django_db
+def test_the_detail_page_offers_the_password_only_to_the_requester(
+    client, requester, approver
+):
+    access_request = _request(
+        requester, approver=approver, state=AccessRequest.State.ACTIVE
+    )
+    url = reverse("dbaccess-detail", args=[access_request.pk])
+
+    client.force_login(approver)
+    approver_view = client.get(url)
+    assert approver_view.context["may_reveal"] is False
+    assert b"Show password" not in approver_view.content
+
+    client.force_login(requester)
+    requester_view = client.get(url)
+    assert requester_view.context["may_reveal"] is True
+    assert b"Show password" in requester_view.content
+
+
+@pytest.mark.django_db
+def test_the_approver_can_still_end_the_session(client, requester, approver):
+    """Reading the credential is forbidden; stopping the session is not."""
+    access_request = _request(
+        requester, approver=approver, state=AccessRequest.State.ACTIVE
+    )
+    client.force_login(approver)
+
+    response = client.get(reverse("dbaccess-detail", args=[access_request.pk]))
+
+    assert response.context["may_revoke"] is True
+    assert b"Revoke now" in response.content
+
+
+@pytest.mark.django_db
+def test_the_revoke_button_is_hidden_from_someone_who_cannot_use_it(
+    client, requester
+):
+    access_request = _request(requester, state=AccessRequest.State.ACTIVE)
+    client.force_login(UserFactory(username="nosy", is_staff=True))
+
+    response = client.get(reverse("dbaccess-detail", args=[access_request.pk]))
+
+    assert response.context["may_revoke"] is False
+    assert b"Revoke now" not in response.content
+
+
+@pytest.mark.django_db
 def test_reveal_hands_the_password_over_once_and_logs_it(client, requester, settings):
     settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
     access_request = _request(requester, state=AccessRequest.State.ACTIVE, secret="pw123")

@@ -210,7 +210,14 @@ class AccessRequest(models.Model):
         return self.state in self.LIVE_STATES and timezone.now() < self.expires_at
 
     def can_be_revealed_by(self, user) -> bool:
-        return user in (self.requester, self.approver) or user.is_superuser
+        """Only the person who asked may read the credential.
+
+        A second signature is a decision, not a right to the password: neither
+        the approver nor a superuser sees it, and the admin does not render the
+        column. If the requester is gone, the session is revoked and a new
+        request is filed - the secret is not a shared resource.
+        """
+        return getattr(user, "pk", None) == self.requester_id
 
     # --- credential ------------------------------------------------------
     @staticmethod
