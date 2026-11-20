@@ -1,5 +1,4 @@
 import type { Game } from "../types";
-import { ContextHeader } from "./ContextHeader";
 import { EventList } from "./EventList";
 import { Scoreboard } from "./Scoreboard";
 
@@ -9,7 +8,7 @@ interface GameDetailProps {
   onToggleAll: () => void;
 }
 
-/** The expanded game: scoreboard, context and event history. */
+/** The expanded game: scoreboard and event history. */
 export function GameDetail({
   game,
   allExpanded,
@@ -25,10 +24,9 @@ export function GameDetail({
       className="lt-game-detail"
       aria-labelledby={headingId}
     >
-      <h2 id={headingId} className="lt-game-title" tabIndex={-1}>
+      <h2 id={headingId} className="lt-sr" tabIndex={-1}>
         {home} – {away}
       </h2>
-      <ContextHeader game={game} showGameday={false} />
       <Scoreboard game={game} />
       <EventList
         game={game}

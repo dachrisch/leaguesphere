@@ -237,7 +237,52 @@ class TestAllResults(TestCase):
             gameday = GamedayFactory()
             self._finished_games(gameday, number_of_games)
             service = LivetickerService([], [], [gameday.pk], all_results=True)
-            with self.assertNumQueries(3):
+            with self.assertNumQueries(2):
+                payload = service.get_liveticker_as_json()
+            return len(payload)
+
+        assert count_queries(2) == 2
+        assert count_queries(6) == 6
+
+
+class TestAllScheduled(TestCase):
+    def _scheduled_games(self, gameday, count):
+        games = []
+        for index in range(count):
+            game, _, _ = make_live_game(
+                f"scheduled-{index}",
+                gameday=gameday,
+                status="Geplant",
+                scheduled=time(12 + index, 0),
+            )
+            Gameinfo.objects.filter(pk=game.pk).update(gameFinished=None)
+            games.append(game)
+        return games
+
+    def test_all_results_includes_every_scheduled_game(self):
+        gameday = GamedayFactory()
+        live, _, _ = make_live_game(
+            "scheduled-live", gameday=gameday, scheduled=time(10, 0)
+        )
+        scheduled = self._scheduled_games(gameday, 2)
+
+        legacy = LivetickerService([], [], [gameday.pk]).get_liveticker_as_json()
+        payload = LivetickerService(
+            [], [], [gameday.pk], all_results=True
+        ).get_liveticker_as_json()
+
+        legacy_ids = {item["gameId"] for item in legacy}
+        ids = {item["gameId"] for item in payload}
+        self.assertIn(live.pk, legacy_ids)
+        self.assertNotIn(scheduled[1].pk, legacy_ids)
+        self.assertTrue({game.pk for game in scheduled}.issubset(ids))
+
+    def test_all_scheduled_query_count_is_flat(self):
+        def count_queries(number_of_games):
+            gameday = GamedayFactory()
+            self._scheduled_games(gameday, number_of_games)
+            service = LivetickerService([], [], [gameday.pk], all_results=True)
+            with self.assertNumQueries(2):
                 payload = service.get_liveticker_as_json()
             return len(payload)
 

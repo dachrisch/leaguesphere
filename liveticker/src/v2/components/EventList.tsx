@@ -60,7 +60,12 @@ export function EventList({
           aria-controls={eventsId}
           onClick={onToggleAll}
         >
-          {allExpanded ? "Weniger anzeigen" : `Alle ${game.tick_count} Ereignisse`}
+          <span>
+            {allExpanded
+              ? "Weniger anzeigen"
+              : `Alle ${game.tick_count} Ereignisse`}
+          </span>
+          <span className="lt-chevron" aria-hidden="true" />
         </button>
       )}
     </section>

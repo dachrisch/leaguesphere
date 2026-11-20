@@ -1,20 +1,18 @@
 """The liveticker ETag with ``SCORECARD_EVENT_FEED`` on and off (T5).
 
-Flag off the validator is exactly the pre-T5 aggregate over ``Gameresult`` and
-``TeamLog``. Flag on it also has to move when an event arrives, including an
-event that writes no ``TeamLog`` row (a plain possession change): otherwise a
-new event would answer a stale ``304`` and the widget would keep showing the
-old score for the life of the cache.
+Flag off the validator covers the rows the widget renders (results, ticks) plus
+the ``Gameinfo`` state (kickoff, field, status, gameday). Flag on it also has to
+move when an event arrives, including an event that writes no ``TeamLog`` row
+(a plain possession change): otherwise a new event would answer a stale ``304``
+and the widget would keep showing the old score for the life of the cache.
 """
 
 from django.core.cache import cache
-from django.db.models import Count, Max, Sum
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from gameevents.models import GameState
-from gamedays.models import Gameresult, TeamLog
-from league_manager.utils.etag import build_etag
+from gamedays.models import TeamLog
 from liveticker.api.urls import API_LIVETICKER_ALL
 from liveticker.api.views import generate_liveticker_etag
 from liveticker.tests.event_feed_support import event, make_live_game, submit
@@ -23,29 +21,6 @@ from liveticker.tests.event_feed_support import event, make_live_game, submit
 def request_for(gameday_id):
     return RequestFactory().get(
         reverse(API_LIVETICKER_ALL), {"gameday": str(gameday_id)}
-    )
-
-
-def row_formula_etag(gameday_id):
-    request = request_for(gameday_id)
-    results = Gameresult.objects.aggregate(
-        count=Count("pk"),
-        latest=Max("pk"),
-        sum_fh=Sum("fh"),
-        sum_sh=Sum("sh"),
-    )
-    ticks = TeamLog.objects.aggregate(
-        count=Count("pk"), latest=Max("pk"), sum_value=Sum("value")
-    )
-    return build_etag(
-        request.GET.urlencode(),
-        results["count"],
-        results["latest"],
-        results["sum_fh"],
-        results["sum_sh"],
-        ticks["count"],
-        ticks["latest"],
-        ticks["sum_value"],
     )
 
 
@@ -62,7 +37,7 @@ class EventFeedEtagTest(TestCase):
         return self.client.get(self.url, self.params, **headers)
 
     @override_settings(SCORECARD_EVENT_FEED=False)
-    def test_flag_off_etag_is_the_old_row_formula(self):
+    def test_flag_off_etag_matches_the_generated_validator(self):
         submit(self.game, [event("score", "touchdown", "home", 7)], client_id="s1")
 
         response = self.get()
@@ -70,7 +45,6 @@ class EventFeedEtagTest(TestCase):
         assert response["ETag"] == generate_liveticker_etag(
             request_for(self.game.gameday_id)
         )
-        assert response["ETag"] == row_formula_etag(self.game.gameday_id)
 
     @override_settings(SCORECARD_EVENT_FEED=False)
     def test_flag_off_does_not_see_a_projection_only_event(self):

@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { GamedaySection } from "./components/GamedaySection";
 import { NoLive } from "./components/NoLive";
-import { ShareButton } from "./components/ShareButton";
 import { useLiveticker } from "./context/LivetickerContext";
-import { groupGamesByGameday, selectLiveGames } from "./selectors";
+import { groupGamesByGameday } from "./selectors";
 import { selectGame, useUrlState } from "./urlState";
 
 export default function App() {
@@ -55,14 +54,10 @@ export default function App() {
   }
 
   const groups = groupGamesByGameday(games);
-  const selected =
-    gameId !== null ? games.find((game) => game.gameId === gameId) ?? null : null;
-  const firstLive = selectLiveGames(games)[0] ?? null;
-  const shareGame = selected ?? (gameId === null ? firstLive : null);
 
   return (
     <main className="lt-app">
-      <h1>Liveticker</h1>
+      <h1 className="lt-sr">Liveticker</h1>
       {linkedGameMissing && (
         <p className="lt-status lt-notice" role="status">
           Spiel nicht mehr im Ticker
@@ -83,7 +78,6 @@ export default function App() {
           />
         ))
       )}
-      <ShareButton game={shareGame} />
     </main>
   );
 }

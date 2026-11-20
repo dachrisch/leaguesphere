@@ -1,6 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { formatBerlinClock, formatClock } from "../format";
+import {
+  formatBerlinDate,
+  halftimeLabel,
+  shortTeamName,
+  statusLabel,
+  teamBadges,
+} from "../format";
 import { selectLiveGame } from "../selectors";
 import type { Game, Team } from "../types";
 
@@ -34,7 +41,46 @@ describe("format", () => {
     expect(formatClock("not-a-date")).toBe("not-a-date");
   });
 
+  it("formats a gameday date in Berlin", () => {
+    expect(formatBerlinDate("2026-08-15T10:00:00+02:00")).toContain("15.08.2026");
+    expect(formatBerlinDate(null)).toBe("");
+    expect(formatBerlinDate("not-a-date")).toBe("");
+  });
 
+  it("uses the distinctive word for team badges", () => {
+    expect(teamBadges("Demo Wolves", "Demo Eagles")).toEqual({
+      home: "WO",
+      away: "EA",
+    });
+    expect(teamBadges("Walldorf Wanderers", "Düsseldorf Firecats")).toEqual({
+      home: "WA",
+      away: "FI",
+    });
+    expect(teamBadges("Tigers", "Tigers")).toEqual({ home: "TI", away: "TG" });
+    expect(teamBadges("Team A", "Team B")).toEqual({ home: "A", away: "B" });
+  });
+
+  it("uses the last word as the short team name", () => {
+    expect(shortTeamName("Demo Wolves")).toBe("Wolves");
+    expect(shortTeamName("Wolves")).toBe("Wolves");
+  });
+
+  it("shortens the live status and labels a final score", () => {
+    expect(statusLabel("1. Halbzeit")).toBe("1. HZ");
+    expect(statusLabel("2. Halbzeit")).toBe("2. HZ");
+    expect(statusLabel("beendet")).toBe("Endstand");
+    expect(statusLabel("Geplant")).toBe("Geplant");
+  });
+
+  it("labels both halves and dashes a missing score", () => {
+    expect(
+      halftimeLabel({ fh: 7, sh: 0 }, { fh: 6, sh: 3 }),
+    ).toBe("1. HZ 7:6 · 2. HZ 0:3");
+    expect(halftimeLabel({ fh: null, sh: null }, { fh: null, sh: null })).toBe("");
+    expect(halftimeLabel({ fh: 7, sh: null }, { fh: null, sh: null })).toBe(
+      "1. HZ 7:–",
+    );
+  });
 });
 
 describe("selectLiveGame", () => {
