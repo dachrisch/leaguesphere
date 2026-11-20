@@ -591,6 +591,22 @@
   border-top: 0;
 }
 
+/* A newly arrived tick, fading out; the class is removed after ~3 s. The
+   reduced-motion block below keeps it static (the class is the signal). */
+.lt-event-new {
+  background: var(--lt-amber-wash);
+  animation: lt-event-arrive 2.6s ease-out;
+}
+
+@keyframes lt-event-arrive {
+  from {
+    background: #fbe6bf;
+  }
+  to {
+    background: transparent;
+  }
+}
+
 .lt-code {
   display: flex;
   align-items: center;
@@ -673,6 +689,40 @@
   padding: 16px 0;
   font-size: 12px;
   color: var(--lt-muted);
+}
+
+/* ---- data freshness ---------------------------------------------------- */
+
+.lt-connection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  color: var(--lt-muted);
+}
+
+.lt-connection-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.lt-connection-live {
+  color: var(--lt-live);
+}
+
+.lt-connection-live .lt-connection-dot {
+  animation: lt-pulse 1.8s ease-out infinite;
+}
+
+.lt-connection-reconnecting {
+  color: var(--lt-amber);
 }
 
 .lt-error {

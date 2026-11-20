@@ -23,6 +23,7 @@ interface GamedaySectionProps {
   all: boolean;
   onSelect: (gameId: number | null) => void;
   onToggleAll: (gameId: number) => void;
+  highlighted?: ReadonlySet<string>;
 }
 
 const teamName = (team: Team): string => team.name || team.full_name;
@@ -168,6 +169,7 @@ export function GamedaySection({
   all,
   onSelect,
   onToggleAll,
+  highlighted,
 }: GamedaySectionProps) {
   const liveGames = selectLiveGames(group.games);
   const upcoming = selectUpcomingGames(group.games);
@@ -207,6 +209,7 @@ export function GamedaySection({
               game={detailGame}
               allExpanded={all && selectedId === detailGame.gameId}
               onToggleAll={() => onToggleAll(detailGame.gameId)}
+              highlighted={highlighted}
             />
           ) : (
             <NoLive next={lead} now={now} />

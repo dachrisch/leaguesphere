@@ -6,6 +6,7 @@ interface GameDetailProps {
   game: Game;
   allExpanded: boolean;
   onToggleAll: () => void;
+  highlighted?: ReadonlySet<string>;
 }
 
 /** The expanded game: scoreboard and event history. */
@@ -13,6 +14,7 @@ export function GameDetail({
   game,
   allExpanded,
   onToggleAll,
+  highlighted,
 }: GameDetailProps) {
   const headingId = `game-heading-${game.gameId}`;
   const home = game.home.name || game.home.full_name;
@@ -32,6 +34,7 @@ export function GameDetail({
         game={game}
         allExpanded={allExpanded}
         onToggleAll={onToggleAll}
+        highlighted={highlighted}
       />
     </section>
   );

@@ -1,4 +1,5 @@
 import type { Game } from "../types";
+import { tickIdentity } from "../context/LivetickerContext";
 import { eventDetail, eventMeta } from "../eventTypes";
 import { formatClock } from "../format";
 
@@ -6,14 +7,30 @@ interface EventListProps {
   game: Game;
   allExpanded?: boolean;
   onToggleAll?: () => void;
+  highlighted?: ReadonlySet<string>;
+}
+
+/** Stable list keys: a new tick shifts every index, and index keys would make
+ *  React replace the whole list -- which also makes screen readers re-announce
+ *  every unchanged event on each snapshot. */
+function tickKeys(ticks: Game["ticks"]): string[] {
+  const seen = new Map<string, number>();
+  return ticks.map((tick) => {
+    const identity = tickIdentity(tick);
+    const occurrence = seen.get(identity) ?? 0;
+    seen.set(identity, occurrence + 1);
+    return `${identity}#${occurrence}`;
+  });
 }
 
 export function EventList({
   game,
   allExpanded = false,
   onToggleAll = () => undefined,
+  highlighted,
 }: EventListProps) {
   const eventsId = `events-${game.gameId}`;
+  const keys = tickKeys(game.ticks);
   const teamFor = (side: "home" | "away" | null): string | null => {
     if (side === "home") return game.home.name;
     if (side === "away") return game.away.name;
@@ -31,13 +48,20 @@ export function EventList({
           className="lt-events"
           aria-label="Ereignisse"
           aria-live="polite"
+          aria-atomic="false"
         >
           {game.ticks.map((tick, index) => {
             const team = teamFor(tick.team);
             const meta = eventMeta(tick.type);
             const detail = meta.label ? eventDetail(tick.text) : "";
+            const isNew = highlighted?.has(
+              `${game.gameId}:${tickIdentity(tick)}`,
+            );
             return (
-              <li key={`${tick.time}-${index}`} className="lt-event">
+              <li
+                key={keys[index]}
+                className={isNew ? "lt-event lt-event-new" : "lt-event"}
+              >
                 <span className="lt-code" aria-hidden="true">
                   {meta.code}
                 </span>
