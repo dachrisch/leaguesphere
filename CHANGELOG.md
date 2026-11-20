@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.21.1](https://github.com/dachrisch/leaguesphere/compare/v5.21.0...v5.21.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **liveticker:** keep timed event details and show share feedback ([a5bb1c1](https://github.com/dachrisch/leaguesphere/commit/a5bb1c1782129912f96fbc386ecf76d6b7bffed7))
+* **liveticker:** keep timed event details, show share feedback, compact mobile header ([326bad6](https://github.com/dachrisch/leaguesphere/commit/326bad60897cf583d606cb6079e0333c093cc792))
+
 ## [5.21.0](https://github.com/dachrisch/leaguesphere/compare/v5.20.0...v5.21.0) (2026-11-20)
 
 
