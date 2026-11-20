@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.22.0](https://github.com/dachrisch/leaguesphere/compare/v5.21.1...v5.22.0) (2026-11-20)
+
+
+### Features
+
+* **liveticker:** consume the live stream in the v2 app ([5382eba](https://github.com/dachrisch/leaguesphere/commit/5382eba47cde8acbc13724e37ef1fc6f692bf7da))
+* **liveticker:** consume the live stream in the v2 app ([7b1d829](https://github.com/dachrisch/leaguesphere/commit/7b1d82914e684ed9939b4407cb37d3356340d784))
+* **liveticker:** render v2 inside the site chrome ([09139c2](https://github.com/dachrisch/leaguesphere/commit/09139c29cc70796ab447ad441125c7a4f2b80ef7))
+* **liveticker:** stream live updates over SSE ([89359cf](https://github.com/dachrisch/leaguesphere/commit/89359cf31b6d18a7acea429c9c4a5b29385c42c5))
+
+
+### Bug Fixes
+
+* **liveticker:** exit the stream worker when the poller stays broken ([8b0cd98](https://github.com/dachrisch/leaguesphere/commit/8b0cd9813d83f017cbf5f940b850bb8e8f576482))
+* **liveticker:** keep the stream poller's DB connection and queue bounded ([8673d95](https://github.com/dachrisch/leaguesphere/commit/8673d950aa007359c63c4d684b0a54ba9b79610f))
+
+
+### Documentation
+
+* **help:** add a liveticker help topic ([2bc5d3a](https://github.com/dachrisch/leaguesphere/commit/2bc5d3a46af5387688dd080564687d3e034be952))
+
 ## [5.21.1](https://github.com/dachrisch/leaguesphere/compare/v5.21.0...v5.21.1) (2026-11-20)
 
 
