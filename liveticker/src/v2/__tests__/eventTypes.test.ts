@@ -58,8 +58,23 @@ describe("eventTypes", () => {
       "12 Yards · 2nd & M · A17",
     );
     expect(
-      eventDetail("1-Extra-Punkt: #3 - nicht verwandelt · Deflection #2"),
-    ).toBe("#3 - nicht verwandelt · Deflection #2");
+      eventDetail("1-Extra-Punkt: #11 - nicht verwandelt · Tackle #4"),
+    ).toBe("#11 - nicht verwandelt · Tackle #4");
+    expect(eventDetail("Challenge - Passspiel geprüft")).toBe(
+      "Passspiel geprüft",
+    );
+  });
+
+  it("keeps a clock as the detail and never splits inside it", () => {
+    expect(eventDetail("Auszeit - 11:30")).toBe("11:30");
+    expect(eventDetail("Spielzeit - 05:00")).toBe("05:00");
+    expect(eventDetail("Auszeit - 11:30 · Heim")).toBe("11:30 · Heim");
+    expect(eventDetail("11:30")).toBe("");
+    expect(eventDetail("05:00")).toBe("");
+  });
+
+  it("has no detail when the payload only carries the label", () => {
+    expect(eventDetail("First Down")).toBe("");
     expect(eventDetail("Spiel gestartet")).toBe("");
   });
 

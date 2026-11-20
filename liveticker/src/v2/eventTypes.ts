@@ -59,11 +59,17 @@ export function eventMeta(type: string): EventMeta {
 
 /** The detail part of the legacy rendered tick, without guessing its type. */
 export function eventDetail(text: string): string {
-  const colon = text.indexOf(":");
-  if (colon !== -1) {
-    const afterColon = text.slice(colon + 1).trim();
-    if (afterColon) return afterColon;
+  const value = text.trim();
+  if (/^\d{1,2}:\d{2}(?:\s|$)/.test(value)) return "";
+
+  const separator = value.indexOf(" - ");
+  const colon = value.indexOf(":");
+  // A player number may sit in the event prefix ("Run: #7 - 12 Yards"); a
+  // colon before the input separator is the label/player boundary. Otherwise
+  // the serializer's " - " join is the boundary, which keeps a clock intact.
+  if (colon !== -1 && (separator === -1 || colon < separator)) {
+    return value.slice(colon + 1).trim();
   }
-  const separator = text.indexOf(" - ");
-  return separator === -1 ? "" : text.slice(separator + 3).trim();
+  if (separator !== -1) return value.slice(separator + 3).trim();
+  return "";
 }
