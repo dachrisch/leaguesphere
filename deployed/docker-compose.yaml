@@ -93,6 +93,11 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: league_manager.settings.prod
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}  # Default to false if not set
+      # Liveticker v2 is the linked ticker (menu, gameday page) and receives
+      # updates over SSE from `liveticker-stream`. Verified on demo v5.23.0:
+      # 20/20 devices, median 0.5 s, p95 0.7 s (docstash.ai/cirw4x).
+      LIVETICKER_V2_ENABLED: "true"
+      LIVETICKER_STREAM_ENABLED: "true"
     networks:
       - backend   # For www communication
       - database  # For external MySQL access
@@ -132,6 +137,7 @@ services:
       # containers racing migrate on a blue-green swap is how you get a
       # half-applied schema on the stream's first boot.
       RUN_MIGRATIONS: "false"
+      LIVETICKER_STREAM_ENABLED: "true"
     env_file: ls.env
     networks:
       - backend
