@@ -65,8 +65,11 @@ afterEach(() => {
   window.history.replaceState({}, "", "/");
 });
 
-function renderApp(games: Game[], search = "") {
-  window.history.replaceState({}, "", `/liveticker/v2/${search}`);
+const GAMEDAY_PATH = "/liveticker/v2/gameday/2/";
+const gamePath = (id: number) => `/liveticker/v2/gameday/2/game/${id}/`;
+
+function renderApp(games: Game[], path = GAMEDAY_PATH) {
+  window.history.replaceState({}, "", path);
   render(
     <LivetickerProvider initialGames={games}>
       <App />
@@ -139,7 +142,7 @@ describe("Liveticker v2 App", () => {
         name: "Munich Spatzen – SG Kelkheim Lizzards",
       }),
     ).toBeInTheDocument();
-    expect(new URLSearchParams(window.location.search).get("game")).toBe("2");
+    expect(window.location.pathname).toBe(gamePath(2));
   });
 
   it("marks a delayed upcoming game as verspätet", () => {
@@ -213,37 +216,32 @@ describe("Liveticker v2 App", () => {
       "aria-expanded",
       "true",
     );
-    expect(new URLSearchParams(window.location.search).get("all")).toBe("1");
+    // "Alle Ereignisse" is UI state: the address stays the game path the
+    // page auto-selected.
+    expect(window.location.pathname).toBe(gamePath(1));
+    expect(window.location.search).toBe("");
   });
 
   it("opens the full history from an expanded result", async () => {
-    renderApp([{ ...finishedGame, tick_count: 9 }], "?game=3");
+    renderApp([{ ...finishedGame, tick_count: 9 }], gamePath(3));
 
     await userEvent.click(
       screen.getByRole("button", { name: "Alle 9 Ereignisse" }),
     );
 
-    expect(new URLSearchParams(window.location.search).get("all")).toBe("1");
     expect(screen.getByRole("button", { name: "Weniger anzeigen" })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
-  });
-
-  it("opens the full history from an all=1 deep link", () => {
-    renderApp([{ ...finishedGame, tick_count: 9 }], "?game=3&all=1");
-
-    expect(screen.getByRole("button", { name: "Weniger anzeigen" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    expect(window.location.pathname).toBe(gamePath(3));
+    expect(window.location.search).toBe("");
   });
 
   it("expands and focuses the game from a deep link", () => {
     const scrollIntoView = vi.fn();
     const original = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollIntoView;
-    renderApp([finishedGame], "?game=3");
+    renderApp([finishedGame], gamePath(3));
 
     const heading = screen.getByRole("heading", {
       name: "Old Home – Old Away",
@@ -258,7 +256,7 @@ describe("Liveticker v2 App", () => {
     const original = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView =
       undefined as unknown as typeof Element.prototype.scrollIntoView;
-    renderApp([finishedGame], "?game=3");
+    renderApp([finishedGame], gamePath(3));
 
     expect(
       document.activeElement,
@@ -267,11 +265,11 @@ describe("Liveticker v2 App", () => {
   });
 
   it("collapses the expanded result when its row is clicked again", async () => {
-    renderApp([finishedGame], "?game=3");
+    renderApp([finishedGame], gamePath(3));
 
     await userEvent.click(resultRows()[0]);
 
-    expect(new URLSearchParams(window.location.search).get("game")).toBeNull();
+    expect(window.location.pathname).toBe(GAMEDAY_PATH);
     expect(
       screen.queryByRole("heading", { name: "Old Home – Old Away" }),
     ).not.toBeInTheDocument();
@@ -286,7 +284,7 @@ describe("Liveticker v2 App", () => {
       home: { ...finishedGame.home, name: "", full_name: "Full Home" },
       away: { ...finishedGame.away, name: "", full_name: "Full Away" },
     };
-    renderApp([anonymous], "?game=7");
+    renderApp([anonymous], gamePath(7));
 
     expect(screen.getAllByText("Full Home").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Full Away").length).toBeGreaterThan(0);
@@ -346,15 +344,15 @@ describe("Liveticker v2 App", () => {
   });
 
   it("restores the expanded game through popstate", async () => {
-    renderApp([finishedGame, secondFinished], "?game=3");
+    renderApp([finishedGame, secondFinished], gamePath(3));
     expect(resultRows()[0]).toHaveAttribute("aria-expanded", "true");
 
     await userEvent.click(resultRows()[1]);
-    expect(window.location.search).toContain("game=4");
+    expect(window.location.pathname).toBe(gamePath(4));
     expect(resultRows()[1]).toHaveAttribute("aria-expanded", "true");
 
     act(() => {
-      window.history.pushState({}, "", "/liveticker/v2/?game=3");
+      window.history.pushState({}, "", gamePath(3));
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
 
@@ -363,7 +361,7 @@ describe("Liveticker v2 App", () => {
   });
 
   it("falls back to the overview when the linked game is gone", () => {
-    renderApp([finishedGame], "?game=99");
+    renderApp([finishedGame], gamePath(99));
 
     expect(screen.getByText("Spiel nicht mehr im Ticker")).toBeInTheDocument();
     expect(screen.getByText("Ergebnisse")).toBeInTheDocument();
@@ -373,7 +371,7 @@ describe("Liveticker v2 App", () => {
   it("shares the deep link of the selected game", async () => {
     const share = vi.fn(async () => undefined);
     vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
-    renderApp([finishedGame], "?game=3");
+    renderApp([finishedGame], gamePath(3));
 
     await userEvent.click(screen.getByRole("button", { name: "Ticker teilen" }));
 
@@ -383,7 +381,9 @@ describe("Liveticker v2 App", () => {
       url: string;
     }[];
     expect(payload[0].title).toBe("Old Home – Old Away · Liveticker");
-    expect(new URL(payload[0].url).searchParams.get("game")).toBe("3");
+    const shared = new URL(payload[0].url);
+    expect(shared.pathname).toBe(gamePath(3));
+    expect(shared.search).toBe("");
   });
 
   it("shows a compact gameday bar with live count and share", () => {
@@ -449,7 +449,7 @@ describe("Liveticker v2 App", () => {
   it("keeps the share action in the gameday bar", async () => {
     const share = vi.fn(async () => undefined);
     vi.stubGlobal("navigator", { share, clipboard: { writeText: vi.fn() } });
-    renderApp([finishedGame], "?game=3");
+    renderApp([finishedGame], gamePath(3));
 
     const button = screen.getByRole("button", { name: "Ticker teilen" });
     expect(button.closest(".lt-topbar")).not.toBeNull();
@@ -485,5 +485,61 @@ describe("Liveticker v2 App", () => {
         screen.getByText("Der Liveticker konnte nicht geladen werden."),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("writes the auto-selected game with replaceState, not pushState", async () => {
+    window.history.replaceState({}, "", GAMEDAY_PATH);
+    const replace = vi.spyOn(window.history, "replaceState");
+    const push = vi.spyOn(window.history, "pushState");
+
+    render(
+      <LivetickerProvider initialGames={[liveGame]}>
+        <App />
+      </LivetickerProvider>,
+    );
+
+    await waitFor(() => expect(window.location.pathname).toBe(gamePath(1)));
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("auto-selects the newest result once the day is over", async () => {
+    renderApp([finishedGame, secondFinished]);
+
+    await waitFor(() => expect(window.location.pathname).toBe(gamePath(3)));
+    expect(
+      screen.getByRole("heading", { name: "Old Home – Old Away" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not overwrite a user's selection with the auto-selected game", async () => {
+    const secondLive: Game = {
+      ...liveGame,
+      gameId: 2,
+      field: 2,
+      home: { ...liveGame.home, name: "Munich Spatzen" },
+      away: { ...liveGame.away, name: "SG Kelkheim Lizzards" },
+    };
+    renderApp([liveGame, secondLive]);
+    await waitFor(() => expect(window.location.pathname).toBe(gamePath(1)));
+
+    await userEvent.click(screen.getByRole("button", { name: /F2/ }));
+    expect(window.location.pathname).toBe(gamePath(2));
+
+    await act(async () => {});
+    expect(window.location.pathname).toBe(gamePath(2));
+  });
+
+  it("leaves the bare root alone when several gamedays are on screen", async () => {
+    const otherDay: Game = {
+      ...liveGame,
+      gameId: 9,
+      gameday: { id: 9, name: "Zweiter Tag", address: "" },
+    };
+    renderApp([liveGame, otherDay], "/liveticker/v2/");
+
+    await act(async () => {});
+
+    expect(window.location.pathname).toBe("/liveticker/v2/");
   });
 });

@@ -1,83 +1,100 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readUrlState, selectGame, toggleAll, useUrlState } from "../urlState";
+import {
+  readUrlState,
+  replaceGame,
+  selectGame,
+  tickerPath,
+  useUrlState,
+} from "../urlState";
 
 beforeEach(() => {
-  window.history.replaceState({}, "", "/liveticker/v2/?league=L&gameday=G");
+  window.history.replaceState({}, "", "/liveticker/v2/");
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   window.history.replaceState({}, "", "/");
 });
 
 describe("url state", () => {
-  it("reads league, gameday, game and all", () => {
+  it("reads the root as today's gamedays", () => {
+    expect(readUrlState()).toEqual({ gameday: null, gameId: null });
+  });
+
+  it("reads a gameday path", () => {
+    window.history.replaceState({}, "", "/liveticker/v2/gameday/888/");
+
+    expect(readUrlState()).toEqual({ gameday: 888, gameId: null });
+  });
+
+  it("reads a game path", () => {
     window.history.replaceState(
       {},
       "",
-      "/liveticker/v2/?league=L&gameday=G&game=7&all=1",
+      "/liveticker/v2/gameday/888/game/9314/",
     );
 
-    expect(readUrlState()).toEqual({
-      league: "L",
-      gameday: "G",
-      gameId: 7,
-      all: true,
-    });
+    expect(readUrlState()).toEqual({ gameday: 888, gameId: 9314 });
   });
 
-  it("ignores a game that is not a number", () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?game=abc&all=0");
+  it("ignores an unrelated path", () => {
+    window.history.replaceState({}, "", "/gamedays/");
 
-    expect(readUrlState().gameId).toBeNull();
-    expect(readUrlState().all).toBe(false);
+    expect(readUrlState()).toEqual({ gameday: null, gameId: null });
   });
 
-  it("pushes a deep link and keeps the filters", () => {
-    selectGame(7);
-
-    const params = new URLSearchParams(window.location.search);
-    expect(params.get("league")).toBe("L");
-    expect(params.get("gameday")).toBe("G");
-    expect(params.get("game")).toBe("7");
-    expect(params.get("all")).toBeNull();
+  it("builds the canonical paths", () => {
+    expect(tickerPath({ gameday: null })).toBe("/liveticker/v2/");
+    expect(tickerPath({ gameday: 888 })).toBe("/liveticker/v2/gameday/888/");
+    expect(tickerPath({ gameday: 888, gameId: 9314 })).toBe(
+      "/liveticker/v2/gameday/888/game/9314/",
+    );
   });
 
-  it("clears an open history when another game is selected", () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?game=7&all=1");
+  it("pushes a game path and never writes a query", () => {
+    selectGame(888, 9314);
 
-    selectGame(8);
-
-    const params = new URLSearchParams(window.location.search);
-    expect(params.get("game")).toBe("8");
-    expect(params.get("all")).toBeNull();
+    expect(window.location.pathname).toBe(
+      "/liveticker/v2/gameday/888/game/9314/",
+    );
+    expect(window.location.search).toBe("");
   });
 
-  it("removes the game parameter again", () => {
-    window.history.replaceState({}, "", "/liveticker/v2/?game=7");
+  it("clears the game again with the gameday path", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/liveticker/v2/gameday/888/game/9314/",
+    );
 
-    selectGame(null);
+    selectGame(888, null);
 
-    expect(new URLSearchParams(window.location.search).get("game")).toBeNull();
+    expect(window.location.pathname).toBe("/liveticker/v2/gameday/888/");
+    expect(window.location.search).toBe("");
   });
 
-  it("toggles the full history of the selected game", () => {
-    selectGame(7);
+  it("replaces the entry for an auto-selection", () => {
+    const replace = vi.spyOn(window.history, "replaceState");
+    const push = vi.spyOn(window.history, "pushState");
 
-    toggleAll(7);
-    expect(readUrlState().all).toBe(true);
+    replaceGame(888, 9314);
 
-    toggleAll(7);
-    expect(readUrlState().all).toBe(false);
+    expect(window.location.pathname).toBe(
+      "/liveticker/v2/gameday/888/game/9314/",
+    );
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
   });
 
-  it("opens the history of a game that is not linked yet", () => {
-    toggleAll(7);
+  it("does not write the same path twice", () => {
+    window.history.replaceState({}, "", "/liveticker/v2/gameday/888/");
+    const push = vi.spyOn(window.history, "pushState");
 
-    const state = readUrlState();
-    expect(state.gameId).toBe(7);
-    expect(state.all).toBe(true);
+    selectGame(888, null);
+
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("restores the state on popstate", () => {
@@ -85,10 +102,14 @@ describe("url state", () => {
     expect(result.current.gameId).toBeNull();
 
     act(() => {
-      window.history.pushState({}, "", "/liveticker/v2/?game=3");
+      window.history.pushState(
+        {},
+        "",
+        "/liveticker/v2/gameday/2/game/3/",
+      );
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
 
-    expect(result.current.gameId).toBe(3);
+    expect(result.current).toEqual({ gameday: 2, gameId: 3 });
   });
 });

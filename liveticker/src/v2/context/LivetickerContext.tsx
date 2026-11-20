@@ -11,7 +11,7 @@ import {
 
 import { fetchGames } from "../api";
 import type { Game, Tick } from "../types";
-import { toggleAll, useUrlState } from "../urlState";
+import { selectGame as selectGameInUrl, useUrlState } from "../urlState";
 import {
   useLivetickerStream,
   type StreamStatus,
@@ -22,6 +22,10 @@ interface LivetickerValue {
   loading: boolean;
   error: string | null;
   allTicksFor: number[];
+  /** Whether the expanded game shows its full event history (UI state). */
+  all: boolean;
+  /** Write a path selection (new history entry); ``null`` clears the game. */
+  selectGame: (gamedayId: number, gameId: number | null) => void;
   toggleAllTicks: (gameId: number) => void;
   linkedGameMissing: boolean;
   /** How fresh the displayed data is (stream vs. polling fallback). */
@@ -58,7 +62,10 @@ export function LivetickerProvider({
   initialGames,
   streamEnabled = streamEnabledFromDom(),
 }: LivetickerProviderProps) {
-  const { league, gameday, gameId, all } = useUrlState();
+  const { gameday, gameId } = useUrlState();
+  const gamedayParam = gameday === null ? "" : String(gameday);
+  // "Alle Ereignisse" is UI state, deliberately not part of the URL.
+  const [all, setAll] = useState(false);
   const [games, setGames] = useState<Game[]>(initialGames ?? []);
   const [loading, setLoading] = useState(initialGames === undefined);
   const [error, setError] = useState<string | null>(null);
@@ -119,8 +126,8 @@ export function LivetickerProvider({
 
   const connection = useLivetickerStream({
     enabled: streamEnabled && initialGames === undefined,
-    league,
-    gameday,
+    league: "",
+    gameday: gamedayParam,
     allTicksFor,
     onSnapshot: applyGames,
   });
@@ -139,8 +146,8 @@ export function LivetickerProvider({
       controller = new AbortController();
       try {
         const next = await fetchGames(
-          league,
-          gameday,
+          "",
+          gamedayParam,
           controller.signal,
           allTicksFor,
         );
@@ -166,7 +173,14 @@ export function LivetickerProvider({
       window.clearInterval(interval);
       controller?.abort();
     };
-  }, [allTicksFor, applyGames, connection, gameday, initialGames, league, streamEnabled]);
+  }, [
+    allTicksFor,
+    applyGames,
+    connection,
+    gamedayParam,
+    initialGames,
+    streamEnabled,
+  ]);
 
   useEffect(() => {
     if (initialGames !== undefined || loading || error || gameId === null) {
@@ -178,7 +192,46 @@ export function LivetickerProvider({
     setRetryTicksFor((current) => [...current, gameId]);
   }, [error, gameId, games, initialGames, loading]);
 
-  const toggleAllTicks = (id: number) => toggleAll(id);
+  // A game selection made anywhere in the UI is explicit: it resets the
+  // "all events" UI state and the URL gets a new history entry.
+  const selectGame = useCallback((gamedayId: number, id: number | null) => {
+    setAll(false);
+    selectGameInUrl(gamedayId, id);
+  }, []);
+
+  const openingAll = useRef(false);
+  const previousGame = useRef(gameId);
+  useEffect(() => {
+    if (previousGame.current === gameId) return;
+    previousGame.current = gameId;
+    // The URL changed (back/forward or a selection made elsewhere): a history
+    // game change closes the full history again. The one exception is
+    // "Alle Ereignisse" opening it on a not-yet-selected game.
+    if (openingAll.current) {
+      openingAll.current = false;
+      return;
+    }
+    setAll(false);
+  }, [gameId]);
+
+  const toggleAllTicks = useCallback(
+    (id: number) => {
+      const game = games.find((candidate) => candidate.gameId === id);
+      const gamedayId = game ? game.gameday.id : gameday;
+      if (gamedayId === null) return;
+      if (gameId === id && all) {
+        setAll(false);
+        return;
+      }
+      if (gameId !== id) {
+        openingAll.current = true;
+        selectGameInUrl(gamedayId, id);
+      }
+      setAll(true);
+    },
+    [all, gameId, games, gameday],
+  );
+
   const linkedGameMissing =
     gameId !== null && !loading && !error && !games.some((game) => game.gameId === gameId);
 
@@ -188,12 +241,15 @@ export function LivetickerProvider({
       loading,
       error,
       allTicksFor,
+      all,
+      selectGame,
       toggleAllTicks,
       linkedGameMissing,
       connection,
       highlighted,
     }),
     [
+      all,
       allTicksFor,
       connection,
       error,
@@ -201,6 +257,8 @@ export function LivetickerProvider({
       highlighted,
       linkedGameMissing,
       loading,
+      selectGame,
+      toggleAllTicks,
     ],
   );
   return (

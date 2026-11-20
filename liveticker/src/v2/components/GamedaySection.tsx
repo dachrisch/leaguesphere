@@ -7,6 +7,7 @@ import {
 } from "../format";
 import {
   isDelayed,
+  selectAutoGame,
   selectFinishedGames,
   selectLiveGames,
   selectUpcomingGames,
@@ -21,7 +22,9 @@ interface GamedaySectionProps {
   now: Date;
   selectedId: number | null;
   all: boolean;
-  onSelect: (gameId: number | null) => void;
+  /** Show the automatic pick (first live / last result) until the user chose. */
+  autoSelect?: boolean;
+  onSelect: (gamedayId: number, gameId: number | null) => void;
   onToggleAll: (gameId: number) => void;
   highlighted?: ReadonlySet<string>;
 }
@@ -167,6 +170,7 @@ export function GamedaySection({
   now,
   selectedId,
   all,
+  autoSelect = true,
   onSelect,
   onToggleAll,
   highlighted,
@@ -182,10 +186,19 @@ export function GamedaySection({
     group.games.find((game) => game.gameId === selectedId) ?? null;
   const lead = liveGames.length === 0 ? upcoming[0] ?? null : null;
   const upcomingRows = lead ? upcoming.slice(1) : upcoming;
-  const detailGame = selectedFinished ?? (liveGames.length > 0 ? liveSelected : null);
+  const detailGame =
+    selectedFinished ??
+    (liveGames.length > 0
+      ? liveSelected
+      : autoSelect
+        ? selectAutoGame(group.games)
+        : null);
   const shareGame =
     selectedGame ?? detailGame ?? upcoming[0] ?? finished[0] ?? null;
   const headingId = `gameday-${group.gameday.id}`;
+  // Direct children only know game ids; the gameday id comes from the group.
+  const selectInGroup = (gameId: number | null) =>
+    onSelect(group.gameday.id, gameId);
 
   return (
     <section className="lt-gameday" aria-labelledby={headingId}>
@@ -201,7 +214,7 @@ export function GamedaySection({
             <LiveStrip
               games={liveGames}
               selectedId={liveSelected.gameId}
-              onSelect={onSelect}
+              onSelect={selectInGroup}
             />
           )}
           {detailGame ? (
@@ -221,7 +234,7 @@ export function GamedaySection({
           <ResultsSection
             games={finished}
             selectedId={selectedId}
-            onSelect={onSelect}
+            onSelect={selectInGroup}
           />
         </aside>
       </div>

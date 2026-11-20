@@ -17,6 +17,19 @@ export function selectFinishedGame(games: Game[]): Game | null {
   return selectFinishedGames(games)[0] ?? null;
 }
 
+/**
+ * The game the ticker shows when the URL names no game: the first live game.
+ * Once the day is over (nothing live, nothing upcoming) the newest result is
+ * shown; between rounds the "next game" panel stays the hero, so no game is
+ * picked and the URL keeps the gameday only.
+ */
+export function selectAutoGame(games: Game[]): Game | null {
+  const live = selectLiveGame(games);
+  if (live) return live;
+  if (selectUpcomingGames(games).length > 0) return null;
+  return selectFinishedGame(games);
+}
+
 const kickoff = (game: Game): number => {
   const value = Date.parse(game.scheduled_at);
   return Number.isNaN(value) ? 0 : value;
