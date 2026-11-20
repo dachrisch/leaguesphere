@@ -30,7 +30,7 @@ let cachedState: UrlState = {
 
 /** The current URL state, re-parsed only when the query string changed. */
 export function readUrlState(): UrlState {
-  const search = typeof window === "undefined" ? "" : window.location.search;
+  const search = window.location.search;
   if (search !== cachedSearch) {
     cachedSearch = search;
     cachedState = parse(search);

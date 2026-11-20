@@ -94,9 +94,7 @@ export function LivetickerProvider({
     if (games.some((game) => game.gameId === gameId)) return;
     if (retriedGame.current === gameId) return;
     retriedGame.current = gameId;
-    setRetryTicksFor((current) =>
-      current.includes(gameId) ? current : [...current, gameId],
-    );
+    setRetryTicksFor((current) => [...current, gameId]);
   }, [error, gameId, games, initialGames, loading]);
 
   const toggleAllTicks = (id: number) => toggleAll(id);

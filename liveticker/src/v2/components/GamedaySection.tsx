@@ -44,8 +44,7 @@ export function GamedaySection({
   const liveGames = selectLiveGames(group.games);
   const upcoming = selectUpcomingGames(group.games);
   const finished = selectFinishedGames(group.games);
-  const liveSelected =
-    liveGames.find((game) => game.gameId === selectedId) ?? liveGames[0] ?? null;
+  const liveSelected = liveGames.find((game) => game.gameId === selectedId) ?? liveGames[0];
   const lead = liveGames.length === 0 ? upcoming[0] ?? null : null;
   const upcomingRows = lead ? upcoming.slice(1) : upcoming;
   const headingId = `gameday-${group.gameday.id}`;
@@ -66,17 +65,15 @@ export function GamedaySection({
           {liveGames.length > 1 && (
             <LiveStrip
               games={liveGames}
-              selectedId={liveSelected?.gameId ?? liveGames[0].gameId}
+              selectedId={liveSelected.gameId}
               onSelect={onSelect}
             />
           )}
-          {liveSelected && (
-            <GameDetail
-              game={liveSelected}
-              allExpanded={all && selectedId === liveSelected.gameId}
-              onToggleAll={() => onToggleAll(liveSelected.gameId)}
-            />
-          )}
+          <GameDetail
+            game={liveSelected}
+            allExpanded={all && selectedId === liveSelected.gameId}
+            onToggleAll={() => onToggleAll(liveSelected.gameId)}
+          />
         </section>
       )}
 

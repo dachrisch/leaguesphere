@@ -7,6 +7,7 @@ import {
   LivetickerProvider,
   useLiveticker,
 } from "../context/LivetickerContext";
+import type { Game } from "../types";
 import { game } from "./fixture";
 
 afterEach(() => {
@@ -77,6 +78,13 @@ function ToggleProbe() {
       <p>{allTicksFor.join(",")}</p>
     </>
   );
+}
+
+function MissingProbe() {
+  const { games, loading, error, linkedGameMissing } = useLiveticker();
+  if (loading) return <p>loading</p>;
+  if (error) return <p>{error}</p>;
+  return <p>{linkedGameMissing ? "missing" : `games:${games.length}`}</p>;
 }
 
 describe("LivetickerProvider", () => {
@@ -166,6 +174,80 @@ describe("LivetickerProvider", () => {
     await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[1][0])).toContain("getAllTicksFor=1");
+  });
+
+  it("asks once and then reports a linked game that is still missing", async () => {
+    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => [] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <LivetickerProvider>
+        <MissingProbe />
+      </LivetickerProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("missing")).toBeInTheDocument());
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+  });
+
+  it("ignores a response that arrives after unmount", async () => {
+    type Response = { ok: boolean; json: () => Promise<Game[]> };
+    let resolveFetch: ((value: Response) => void) | undefined;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { unmount } = render(
+      <LivetickerProvider>
+        <Probe />
+      </LivetickerProvider>,
+    );
+    unmount();
+
+    await act(async () => {
+      resolveFetch?.({ ok: true, json: async () => [game] });
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("1")).not.toBeInTheDocument();
+  });
+
+  it("reuses the retried tick request when the history is opened", async () => {
+    window.history.replaceState({}, "", "/liveticker/v2/?game=1");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })
+      .mockResolvedValue({ ok: true, json: async () => [game] });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <LivetickerProvider>
+        <ToggleProbe />
+      </LivetickerProvider>,
+    );
+    const toggle = await screen.findByRole("button", { name: "toggle" });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    await userEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).get("all")).toBe("1"),
+    );
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("requires a provider", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(() => render(<Probe />)).toThrow(
+      "useLiveticker() needs a LivetickerProvider",
+    );
+    error.mockRestore();
   });
 
   it("keeps the URL-selected game across a poll and leaves the URL alone", async () => {

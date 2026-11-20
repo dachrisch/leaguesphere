@@ -31,7 +31,7 @@ export default function App() {
       detail.scrollIntoView({ block: "start" });
     }
     const heading = document.getElementById(`game-heading-${id}`);
-    if (heading instanceof HTMLElement) heading.focus();
+    (heading as HTMLElement).focus();
   }, [gameId, games, loading]);
 
   if (loading) {
