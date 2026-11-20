@@ -110,10 +110,16 @@ class TestLivetickerEtag(TestCase):
             scheduled=time(18, 30), updated_at=timezone.now()
         )
 
+        original = LivetickerService.get_liveticker_as_json
+
+        def render_once(service):
+            return original(service)
+
         with patch.object(
             LivetickerService,
             "get_liveticker_as_json",
-            wraps=LivetickerService.get_liveticker_as_json,
+            autospec=True,
+            side_effect=render_once,
         ) as render:
             first = self.client.get(url, HTTP_IF_NONE_MATCH=stale)
             second = self.client.get(url, HTTP_IF_NONE_MATCH=stale)
