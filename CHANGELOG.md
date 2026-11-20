@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.20.0](https://github.com/dachrisch/leaguesphere/compare/v5.19.2...v5.20.0) (2026-11-20)
+
+
+### Features
+
+* **dbaccess:** allow self-approval with a mandatory reason ([06f3627](https://github.com/dachrisch/leaguesphere/commit/06f3627f13a6775480303f2906ccf7200549f527))
+* **dbaccess:** allow self-approval with a mandatory reason ([d74187d](https://github.com/dachrisch/leaguesphere/commit/d74187d686c143d39ec92c15b3862b51ac9e8dcb))
+
 ## [5.19.2](https://github.com/dachrisch/leaguesphere/compare/v5.19.1...v5.19.2) (2026-11-20)
 
 
