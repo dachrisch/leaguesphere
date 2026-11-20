@@ -1,0 +1,6 @@
+{% comment %}
+The privilege set of one request, in the same order the sidecar grants it:
+read + UPDATE on the picked tables, plus INSERT and/or DELETE when the
+requester ticked them. Used by the queue, the detail page and the decision
+card so an approver cannot sign a DELETE without seeing it.
+{% endcomment %}<span class="badge bg-body-tertiary text-body border fw-normal me-1">Read + UPDATE</span>{% if access_request.may_insert %}<span class="badge text-bg-info me-1">+ INSERT</span>{% endif %}{% if access_request.may_delete %}<span class="badge text-bg-danger me-1">+ DELETE</span>{% endif %}

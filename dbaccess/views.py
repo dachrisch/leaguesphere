@@ -33,6 +33,16 @@ def _ip(request) -> str | None:
     return (forwarded.split(",")[0].strip() or request.META.get("REMOTE_ADDR")) or None
 
 
+def _privileges_detail(access_request) -> str:
+    """The privilege set as it goes into the audit trail.
+
+    Shared by the `requested` and the `approve`/`self-approved` events so a
+    later reader can tell what a signature actually covered - a second person
+    approving DELETE is a different decision from approving an UPDATE.
+    """
+    return f"privileges: {access_request.privilege_summary}"
+
+
 def _forbidden(request, title: str, detail: str, access_request=None):
     """A refusal that still looks like the app.
 
@@ -100,7 +110,10 @@ class RequestCreateView(StaffRequiredMixin, CreateView):
         request_obj.log(
             self.request.user.username,
             "requested",
-            detail=f"tables: {request_obj.tables_csv}; ttl: {request_obj.ttl_hours}h",
+            detail=(
+                f"tables: {request_obj.tables_csv}; ttl: {request_obj.ttl_hours}h; "
+                f"{_privileges_detail(request_obj)}"
+            ),
             from_ip=_ip(self.request),
         )
         messages.success(self.request, "Request submitted for approval.")
@@ -132,9 +145,7 @@ class RequestDetailView(StaffRequiredMixin, DetailView):
         context["may_reveal"] = may_reveal
         # Ending a session is not reading it: the approver and anyone with the
         # approver permission may stop it, they just cannot see the password.
-        context["may_revoke"] = (
-            may_reveal or may_approve
-        ) and self.object.state in (
+        context["may_revoke"] = (may_reveal or may_approve) and self.object.state in (
             AccessRequest.State.ACTIVE,
             AccessRequest.State.APPROVED,
         )
@@ -186,10 +197,17 @@ class DecideView(StaffRequiredMixin, DetailView):
         if not is_mine:
             access_request.approver = request.user
         access_request.save(update_fields=["state", "approver", "updated_at"])
+        detail = reason[:500]
+        if approving:
+            detail = (
+                f"{_privileges_detail(access_request)}; {detail}"
+                if detail
+                else (_privileges_detail(access_request))
+            )
         access_request.log(
             request.user.username,
             "self-approved" if (approving and is_mine) else (decision or "unknown"),
-            detail=reason[:500],
+            detail=detail,
             from_ip=_ip(request),
         )
         return redirect("dbaccess-detail", pk=access_request.pk)
@@ -208,9 +226,7 @@ class RevealView(StaffRequiredMixin, DetailView):
             return redirect("dbaccess-detail", pk=access_request.pk)
 
         password = access_request.reveal()
-        access_request.log(
-            request.user.username, "revealed", from_ip=_ip(request)
-        )
+        access_request.log(request.user.username, "revealed", from_ip=_ip(request))
         return render(
             request,
             "dbaccess/request_reveal.html",

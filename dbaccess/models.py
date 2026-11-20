@@ -56,7 +56,9 @@ def access_handle(username: str) -> str:
     character, the alphabet has to match the sidecar exactly - a handle it
     refuses fails the request *after* approval, which wastes the decision.
     """
-    return "".join(ch for ch in (username or "").lower() if ch in HANDLE_ALPHABET)[:HANDLE_LENGTH]
+    return "".join(ch for ch in (username or "").lower() if ch in HANDLE_ALPHABET)[
+        :HANDLE_LENGTH
+    ]
 
 
 # How many table names a surface shows before it says "+N more". The audit trail
@@ -67,7 +69,8 @@ DETAIL_TABLES_SHOWN = 4
 # `dbeaver_prod_<x>@<host> on a b c` (the sidecar) are the two shapes.
 _REQUESTED_TABLES = re.compile(r"(tables:\s*)([^;]+)")
 _ACTIVATED_TABLES = re.compile(
-    r"^(?P<head>\S+@[\w.%]+ on )(?P<tables>[A-Za-z0-9_]+(?: [A-Za-z0-9_]+)*)$"
+    r"^(?P<head>\S+@[\w.%]+ on )(?P<tables>[A-Za-z0-9_]+(?: [A-Za-z0-9_]+)*)"
+    r"(?P<tail>.*)$"
 )
 
 
@@ -88,8 +91,10 @@ def _shorten_detail_tables(detail: str) -> str:
     activated = _ACTIVATED_TABLES.match(text)
 
     if activated:
-        text = activated.group("head") + _shorten_list(
-            activated.group("tables").split(), " "
+        text = (
+            activated.group("head")
+            + _shorten_list(activated.group("tables").split(), " ")
+            + activated.group("tail")
         )
 
     return text
@@ -138,6 +143,18 @@ class AccessRequest(models.Model):
     ticket_url = models.URLField(blank=True)
     tables_csv = models.TextField(help_text="Comma-separated table names")
     ttl_hours = models.PositiveSmallIntegerField(default=4)
+    # Read + UPDATE is the default and stays the floor of every request. The
+    # two flags widen that grant on the requested tables only - never on the
+    # allow-list tables that are readable for context. They are read by
+    # `deployed/dba/tick.sh`, which tolerates their absence before a deploy.
+    may_insert = models.BooleanField(
+        default=False,
+        help_text="Darf neue Zeilen in den gewählten Tabellen anlegen",
+    )
+    may_delete = models.BooleanField(
+        default=False,
+        help_text="Darf Zeilen in den gewählten Tabellen löschen",
+    )
 
     state = models.CharField(
         max_length=20, choices=State.choices, default=State.DRAFT, db_index=True
@@ -195,6 +212,33 @@ class AccessRequest(models.Model):
     def tables(self) -> list[str]:
         return [t.strip() for t in (self.tables_csv or "").split(",") if t.strip()]
 
+    def privileges(self) -> list[str]:
+        """The grant set the sidecar mints: read + update, optionally widened.
+
+        Kept as tokens (not display text) because the same list goes into the
+        audit event and into `tick.sh`'s grant: one vocabulary for the request,
+        the approval and the account.
+        """
+        privileges = ["read", "update"]
+        if self.may_insert:
+            privileges.append("insert")
+        if self.may_delete:
+            privileges.append("delete")
+        return privileges
+
+    @property
+    def privilege_summary(self) -> str:
+        return "+".join(self.privileges())
+
+    def privileges_label(self) -> str:
+        """Human-readable form for the form, the queue and the detail page."""
+        labels = ["Read", "UPDATE"]
+        if self.may_insert:
+            labels.append("INSERT")
+        if self.may_delete:
+            labels.append("DELETE")
+        return " + ".join(labels)
+
     @property
     def expires_at(self):
         """When the account stops working, for display only.
@@ -248,7 +292,9 @@ class AccessRequest(models.Model):
         return self._fernet().decrypt(self.secret_ct.encode()).decode()
 
     # --- audit -----------------------------------------------------------
-    def log(self, actor: str, action: str, detail: str = "", from_ip: str | None = None):
+    def log(
+        self, actor: str, action: str, detail: str = "", from_ip: str | None = None
+    ):
         return AccessEvent.objects.create(
             request=self,
             actor=actor,
@@ -279,6 +325,7 @@ class GrantableTable(models.Model):
 
 class AccessEvent(models.Model):
     """Append-only. With no binlog before 2026-10-26 this was the only record."""
+
     request = models.ForeignKey(
         AccessRequest, on_delete=models.CASCADE, related_name="events"
     )

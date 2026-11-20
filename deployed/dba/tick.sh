@@ -70,6 +70,38 @@ snapshot_for() {
 }
 # --- end snapshot naming ---------------------------------------------------
 
+# --- privilege set ---------------------------------------------------------
+# The grant a requested table gets. Read + UPDATE is the floor of every
+# request; INSERT and DELETE are added only when the requester ticked them.
+# The allow-list tables used for context are granted SELECT only, separately.
+privileges_for() {
+    # $1 = may_insert, $2 = may_delete (0/1; absent reads as 0)
+    privileges="SELECT, UPDATE"
+    if [ "${1:-0}" = "1" ]; then
+        privileges="$privileges, INSERT"
+    fi
+    if [ "${2:-0}" = "1" ]; then
+        privileges="$privileges, DELETE"
+    fi
+    printf '%s\n' "$privileges"
+}
+# --- end privilege set ---
+
+# --- grant failure reason --------------------------------------------------
+grant_failure_reason() {
+    # $1 = may_delete, $2 = captured mariadb error
+    if [ "${1:-0}" = "1" ]; then
+        case "$2" in
+            *DELETE*|*1142*|*1143*)
+                printf 'could not grant DELETE - the provisioner lacks it (run the ls.dbeaver role): %s\n' "$2"
+                return 0
+                ;;
+        esac
+    fi
+    printf 'could not create the account or grant its reads: %s\n' "$2"
+}
+# --- end grant failure reason ---
+
 fail_row() {
     # $1 = row id, $2 = reason
     sql "$DB" -e "
@@ -112,12 +144,24 @@ drop_account() {
 ########################################
 # 1. approved -> active
 ########################################
+# A tick may run before the app deploy has migrated the two write flags in.
+# COALESCE does not protect against a column that does not exist, so the select
+# is built from information_schema: two literal zeros until both are there.
+# That keeps an old row - and an old schema - at read + UPDATE, never wider.
+write_columns="0, 0"
+have_write_columns=$(sql -e "SELECT COUNT(*) FROM information_schema.columns
+                              WHERE table_schema='$DB' AND table_name='dbaccess_request'
+                                AND column_name IN ('may_insert','may_delete')")
+if [ "$have_write_columns" = "2" ]; then
+    write_columns="COALESCE(may_insert,0), COALESCE(may_delete,0)"
+fi
+
 sql "$DB" -e "
-    SELECT id, person, tables_csv, ttl_hours
+    SELECT id, person, tables_csv, ttl_hours, $write_columns
       FROM dbaccess_request
      WHERE state='approved'
      ORDER BY id
-     LIMIT $MAX_PER_TICK" | while IFS="$TAB" read -r id person tables ttl; do
+     LIMIT $MAX_PER_TICK" | while IFS="$TAB" read -r id person tables ttl may_insert may_delete; do
     [ -n "${id:-}" ] || continue
 
     # The alphabet is the app's `HANDLE_ALPHABET` (dbaccess/models.py) - a
@@ -164,6 +208,14 @@ sql "$DB" -e "
     done
 
     pw=$(head -c 512 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 24)
+    privileges=$(privileges_for "${may_insert:-0}" "${may_delete:-0}")
+    privilege_names="read+update"
+    if [ "${may_insert:-0}" = "1" ]; then
+        privilege_names="$privilege_names+insert"
+    fi
+    if [ "${may_delete:-0}" = "1" ]; then
+        privilege_names="$privilege_names+delete"
+    fi
 
     # Reads are granted table by table from the curated list, NOT as `db`.*:
     # schema-wide SELECT also hands out auth_user's password hashes,
@@ -178,7 +230,7 @@ sql "$DB" -e "
         continue
     fi
 
-    if ! {
+    if ! grant_error=$({
         cat <<SQL
 CREATE USER IF NOT EXISTS '${user}'@'${PATTERN}' IDENTIFIED BY '${pw}';
 ALTER USER '${user}'@'${PATTERN}' IDENTIFIED BY '${pw}';
@@ -192,16 +244,22 @@ SQL
                 "$DB" "$t" "$user" "$PATTERN"
         done
         for t in $valid_tables; do
-            # the table itself, and the snapshot taken a moment ago so the
-            # runbook's "verify the safety copy" step still works
-            printf "GRANT SELECT, UPDATE ON \`%s\`.\`%s\` TO '%s'@'%s';\n" \
-                "$DB" "$t" "$user" "$PATTERN"
+            # The requested table gets the chosen set; DELETE only works when
+            # the provisioner holds DELETE itself (infrastructure role), which
+            # is why a failed grant is turned into a clear reason below. The
+            # snapshot taken a moment ago stays readable so the runbook's
+            # "verify the safety copy" step still works.
+            printf "GRANT %s ON \`%s\`.\`%s\` TO '%s'@'%s';\n" \
+                "$privileges" "$DB" "$t" "$user" "$PATTERN"
             printf "GRANT SELECT ON \`%s\`.\`%s\` TO '%s'@'%s';\n" \
                 "$DB" "$(snapshot_for "$t")" "$user" "$PATTERN"
         done
-    } | sql "$DB"; then
+    } | sql "$DB" 2>&1); then
+        # Nothing half-minted: the account is dropped again before the row is
+        # parked, so a failed DELETE does not leave a SELECT/INSERT account.
         drop_account "$user" "$PATTERN" ""
-        fail_row "$id" "could not create the account or grant its reads"
+        grant_error=$(printf '%s' "$grant_error" | tr '\n' ' ' | tr -d "'" | cut -c1-300)
+        fail_row "$id" "$(grant_failure_reason "${may_delete:-0}" "$grant_error")"
         continue
     fi
 
@@ -210,7 +268,7 @@ SQL
            SET state='active', db_user='${user}', grant_host='${PATTERN}',
                secret='${pw}', activated_at=NOW(), updated_at=NOW()
          WHERE id=${id} AND state='approved'"
-    record "$id" "activated" "$user@$PATTERN on${valid_tables}"
+    record "$id" "activated" "$user@$PATTERN on${valid_tables}; privileges: ${privilege_names}"
     echo "db-access: $user active"
 done
 

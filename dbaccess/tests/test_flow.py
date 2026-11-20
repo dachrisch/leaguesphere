@@ -101,7 +101,11 @@ def test_the_form_prefills_tables_when_editing(staff, tables):
 def test_a_non_approver_only_sees_their_own_requests(client, staff, tables):
     other = UserFactory(username="other", is_staff=True)
     AccessRequest.objects.create(
-        requester=other, person="other", purpose="x", tables_csv="divisions", ttl_hours=1
+        requester=other,
+        person="other",
+        purpose="x",
+        tables_csv="divisions",
+        ttl_hours=1,
     )
     AccessRequest.objects.create(
         requester=staff, person="mine", purpose="x", tables_csv="divisions", ttl_hours=1
@@ -201,10 +205,205 @@ def test_revoking_a_dropped_session_is_a_no_op(client, staff):
     assert access_request.state == AccessRequest.State.DROPPED
 
 
+def _post_request(client, tables, **extra):
+    data = {
+        "purpose": "fix the standings",
+        "ticket_url": "",
+        "ttl_hours": 2,
+        "tables": [t.pk for t in tables],
+    }
+    data.update(extra)
+    return client.post(reverse("dbaccess-create"), data)
+
+
+@pytest.fixture
+def grantable(tables):
+    return list(GrantableTable.objects.filter(grantable=True))
+
+
 @pytest.mark.django_db
-def test_a_decision_on_an_already_decided_request_is_refused(
-    client, staff
+def test_a_request_defaults_to_read_and_update_only(client, staff, grantable):
+    """The two new checkboxes are off unless somebody ticks them."""
+    client.force_login(staff)
+
+    response = _post_request(client, grantable)
+
+    assert response.status_code == 302
+    created = AccessRequest.objects.get()
+    assert created.may_insert is False
+    assert created.may_delete is False
+    event = created.events.get(action="requested")
+    assert "privileges: read+update" in event.detail
+
+
+@pytest.mark.django_db
+def test_a_request_can_ask_for_insert(client, staff, grantable):
+    client.force_login(staff)
+
+    _post_request(client, grantable, may_insert="on")
+
+    created = AccessRequest.objects.get()
+    assert created.may_insert is True
+    assert created.may_delete is False
+    assert (
+        "privileges: read+update+insert"
+        in created.events.get(action="requested").detail
+    )
+
+
+@pytest.mark.django_db
+def test_a_request_can_ask_for_delete(client, staff, grantable):
+    client.force_login(staff)
+
+    _post_request(client, grantable, may_delete="on")
+
+    created = AccessRequest.objects.get()
+    assert created.may_insert is False
+    assert created.may_delete is True
+    assert (
+        "privileges: read+update+delete"
+        in created.events.get(action="requested").detail
+    )
+
+
+@pytest.mark.django_db
+def test_a_request_can_ask_for_both_and_the_event_records_both(
+    client, staff, grantable
 ):
+    client.force_login(staff)
+
+    _post_request(client, grantable, may_insert="on", may_delete="on")
+
+    created = AccessRequest.objects.get()
+    assert created.may_insert is True
+    assert created.may_delete is True
+    assert (
+        "privileges: read+update+insert+delete"
+        in created.events.get(action="requested").detail
+    )
+
+
+@pytest.mark.django_db
+def test_the_form_explains_what_insert_and_delete_mean(staff, tables):
+    form = AccessRequestForm()
+
+    insert_help = form.fields["may_insert"].help_text
+    delete_help = form.fields["may_delete"].help_text
+
+    assert form.fields["may_insert"].required is False
+    assert form.fields["may_delete"].required is False
+    assert "Neue Zeilen" in insert_help
+    assert "nicht in der Sicherungskopie" in insert_help
+    assert "löschen" in delete_help
+    assert "nur über die Sicherungskopie wiederherstellbar" in delete_help
+
+
+@pytest.mark.django_db
+def test_the_detail_page_shows_the_privileges_and_marks_delete_irreversible(
+    client, staff, grantable, django_assert_num_queries
+):
+    access_request = AccessRequest.objects.create(
+        requester=staff,
+        person="staff",
+        purpose="x",
+        tables_csv="divisions",
+        ttl_hours=2,
+        may_insert=True,
+        may_delete=True,
+        state=AccessRequest.State.REQUESTED,
+    )
+    client.force_login(staff)
+
+    url = reverse("dbaccess-detail", args=[access_request.pk])
+    client.get(url)  # warm the permission/content-type caches
+    with django_assert_num_queries(9):
+        html = client.get(url).content.decode()
+
+    assert "Read + UPDATE" in html
+    assert "+ INSERT" in html
+    assert "+ DELETE" in html
+    assert "irreversible" in html
+    assert "backup copy" in html
+
+
+@pytest.mark.django_db
+def test_the_queue_shows_what_each_pending_request_would_get(
+    client, staff, grantable, django_assert_num_queries
+):
+    approver = UserFactory(username="approver", is_staff=True)
+    approver.user_permissions.add(Permission.objects.get(codename="approve_requests"))
+    AccessRequest.objects.create(
+        requester=staff,
+        person="staff",
+        purpose="x",
+        tables_csv="divisions",
+        ttl_hours=2,
+        may_insert=True,
+        may_delete=True,
+        state=AccessRequest.State.REQUESTED,
+    )
+    client.force_login(approver)
+
+    client.get(reverse("dbaccess-list"))  # warm the permission/content-type caches
+    with django_assert_num_queries(8):
+        html = client.get(reverse("dbaccess-list")).content.decode()
+
+    assert "Read + UPDATE" in html
+    assert "+ INSERT" in html
+    assert "+ DELETE" in html
+
+
+@pytest.mark.django_db
+def test_the_decision_card_repeats_the_privilege_set_to_the_approver(
+    client, staff, grantable
+):
+    approver = UserFactory(username="approver", is_staff=True)
+    approver.user_permissions.add(Permission.objects.get(codename="approve_requests"))
+    access_request = AccessRequest.objects.create(
+        requester=staff,
+        person="staff",
+        purpose="x",
+        tables_csv="divisions",
+        ttl_hours=2,
+        may_delete=True,
+        state=AccessRequest.State.REQUESTED,
+    )
+    client.force_login(approver)
+
+    html = client.get(
+        reverse("dbaccess-detail", args=[access_request.pk])
+    ).content.decode()
+
+    assert "You are approving" in html
+    assert "Read + UPDATE" in html
+    assert "+ DELETE" in html
+
+
+@pytest.mark.django_db
+def test_a_never_grantable_table_cannot_be_requested_even_with_delete(
+    client, staff, tables
+):
+    """The write checkboxes must not reopen `auth_user` by the back door."""
+    from dbaccess.management.commands.dbaccess_sync_tables import NEVER_GRANTABLE
+
+    assert "auth_user" in NEVER_GRANTABLE  # the fixture cannot drift from policy
+    blocked = GrantableTable.objects.get(name="auth_user")
+    client.force_login(staff)
+
+    response = _post_request(
+        client,
+        [blocked],
+        purpose="x",
+        may_insert="on",
+        may_delete="on",
+    )
+
+    assert response.status_code == 200  # the form is redisplayed, not saved
+    assert not AccessRequest.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_decision_on_an_already_decided_request_is_refused(client, staff):
     approver = UserFactory(username="approver", is_staff=True)
     approver.user_permissions.add(Permission.objects.get(codename="approve_requests"))
     access_request = AccessRequest.objects.create(

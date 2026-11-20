@@ -38,6 +38,9 @@
                             </td>
                             <td class="small text-muted text-break">
                                 {% include "dbaccess/_tables.html" with tables=item.tables limit=4 %}
+                                <div class="mt-1">
+                                    {% include "dbaccess/_privileges.html" with access_request=item %}
+                                </div>
                             </td>
                             <td>{{ item.ttl_hours }} h</td>
                             <td class="d-none d-md-table-cell">
@@ -75,6 +78,9 @@
                         <td>{% include "dbaccess/_state_badge.html" with state=item.state %}</td>
                         <td class="small text-muted text-break">
                             {% include "dbaccess/_tables.html" with tables=item.tables limit=4 %}
+                            <div class="mt-1">
+                                {% include "dbaccess/_privileges.html" with access_request=item %}
+                            </div>
                         </td>
                         <td class="small">{{ item.expires_at|date:"d.m. H:i" }}</td>
                         <td class="small d-none d-md-table-cell">{{ item.created_at|date:"d.m. H:i" }}</td>

@@ -12,8 +12,24 @@ class AccessRequestForm(forms.ModelForm):
         queryset=GrantableTable.objects.filter(grantable=True),
         widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 12}),
         help_text=(
-            "Only tables on the curated list can be requested. The account can read the "
-            "whole schema but update nothing outside the tables picked here."
+            "Only tables on the curated list can be requested. The account can read every "
+            "table on the allow-list, but write only the tables picked here."
+        ),
+    )
+    may_insert = forms.BooleanField(
+        required=False,
+        label="INSERT",
+        help_text=(
+            "Neue Zeilen in den gewählten Tabellen anlegen. Neu eingefügte Zeilen "
+            "stehen nicht in der Sicherungskopie."
+        ),
+    )
+    may_delete = forms.BooleanField(
+        required=False,
+        label="DELETE",
+        help_text=(
+            "Zeilen in den gewählten Tabellen löschen; nur über die Sicherungskopie "
+            "wiederherstellbar – dieser Schritt ist irreversibel."
         ),
     )
     ttl_hours = forms.IntegerField(
@@ -34,7 +50,7 @@ class AccessRequestForm(forms.ModelForm):
         model = AccessRequest
         # `person` is not a choice: it is the requester's login, so the account
         # can always be traced back to one named human. RequestCreateView sets it.
-        fields = ["purpose", "ticket_url", "ttl_hours"]
+        fields = ["purpose", "ticket_url", "ttl_hours", "may_insert", "may_delete"]
         labels = {
             "purpose": "What needs fixing",
             "ticket_url": "Ticket",
@@ -68,7 +84,9 @@ class AccessRequestForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        instance.tables_csv = ",".join(sorted(t.name for t in self.cleaned_data["tables"]))
+        instance.tables_csv = ",".join(
+            sorted(t.name for t in self.cleaned_data["tables"])
+        )
         if commit:
             instance.save()
         return instance
