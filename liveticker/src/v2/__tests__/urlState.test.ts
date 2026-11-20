@@ -88,6 +88,26 @@ describe("url state", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it("keeps the canonical and og:url tags on the path", () => {
+    const canonical = document.createElement("link");
+    canonical.rel = "canonical";
+    document.head.appendChild(canonical);
+    const og = document.createElement("meta");
+    og.setAttribute("property", "og:url");
+    document.head.appendChild(og);
+
+    selectGame(888, 9314);
+
+    expect(canonical.getAttribute("href")).toBe(
+      `${window.location.origin}/liveticker/v2/gameday/888/game/9314/`,
+    );
+    expect(og.getAttribute("content")).toBe(
+      `${window.location.origin}/liveticker/v2/gameday/888/game/9314/`,
+    );
+    canonical.remove();
+    og.remove();
+  });
+
   it("does not write the same path twice", () => {
     window.history.replaceState({}, "", "/liveticker/v2/gameday/888/");
     const push = vi.spyOn(window.history, "pushState");

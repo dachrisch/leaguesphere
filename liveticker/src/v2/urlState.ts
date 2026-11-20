@@ -77,6 +77,18 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
+/** Keep the server-rendered canonical/OG tags in step with client navigation. */
+function updateCanonical(path: string): void {
+  if (typeof document === "undefined") return;
+  const absolute = `${window.location.origin}${path}`;
+  document
+    .querySelector('link[rel="canonical"]')
+    ?.setAttribute("href", absolute);
+  document
+    .querySelector('meta[property="og:url"]')
+    ?.setAttribute("content", absolute);
+}
+
 function navigate(path: string, mode: "push" | "replace"): void {
   if (window.location.pathname === path && window.location.search === "") {
     return;
@@ -86,6 +98,7 @@ function navigate(path: string, mode: "push" | "replace"): void {
   } else {
     window.history.pushState({}, "", path);
   }
+  updateCanonical(path);
   notify();
 }
 
