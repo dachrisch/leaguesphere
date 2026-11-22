@@ -394,7 +394,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 4px 3px;
   padding: 10px 16px 0;
   font-size: 11px;
   font-weight: 700;
@@ -408,10 +408,16 @@
   color: var(--lt-head);
 }
 
+/* The stage is context, not status: phones get the shorter line. */
+.lt-board-meta .lt-meta-stage {
+  display: none;
+}
+
 .lt-live-dot {
   width: 6px;
   height: 6px;
   flex: none;
+  margin-right: 3px;
   border-radius: 50%;
   background: var(--lt-live);
   box-shadow: 0 0 0 0 rgba(180, 35, 24, 0.5);
@@ -511,8 +517,10 @@
   font-weight: 500;
 }
 
-.lt-halves-line {
-  margin: -2px 16px 12px;
+/* The `p` reset in the app scope zeroes the margin of every paragraph, so this
+   inset needs to out-specify it to line up with the meta and the board. */
+#liveticker-v2-app .lt-halves-line {
+  margin: 0 16px 12px;
   font-size: 11px;
   font-weight: 600;
   color: var(--lt-muted);
@@ -524,7 +532,7 @@
   width: 210px;
   margin: 8px auto 14px;
   border-collapse: collapse;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--lt-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -532,7 +540,7 @@
 .lt-halves th {
   padding: 0 0 2px;
   border-bottom: 1px solid var(--lt-line);
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -547,6 +555,7 @@
 
 .lt-halves td {
   padding: 2px 0;
+  font-size: 11px;
   text-align: right;
 }
 
@@ -558,6 +567,29 @@
 .lt-halves td:not(:first-child) {
   color: var(--lt-ink);
   font-weight: 600;
+}
+
+/* Phones: the team name identifies a side, the crest only costs height. */
+@media (max-width: 420px) {
+  .lt-crest {
+    display: none;
+  }
+
+  .lt-team > div {
+    min-width: 0;
+  }
+
+  .lt-team-name {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lt-score {
+    font-size: 40px;
+    min-width: 74px;
+  }
 }
 
 /* ---- events ------------------------------------------------------------ */
@@ -975,6 +1007,10 @@
 
   .lt-halves {
     display: table;
+  }
+
+  .lt-board-meta .lt-meta-stage {
+    display: inline;
   }
 
   .lt-team-name {
