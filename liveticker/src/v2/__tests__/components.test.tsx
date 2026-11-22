@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { ConnectionStatus } from "../components/ConnectionStatus";
 import { ContextHeader } from "../components/ContextHeader";
 import { EventList } from "../components/EventList";
 import { Scoreboard } from "../components/Scoreboard";
+import { TopBar } from "../components/TopBar";
 import { game } from "./fixture";
 
 describe("ContextHeader", () => {
@@ -220,5 +222,46 @@ describe("EventList", () => {
     );
     expect(screen.getByText("Anpfiff")).toBeInTheDocument();
     expect(screen.queryByText("Walldorf Wanderers")).not.toBeInTheDocument();
+  });
+});
+
+describe("TopBar", () => {
+  it("keeps the league above the title so phones never lose it", () => {
+    const { container } = render(
+      <TopBar
+        league="Testliga"
+        gamedayName="Testtag"
+        liveCount={2}
+        shareGame={null}
+      />,
+    );
+
+    const league = container.querySelector(".lt-topbar-league");
+    expect(league).not.toBeNull();
+    expect(league).toHaveTextContent("Testliga");
+    expect(container.querySelector(".lt-topbar-title")).toHaveTextContent("Testtag");
+    expect(container.querySelector(".lt-live-count")).toHaveTextContent("2 LIVE");
+  });
+});
+
+describe("ConnectionStatus", () => {
+  it("stays silent while live so the header badge is the only live mark", () => {
+    const { container } = render(<ConnectionStatus status="live" />);
+    expect(container.querySelector(".lt-connection")).toBeNull();
+    expect(container.textContent).toBe("");
+  });
+
+  it("announces a polling fallback", () => {
+    render(<ConnectionStatus status="polling" />);
+    const line = screen.getByRole("status");
+    expect(line).toHaveTextContent("Aktualisierung alle 60 s");
+    expect(line).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("announces a reconnecting stream", () => {
+    render(<ConnectionStatus status="reconnecting" />);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Verbindung wird wiederhergestellt",
+    );
   });
 });

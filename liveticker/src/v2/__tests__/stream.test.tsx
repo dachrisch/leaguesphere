@@ -140,7 +140,8 @@ describe("live stream", () => {
     });
 
     expect(screen.getAllByText("Walldorf Wanderers").length).toBeGreaterThan(0);
-    expect(connectionText()).toContain("Live");
+    expect(connectionText()).toBe("");
+    expect(document.querySelector(".lt-connection")).toBeNull();
   });
 
   it("reconnects with getAllTicksFor when the full history is opened", async () => {
@@ -225,7 +226,7 @@ describe("live stream", () => {
       second.snapshot([secondTick]);
     });
     expect(screen.getByText("#9 - 3 Yards")).toBeInTheDocument();
-    expect(connectionText()).toContain("Live");
+    expect(document.querySelector(".lt-connection")).toBeNull();
   });
 
   it("falls back when the connection never opens", async () => {
@@ -252,7 +253,7 @@ describe("live stream", () => {
     act(() => source.brokenSnapshot());
 
     expect(source.closed).toBe(false);
-    expect(connectionText()).toContain("Live");
+    expect(document.querySelector(".lt-connection")).toBeNull();
     expect(screen.getAllByText("Walldorf Wanderers").length).toBeGreaterThan(0);
   });
 

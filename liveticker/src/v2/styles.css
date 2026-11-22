@@ -716,14 +716,6 @@
   background: currentColor;
 }
 
-.lt-connection-live {
-  color: var(--lt-live);
-}
-
-.lt-connection-live .lt-connection-dot {
-  animation: lt-pulse 1.8s ease-out infinite;
-}
-
 .lt-connection-reconnecting {
   color: var(--lt-amber);
 }
@@ -939,12 +931,30 @@
 
 /* ---- desktop / tablet -------------------------------------------------- */
 
-@media (max-width: 479px) {
-  .lt-topbar-league,
+@media (max-width: 640px) {
+  /* The league stays readable on phones as a muted line above the title. */
+  .lt-topbar-id {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .lt-topbar-league {
+    max-width: 100%;
+    font-size: 11px;
+  }
+
   .lt-topbar-sep {
     display: none;
   }
 
+  .lt-topbar-title {
+    align-self: stretch;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 479px) {
   .lt-topbar-title {
     font-size: 20px;
   }
