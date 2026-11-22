@@ -171,7 +171,7 @@
   border-radius: var(--lt-radius-xs);
   background: var(--lt-head);
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
@@ -227,7 +227,7 @@
 .lt-share-status {
   min-height: 16px;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--lt-muted);
   text-align: center;
 }
@@ -353,9 +353,9 @@
   border-radius: var(--lt-radius-xs);
   background: var(--lt-surface);
   color: var(--lt-muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
 }
 
 .lt-live-team {
@@ -620,7 +620,7 @@
   background: var(--lt-home-wash);
   color: var(--lt-home);
   font-family: var(--lt-display);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
 }
@@ -701,7 +701,7 @@
   align-items: center;
   gap: 6px;
   margin: 0 2px 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.04em;
@@ -802,9 +802,9 @@
   border-radius: 999px;
   background: var(--lt-amber-wash);
   color: var(--lt-amber);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -854,9 +854,9 @@
 
 .lt-result-status {
   grid-area: status;
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--lt-muted);
 }
