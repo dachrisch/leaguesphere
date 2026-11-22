@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.25.4](https://github.com/dachrisch/leaguesphere/compare/v5.25.3...v5.25.4) (2026-11-22)
+
+
+### Bug Fixes
+
+* **liveticker:** align the 640px breakpoint and scope the possession margin ([ae461e7](https://github.com/dachrisch/leaguesphere/commit/ae461e7cc0b77c38af069e6d31c6c065ed17511d))
+* **liveticker:** align the 640px breakpoint and scope the possession margin ([578e226](https://github.com/dachrisch/leaguesphere/commit/578e22650b0c1fd3b513f2f5fdad0e9241102c4e))
+* **liveticker:** stop pushing a snapshot torn by a write mid-build ([c0f50d4](https://github.com/dachrisch/leaguesphere/commit/c0f50d4d82bccf8422d3a70dfc1147c1ff928ce6))
+* **liveticker:** stop pushing a snapshot torn by a write mid-build ([00c71b6](https://github.com/dachrisch/leaguesphere/commit/00c71b6c7f4024c4a6336223196a9e76ab9bb064))
+
 ## [5.25.3](https://github.com/dachrisch/leaguesphere/compare/v5.25.2...v5.25.3) (2026-11-22)
 
 
