@@ -41,6 +41,41 @@ async def next_snapshot(response, timeout=2.0):
             return frame
 
 
+async def next_snapshot_where(response, predicate, timeout=2.0):
+    """The next snapshot whose parsed body satisfies ``predicate``.
+
+    A frame can be queued before the write that a test performs (the stream
+    answers with the state it had when the frame was built, not with the state
+    the client just wrote), so "the next frame" is not a reliable assertion
+    target. Waiting for the frame that carries the change is; the deadline
+    keeps a stream that never delivers it a failure instead of a hang.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    seen = []
+
+    def failure():
+        return AssertionError(
+            f"no snapshot carried the change within {timeout}s "
+            f"(later snapshots had tick_count {seen})"
+        )
+
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise failure()
+        try:
+            frame = await next_snapshot(response, remaining)
+        except TimeoutError:
+            # The last slice before the deadline can be shorter than the
+            # heartbeat interval, so an idle stream ends here, not above.
+            raise failure() from None
+        event_id, event, data = parse_snapshot(frame)
+        if predicate(data):
+            return event_id, event, data
+        seen.append(data[0]["tick_count"])
+
+
 def parse_snapshot(frame):
     event_id = None
     event = None
@@ -94,7 +129,9 @@ class LivetickerStreamViewTests(TransactionTestCase):
             author=self.fixture["author"],
         )
 
-        second_id, event, second = parse_snapshot(await next_snapshot(response))
+        second_id, event, second = await next_snapshot_where(
+            response, lambda data: data[0]["tick_count"] > first[0]["tick_count"]
+        )
         assert event == "snapshot"
         assert second_id != first_id
         assert second[0]["tick_count"] > first[0]["tick_count"]
