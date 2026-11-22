@@ -48,19 +48,28 @@ export function Scoreboard({ game }: ScoreboardProps) {
   const kickoff = game.scheduled_at
     ? formatBerlinClock(game.scheduled_at)
     : formatClock(game.time);
-  const status = finished ? "Endstand" : `LIVE · ${statusLabel(game.status)}`;
-  const meta = [
-    status,
-    game.field ? `Feld ${game.field}` : null,
-    game.stage,
-    `Anstoß ${kickoff}`,
-  ].filter((part): part is string => Boolean(part));
+  const status = finished ? "Endstand" : "LIVE";
+  const half = finished ? null : statusLabel(game.status);
+  const field = game.field ? `Feld ${game.field}` : null;
 
   return (
     <section className="lt-board-card" aria-label="Spielstand">
       <p className={finished ? "lt-board-meta lt-final" : "lt-board-meta"}>
         {!finished && <span className="lt-live-dot" aria-hidden="true" />}
-        {meta.join(" · ")}
+        <span className="lt-meta-status">
+          {status}
+          {half ? ` · ${half}` : null}
+        </span>
+        <span className="lt-meta-sep" aria-hidden="true">
+          ·
+        </span>
+        <span className="lt-meta-context">
+          {field ? `${field} · ` : null}
+          {game.stage ? (
+            <span className="lt-meta-stage">{`${game.stage} · `}</span>
+          ) : null}
+          {`Anstoß ${kickoff}`}
+        </span>
       </p>
       <div className="lt-board">
         <TeamSide
