@@ -136,6 +136,74 @@ class BroadcasterTests(SimpleTestCase):
         assert state["builds"] == builds
         await broadcaster.aclose()
 
+    async def test_a_payload_torn_by_a_write_mid_build_is_not_pushed(self):
+        """A build is several queries, so the version after it decides.
+
+        The live shape of the tear: ``tick_count`` comes from an annotation
+        read before the write, the tick rows from a query read after it, so the
+        body says one tick and lists two. It differs from the previous body, so
+        a broadcaster that trusts the body alone would push it as the change;
+        the version recomputed after the build catches it and the next poll
+        delivers the consistent body instead.
+        """
+        broadcaster, state = make_broadcaster()
+        query = StreamQuery.from_params(gameday="1")
+        subscription = await broadcaster.subscribe(query)
+        subscription.queue.get_nowait()
+
+        torn = '[{"tick_count": 1, "ticks": [1, 2]}]'
+        whole = '[{"tick_count": 2, "ticks": [1, 2]}]'
+        builds = []
+
+        def building(query):
+            builds.append(query.key)
+            if len(builds) == 1:
+                # The write commits between the build's queries: the body is
+                # torn and the world version moves past the sampled one.
+                state["version"] = "3"
+                return torn
+            return whole
+
+        state["version"] = "2"
+        broadcaster._payload_builder = building
+
+        await broadcaster.tick()
+
+        assert subscription.queue.empty()  # torn body dropped, not pushed
+        assert broadcaster._last_world_version is None  # so the poll retries
+
+        await broadcaster.tick()
+
+        assert subscription.queue.get_nowait().data == whole
+        assert broadcaster._last_world_version == "3"
+        await broadcaster.aclose()
+
+    async def test_a_change_whose_first_build_fails_is_not_swallowed(self):
+        """The version is recorded only after its payload was accepted.
+
+        Recording it up front made a failed build lose the change for good:
+        the next poll saw the same version and returned before rebuilding.
+        """
+        broadcaster, state = make_broadcaster()
+        query = StreamQuery.from_params(gameday="1")
+        subscription = await broadcaster.subscribe(query)
+        subscription.queue.get_nowait()
+
+        def failing(query):
+            raise OperationalError(2006, "MySQL server has gone away")
+
+        state["version"] = "2"
+        broadcaster._payload_builder = failing
+        with self.assertRaises(OperationalError):
+            await broadcaster.tick()
+
+        state["payload"] = '[{"gameId": 1}]'
+        broadcaster._payload_builder = lambda query: '[{"gameId": 1}]'
+        await broadcaster.tick()
+
+        assert subscription.queue.get_nowait().data == '[{"gameId": 1}]'
+        await broadcaster.aclose()
+
     async def test_distinct_queries_are_tracked_separately(self):
         broadcaster, state = make_broadcaster()
         one = StreamQuery.from_params(gameday="1")

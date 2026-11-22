@@ -374,20 +374,33 @@ class Broadcaster:
         queries = list(self._queries.values())
         if not queries:
             return
-        version = await self._in_thread(self._world_version, [q.query for q in queries])
+        watched = [q.query for q in queries]
+        version = await self._in_thread(self._world_version, watched)
         if version == self._last_world_version:
             return
-        self._last_world_version = version
         for active in queries:
             async with active.lock:
                 payload = await self._in_thread(self._payload_builder, active.query)
                 event_id = payload_version(payload)
                 if event_id == active.version:
                     continue
+                # The build is a handful of queries, not one consistent read: a
+                # write that commits while it runs can tear the body in half (a
+                # ``tick_count`` annotation read before the write next to the
+                # tick rows read after it), and a torn body differs from the
+                # last one, so it would be pushed as the change. Only publish a
+                # body the version still describes; otherwise record nothing and
+                # let the next poll rebuild -- the tick that arrives a poll late
+                # is correct, the one published torn is not.
+                if await self._in_thread(self._world_version, watched) != version:
+                    return
                 active.version = event_id
                 active.payload = payload
             for subscription in list(active.subscribers):
                 subscription.offer(Snapshot(event_id, payload))
+        # Recorded only once every payload of this version was accepted, so a
+        # failed or torn tick is retried instead of swallowing the change.
+        self._last_world_version = version
 
     async def _ensure_payload(self, active):
         async with active.lock:
