@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.25.3](https://github.com/dachrisch/leaguesphere/compare/v5.25.2...v5.25.3) (2026-11-22)
+
+
+### Bug Fixes
+
+* **liveticker:** design fixes from the app review ([df2a21b](https://github.com/dachrisch/leaguesphere/commit/df2a21bba022c3246527010fb6713fa6198cd755))
+* **liveticker:** keep the league in the header and drop the duplicate live line ([4cb2549](https://github.com/dachrisch/leaguesphere/commit/4cb2549bc467f2d3ebd9dda39c18d8f491f3dd46))
+* **liveticker:** raise the remaining sub-11px labels ([8bf9c6d](https://github.com/dachrisch/leaguesphere/commit/8bf9c6d0be1bec2d9f10ba06cf765adf0addf234))
+* **liveticker:** tighten the v2 scoreboard for phones and split its meta line ([009e9d6](https://github.com/dachrisch/leaguesphere/commit/009e9d6b8b8d5561cc036cee1a807243718d3c8f))
+* **liveticker:** tighten v2 typography, radii and chip scroll hint ([ed6542a](https://github.com/dachrisch/leaguesphere/commit/ed6542aaac5fcc40ac7f800cf7b00d609ef9eab6))
+
 ## [5.25.2](https://github.com/dachrisch/leaguesphere/compare/v5.25.1...v5.25.2) (2026-11-22)
 
 
