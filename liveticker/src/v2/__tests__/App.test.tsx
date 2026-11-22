@@ -399,6 +399,15 @@ describe("Liveticker v2 App", () => {
     ).not.toBeNull();
   });
 
+  it("keeps the league in the header for narrow screens", () => {
+    renderApp([liveGame, upcomingGame, finishedGame]);
+
+    const league = document.querySelector(".lt-topbar-league");
+    expect(league).not.toBeNull();
+    expect(league).toHaveTextContent("Testliga");
+    expect(document.querySelectorAll(".lt-live-count")).toHaveLength(1);
+  });
+
   it("renders short team names in the live chips", () => {
     renderApp([liveGame]);
 

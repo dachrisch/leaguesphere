@@ -22,6 +22,8 @@
   --lt-display: "Barlow Condensed", system-ui, sans-serif;
   --lt-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --lt-radius: 18px;
+  --lt-radius-sm: 12px;
+  --lt-radius-xs: 6px;
   --lt-shadow: 0 1px 2px rgba(16, 24, 32, 0.05),
     0 12px 30px rgba(16, 24, 32, 0.06);
 
@@ -67,7 +69,7 @@
 #liveticker-v2-app :focus-visible {
   outline: 2px solid var(--lt-focus);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: var(--lt-radius-xs);
 }
 
 .lt-sr {
@@ -145,7 +147,7 @@
   border-radius: 999px;
   background: var(--lt-live-wash);
   color: var(--lt-live);
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -166,10 +168,10 @@
   right: 0;
   z-index: 20;
   padding: 5px 9px;
-  border-radius: 8px;
+  border-radius: var(--lt-radius-xs);
   background: var(--lt-head);
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
@@ -196,7 +198,7 @@
   min-height: 44px;
   min-width: 44px;
   border: 1px solid var(--lt-line);
-  border-radius: 12px;
+  border-radius: var(--lt-radius-sm);
   padding: 8px 12px;
   background: var(--lt-surface);
   color: var(--lt-head);
@@ -225,7 +227,7 @@
 .lt-share-status {
   min-height: 16px;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--lt-muted);
   text-align: center;
 }
@@ -290,7 +292,7 @@
 }
 
 .lt-kicker {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -307,6 +309,7 @@
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  mask-image: linear-gradient(90deg, #000 92%, transparent);
 }
 
 .lt-live-strip::-webkit-scrollbar {
@@ -321,7 +324,7 @@
   min-height: 46px;
   padding: 0 12px;
   border: 1px solid var(--lt-line);
-  border-radius: 14px;
+  border-radius: var(--lt-radius-sm);
   background: var(--lt-surface);
   box-shadow: 0 1px 2px rgba(16, 24, 32, 0.04);
   scroll-snap-align: start;
@@ -347,12 +350,12 @@
 
 .lt-live-field {
   padding: 2px 5px;
-  border-radius: 6px;
+  border-radius: var(--lt-radius-xs);
   background: var(--lt-surface);
   color: var(--lt-muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
 }
 
 .lt-live-team {
@@ -391,11 +394,11 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 4px 3px;
   padding: 10px 16px 0;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--lt-muted);
   overflow-wrap: anywhere;
@@ -405,10 +408,16 @@
   color: var(--lt-head);
 }
 
+/* The stage is context, not status: phones get the shorter line. */
+.lt-board-meta .lt-meta-stage {
+  display: none;
+}
+
 .lt-live-dot {
   width: 6px;
   height: 6px;
   flex: none;
+  margin-right: 3px;
   border-radius: 50%;
   background: var(--lt-live);
   box-shadow: 0 0 0 0 rgba(180, 35, 24, 0.5);
@@ -482,7 +491,7 @@
 
 .lt-possession {
   margin-top: 3px;
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -508,9 +517,11 @@
   font-weight: 500;
 }
 
-.lt-halves-line {
-  margin: -2px 16px 12px;
-  font-size: 10.5px;
+/* The `p` reset in the app scope zeroes the margin of every paragraph, so this
+   inset needs to out-specify it to line up with the meta and the board. */
+#liveticker-v2-app .lt-halves-line {
+  margin: 0 16px 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--lt-muted);
   font-variant-numeric: tabular-nums;
@@ -521,7 +532,7 @@
   width: 210px;
   margin: 8px auto 14px;
   border-collapse: collapse;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--lt-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -529,7 +540,7 @@
 .lt-halves th {
   padding: 0 0 2px;
   border-bottom: 1px solid var(--lt-line);
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -544,6 +555,7 @@
 
 .lt-halves td {
   padding: 2px 0;
+  font-size: 11px;
   text-align: right;
 }
 
@@ -555,6 +567,29 @@
 .lt-halves td:not(:first-child) {
   color: var(--lt-ink);
   font-weight: 600;
+}
+
+/* Phones: the team name identifies a side, the crest only costs height. */
+@media (max-width: 420px) {
+  .lt-crest {
+    display: none;
+  }
+
+  .lt-team > div {
+    min-width: 0;
+  }
+
+  .lt-team-name {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lt-score {
+    font-size: 40px;
+    min-width: 74px;
+  }
 }
 
 /* ---- events ------------------------------------------------------------ */
@@ -613,11 +648,11 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--lt-radius-xs);
   background: var(--lt-home-wash);
   color: var(--lt-home);
   font-family: var(--lt-display);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
 }
@@ -630,20 +665,20 @@
 
 .lt-event-detail {
   margin-top: 1px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--lt-muted);
   overflow-wrap: anywhere;
 }
 
 .lt-event-team {
   margin-top: 1px;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--lt-muted);
 }
 
 .lt-event-time {
   padding-top: 2px;
-  font-size: 10.5px;
+  font-size: 11px;
   color: #7d8993;
   font-variant-numeric: tabular-nums;
 }
@@ -698,7 +733,7 @@
   align-items: center;
   gap: 6px;
   margin: 0 2px 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.04em;
@@ -713,14 +748,6 @@
   background: currentColor;
 }
 
-.lt-connection-live {
-  color: var(--lt-live);
-}
-
-.lt-connection-live .lt-connection-dot {
-  animation: lt-pulse 1.8s ease-out infinite;
-}
-
 .lt-connection-reconnecting {
   color: var(--lt-amber);
 }
@@ -732,7 +759,7 @@
 .lt-notice {
   margin-bottom: 12px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--lt-radius-sm);
   background: var(--lt-amber-wash);
   color: var(--lt-amber);
 }
@@ -760,7 +787,7 @@
   overflow: hidden;
   background: var(--lt-surface);
   border: 1px solid var(--lt-line);
-  border-radius: 14px;
+  border-radius: var(--lt-radius-sm);
   box-shadow: var(--lt-shadow);
 }
 
@@ -799,9 +826,9 @@
   border-radius: 999px;
   background: var(--lt-amber-wash);
   color: var(--lt-amber);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -826,7 +853,7 @@
   width: 100%;
   padding: 10px 14px 11px;
   border: 1px solid var(--lt-line);
-  border-radius: 14px;
+  border-radius: var(--lt-radius-sm);
   background: var(--lt-surface);
   box-shadow: var(--lt-shadow);
   text-align: left;
@@ -851,9 +878,9 @@
 
 .lt-result-status {
   grid-area: status;
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--lt-muted);
 }
@@ -891,7 +918,7 @@
 
 .lt-result-halves {
   grid-area: halves;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--lt-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -936,12 +963,30 @@
 
 /* ---- desktop / tablet -------------------------------------------------- */
 
-@media (max-width: 479px) {
-  .lt-topbar-league,
+@media (max-width: 640px) {
+  /* The league stays readable on phones as a muted line above the title. */
+  .lt-topbar-id {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .lt-topbar-league {
+    max-width: 100%;
+    font-size: 11px;
+  }
+
   .lt-topbar-sep {
     display: none;
   }
 
+  .lt-topbar-title {
+    align-self: stretch;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 479px) {
   .lt-topbar-title {
     font-size: 20px;
   }
@@ -962,6 +1007,10 @@
 
   .lt-halves {
     display: table;
+  }
+
+  .lt-board-meta .lt-meta-stage {
+    display: inline;
   }
 
   .lt-team-name {
@@ -1004,6 +1053,7 @@
     margin: 0 0 10px;
     padding: 0;
     overflow: visible;
+    mask-image: none;
   }
 }
 

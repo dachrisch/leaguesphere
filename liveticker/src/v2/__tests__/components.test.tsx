@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { ConnectionStatus } from "../components/ConnectionStatus";
 import { ContextHeader } from "../components/ContextHeader";
 import { EventList } from "../components/EventList";
 import { Scoreboard } from "../components/Scoreboard";
+import { TopBar } from "../components/TopBar";
 import { game } from "./fixture";
 
 describe("ContextHeader", () => {
@@ -53,11 +55,67 @@ describe("Scoreboard", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
 
-  it("puts field, stage and kickoff into the top line", () => {
-    render(<Scoreboard game={game} />);
+  it("splits the top line into a status and a context group", () => {
+    const { container } = render(<Scoreboard game={game} />);
+    const meta = container.querySelector(".lt-board-meta");
 
-    expect(screen.getByText(/LIVE · 1\. HZ · Feld 1/)).toBeInTheDocument();
-    expect(screen.getByText(/Anstoß 11:30/)).toBeInTheDocument();
+    expect(meta).not.toBeNull();
+    expect(meta?.querySelector(".lt-meta-status")).toHaveTextContent(
+      "LIVE · 1. HZ",
+    );
+    expect(meta?.querySelector(".lt-meta-context")).toHaveTextContent(
+      "Feld 1 · Vorrunde · Anstoß 11:30",
+    );
+  });
+
+  it("marks the stage so phones can drop it", () => {
+    const { container } = render(<Scoreboard game={game} />);
+    const stage = container.querySelector(".lt-meta-stage");
+
+    expect(stage).toHaveClass("lt-meta-stage");
+    expect(stage).toHaveTextContent("Vorrunde");
+    expect(stage?.parentElement).toHaveClass("lt-meta-context");
+  });
+
+  it("leaves out the stage span when the game has no stage", () => {
+    const { container } = render(<Scoreboard game={{ ...game, stage: "" }} />);
+
+    expect(container.querySelector(".lt-meta-stage")).toBeNull();
+    expect(container.querySelector(".lt-meta-context")).toHaveTextContent(
+      "Feld 1 · Anstoß 11:30",
+    );
+  });
+
+  it("falls back to the legacy kickoff when scheduled_at is missing", () => {
+    const { container } = render(
+      <Scoreboard game={{ ...game, scheduled_at: "", time: "10:00" }} />,
+    );
+
+    expect(container.querySelector(".lt-meta-context")).toHaveTextContent(
+      "Anstoß 10:00",
+    );
+  });
+
+  it("omits the field when the game has none", () => {
+    const { container } = render(<Scoreboard game={{ ...game, field: 0 }} />);
+
+    expect(container.querySelector(".lt-meta-context")).toHaveTextContent(
+      "Vorrunde · Anstoß 11:30",
+    );
+    expect(container.querySelector(".lt-meta-context")).not.toHaveTextContent(
+      "Feld",
+    );
+  });
+
+  it("shows Endstand without a live dot or a half", () => {
+    const { container } = render(
+      <Scoreboard game={{ ...game, status: "beendet" }} />,
+    );
+    const meta = container.querySelector(".lt-board-meta");
+
+    expect(meta).toHaveClass("lt-final");
+    expect(meta?.querySelector(".lt-meta-status")).toHaveTextContent("Endstand");
+    expect(container.querySelector(".lt-live-dot")).toBeNull();
   });
 
   it("shows both halves as one labelled line", () => {
@@ -220,5 +278,46 @@ describe("EventList", () => {
     );
     expect(screen.getByText("Anpfiff")).toBeInTheDocument();
     expect(screen.queryByText("Walldorf Wanderers")).not.toBeInTheDocument();
+  });
+});
+
+describe("TopBar", () => {
+  it("keeps the league above the title so phones never lose it", () => {
+    const { container } = render(
+      <TopBar
+        league="Testliga"
+        gamedayName="Testtag"
+        liveCount={2}
+        shareGame={null}
+      />,
+    );
+
+    const league = container.querySelector(".lt-topbar-league");
+    expect(league).not.toBeNull();
+    expect(league).toHaveTextContent("Testliga");
+    expect(container.querySelector(".lt-topbar-title")).toHaveTextContent("Testtag");
+    expect(container.querySelector(".lt-live-count")).toHaveTextContent("2 LIVE");
+  });
+});
+
+describe("ConnectionStatus", () => {
+  it("stays silent while live so the header badge is the only live mark", () => {
+    const { container } = render(<ConnectionStatus status="live" />);
+    expect(container.querySelector(".lt-connection")).toBeNull();
+    expect(container.textContent).toBe("");
+  });
+
+  it("announces a polling fallback", () => {
+    render(<ConnectionStatus status="polling" />);
+    const line = screen.getByRole("status");
+    expect(line).toHaveTextContent("Aktualisierung alle 60 s");
+    expect(line).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("announces a reconnecting stream", () => {
+    render(<ConnectionStatus status="reconnecting" />);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Verbindung wird wiederhergestellt",
+    );
   });
 });
