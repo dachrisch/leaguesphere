@@ -17,12 +17,25 @@ describe("v2 topbar styles", () => {
   });
 
   it("stacks league and title in the phone breakpoint", () => {
-    const start = styles.indexOf("@media (max-width: 640px)");
+    const start = styles.indexOf("@media (max-width: 639px)");
     expect(start).toBeGreaterThan(-1);
     const block = styles.slice(start, styles.indexOf("\n}\n", start));
 
     expect(block).toMatch(/\.lt-topbar-id\s*\{[^}]*flex-direction:\s*column/);
     expect(block).toMatch(/\.lt-topbar-league\s*\{[^}]*font-size:\s*11px/);
+  });
+
+  it("keeps one breakpoint convention: phones below 640, desktop from 640", () => {
+    expect(styles).not.toMatch(/@media[^{]*\(max-width:\s*640px\)/);
+    expect(styles).toMatch(/@media \(max-width: 639px\)/);
+    expect(styles).toMatch(/@media \(min-width: 640px\)/);
+  });
+
+  it("out-specifies the paragraph reset for the possession gap", () => {
+    expect(styles).toMatch(
+      /#liveticker-v2-app \.lt-possession\s*\{[^}]*margin-top:\s*3px/,
+    );
+    expect(styles).not.toMatch(/^\.lt-possession\s*\{/m);
   });
 
   it("keeps the title one ellipsised line", () => {

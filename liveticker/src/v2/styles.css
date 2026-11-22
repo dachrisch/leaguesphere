@@ -489,7 +489,10 @@
   overflow-wrap: anywhere;
 }
 
-.lt-possession {
+/* The `p` reset in the app scope zeroes the margin of every paragraph, so the
+   gap under the team name has to out-specify it — same reason as
+   `#liveticker-v2-app .lt-halves-line` below. */
+#liveticker-v2-app .lt-possession {
   margin-top: 3px;
   font-size: 10.5px;
   font-weight: 600;
@@ -963,7 +966,11 @@
 
 /* ---- desktop / tablet -------------------------------------------------- */
 
-@media (max-width: 640px) {
+/* Breakpoint convention: a phone is `max-width: 639px`, desktop/tablet starts
+   at `min-width: 640px`. Never write `max-width: 640px` — at exactly 640 px it
+   would fire together with the desktop block below. Narrower phone-only
+   refinements (479 px, 420 px) live inside the phone tier for the same reason. */
+@media (max-width: 639px) {
   /* The league stays readable on phones as a muted line above the title. */
   .lt-topbar-id {
     flex-direction: column;
@@ -986,6 +993,7 @@
   }
 }
 
+/* Narrow phone: one step smaller still, strictly inside the phone tier. */
 @media (max-width: 479px) {
   .lt-topbar-title {
     font-size: 20px;
