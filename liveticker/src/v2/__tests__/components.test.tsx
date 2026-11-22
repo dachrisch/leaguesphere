@@ -86,6 +86,27 @@ describe("Scoreboard", () => {
     );
   });
 
+  it("falls back to the legacy kickoff when scheduled_at is missing", () => {
+    const { container } = render(
+      <Scoreboard game={{ ...game, scheduled_at: "", time: "10:00" }} />,
+    );
+
+    expect(container.querySelector(".lt-meta-context")).toHaveTextContent(
+      "Anstoß 10:00",
+    );
+  });
+
+  it("omits the field when the game has none", () => {
+    const { container } = render(<Scoreboard game={{ ...game, field: 0 }} />);
+
+    expect(container.querySelector(".lt-meta-context")).toHaveTextContent(
+      "Vorrunde · Anstoß 11:30",
+    );
+    expect(container.querySelector(".lt-meta-context")).not.toHaveTextContent(
+      "Feld",
+    );
+  });
+
   it("shows Endstand without a live dot or a half", () => {
     const { container } = render(
       <Scoreboard game={{ ...game, status: "beendet" }} />,
