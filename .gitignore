@@ -152,6 +152,8 @@ scorecard/static/scorecard/js/*.js
 scorecard/static/scorecard/js/*.css
 scorecard_v2/static/scorecard_v2/js/
 liveticker/static/liveticker/js/*.js
+# Hand-written, not a Vite artifact: the header's status poller.
+!liveticker/static/liveticker/js/live_nav.js
 liveticker/static/liveticker/js/*.css
 liveticker/static/liveticker/v2/js/*.js
 liveticker/static/liveticker/v2/js/*.css

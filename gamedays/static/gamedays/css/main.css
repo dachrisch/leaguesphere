@@ -51,6 +51,106 @@ ul {
   font-weight: 500;
 }
 
+/* One ticker entry in the site header (LIVE / heute / Liveticker).
+   Two instances render (phone bar, desktop right block) and exactly one is
+   visible at a time, so the accessibility tree still sees one link. */
+.ls-ticker {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Live is a red pill; the word LIVE always travels with the dot, so the
+   state is never colour-only. */
+.ls-ticker[data-state="live"] {
+  background: #c62828;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: .25rem .7rem .25rem .6rem;
+}
+
+.ls-ticker__mark {
+  font-size: 1rem;
+  color: #e8eef1;
+}
+
+.ls-ticker[data-state="live"] .ls-ticker__mark {
+  display: none;
+}
+
+.ls-ticker__dot {
+  display: none;
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.ls-ticker[data-state="live"] .ls-ticker__dot {
+  display: inline-block;
+}
+
+.ls-ticker[data-state="live"] .ls-ticker__dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #fff;
+  animation: ls-ticker-pulse 2s ease-out infinite;
+}
+
+@keyframes ls-ticker-pulse {
+  from {
+    opacity: .7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-ticker[data-state="live"] .ls-ticker__dot::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Phone bar: the link shares the row with the hamburger, so a long label
+   truncates instead of pushing the toggler off the screen. */
+@media (max-width: 767.98px) {
+  .ls-ticker {
+    max-width: calc(100vw - 96px);
+  }
+
+  .ls-ticker__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ls-ticker[data-state="live"] {
+    margin-left: 0;
+  }
+}
+
+.ls-ticker:hover,
+.ls-ticker:focus {
+  color: #fff;
+}
+
+.ls-ticker:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .content-section {
   background: #ffffff;
   padding: 10px 20px;

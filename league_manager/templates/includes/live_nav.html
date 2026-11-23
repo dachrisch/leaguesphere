@@ -1,0 +1,11 @@
+{% comment %}
+The site header's only ticker entry. Included twice (phone bar and desktop
+right block) so exactly one is visible at any width. The JS swaps state,
+label, href and aria-label from /liveticker/status/.
+{% endcomment %}
+<a class="nav-link ls-ticker" href="{{ live_nav.href }}" data-live-nav
+   data-state="{{ live_nav.state }}" aria-label="{{ live_nav.aria_label }}">
+  <span class="ls-ticker__dot" aria-hidden="true"></span>
+  <i class="bi bi-broadcast ls-ticker__mark" aria-hidden="true"></i>
+  <span class="ls-ticker__label">{{ live_nav.label }}</span>
+</a>

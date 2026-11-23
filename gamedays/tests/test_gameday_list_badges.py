@@ -154,8 +154,11 @@ class TestTodayGamedayChips(GamedayListBadgesTestBase):
         gameday = self.make_gameday(games=[(time(9, 0), "1. Halbzeit")])
 
         content = self.get_list().content.decode()
+        # The site header may point at the same ticker (its nav entry); the
+        # gameday row itself must still carry exactly one link, the chip.
+        body = content.split("</header>", 1)[-1]
 
-        assert content.count(f'href="{gameday_ticker_url(gameday)}"') == 1
+        assert body.count(f'href="{gameday_ticker_url(gameday)}"') == 1
 
     def test_draft_and_zero_game_rows_today_have_no_chip(self):
         draft = self.make_gameday(
