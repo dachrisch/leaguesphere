@@ -59,7 +59,6 @@
                 <a class="mr-2" href="{% url 'league-gameday-detail' gameday.id %}">{{ gameday.date }}</a> - {{gameday.league.name}}
             </div>
             <h2><a class="article-title" href="{% url 'league-gameday-detail' gameday.id %}">{{ gameday.name }}</a></h2>
-            <p class="article-content"></p>
         </div>
         {% if gameday.today_status %}
             <a class="gb gb--{{ gameday.today_status.badge }}"
