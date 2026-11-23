@@ -7,10 +7,19 @@ interface NoLiveProps {
   now: Date;
 }
 
+/** Same window as the list and nav badges: beyond it a clock time reads better. */
+const SOON_WITHIN_MINUTES = 90;
+
 /** The lead of the "Als Nächstes" section while no game is running. */
 export function NoLive({ next, now }: NoLiveProps) {
   const delayed = next !== null && isDelayed(next, now);
   const remaining = next !== null && !delayed ? minutesUntil(next, now) : null;
+  const countdown =
+    next !== null && remaining !== null
+      ? remaining > SOON_WITHIN_MINUTES
+        ? formatBerlinClock(next.scheduled_at)
+        : `in ${remaining} Min`
+      : null;
 
   return (
     <section className="lt-no-live" aria-label="Kein Spiel live">
@@ -28,9 +37,7 @@ export function NoLive({ next, now }: NoLiveProps) {
         {delayed ? (
           <p className="lt-delayed-badge">verspätet</p>
         ) : (
-          remaining !== null && (
-            <p className="lt-countdown">in {remaining} Min</p>
-          )
+          countdown !== null && <p className="lt-countdown">{countdown}</p>
         )}
       </div>
       <p className="lt-status">Der Ticker startet mit dem Anpfiff.</p>
