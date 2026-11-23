@@ -1,5 +1,6 @@
 from gamedays.menu import GamedaysMenuAdmin
 from league_manager.base_menu import BaseMenu, MenuItem, MenuDivider
+from liveticker.constants import LIVETICKER_V2_HOME
 from passcheck.urls import (
     PASSCHECK_PLAYER_CREATE,
     PASSCHECK_TRANSFER_LIST,
@@ -37,7 +38,13 @@ class PasscheckMenu(BaseMenu):
                 # at the top of the menu. Served to anonymous users too; the app
                 # redirects to the login page itself.
                 MenuItem.create(
-                    name="\U0001F4F1 Scorecard v2 (Beta)", url="scorecard-v2-home"
+                    name="\U0001f4f1 Scorecard v2 (Beta)", url="scorecard-v2-home"
+                ),
+                # The ticker is the crew's other field tool, so it sits next to
+                # the scorecard. Public like the ticker itself; the header's
+                # LIVE/heute link stays the primary entry.
+                MenuItem.create(
+                    name="\U0001f4e1 Liveticker v2", url=LIVETICKER_V2_HOME
                 ),
             ]
         )
