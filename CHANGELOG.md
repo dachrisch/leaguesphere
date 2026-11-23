@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.26.1](https://github.com/dachrisch/leaguesphere/compare/v5.26.0...v5.26.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v27.2.5 ([#2516](https://github.com/dachrisch/leaguesphere/issues/2516)) ([d17dce2](https://github.com/dachrisch/leaguesphere/commit/d17dce2856282a26bc1adba3fc1ed2df5de4660a))
+
 ## [5.26.0](https://github.com/dachrisch/leaguesphere/compare/v5.25.5...v5.26.0) (2026-11-23)
 
 
