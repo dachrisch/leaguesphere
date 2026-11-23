@@ -95,6 +95,91 @@ a.article-title:hover {
   vertical-align: middle;
 }
 
+/* Ticker status chip on today's gameday rows (see liveticker today_status). */
+.gameday-row .media-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The title block keeps the row width; the chip wraps under it on a phone. */
+.gameday-row__main {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.gb {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.gb--live {
+  background: #c62828;
+  color: #fff;
+  letter-spacing: .04em;
+}
+
+.gb--done {
+  background: #f1f3f4;
+  color: #5c6b75;
+  font-weight: 500;
+}
+
+.gb--late {
+  background: #fde8e8;
+  color: #9f1d1d;
+  font-weight: 500;
+}
+
+.gb--soon {
+  background: #fff4d6;
+  color: #7a5300;
+}
+
+.gb--later {
+  background: #eaf0f3;
+  color: #405563;
+  font-weight: 500;
+}
+
+/* Static dot on the list; only the nav chip pulses. */
+.gb__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  display: none;
+}
+
+.gb--live .gb__dot {
+  display: inline-block;
+}
+
+.gb .bi-chevron-right {
+  font-size: .7rem;
+  opacity: .75;
+}
+
+.gb:hover {
+  filter: brightness(.95);
+}
+
+.gb:focus-visible {
+  outline: 2px solid #2f5f80;
+  outline-offset: 2px;
+}
+
 .account-img {
   height: 125px;
   width: 125px;

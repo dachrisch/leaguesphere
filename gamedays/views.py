@@ -30,6 +30,7 @@ from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
 from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting
 from league_table.service.leaguetable_repository import LeagueTableRepository
 from league_table.service.leaguetable_settings import TOP_N_PLAYER
+from liveticker.service.today_status import today_statuses
 from liveticker.urls import gameday_ticker_url
 from .constants import (
     LEAGUE_GAMEDAY_DETAIL,
@@ -116,11 +117,17 @@ class GamedayListView(View):
         gamedays_filtered_by_league = (
             gamedays.filter(league__name=league) if league else gamedays
         )
+        # One shared query (cached for 30 s) covers every row: a gameday with a
+        # ticker status today must never cost a query of its own.
+        today_status_by_gameday = today_statuses()
+        gameday_rows = list(gamedays_filtered_by_league)
+        for gameday in gameday_rows:
+            gameday.today_status = today_status_by_gameday.get(gameday.pk)
         return render(
             request,
             self.template_name,
             {
-                "gamedays": gamedays_filtered_by_league,
+                "gamedays": gameday_rows,
                 "seasons": Gameday.objects.annotate(year=ExtractYear("date"))
                 .values_list("year", flat=True)
                 .distinct()
