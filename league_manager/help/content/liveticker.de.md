@@ -5,10 +5,16 @@ Spielverlauf. Ein Konto brauchst du dafür nicht.
 
 ## Öffnen
 
-1. Im Menü **Live** auf **Liveticker** tippen.
+1. Oben in der Kopfzeile den Ticker-Link antippen. Er heißt **LIVE**, solange
+   ein Spiel läuft, **heute**, wenn heute noch Spiele folgen, sonst
+   **Liveticker**.
 2. Oben stehen Liga und Spieltag; beim Öffnen ist der heutige Spieltag gewählt.
 3. Ein Spiel unter **Ergebnisse** antippen, um seinen Verlauf zu sehen.
    **Alle Ereignisse** klappt die vollständige Liste auf.
+
+Der zweite Weg führt über die [Spieltage](/help/spieltage/): Die Zeile des
+heutigen Spieltags trägt einen Chip wie **LIVE** oder **heute 13:30**, der
+selbst zum Ticker führt.
 
 ## Live-Anzeige
 
@@ -34,7 +40,7 @@ Livetickers bleibt `/liveticker/v2/`.
 
 **Warum sehe ich kein Spiel?**
 Es läuft gerade keins und es ist keins geplant – dann zeigt der Ticker das
-nächste Spiel mit Countdown.
+nächste Spiel mit Uhrzeit oder Countdown.
 
 **Muss ich die Seite neu laden?**
 Nein. Ergebnisse und Verlauf aktualisieren sich selbst. Nur bei

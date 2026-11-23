@@ -1,6 +1,8 @@
 from django.conf import settings
-from django.http import Http404, HttpResponsePermanentRedirect
+from django.http import Http404, HttpResponsePermanentRedirect, JsonResponse
 from django.urls import reverse
+from django.utils.cache import patch_cache_control
+from django.views.decorators.http import require_safe
 from django.views.generic import TemplateView
 
 from gameday_designer.service.swiss_tournament_service import (
@@ -13,6 +15,24 @@ from liveticker.constants import (
     LIVETICKER_V2_GAME,
     LIVETICKER_V2_HOME,
 )
+
+
+@require_safe
+def liveticker_status(request):
+    """The site header's ticker state (``LIVE`` / ``heute`` / ``Liveticker``).
+
+    Public on purpose: the ticker is anonymous, and the response holds no
+    user-specific data. The client only swaps label, target and state.
+    """
+    # Imported inside the view: ``today_status`` imports ``liveticker.urls``,
+    # which imports this module, so a module-level import would close a cycle.
+    from liveticker.service.today_status import CACHE_SECONDS, nav_status
+
+    response = JsonResponse(nav_status())
+    # The header polls every 60 s; the same 30 s as the resolver cache keeps a
+    # poll burst at one query per window.
+    patch_cache_control(response, max_age=CACHE_SECONDS)
+    return response
 
 
 def _first_int(value):

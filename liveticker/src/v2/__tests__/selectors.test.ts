@@ -58,6 +58,17 @@ describe("selectors", () => {
     ).toBeNull();
   });
 
+  it("never counts down to zero minutes just after kickoff", () => {
+    const next: Game = {
+      ...game,
+      status: "Geplant",
+      scheduled_at: "2026-08-15T09:00:00+02:00",
+    };
+    expect(minutesUntil(next, at("2026-08-15T07:00:00+00:00"))).toBe(1);
+    expect(minutesUntil(next, at("2026-08-15T07:00:30+00:00"))).toBe(1);
+    expect(minutesUntil(next, at("2026-08-15T07:04:00+00:00"))).toBe(1);
+  });
+
   it("treats an unparsable kickoff as not late", () => {
     const broken: Game = { ...game, status: "Geplant", scheduled_at: "x" };
     expect(isDelayed(broken, at("2026-08-15T06:52:00+00:00"))).toBe(false);

@@ -124,6 +124,7 @@ TEMPLATES = [
                 "league_manager.context_processors.version_number",
                 "league_manager.context_processors.pages_links",
                 "league_manager.context_processors.demo_mode",
+                "liveticker.context_processors.live_nav",
             ],
         },
     },

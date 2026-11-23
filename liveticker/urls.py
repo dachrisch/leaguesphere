@@ -4,12 +4,18 @@ from django.urls import path
 from league_manager.utils.url_service import UrlService
 from liveticker.constants import (
     LIVETICKER_HOME,
+    LIVETICKER_STATUS,
     LIVETICKER_SWISS_STANDINGS,
     LIVETICKER_V2_GAMEDAY,
     LIVETICKER_V2_GAME,
     LIVETICKER_V2_HOME,
 )
-from liveticker.views import LivetickerV2View, LivetickerView, SwissStandingsPublicView
+from liveticker.views import (
+    LivetickerV2View,
+    LivetickerView,
+    SwissStandingsPublicView,
+    liveticker_status,
+)
 
 
 def gameday_ticker_url(gameday):
@@ -30,6 +36,7 @@ def gameday_ticker_url(gameday):
 
 urlpatterns = [
     path("", LivetickerView.as_view(), name=LIVETICKER_HOME),
+    path("status/", liveticker_status, name=LIVETICKER_STATUS),
     path("v2/", LivetickerV2View.as_view(), name=LIVETICKER_V2_HOME),
     path(
         "v2/gameday/<int:gameday_id>/",

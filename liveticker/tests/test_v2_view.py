@@ -1,15 +1,19 @@
 import datetime
 
 from django.contrib.auth.models import User
+from django.core.cache import caches
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from gamedays.models import Gameday, Gameinfo, League, Season, Team
+from league_manager.utils.url_service import UrlService
 from liveticker.constants import (
     LIVETICKER_V2_GAMEDAY,
     LIVETICKER_V2_GAME,
     LIVETICKER_V2_HOME,
 )
+from liveticker.service.today_status import CACHE_ALIAS, CACHE_KEY
 
 
 def make_ticker_fixture():
@@ -217,10 +221,18 @@ class TestLivetickerV2LegacyRedirects(TestCase):
 
 @override_settings(LIVETICKER_V2_ENABLED=True)
 class TestTickerUrlBuilders(TestCase):
-    def test_menu_uses_a_path_without_query(self):
+    def test_nav_entry_uses_a_path_without_query(self):
+        # The header href comes from the process-global snapshot cache, so a
+        # previous test's "one live gameday" answer would point elsewhere.
+        status_cache = caches[CACHE_ALIAS]
+        cache_key = CACHE_KEY.format(date=timezone.localdate().isoformat())
+        status_cache.delete(cache_key)
+        self.addCleanup(status_cache.delete, cache_key)
+
         html = self.client.get(reverse(LIVETICKER_V2_HOME)).content.decode()
 
-        assert 'href="/liveticker/v2/"' in html
+        # The header's single ticker entry, absolute like every nav target.
+        assert f'href="{UrlService.build_absolute_url(LIVETICKER_V2_HOME)}"' in html
         assert "?league=" not in html
 
     def test_gameday_page_link_is_the_gameday_path(self):

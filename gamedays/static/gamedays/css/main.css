@@ -51,6 +51,109 @@ ul {
   font-weight: 500;
 }
 
+/* One ticker entry in the site header (LIVE / heute / Liveticker).
+   Two instances render (phone bar, desktop right block) and exactly one is
+   visible at a time, so the accessibility tree still sees one link.
+   Scoped through ``.site-header .nav-link`` (0,3,0) so the white colour also
+   ties with ``.site-header .navbar-nav .nav-link`` if the entry is ever
+   nested in a .navbar-nav, instead of silently turning grey. */
+.site-header .nav-link.ls-ticker {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Live is a red pill; the word LIVE always travels with the dot, so the
+   state is never colour-only. */
+.site-header .nav-link.ls-ticker[data-state="live"] {
+  background: #c62828;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: .25rem .7rem .25rem .6rem;
+}
+
+.site-header .ls-ticker__mark {
+  font-size: 1rem;
+  color: #e8eef1;
+}
+
+.site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__mark {
+  display: none;
+}
+
+.site-header .ls-ticker__dot {
+  display: none;
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__dot {
+  display: inline-block;
+}
+
+.site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #fff;
+  animation: ls-ticker-pulse 2s ease-out infinite;
+}
+
+@keyframes ls-ticker-pulse {
+  from {
+    opacity: .7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__dot::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Phone bar: the link shares the row with the hamburger, so a long label
+   truncates instead of pushing the toggler off the screen. */
+@media (max-width: 767.98px) {
+  .site-header .nav-link.ls-ticker {
+    max-width: calc(100vw - 96px);
+  }
+
+  .site-header .ls-ticker__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-header .nav-link.ls-ticker[data-state="live"] {
+    margin-left: 0;
+  }
+}
+
+.site-header .nav-link.ls-ticker:hover,
+.site-header .nav-link.ls-ticker:focus {
+  color: #fff;
+}
+
+.site-header .nav-link.ls-ticker:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .content-section {
   background: #ffffff;
   padding: 10px 20px;
@@ -93,6 +196,91 @@ a.article-title:hover {
   width: 25px;
   height: 25px;
   vertical-align: middle;
+}
+
+/* Ticker status chip on today's gameday rows (see liveticker today_status). */
+.gameday-row .media-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The title block keeps the row width; the chip wraps under it on a phone. */
+.gameday-row__main {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.gb {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.gb--live {
+  background: #c62828;
+  color: #fff;
+  letter-spacing: .04em;
+}
+
+.gb--done {
+  background: #f1f3f4;
+  color: #5c6b75;
+  font-weight: 500;
+}
+
+.gb--late {
+  background: #fde8e8;
+  color: #9f1d1d;
+  font-weight: 500;
+}
+
+.gb--soon {
+  background: #fff4d6;
+  color: #7a5300;
+}
+
+.gb--later {
+  background: #eaf0f3;
+  color: #405563;
+  font-weight: 500;
+}
+
+/* Static dot on the list; only the nav chip pulses. */
+.gb__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  display: none;
+}
+
+.gb--live .gb__dot {
+  display: inline-block;
+}
+
+.gb .bi-chevron-right {
+  font-size: .7rem;
+  opacity: .75;
+}
+
+.gb:hover {
+  filter: brightness(.95);
+}
+
+.gb:focus-visible {
+  outline: 2px solid #2f5f80;
+  outline-offset: 2px;
 }
 
 .account-img {

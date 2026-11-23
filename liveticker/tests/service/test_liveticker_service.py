@@ -1,12 +1,17 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
+from datetime import timezone as dt_timezone
+from unittest import mock
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from gamedays.models import League, Gameinfo, Gameresult
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from gamedays.tests.setup_factories.factories import GamedayFactory, TeamLogFactory
-from liveticker.service.liveticker_service import LivetickerService
+from liveticker.service.liveticker_service import (
+    LivetickerService,
+    resolve_gameday_ids,
+)
 from liveticker.tests.event_feed_support import make_live_game
 
 
@@ -288,3 +293,24 @@ class TestAllScheduled(TestCase):
 
         assert count_queries(2) == 2
         assert count_queries(6) == 6
+
+
+class TestResolveGamedayIdsUsesBerlinDate(TestCase):
+    @override_settings(DEBUG=False)
+    def test_after_utc_midnight_the_berlin_date_selects_the_gameday(self):
+        utc_day = GamedayFactory(date=date(2026, 5, 10))
+        berlin_day = GamedayFactory(date=date(2026, 5, 11))
+        # 2026-05-10 23:30 UTC is already 2026-05-11 01:30 in Berlin.
+        utc_midnight_ish = datetime(2026, 5, 10, 23, 30, tzinfo=dt_timezone.utc)
+
+        with mock.patch("django.utils.timezone.now", return_value=utc_midnight_ish):
+            ids = resolve_gameday_ids([], None)
+
+        assert ids == [berlin_day.pk]
+        assert utc_day.pk not in ids
+
+    @override_settings(DEBUG=False)
+    def test_explicit_ids_still_win(self):
+        gameday = GamedayFactory(date=date(2020, 1, 1))
+
+        assert resolve_gameday_ids([gameday.pk], None) == [gameday.pk]

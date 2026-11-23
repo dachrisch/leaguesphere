@@ -1,0 +1,16 @@
+{% comment %}
+The site header's only ticker entry. Included twice (phone bar and desktop
+right block) so exactly one is visible at any width. The JS swaps state,
+label, href and aria-label from /liveticker/status/.
+
+The defaults cover pages rendered without a request (500, bare error pages),
+where no context processor runs: the entry stays a named legacy link instead
+of an anchor with an empty href and no accessible name.
+{% endcomment %}
+<a class="nav-link ls-ticker" href="{{ live_nav.href|default:'/liveticker/' }}" data-live-nav
+   data-state="{{ live_nav.state|default:'idle' }}"
+   aria-label="{{ live_nav.aria_label|default:'Liveticker öffnen' }}">
+  <span class="ls-ticker__dot" aria-hidden="true"></span>
+  <i class="bi bi-broadcast ls-ticker__mark" aria-hidden="true"></i>
+  <span class="ls-ticker__label">{{ live_nav.label|default:'Liveticker' }}</span>
+</a>

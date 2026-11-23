@@ -78,7 +78,7 @@ export function minutesUntil(game: Game, now: Date): number | null {
   if (!game.scheduled_at) return null;
   const scheduled = Date.parse(game.scheduled_at);
   if (Number.isNaN(scheduled)) return null;
-  return Math.max(0, Math.ceil((scheduled - now.getTime()) / 60000));
+  return Math.max(1, Math.ceil((scheduled - now.getTime()) / 60000));
 }
 
 export function selectNextGame(games: Game[], now: Date): Game | null {
