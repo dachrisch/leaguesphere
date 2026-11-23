@@ -10,7 +10,7 @@ import re
 from datetime import time
 from pathlib import Path
 
-import liveticker
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.cache import caches
 from django.test import RequestFactory, TestCase, override_settings
@@ -38,7 +38,7 @@ ANCHOR = re.compile(r"<a\b(?P<attrs>[^>]*)", re.S)
 # selector is ``[data-live-nav]``.
 ATTRIBUTE = re.compile(r'(?P<name>[\w-]+)(?:="(?P<value>[^"]*)")?')
 
-TICKER_JS = Path(liveticker.__file__).parent / "static" / "liveticker" / "js"
+TICKER_JS = Path(settings.BASE_DIR) / "static" / "league_manager" / "js"
 
 
 def attributes(anchor_html):
@@ -226,7 +226,7 @@ class TestRenderedHeader(SnapshotCacheMixin, TestCase):
         )
 
     def test_header_loads_the_polling_script(self):
-        assert "liveticker/js/live_nav.js" in self.content
+        assert "league_manager/js/live_nav.js" in self.content
 
 
 class TestMenuRegistry(TestCase):
