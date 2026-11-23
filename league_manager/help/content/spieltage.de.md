@@ -16,6 +16,14 @@ Spielplan und den erfassten Ergebnissen.
 - Der **Tagesstatus** zeigt, ob ein Spieltag bevorsteht, gerade läuft oder
   abgeschlossen ist.
 
+## Live auf der Liste
+
+Die Zeile des heutigen Spieltags trägt einen Chip: **LIVE** bei laufendem Spiel,
+**in N Min** oder **heute HH:MM** vor dem Anpfiff, **verspätet**, wenn der Start
+überfällig ist, und **beendet**, wenn alle Ergebnisse erfasst sind. Der Chip ist
+selbst der Link zum Liveticker dieses Spieltags – einen zweiten Ticker-Link gibt
+es nicht.
+
 ## Spielplan und Ergebnisse
 
 In der Spieltagsansicht siehst du je Spiel:
