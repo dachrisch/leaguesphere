@@ -1,6 +1,5 @@
 import logging
 from collections import defaultdict
-from datetime import datetime
 from typing import List
 
 from django.conf import settings
@@ -34,7 +33,7 @@ def resolve_gameday_ids(gameday_ids, league):
         leagues = League.objects.filter(slug__in=league)
     if gameday_ids:
         return list(gameday_ids)
-    date = settings.DEBUG_DATE if settings.DEBUG else datetime.today().date()
+    date = settings.DEBUG_DATE if settings.DEBUG else timezone.localdate()
     return list(
         Gameday.objects.filter(date=date, league__in=leagues).values_list(
             "pk", flat=True

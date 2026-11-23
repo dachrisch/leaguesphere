@@ -11,6 +11,7 @@ from django.db.models.functions import ExtractYear
 from django.shortcuts import render, get_object_or_404, redirect
 from django.templatetags.static import static
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views import View
 from django.views.generic import (
@@ -93,7 +94,7 @@ class GamedayListView(View):
     template_name = "gamedays/gameday_list.html"
 
     def get(self, request, *args, **kwargs):
-        year = kwargs.get("season", datetime.today().year)
+        year = kwargs.get("season", timezone.localdate().year)
         show_all_games = request.GET.get("showAllGames") == "true"
         league = kwargs.get("league")
         gamedays = (
@@ -108,7 +109,7 @@ class GamedayListView(View):
         )
         # Include today's gamedays (date__gte instead of date__gt)
         filtered_gamedays_by_today = gamedays.filter(
-            date__gte=datetime.today()
+            date__gte=timezone.localdate()
         ).order_by("date", "name")
         if filtered_gamedays_by_today.count() > 0 and not show_all_games:
             gamedays = filtered_gamedays_by_today
