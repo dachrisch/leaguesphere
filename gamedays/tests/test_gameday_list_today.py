@@ -14,9 +14,7 @@ from gamedays.tests.setup_factories.factories import GamedayFactory
 
 class TestGamedayListStartsAtBerlinToday(TestCase):
     def test_after_utc_midnight_yesterdays_gameday_is_gone(self):
-        yesterday_utc = GamedayFactory(
-            date=date(2026, 5, 10), status=Gameday.STATUS_PUBLISHED
-        )
+        GamedayFactory(date=date(2026, 5, 10), status=Gameday.STATUS_PUBLISHED)
         today_berlin = GamedayFactory(
             date=date(2026, 5, 11), status=Gameday.STATUS_PUBLISHED
         )
@@ -30,7 +28,6 @@ class TestGamedayListStartsAtBerlinToday(TestCase):
 
         listed = [gameday.pk for gameday in response.context["gamedays"]]
         assert listed == [today_berlin.pk]
-        assert yesterday_utc.pk not in listed
 
     def test_default_year_follows_berlin_new_year(self):
         new_year_berlin = GamedayFactory(
@@ -42,6 +39,8 @@ class TestGamedayListStartsAtBerlinToday(TestCase):
 
         with (
             mock.patch("django.utils.timezone.now", return_value=utc_new_years_eve),
+            # Stub the pre-fix call site: if the view still read
+            # datetime.today().year it would select season 2025.
             mock.patch("gamedays.views.datetime") as naive_datetime,
         ):
             naive_datetime.today.return_value = date(2025, 12, 31)
