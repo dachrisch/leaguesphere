@@ -1,5 +1,32 @@
 # Changelog
 
+## [5.26.0](https://github.com/dachrisch/leaguesphere/compare/v5.25.5...v5.26.0) (2026-11-23)
+
+
+### Features
+
+* **gamedays:** show the ticker status on today's gameday rows ([684a9fa](https://github.com/dachrisch/leaguesphere/commit/684a9fa0937d0866e9fc7f3e5dc94bdd40828037))
+* **liveticker:** add today status resolver for list and nav ([fe6db64](https://github.com/dachrisch/leaguesphere/commit/fe6db64af4e90b0f7ca24805586146408fe55f63))
+* **liveticker:** show the ticker status in the site nav ([d8bda8c](https://github.com/dachrisch/leaguesphere/commit/d8bda8cdd5a166e2f2514ecadc40742c7e948d15))
+
+
+### Bug Fixes
+
+* **gamedays:** use the Berlin local date for today ([3e977c9](https://github.com/dachrisch/leaguesphere/commit/3e977c939246c60a148b290ec3f833ffae1e0e98))
+* **league_manager:** right-align the header block without moving the menu ([09a8d8d](https://github.com/dachrisch/leaguesphere/commit/09a8d8dc9564000719fcfb1e7360f616f814203d))
+* **liveticker:** clock time instead of far-off minutes ([fe8f07a](https://github.com/dachrisch/leaguesphere/commit/fe8f07aff3fa92b1ca17f4b56e3174876a065dc5))
+* **liveticker:** harden the nav entry for error pages and cache states ([c8649d4](https://github.com/dachrisch/leaguesphere/commit/c8649d417622c97c7182417dd7ac453191cc4f91))
+* **liveticker:** include completed gamedays and harden today status ([fba967c](https://github.com/dachrisch/leaguesphere/commit/fba967c769e7c848765f2a12bf81dfc6ad64a961))
+* **liveticker:** keep the nav poller out of the Vite output dir ([81221e2](https://github.com/dachrisch/leaguesphere/commit/81221e2dfd4c7d4f0fa3d4a2e3b6fd7d8aa56d56))
+* **liveticker:** show a clock time instead of far-off minutes ([d7ad132](https://github.com/dachrisch/leaguesphere/commit/d7ad1323a1b1d6ed31988918d52d5e3e2eae8685))
+* **liveticker:** singular live aria label for one live gameday ([50e7097](https://github.com/dachrisch/leaguesphere/commit/50e70979ae4a867ad82268f4d855f466f063b47c))
+
+
+### Documentation
+
+* **help:** document the ticker link and the list chip ([fda2a1e](https://github.com/dachrisch/leaguesphere/commit/fda2a1e46fe632e8dd6c3ded0afa7b979f3196a3))
+* **help:** the ticker shows a clock time beyond 90 minutes ([56c3937](https://github.com/dachrisch/leaguesphere/commit/56c39373aec32e04fda0ec5b7494dab89b564f41))
+
 ## [5.25.5](https://github.com/dachrisch/leaguesphere/compare/v5.25.4...v5.25.5) (2026-11-23)
 
 
