@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.27.0](https://github.com/dachrisch/leaguesphere/compare/v5.26.1...v5.27.0) (2026-11-23)
+
+
+### Features
+
+* **passcheck:** add the Liveticker v2 entry to the Team menu ([2bc52ad](https://github.com/dachrisch/leaguesphere/commit/2bc52addc9f98338b0b40ff195963916dbc9035a))
+* **passcheck:** add the Liveticker v2 entry to the Team menu ([bb8c09e](https://github.com/dachrisch/leaguesphere/commit/bb8c09eca09f2070c907d5c8361794050e718694))
+
 ## [5.26.1](https://github.com/dachrisch/leaguesphere/compare/v5.26.0...v5.26.1) (2026-11-23)
 
 
