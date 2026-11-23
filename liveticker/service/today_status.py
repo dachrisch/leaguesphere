@@ -7,9 +7,11 @@ gameday list is read-heavy and anonymous, and the status changes at most every
 few minutes.
 """
 
+import logging
 from datetime import datetime, timedelta
 from math import ceil
 from typing import Dict, Optional
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.cache import caches
@@ -23,25 +25,36 @@ from liveticker.constants import LIVETICKER_HOME, LIVETICKER_V2_HOME
 from liveticker.service.liveticker_service import LIVE_STATUSES
 from liveticker.urls import gameday_ticker_url
 
+logger = logging.getLogger(__name__)
+
 CACHE_ALIAS = "snapshot"
 CACHE_KEY = "liveticker:today-status:{date}"
 CACHE_SECONDS = 30
+
+# Game times are Berlin wall times regardless of the process time zone.
+BERLIN = ZoneInfo("Europe/Berlin")
 
 # A scheduled game that never started is "verspätet" once it is this late, and
 # only games starting within this window read "in N Min" instead of a clock time.
 LATE_AFTER = timedelta(minutes=5)
 SOON_WITHIN = timedelta(minutes=90)
 
-CONSIDERED_STATUSES = (Gameday.STATUS_PUBLISHED, Gameday.STATUS_IN_PROGRESS)
+# COMPLETED is included: production flips a gameday to completed once its last
+# game is entered, and that day must still read "beendet". Drafts stay out.
+CONSIDERED_STATUSES = (
+    Gameday.STATUS_PUBLISHED,
+    Gameday.STATUS_IN_PROGRESS,
+    Gameday.STATUS_COMPLETED,
+)
 
 
 def today_statuses(now: Optional[datetime] = None) -> Dict[int, dict]:
     """{gameday_id: {"badge", "label", "href", "live", "starts_at"}}.
 
-    Only published/in-progress gamedays dated today with at least one game are
-    included, so a freshly published gameday without a schedule never reads
-    "beendet". Passing ``now`` bypasses the cache (tests need determinism); the
-    normal call site reads or fills the shared snapshot cache.
+    Only published, in-progress or completed gamedays dated today with at least
+    one game are included, so a freshly published gameday without a schedule
+    never reads "beendet". Passing ``now`` bypasses the cache (tests need
+    determinism); the normal call site reads or fills the shared snapshot cache.
     """
     if not _v2_enabled():
         return {}
@@ -52,10 +65,17 @@ def today_statuses(now: Optional[datetime] = None) -> Dict[int, dict]:
     today = timezone.localdate()
     cache = caches[CACHE_ALIAS]
     key = CACHE_KEY.format(date=today.isoformat())
-    statuses = cache.get(key)
+    try:
+        statuses = cache.get(key)
+    except Exception:  # noqa: BLE001 - the cache backend must never 500 reads
+        logger.exception("today status cache read failed")
+        statuses = None
     if statuses is None:
         statuses = _compute_statuses(today, timezone.now())
-        cache.set(key, statuses, CACHE_SECONDS)
+        try:
+            cache.set(key, statuses, CACHE_SECONDS)
+        except Exception:  # noqa: BLE001 - the cache backend must never 500 reads
+            logger.exception("today status cache store failed")
     return statuses
 
 
@@ -109,13 +129,13 @@ def _compute_statuses(today, now) -> Dict[int, dict]:
                 filter=~Q(gameinfo__status=Gameinfo.STATUS_COMPLETED),
             ),
         )
-        .select_related("league")
+        .select_related("league")  # legacy gameday_ticker_url reads league.slug
     )
 
     statuses = {}
     for gameday in gamedays:
         if gameday.game_count == 0:
-            # A published gameday without a schedule has no status at all.
+            # A gameday without a schedule has no status at all.
             continue
         statuses[gameday.pk] = _status_for(gameday, now)
     return statuses
@@ -139,7 +159,7 @@ def _status_for(gameday, now) -> dict:
             minutes = max(1, ceil(delta.total_seconds() / 60))
             badge, label = "soon", f"in {minutes} Min"
         else:
-            badge, label = "later", f"heute {timezone.localtime(starts_at):%H:%M}"
+            badge, label = "later", f"heute {starts_at.astimezone(BERLIN):%H:%M}"
         live = False
 
     return {
@@ -154,12 +174,14 @@ def _status_for(gameday, now) -> dict:
 def _starts_at(gameday) -> Optional[datetime]:
     if gameday.next_time is None:
         return None
-    return timezone.make_aware(datetime.combine(gameday.date, gameday.next_time))
+    return timezone.make_aware(
+        datetime.combine(gameday.date, gameday.next_time), BERLIN
+    )
 
 
 def _aria_label(state: str, live_count: int, gameday_count: int) -> str:
     if state == "live":
-        # One live game reads as a game, not as a count of gamedays.
+        # One live gameday reads as a single game, not as a count of gamedays.
         if live_count == 1:
             return "Liveticker: Spiel läuft"
         return f"Liveticker: {live_count} Spieltage live"

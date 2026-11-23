@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from django.core.cache import caches
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from gamedays.models import Gameday, Gameinfo
 from gamedays.tests.setup_factories.factories import GameinfoFactory, GamedayFactory
@@ -73,6 +74,24 @@ class TestTodayStatuses(TestCase):
         assert entry["live"] is False
         assert entry["starts_at"] is None
 
+    def test_completed_gameday_with_all_games_finished_is_done(self):
+        # Production flips gameday.status to COMPLETED once the last game is
+        # entered; the list must still show "beendet" for it.
+        gameday = make_gameday(
+            status=Gameday.STATUS_COMPLETED,
+            games=[
+                (time(8, 0), Gameinfo.STATUS_COMPLETED),
+                (time(9, 0), Gameinfo.STATUS_COMPLETED),
+            ],
+        )
+
+        entry = today_statuses(now=NOW)[gameday.pk]
+
+        assert entry["badge"] == "done"
+        assert entry["label"] == "beendet"
+        assert entry["live"] is False
+        assert entry["starts_at"] is None
+
     def test_next_game_at_least_five_minutes_past_is_late(self):
         gameday = make_gameday(
             games=[
@@ -124,6 +143,28 @@ class TestTodayStatuses(TestCase):
         assert entry["live"] is False
         assert entry["starts_at"] == berlin(13, 30)
 
+    def test_ninety_one_minutes_ahead_is_later(self):
+        gameday = make_gameday(games=[(time(10, 26), Gameinfo.STATUS_PUBLISHED)])
+
+        entry = today_statuses(now=NOW)[gameday.pk]
+
+        assert entry["badge"] == "later"
+        assert entry["label"] == "heute 10:26"
+
+    def test_berlin_zone_is_pinned_when_the_process_zone_differs(self):
+        late = make_gameday(games=[(time(9, 0), Gameinfo.STATUS_PUBLISHED)])
+        soon = make_gameday(games=[(time(9, 15), Gameinfo.STATUS_PUBLISHED)])
+        later = make_gameday(games=[(time(13, 30), Gameinfo.STATUS_PUBLISHED)])
+
+        with timezone.override("UTC"):
+            at_nine_oh_five = today_statuses(now=berlin(9, 5))
+            at_eight_fifty_five = today_statuses(now=NOW)
+
+        assert at_nine_oh_five[late.pk]["badge"] == "late"
+        assert at_eight_fifty_five[soon.pk]["label"] == "in 20 Min"
+        assert at_eight_fifty_five[later.pk]["label"] == "heute 13:30"
+        assert at_eight_fifty_five[later.pk]["starts_at"] == berlin(13, 30)
+
     def test_zero_game_draft_and_other_day_gamedays_are_absent(self):
         zero_games = make_gameday()
         draft = make_gameday(
@@ -147,14 +188,19 @@ class TestTodayStatuses(TestCase):
         assert statuses[in_progress.pk]["badge"] == "live"
 
     def test_cold_cache_costs_one_query_and_a_hit_none(self):
-        gameday = GamedayFactory(date=TODAY, status=Gameday.STATUS_PUBLISHED)
-        GameinfoFactory(
-            gameday=gameday,
-            scheduled=time(10, 0),
-            status=Gameinfo.STATUS_PUBLISHED,
-        )
+        gamedays = [
+            GamedayFactory(date=TODAY, status=Gameday.STATUS_PUBLISHED)
+            for _ in range(3)
+        ]
+        for gameday in gamedays:
+            GameinfoFactory(
+                gameday=gameday,
+                scheduled=time(10, 0),
+                status=Gameinfo.STATUS_PUBLISHED,
+            )
         key = f"liveticker:today-status:{TODAY.isoformat()}"
         SNAPSHOT_CACHE.delete(key)
+        self.addCleanup(SNAPSHOT_CACHE.delete, key)
 
         with (
             mock.patch(
@@ -171,16 +217,63 @@ class TestTodayStatuses(TestCase):
                 second = today_statuses()
 
         assert first == second
-        assert gameday.pk in first
+        assert set(first) == {gameday.pk for gameday in gamedays}
         assert SNAPSHOT_CACHE.get(key) == first
 
-    def test_explicit_now_bypasses_the_cache(self):
-        gameday = make_gameday(games=[(time(13, 30), Gameinfo.STATUS_PUBLISHED)])
+    def test_cache_read_error_still_returns_computed_statuses(self):
+        gameday = make_gameday(games=[(time(9, 0), "1. Halbzeit")])
+        cache = caches["snapshot"]
+        key = f"liveticker:today-status:{TODAY.isoformat()}"
+        cache.delete(key)
+        self.addCleanup(cache.delete, key)
 
-        tomorrow_night = datetime(2026, 5, 11, 0, 30, tzinfo=BERLIN)
-        assert today_statuses(now=tomorrow_night) == {}
-        assert today_statuses(now=NOW)[gameday.pk]["label"] == "heute 13:30"
-        assert today_statuses(now=tomorrow_night) == {}
+        with (
+            mock.patch(
+                "liveticker.service.today_status.timezone.localdate",
+                return_value=TODAY,
+            ),
+            mock.patch(
+                "liveticker.service.today_status.timezone.now", return_value=NOW
+            ),
+            mock.patch.object(cache, "get", side_effect=RuntimeError("cache down")),
+        ):
+            statuses = today_statuses()
+
+        assert statuses[gameday.pk]["badge"] == "live"
+
+    def test_cache_write_error_still_returns_computed_statuses(self):
+        gameday = make_gameday(games=[(time(9, 0), "1. Halbzeit")])
+        cache = caches["snapshot"]
+        key = f"liveticker:today-status:{TODAY.isoformat()}"
+        cache.delete(key)
+        self.addCleanup(cache.delete, key)
+
+        with (
+            mock.patch(
+                "liveticker.service.today_status.timezone.localdate",
+                return_value=TODAY,
+            ),
+            mock.patch(
+                "liveticker.service.today_status.timezone.now", return_value=NOW
+            ),
+            mock.patch.object(cache, "set", side_effect=RuntimeError("cache down")),
+        ):
+            statuses = today_statuses()
+
+        assert statuses[gameday.pk]["badge"] == "live"
+
+    def test_explicit_now_bypasses_the_cache(self):
+        gameday = make_gameday(games=[(time(9, 15), Gameinfo.STATUS_PUBLISHED)])
+        key = f"liveticker:today-status:{TODAY.isoformat()}"
+        SNAPSHOT_CACHE.delete(key)
+        self.addCleanup(SNAPSHOT_CACHE.delete, key)
+
+        early = today_statuses(now=NOW)
+        later = today_statuses(now=berlin(9, 14))
+
+        assert early[gameday.pk]["label"] == "in 20 Min"
+        assert later[gameday.pk]["label"] == "in 1 Min"
+        assert SNAPSHOT_CACHE.get(key) is None
 
 
 @override_settings(LIVETICKER_V2_ENABLED=True)
@@ -220,6 +313,33 @@ class TestNavStatus(TestCase):
             "href": UrlService.build_absolute_url(LIVETICKER_V2_HOME),
             "aria_label": "Liveticker öffnen",
         }
+
+    def test_only_a_completed_gameday_is_idle(self):
+        make_gameday(
+            status=Gameday.STATUS_COMPLETED,
+            games=[(time(8, 0), Gameinfo.STATUS_COMPLETED)],
+        )
+
+        nav = nav_status(now=NOW)
+
+        assert nav == {
+            "state": "idle",
+            "label": "Liveticker",
+            "live_count": 0,
+            "href": UrlService.build_absolute_url(LIVETICKER_V2_HOME),
+            "aria_label": "Liveticker öffnen",
+        }
+
+    def test_one_live_plus_one_upcoming_gameday_uses_the_singular_aria(self):
+        make_gameday(games=[(time(9, 0), "1. Halbzeit")])
+        make_gameday(games=[(time(13, 30), Gameinfo.STATUS_PUBLISHED)])
+
+        nav = nav_status(now=NOW)
+
+        assert nav["state"] == "live"
+        assert nav["live_count"] == 1
+        assert nav["href"] == UrlService.build_absolute_url(LIVETICKER_V2_HOME)
+        assert nav["aria_label"] == "Liveticker: Spiel läuft"
 
     def test_single_upcoming_gameday_links_to_its_ticker(self):
         gameday = make_gameday(games=[(time(13, 30), Gameinfo.STATUS_PUBLISHED)])
