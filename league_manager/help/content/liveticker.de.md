@@ -40,7 +40,7 @@ Livetickers bleibt `/liveticker/v2/`.
 
 **Warum sehe ich kein Spiel?**
 Es läuft gerade keins und es ist keins geplant – dann zeigt der Ticker das
-nächste Spiel mit Countdown.
+nächste Spiel mit Uhrzeit oder Countdown.
 
 **Muss ich die Seite neu laden?**
 Nein. Ergebnisse und Verlauf aktualisieren sich selbst. Nur bei
