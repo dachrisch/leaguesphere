@@ -159,9 +159,8 @@ def _starts_at(gameday) -> Optional[datetime]:
 
 def _aria_label(state: str, live_count: int, gameday_count: int) -> str:
     if state == "live":
-        # Singular only for the single-gameday day; a busy day counts the
-        # gamedays that are actually live.
-        if live_count == 1 and gameday_count == 1:
+        # One live game reads as a game, not as a count of gamedays.
+        if live_count == 1:
             return "Liveticker: Spiel läuft"
         return f"Liveticker: {live_count} Spieltage live"
     if state == "today":

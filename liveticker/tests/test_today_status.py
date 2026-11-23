@@ -196,7 +196,7 @@ class TestNavStatus(TestCase):
         assert nav["label"] == "LIVE"
         assert nav["live_count"] == 1
         assert nav["href"] == UrlService.build_absolute_url(LIVETICKER_V2_HOME)
-        assert nav["aria_label"] == "Liveticker: 1 Spieltage live"
+        assert nav["aria_label"] == "Liveticker: Spiel läuft"
 
     def test_single_live_gameday_links_to_its_ticker(self):
         gameday = make_gameday(games=[(time(9, 0), "2. Halbzeit")])
