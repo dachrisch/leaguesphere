@@ -220,9 +220,11 @@ class TestRenderedHeader(SnapshotCacheMixin, TestCase):
             self.content,
         )
 
-    def test_left_menu_list_is_right_aligned(self):
+    def test_menu_list_carries_the_auto_right_margin(self):
+        # me-md-auto, not ms-md-auto: the menu stays left and the right block
+        # (ticker, Hilfe, Login) is pushed to the far right.
         assert re.search(
-            r'<ul class="navbar-nav[^"]*\bms-md-auto\b[^"]*">', self.content
+            r'<ul class="navbar-nav[^"]*\bme-md-auto\b[^"]*">', self.content
         )
 
     def test_header_loads_the_polling_script(self):

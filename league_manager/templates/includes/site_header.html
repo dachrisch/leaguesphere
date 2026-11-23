@@ -18,10 +18,11 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarToggle">
                 {% comment %}
-                ms-md-auto right-aligns the menu on desktop; on a phone the
-                collapsed menu stays left-aligned.
+                me-md-auto pushes the right block to the right edge; below
+                768 px there is no auto margin, so the collapsed menu stays
+                left-aligned.
                 {% endcomment %}
-                <ul class="navbar-nav ms-md-auto">
+                <ul class="navbar-nav me-md-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'home' %}">Home</a>
                     </li>
