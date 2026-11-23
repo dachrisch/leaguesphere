@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.27.1](https://github.com/dachrisch/leaguesphere/compare/v5.27.0...v5.27.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v27.2.6 ([#2520](https://github.com/dachrisch/leaguesphere/issues/2520)) ([3408d9e](https://github.com/dachrisch/leaguesphere/commit/3408d9ea8f45eddb01a4d175ffaa3be95efbf879))
+* **deps:** update dependency typescript-eslint to v8.74.0 ([#2521](https://github.com/dachrisch/leaguesphere/issues/2521)) ([5ef7289](https://github.com/dachrisch/leaguesphere/commit/5ef7289dc6c4afde5c6f00a44721a58be3e7afd9))
+
 ## [5.27.0](https://github.com/dachrisch/leaguesphere/compare/v5.26.1...v5.27.0) (2026-11-23)
 
 
