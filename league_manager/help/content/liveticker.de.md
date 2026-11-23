@@ -16,6 +16,8 @@ Der zweite Weg führt über die [Spieltage](/help/spieltage/): Die Zeile des
 heutigen Spieltags trägt einen Chip wie **LIVE** oder **heute 13:30**, der
 selbst zum Ticker führt.
 
+Der dritte Weg ist das Menü **Team** → **📡 Liveticker v2**.
+
 ## Live-Anzeige
 
 Über der Anzeige steht, wie aktuell sie ist:
