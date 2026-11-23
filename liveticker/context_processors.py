@@ -6,8 +6,18 @@ seconds, which keeps the cost at one query per window even on a page that is
 rendered thousands of times a day.
 """
 
-from liveticker.service.today_status import nav_status
+import logging
+
+from liveticker.service.today_status import legacy_nav_status, nav_status
+
+logger = logging.getLogger(__name__)
 
 
 def live_nav(request):
-    return {"live_nav": nav_status()}
+    """The header's ticker entry; a broken status must never 500 a page."""
+    try:
+        nav = nav_status()
+    except Exception:  # noqa: BLE001 - the chrome must not break a page render
+        logger.exception("liveticker nav status failed")
+        nav = legacy_nav_status()
+    return {"live_nav": nav}

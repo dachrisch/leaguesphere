@@ -13,6 +13,9 @@
   var REFRESH_MS = 60000;
 
   function paint(nav) {
+    if (!nav || !nav.href) {
+      return;
+    }
     document.querySelectorAll("[data-live-nav]").forEach(function (link) {
       link.dataset.state = nav.state;
       link.href = nav.href;
@@ -42,4 +45,12 @@
   }
 
   window.setInterval(refresh, REFRESH_MS);
+
+  // A tab that comes back after being hidden would otherwise wait up to a
+  // minute for the next tick.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") {
+      refresh();
+    }
+  });
 })();

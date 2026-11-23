@@ -79,16 +79,25 @@ def today_statuses(now: Optional[datetime] = None) -> Dict[int, dict]:
     return statuses
 
 
+def legacy_nav_status() -> dict:
+    """The plain legacy ticker link, without touching the database.
+
+    Used when the v2 flag is off and as the header's fallback when the status
+    cannot be computed: the site chrome must never break a page.
+    """
+    return {
+        "state": "idle",
+        "label": "Liveticker",
+        "live_count": 0,
+        "href": reverse(LIVETICKER_HOME),
+        "aria_label": "Liveticker öffnen",
+    }
+
+
 def nav_status(now: Optional[datetime] = None) -> dict:
     """The single navigation entry derived from the same gameday statuses."""
     if not _v2_enabled():
-        return {
-            "state": "idle",
-            "label": "Liveticker",
-            "live_count": 0,
-            "href": reverse(LIVETICKER_HOME),
-            "aria_label": "Liveticker öffnen",
-        }
+        return legacy_nav_status()
 
     statuses = today_statuses(now)
     live_count = sum(1 for entry in statuses.values() if entry["live"])

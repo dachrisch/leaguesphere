@@ -53,8 +53,11 @@ ul {
 
 /* One ticker entry in the site header (LIVE / heute / Liveticker).
    Two instances render (phone bar, desktop right block) and exactly one is
-   visible at a time, so the accessibility tree still sees one link. */
-.ls-ticker {
+   visible at a time, so the accessibility tree still sees one link.
+   Scoped through ``.site-header .nav-link`` (0,3,0) so the white colour also
+   ties with ``.site-header .navbar-nav .nav-link`` if the entry is ever
+   nested in a .navbar-nav, instead of silently turning grey. */
+.site-header .nav-link.ls-ticker {
   display: inline-flex;
   align-items: center;
   gap: .4rem;
@@ -66,7 +69,7 @@ ul {
 
 /* Live is a red pill; the word LIVE always travels with the dot, so the
    state is never colour-only. */
-.ls-ticker[data-state="live"] {
+.site-header .nav-link.ls-ticker[data-state="live"] {
   background: #c62828;
   border-radius: 999px;
   font-weight: 600;
@@ -74,16 +77,16 @@ ul {
   padding: .25rem .7rem .25rem .6rem;
 }
 
-.ls-ticker__mark {
+.site-header .ls-ticker__mark {
   font-size: 1rem;
   color: #e8eef1;
 }
 
-.ls-ticker[data-state="live"] .ls-ticker__mark {
+.site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__mark {
   display: none;
 }
 
-.ls-ticker__dot {
+.site-header .ls-ticker__dot {
   display: none;
   position: relative;
   width: 8px;
@@ -92,11 +95,11 @@ ul {
   background: #fff;
 }
 
-.ls-ticker[data-state="live"] .ls-ticker__dot {
+.site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__dot {
   display: inline-block;
 }
 
-.ls-ticker[data-state="live"] .ls-ticker__dot::after {
+.site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__dot::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -117,7 +120,7 @@ ul {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ls-ticker[data-state="live"] .ls-ticker__dot::after {
+  .site-header .nav-link.ls-ticker[data-state="live"] .ls-ticker__dot::after {
     animation: none;
     opacity: 0;
   }
@@ -126,27 +129,27 @@ ul {
 /* Phone bar: the link shares the row with the hamburger, so a long label
    truncates instead of pushing the toggler off the screen. */
 @media (max-width: 767.98px) {
-  .ls-ticker {
+  .site-header .nav-link.ls-ticker {
     max-width: calc(100vw - 96px);
   }
 
-  .ls-ticker__label {
+  .site-header .ls-ticker__label {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .ls-ticker[data-state="live"] {
+  .site-header .nav-link.ls-ticker[data-state="live"] {
     margin-left: 0;
   }
 }
 
-.ls-ticker:hover,
-.ls-ticker:focus {
+.site-header .nav-link.ls-ticker:hover,
+.site-header .nav-link.ls-ticker:focus {
   color: #fff;
 }
 
-.ls-ticker:focus-visible {
+.site-header .nav-link.ls-ticker:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 2px;
 }

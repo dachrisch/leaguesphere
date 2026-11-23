@@ -9,10 +9,12 @@ rendered anchors (phone bar and desktop right block) and the removal of the old
 import re
 from datetime import time
 from pathlib import Path
+from unittest import mock
 
-from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.staticfiles import finders
 from django.core.cache import caches
+from django.template import loader
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -28,7 +30,11 @@ from liveticker.constants import (
     LIVETICKER_V2_HOME,
 )
 from liveticker.context_processors import live_nav
-from liveticker.service.today_status import CACHE_ALIAS, CACHE_KEY
+from liveticker.service.today_status import (
+    CACHE_ALIAS,
+    CACHE_KEY,
+    legacy_nav_status,
+)
 from liveticker.urls import gameday_ticker_url
 
 # Anchors are read attribute by attribute, not as one fixed HTML string: the
@@ -37,8 +43,6 @@ ANCHOR = re.compile(r"<a\b(?P<attrs>[^>]*)", re.S)
 # Values are optional: ``data-live-nav`` is a bare flag attribute, the JS
 # selector is ``[data-live-nav]``.
 ATTRIBUTE = re.compile(r'(?P<name>[\w-]+)(?:="(?P<value>[^"]*)")?')
-
-TICKER_JS = Path(settings.BASE_DIR) / "static" / "league_manager" / "js"
 
 
 def attributes(anchor_html):
@@ -115,6 +119,16 @@ class TestLiveNavContextProcessor(SnapshotCacheMixin, TestCase):
 
         assert first == second
 
+    def test_a_broken_status_falls_back_to_the_legacy_entry(self):
+        with mock.patch(
+            "liveticker.context_processors.nav_status",
+            side_effect=RuntimeError("status down"),
+        ):
+            nav = live_nav(self.request)["live_nav"]
+
+        assert nav == legacy_nav_status()
+        assert nav["href"] == reverse(LIVETICKER_HOME)
+
 
 @override_settings(LIVETICKER_V2_ENABLED=False)
 class TestLiveNavFlagOff(TestCase):
@@ -156,6 +170,11 @@ class TestStatusEndpoint(SnapshotCacheMixin, TestCase):
         response = self.client.get(reverse(LIVETICKER_STATUS))
 
         assert "max-age=30" in response["Cache-Control"]
+
+    def test_post_is_not_allowed(self):
+        response = self.client.post(reverse(LIVETICKER_STATUS))
+
+        assert response.status_code == 405
 
     def test_endpoint_url_is_public(self):
         assert reverse(LIVETICKER_STATUS) == "/liveticker/status/"
@@ -231,6 +250,49 @@ class TestRenderedHeader(SnapshotCacheMixin, TestCase):
         assert "league_manager/js/live_nav.js" in self.content
 
 
+class TestErrorPage(TestCase):
+    """Error pages must never render an empty ticker anchor.
+
+    Django's ``page_not_found`` passes the request, so the context processor
+    runs on a 404; the 500 page is rendered *without* a request, where the
+    include's ``|default:`` filters are the only thing keeping the entry named.
+    """
+
+    def test_404_page_carries_the_legacy_ticker_link(self):
+        response = self.client.get("/this-path-does-not-exist/")
+
+        assert response.status_code == 404
+        content = response.content.decode()
+        anchors = ticker_anchors(content)
+        assert len(anchors) == 2
+        for anchor in anchors:
+            assert anchor["href"] == "/liveticker/"
+            assert anchor["data-state"] == "idle"
+            assert anchor["aria-label"] == "Liveticker öffnen"
+        assert content.count('<span class="ls-ticker__label">Liveticker</span>') == 2
+
+    @override_settings(LIVETICKER_V2_ENABLED=True)
+    def test_404_page_keeps_a_named_link_with_the_flag_on(self):
+        content = self.client.get("/this-path-does-not-exist/").content.decode()
+
+        anchors = ticker_anchors(content)
+        assert len(anchors) == 2
+        for anchor in anchors:
+            assert anchor["href"], "the error page must not link to nowhere"
+            assert anchor["aria-label"], "the error page must name the link"
+
+    def test_500_page_is_rendered_without_a_request_and_still_names_the_link(self):
+        html = loader.get_template("500.html").render()
+
+        anchors = ticker_anchors(html)
+        assert len(anchors) == 2
+        for anchor in anchors:
+            assert anchor["href"] == "/liveticker/"
+            assert anchor["data-state"] == "idle"
+            assert anchor["aria-label"] == "Liveticker öffnen"
+        assert html.count('<span class="ls-ticker__label">Liveticker</span>') == 2
+
+
 class TestMenuRegistry(TestCase):
     def test_the_live_group_is_gone(self):
         request = RequestFactory().get("/")
@@ -241,9 +303,14 @@ class TestMenuRegistry(TestCase):
 
 class TestPollingScript(TestCase):
     def test_script_polls_the_status_endpoint_every_minute_while_visible(self):
-        source = (TICKER_JS / "live_nav.js").read_text()
+        path = finders.find("league_manager/js/live_nav.js")
+        assert path, "the header's status poller is missing from the static files"
+
+        source = Path(path).read_text()
 
         assert "/liveticker/status/" in source
         assert "setInterval" in source
         assert "60000" in source
         assert "visibilityState" in source
+        # A tab that comes back after being hidden refreshes immediately.
+        assert "visibilitychange" in source
