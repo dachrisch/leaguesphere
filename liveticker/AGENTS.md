@@ -1,15 +1,48 @@
 # liveticker/ — AGENTS.md
 
-Agent guide for the `liveticker` module.
+> Module guide. This folder is **hybrid**: a Django app *and* its React app live here together.
+> For repo-wide commands, testing setup, and deployment policy see the [root AGENTS.md](../AGENTS.md).
 
-> **Source of truth: [CLAUDE.md](CLAUDE.md)** — always read it first before working in this module. It is kept up to date; this file is only a quick index.
+## Purpose
+**Real-time game updates** for fans and participants — live scores, statuses, and event logging
+(touchdowns, interceptions, etc.), refreshed automatically during active gamedays.
 
-## Index
-- Purpose
-- Role in the system
-- Backend (Django)
-- Frontend (React — JavaScript, Redux)
-- Conventions & gotchas
-- Tests
+## Role in the system
+A read-oriented view over game data owned by [gamedays](../gamedays/AGENTS.md). The React app polls
+this app's API for the latest game information. Mobile-first, on-field viewing.
 
-For repo-wide commands, testing setup, and deployment policy, see the [root AGENTS.md](../AGENTS.md) and [root CLAUDE.md](../CLAUDE.md).
+---
+
+## Backend (Django)
+- **No `models.py`** — reads from gamedays; `constants.py` holds shared values.
+- `service/liveticker_service.py` — assembles the live feed (start here).
+- `api/` (`views.py`, `serializers.py`, `urls.py`) — the polling endpoints.
+- `urls.py`: `''` (serves the SPA).
+
+---
+
+## Frontend (React — JavaScript, Redux)
+- Entry: `src/index.jsx`. **Redux** state — `src/actions/`, `src/reducers/`, `src/store.js`
+  (differs from the Context/hooks apps like passcheck/gameday_designer).
+- `src/components/`, `src/reportWebVitals.js`.
+- Built with Vite (`vite.config.mjs`) into `static/`.
+
+---
+
+## Conventions & gotchas
+- This is **JavaScript + Redux**, not TypeScript — match the existing action/reducer pattern.
+- The feed is read-heavy and polled — keep endpoints query-flat and cache-friendly (ETag pattern
+  from gamedays applies).
+- Live scoring **entry** happens in [scorecard](../scorecard/AGENTS.md); liveticker only displays.
+
+## Tests
+```bash
+cd leaguesphere && pytest liveticker          # backend (needs LXC test DB)
+cd leaguesphere/liveticker && npm run test:run # frontend
+cd leaguesphere/liveticker && npm run eslint   # ZERO errors — CI blocks merge
+```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-live backend shard (pytest liveticker/tests/) + liveticker_js frontend job (npm --prefix liveticker/).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

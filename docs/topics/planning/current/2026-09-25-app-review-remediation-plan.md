@@ -164,6 +164,7 @@ Goal: close every High that is a config change. Target: a single PR touching `le
 - **Where:** `CLAUDE.md` and `README.md` link `docs/guides/contributor-guide.md`, `docs/guides/coding-standards.md`, `docs/guides/performance-guide.md`, `docs/guides/infrastructure-policy.md`, `docs/guides/infrastructure-performance-policy.md`, `docs/guides/setup-guide.md`, `docs/arch/architecture-overview.md` and `docs/testing/`. They live under `docs/topics/guides/`, `docs/topics/architecture/` and `docs/topics/testing/` since the May consolidation.
 - **How:** Update the links. Delete `docs/AUDIT.md` and `docs/CONSOLIDATION_SUMMARY.md` (they describe a finished migration) or move them to `docs/topics/planning/history/`. Add a link checker (`lychee` or a 20-line Python script) to the always-on CI job so this cannot regress.
 - **Verify:** Link checker passes.
+- **Done (2026-11-24):** deleted `docs/AUDIT.md` and `docs/CONSOLIDATION_SUMMARY.md`; corrected doc-structure links in root `AGENTS.md`, `README.md` and `docs/DOCUMENTATION.md`.
 
 ### 4.3 Tidy the repo root (item 16)
 - Move `CIRCLECI_IMPLEMENTATION.md`, `IMPLEMENTATION_CHECKLIST.md`, `RELEASE_FLOW_COMPARISON.md`, `RELEASE_PROCESS_ANALYSIS.md` into `docs/topics/planning/history/` or `docs/topics/deployment/`, as `docs/DOCUMENTATION.md` already requires.
@@ -172,15 +173,17 @@ Goal: close every High that is a config change. Target: a single PR touching `le
 - Fold `GEMINI.md` and `QWEN.md` into `AGENTS.md` and make `CLAUDE.md` the Claude-specific delta only, so there is one source of truth. Decide whether the 35 module-level `AGENTS.md` and `CLAUDE.md` pairs should also collapse to one file each.
 - Delete `coverage-reports/` (only a README) and the `conductor/` tracks if they are no longer used.
 - Update `.circleci/scope-mapping.txt` and `scope-exclude.txt` for every move and run `python3 scripts/check_scope_coverage.py`.
+- **Done (2026-11-24):** deleted the four root release-analysis docs; folded `GEMINI.md`/`QWEN.md` and all module `CLAUDE.md` files into `AGENTS.md` and removed the platform-specific files. Root script moves, `test_settings.py` and `coverage-reports/`/`conductor/` remain open.
 
 ### 4.4 Config drift (item 17)
 - `CLAUDE.md` says Django 5.2, `pyproject.toml` pins Django 6.0.8: fix the doc.
 - `[tool.bumpversion] current_version = "4.26.4-rc.4"` is stale and release-please owns versioning: delete the bumpversion section and drop `bump2version` from test deps, or update it if it is still used for the `package.json` files.
+  - **Done (2026-11-24):** removed the `bump2version` test dependency and the entire `[tool.bumpversion]` configuration; release-please is the sole versioning path. Stale Django version in agent/architecture docs corrected to 6.1.3.
 - `[tool.setuptools.packages.find]` omits `gameday_designer`, `matchreport`, `journey`: add them.
 - `.env.demo` uses `MYSQL_PASSWORD`/`MYSQL_DATABASE`, `base.py` reads `MYSQL_PWD`/`MYSQL_DB_NAME`: pick one naming and use it in `base.py`, `demo.py`, `.env_template` and the compose files.
 - The 17 GitHub Actions workflows are marked deactivated in favour of CircleCI: delete them, or keep only `release-please*.yaml` if those still run.
 
-**Phase 4 done when:** `black --check`, the link checker and `check_scope_coverage.py` all run in CI and pass, and the root holds only config files, `README.md`, `CHANGELOG.md`, `LICENSE`, `AGENTS.md` and `CLAUDE.md`.
+**Phase 4 done when:** `black --check`, the link checker and `check_scope_coverage.py` all run in CI and pass, and the root holds only config files, `README.md`, `CHANGELOG.md`, `LICENSE` and `AGENTS.md`.
 
 ---
 

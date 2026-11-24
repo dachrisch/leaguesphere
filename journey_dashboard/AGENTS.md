@@ -1,14 +1,37 @@
 # journey_dashboard/ — AGENTS.md
 
-Agent guide for the `journey_dashboard` module.
+> Module guide (frontend-only). For repo-wide commands, testing setup, and deployment policy see
+> the [root AGENTS.md](../AGENTS.md).
 
-> **Source of truth: [CLAUDE.md](CLAUDE.md)** — always read it first before working in this module. It is kept up to date; this file is only a quick index.
+## Purpose
+The **React app for the Game Progress dashboard** — a paginated gameday schedule with live score
+updates across a 21-day window (7 days past, 14 days future).
 
-## Index
-- Purpose
-- Role in the system
-- Frontend (React — TypeScript)
-- Conventions & gotchas
-- Tests
+## Role in the system
+Pure frontend; the **backend counterpart is [journey](../journey/AGENTS.md)**. This app consumes
+`GameProgressViewSet` (read-only denormalized gameday + games + scores) and filters by league and
+season via query params. There is **no Django app in this folder** (no `apps.py`).
 
-For repo-wide commands, testing setup, and deployment policy, see the [root AGENTS.md](../AGENTS.md) and [root CLAUDE.md](../CLAUDE.md).
+## Frontend (React — TypeScript)
+- Entry: `src/main.tsx` → `src/App.tsx`.
+- `src/api/` — calls to the journey progress API.
+- `src/components/`, `src/types/` (+ `types.ts`), `src/i18n/` (localized),
+  `src/styles/` + `src/index.css`, `src/utils/`, `src/trackEvent.ts` (analytics).
+- Built with Vite (`vite.config.ts`) into `static/` for Django `collectstatic`.
+
+## Conventions & gotchas
+- Data shape is driven by the journey serializers — coordinate any field changes with
+  [journey](../journey/AGENTS.md)`/api/progress_serializers.py`.
+- The API is read-only and query-flat; don't add write calls from here.
+- TypeScript + Vite; keep `npm run eslint` at **zero errors** (CI blocks merge).
+
+## Tests
+```bash
+cd leaguesphere/journey_dashboard && npm run test:run
+cd leaguesphere/journey_dashboard && npm run eslint
+```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **journey_dashboard_js frontend job (npm --prefix journey_dashboard/); FE-only, no Python tests.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

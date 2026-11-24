@@ -4,7 +4,7 @@ LeagueSphere follows a modern hybrid architecture, combining a robust Django bac
 
 ## 🏗 High-Level Architecture
 
-### Backend: Django 5.2 (REST Framework)
+### Backend: Django 6.1.3 (REST Framework)
 - **Role**: Serves as the central API, manages data persistence, handles authentication (DRF + Knox), and performs complex business logic for tournament management.
 - **Key Modules**:
   - `gamedays`: Core scheduling and tournament logic.

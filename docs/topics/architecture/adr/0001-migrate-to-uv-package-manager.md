@@ -114,7 +114,11 @@ include = [...]
 2. Add pyproject.toml to bump2version configuration
 3. Manually sync the version in pyproject.toml
 
-**Recommended:** Option 2 - Add pyproject.toml to bump2version configuration for automatic synchronization.
+**Recommended (at the time):** Option 2 - Add pyproject.toml to bump2version configuration for automatic synchronization.
+
+**2026-11-24 update:** this recommendation is obsolete. `bump2version` and the whole
+`[tool.bumpversion]` configuration were removed from `pyproject.toml`; **release-please** is the
+single source of truth for versioning and generates the root `CHANGELOG.md`.
 
 ## Risks and Mitigations
 

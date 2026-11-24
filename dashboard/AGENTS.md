@@ -1,14 +1,31 @@
 # dashboard/ — AGENTS.md
 
-Agent guide for the `dashboard` module.
+> Module guide. For repo-wide commands, testing setup, and deployment policy see the [root AGENTS.md](../AGENTS.md).
 
-> **Source of truth: [CLAUDE.md](CLAUDE.md)** — always read it first before working in this module. It is kept up to date; this file is only a quick index.
+## ⚠️ Status: legacy — being phased out
+This is the **old** administrative dashboard. New game-progress work happens in
+[journey](../journey/AGENTS.md) + [journey_dashboard](../journey_dashboard/AGENTS.md). Prefer
+extending those; only touch this app for maintenance of existing behavior, and avoid building new
+features on it.
 
-## Index
-- Status: legacy — being phased out
-- Purpose (historical)
-- Key files
-- Conventions & gotchas
-- Tests
+## Purpose (historical)
+Provided the main admin dashboard for league managers to oversee gamedays, teams, and league status.
 
-For repo-wide commands, testing setup, and deployment policy, see the [root AGENTS.md](../AGENTS.md) and [root CLAUDE.md](../CLAUDE.md).
+## Key files
+- `api/` — dashboard data endpoints.
+- `service/` — dashboard business logic.
+- `tests/` — existing coverage (keep green if you modify anything here).
+
+## Conventions & gotchas
+- Before adding to this app, confirm the feature doesn't belong in the `journey` stack instead.
+- Data is sourced from [gamedays](../gamedays/AGENTS.md); no independent domain models.
+
+## Tests
+```bash
+cd leaguesphere && pytest dashboard
+```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **docs-only module — triggers no CI jobs.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

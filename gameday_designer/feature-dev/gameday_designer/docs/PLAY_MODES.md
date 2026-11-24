@@ -945,7 +945,7 @@ For questions, issues, or suggestions regarding tournament play modes:
 
 - **GitHub Issues**: [LeagueSphere Issues](https://github.com/dachrisch/leaguesphere/issues)
 - **Documentation**: `/home/cda/dev/leaguesphere/gameday_designer/feature-dev/gameday_designer/docs/`
-- **Developer Guide**: See CLAUDE.md in project root
+- **Developer Guide**: See AGENTS.md in project root
 
 **Version**: 1.0.0
 **Last Updated**: 2025-12-21

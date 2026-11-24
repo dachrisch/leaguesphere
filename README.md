@@ -15,17 +15,15 @@ The project uses a structured documentation approach in the `docs/` directory fo
 
 **Specialized Guides:**
 - **Setup Guide**: `docs/topics/guides/setup-guide.md` (Local environment configuration).
-- **Gemini CLI Guide**: `GEMINI.md`.
-- **Claude Code Guide**: `CLAUDE.md`.
-- **General Agent Guide**: `AGENTS.md`.
+- **General Agent Guide**: `AGENTS.md` — the single agent instruction file (root and per module); includes commands, architecture and testing policy.
 
 **Directory Structure:**
 - `docs/topics/architecture/`: Architectural Decision Records (ADR) and system design.
-- `docs/features/`: Feature-specific documentation (Current and History).
-- `docs/guides/`: Setup, onboarding, and contributor guides.
-- `docs/plans/`: Historical and current implementation plans.
-- `docs/reports/`: Verification reports, summaries, and performance analysis.
+- `docs/topics/features/`: Feature-specific documentation.
+- `docs/topics/guides/`: Setup, onboarding, and contributor guides.
+- `docs/topics/deployment/`: Deployment and infrastructure policy.
 - `docs/topics/testing/`: Test scenarios and testing strategies.
+- `docs/topics/planning/`: Active (`current/`) and archived (`history/`) plans.
 
 ## Installation
 

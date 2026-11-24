@@ -2,7 +2,7 @@
 <!-- What changed and why. Link the issue this closes, e.g. "Closes #1945". -->
 
 ## Test plan
-<!-- Check off what you actually ran. See CLAUDE.md § Testing & Verification. -->
+<!-- Check off what you actually ran. See AGENTS.md § Testing & Verification. -->
 - [ ] Backend: `pytest` passes
 - [ ] Frontend: `npm run test:run` passes (in each app touched)
 - [ ] Backend formatted: `black .`

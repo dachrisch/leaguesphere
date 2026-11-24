@@ -32,7 +32,6 @@ Refer to the specialized guides for detailed protocols:
 - **[Scoped CI](../deployment/scoped-ci.md)**: Path-scoped CircleCI pipeline. CI changes require updating `.circleci/scope-mapping.txt`/`scope-exclude.txt` (runs `scripts/check_scope_coverage.py` safety net); dependency/build changes may widen the tests a push runs.
 - **[Setup Guide](setup-guide.md)**: Local environment configuration.
 
-## 🤖 Platform-Specific Instructions
-Refer to these files for instructions specific to your agent platform:
-- **Claude Code**: `CLAUDE.md`
-- **Gemini CLI**: `GEMINI.md`
+## 🤖 Agent Instructions
+The repo uses one agent instruction file per directory: `AGENTS.md` (root and per module).
+There are no platform-specific variants.
