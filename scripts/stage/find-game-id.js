@@ -10,7 +10,7 @@
  * 4. Suggest a game to test
  *
  * Usage:
- *   node find-game-id.js --password=PASSWORD
+ *   node scripts/stage/find-game-id.js --username=USER --password=PASSWORD
  */
 
 const https = require('https');
@@ -23,11 +23,16 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
 }, {});
 
 const TARGET_HOST = 'https://stage.leaguesphere.app';
-const TEST_USERNAME = args.username || 'chrisd';
+const TEST_USERNAME = process.env.TEST_USERNAME || args.username;
 const TEST_PASSWORD = args.password;
 
 if (!TEST_PASSWORD) {
   console.error('ERROR: Password required. Use --password=YOUR_PASSWORD');
+  process.exit(1);
+}
+
+if (!TEST_USERNAME) {
+  console.error('ERROR: Username required. Set TEST_USERNAME env var or use --username=...');
   process.exit(1);
 }
 
@@ -186,7 +191,7 @@ async function main() {
   console.log('\n🚀 Run E2E Test:');
   const gameId = gamesData[0].id;
   const gamedayId = selectedGameday.id;
-  console.log(`   node e2e-game-test.js --gameid=${gameId} --gamedayid=${gamedayId} --password=YOUR_PASSWORD\n`);
+  console.log(`   node scripts/stage/e2e-game-test.js --gameid=${gameId} --gamedayid=${gamedayId} --password=YOUR_PASSWORD\n`);
 }
 
 main().catch(err => {

@@ -7,7 +7,7 @@
  * so the e2e test can work with it.
  *
  * Usage:
- *   node setup-gameday-for-today.js --password=PASSWORD
+ *   node scripts/stage/setup-gameday-for-today.js --username=USER --password=PASSWORD
  */
 
 const https = require('https');
@@ -20,11 +20,16 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
 }, {});
 
 const TARGET_HOST = 'https://stage.leaguesphere.app';
-const TEST_USERNAME = args.username || 'chrisd';
+const TEST_USERNAME = process.env.TEST_USERNAME || args.username;
 const TEST_PASSWORD = args.password;
 
 if (!TEST_PASSWORD) {
   console.error('ERROR: Password required. Use --password=YOUR_PASSWORD');
+  process.exit(1);
+}
+
+if (!TEST_USERNAME) {
+  console.error('ERROR: Username required. Set TEST_USERNAME env var or use --username=...');
   process.exit(1);
 }
 
@@ -191,7 +196,7 @@ async function main() {
   console.log(`Gameday ID: ${selectedGameday.id}`);
   console.log(`Games available: ${gameCount}\n`);
   console.log(`🚀 Next: Run the e2e test:\n`);
-  console.log(`   node e2e-game-test.js --gameid=<GAME_ID> --gamedayid=${selectedGameday.id} --password=YOUR_PASSWORD\n`);
+  console.log(`   node scripts/stage/e2e-game-test.js --gameid=<GAME_ID> --gamedayid=${selectedGameday.id} --password=YOUR_PASSWORD\n`);
 }
 
 main().catch(err => {

@@ -352,7 +352,6 @@ For detailed protocols and standards, refer to:
 
 **Documentation Structure (`docs/` directory):**
 - `docs/topics/`: canonical topic tree — architecture (incl. ADRs), guides, features, deployment, testing, troubleshooting, planning (`current/` + `history/`)
-- `docs/plans/` and `docs/superpowers/`: older working areas — see [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) for placement rules
 
 ---
 

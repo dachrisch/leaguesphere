@@ -201,8 +201,8 @@ Need to:
 ## Files & Commands
 
 **Spike Scripts Created:**
-- `step1-find-game.js` - Find gameday with games
-- `setup-gameday-for-today.js` - Change gameday date
+- `scripts/stage/step1-find-game.js` - Find gameday with games
+- `scripts/stage/setup-gameday-for-today.js` - Change gameday date
 - Working curl commands documented above
 
 **Test Data Used:**

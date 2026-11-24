@@ -174,7 +174,9 @@ Goal: close every High that is a config change. Target: a single PR touching `le
 - Delete `coverage-reports/` (only a README) and the `conductor/` tracks if they are no longer used.
 - Update `.circleci/scope-mapping.txt` and `scope-exclude.txt` for every move and run `python3 scripts/check_scope_coverage.py`.
 - **Done (2026-11-24):** deleted the four root release-analysis docs; folded `GEMINI.md`/`QWEN.md` and all module `CLAUDE.md` files into `AGENTS.md` and removed the platform-specific files.
-- **Done (2026-11-24, follow-up PR):** removed `coverage-reports/`, `conductor/`, `fe_template/`, `locust_testing/` (superseded by `tests/load/`) and the docs-only `dashboard/`. `hardening/` was kept: `docs/topics/testing/hardening-domain-knowledge.md` documents it as a reusable harness. Root script moves and `test_settings.py` remain open.
+- **Done (2026-11-24, follow-up PR):** removed `coverage-reports/`, `conductor/`, `fe_template/`, `locust_testing/` (superseded by `tests/load/`) and the docs-only `dashboard/`. `hardening/` was kept: `docs/topics/testing/hardening-domain-knowledge.md` documents it as a reusable harness.
+- **Done (2026-11-24, this PR):** moved the five stage scripts into `scripts/stage/` with a README; hardcoded usernames replaced by the required `TEST_USERNAME` env var; CI scope rules and all doc references updated. `test_settings.py` remains open.
+- **Done (2026-11-24, this PR):** deleted the completed plan trees `docs/plans/` and `docs/superpowers/` (implemented or superseded; no references from canonical docs). Active plans remain in `docs/topics/planning/current/`.
 
 ### 4.4 Config drift (item 17)
 - `CLAUDE.md` says Django 5.2, `pyproject.toml` pins Django 6.0.8: fix the doc.

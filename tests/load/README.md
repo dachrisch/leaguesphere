@@ -234,8 +234,7 @@ PHASE=perform bash run-load-test.sh
 
 ## Documentation
 
-- **Design Spec:** `docs/superpowers/specs/2026-06-04-realistic-gameday-load-test.md`
-- **Implementation Plan:** `docs/superpowers/plans/2026-06-04-gameday-load-test.md`
+- **Historical record:** `../../history/2026-06-04_gameday-load-test.md`
 - **Related History:** `history/2026-06-04_gameday-load-test.md`
 - **K6 Official Docs:** https://k6.io/docs/
 - **Prometheus Metrics:** https://prometheus.io/docs/

@@ -11,11 +11,7 @@ docs/.*
 # --- manual / exploratory (not built or tested in CI) ---
 history/.*
 load-test-k6\.js
-e2e-game-test\.js
-find-game-id\.js
-setup-gameday-for-today\.js
-step1-find-game\.js
-capture_screenshot\.sh
+scripts/stage/.*
 hardening/.*
 scorecard_v2/tests/e2e_scenarios/.*
 scripts/run_scorecard_scenarios\.sh

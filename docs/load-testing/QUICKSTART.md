@@ -4,8 +4,8 @@
 
 This directory contains load testing infrastructure for LeagueSphere:
 
-1. **`e2e-game-test.js`** — Single-game E2E test (spike to validate API)
-2. **`find-game-id.js`** — Helper to find available game IDs on stage
+1. **`scripts/stage/e2e-game-test.js`** — Single-game E2E test (spike to validate API)
+2. **`scripts/stage/find-game-id.js`** — Helper to find available game IDs on stage
 3. **`load-test-realistic-cycle.js`** — k6 load test script (full multi-phase test)
 4. **`realistic-multi-phase-design.md`** — Design documentation
 
@@ -16,8 +16,8 @@ This directory contains load testing infrastructure for LeagueSphere:
 ### 1. Find an Available Game
 
 ```bash
-cd /home/cda/dev/leaguesphere/.worktrees/feature-ls-worktree
-node find-game-id.js --password=YOUR_PASSWORD
+cd /home/cda/dev/leaguesphere
+node scripts/stage/find-game-id.js --password=YOUR_PASSWORD
 ```
 
 Output:
@@ -29,19 +29,19 @@ Output:
    Time: 10:00
 
 🚀 Run E2E Test:
-   node e2e-game-test.js --gameid=9001 --password=YOUR_PASSWORD
+   node scripts/stage/e2e-game-test.js --gameid=9001 --password=YOUR_PASSWORD
 ```
 
 ### 2. Run E2E Test Against That Game
 
 ```bash
 export TEST_PASSWORD=YOUR_PASSWORD
-node e2e-game-test.js --gameid=9001
+node scripts/stage/e2e-game-test.js --gameid=9001
 ```
 
 Or with arguments:
 ```bash
-node e2e-game-test.js --gameid=9001 --password=YOUR_PASSWORD --target=https://stage.leaguesphere.app
+node scripts/stage/e2e-game-test.js --gameid=9001 --password=YOUR_PASSWORD --target=https://stage.leaguesphere.app
 ```
 
 ### 3. Check Results
@@ -166,16 +166,16 @@ The JSON results file contains all API requests/responses:
 
 ```bash
 # Find all games with different gameday
-node find-game-id.js --password=X
+node scripts/stage/find-game-id.js --password=X
 
 # Test specific game
-node e2e-game-test.js --gameid=9999 --password=X
+node scripts/stage/e2e-game-test.js --gameid=9999 --password=X
 ```
 
 ### Test Against Production
 
 ```bash
-node e2e-game-test.js --gameid=9001 \
+node scripts/stage/e2e-game-test.js --gameid=9001 \
   --password=X \
   --target=https://leaguesphere.app
 ```
@@ -225,7 +225,6 @@ curl -s https://stage.leaguesphere.app/login/ | grep csrf
 docs/load-testing/
 ├── QUICKSTART.md (this file)
 ├── realistic-multi-phase-design.md (design + architecture)
-├── e2e-game-test.js (single-game validation script)
-├── find-game-id.js (helper to find game IDs)
+├── scripts/stage/ (E2E helpers — see scripts/stage/README.md)
 └── ../../../load-test-realistic-cycle.js (k6 multi-phase test)
 ```

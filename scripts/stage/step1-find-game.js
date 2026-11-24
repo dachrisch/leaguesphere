@@ -4,11 +4,16 @@ const https = require('https');
 const { URL } = require('url');
 
 const TARGET = 'https://stage.leaguesphere.app/gamedays/';
-const USERNAME = 'chrisd';
+const USERNAME = process.env.TEST_USERNAME;
 const PASSWORD = process.argv[2];
 
 if (!PASSWORD) {
-  console.error('Usage: node step1-find-game.js PASSWORD');
+  console.error('Usage: TEST_USERNAME=USER node scripts/stage/step1-find-game.js PASSWORD');
+  process.exit(1);
+}
+
+if (!USERNAME) {
+  console.error('ERROR: Username required. Set TEST_USERNAME env var.');
   process.exit(1);
 }
 
