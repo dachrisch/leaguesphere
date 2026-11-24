@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.27.5](https://github.com/dachrisch/leaguesphere/compare/v5.27.4...v5.27.5) (2026-11-24)
+
+
+### Documentation
+
+* consolidate agent guides and remove superseded docs ([5ab618d](https://github.com/dachrisch/leaguesphere/commit/5ab618d977546f7ac24682586b55b6ef49aace96))
+
 ## [5.27.4](https://github.com/dachrisch/leaguesphere/compare/v5.27.3...v5.27.4) (2026-11-24)
 
 
