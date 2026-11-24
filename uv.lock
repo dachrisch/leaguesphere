@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -770,7 +770,7 @@ wheels = [
 
 [[package]]
 name = "leaguesphere"
-version = "5.27.4"
+version = "5.27.5"
 source = { editable = "." }
 dependencies = [
     { name = "crispy-bootstrap5" },
