@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.27.3](https://github.com/dachrisch/leaguesphere/compare/v5.27.2...v5.27.3) (2026-11-24)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v26.6.7 ([#2526](https://github.com/dachrisch/leaguesphere/issues/2526)) ([d36f476](https://github.com/dachrisch/leaguesphere/commit/d36f47604a74c3b9337f3ace2ce195da42d093ec))
+* **deps:** update js deps ([#2528](https://github.com/dachrisch/leaguesphere/issues/2528)) ([c2dee35](https://github.com/dachrisch/leaguesphere/commit/c2dee35ed57803c6adef9b13950c910ec014413f))
+
 ## [5.27.2](https://github.com/dachrisch/leaguesphere/compare/v5.27.1...v5.27.2) (2026-11-24)
 
 
