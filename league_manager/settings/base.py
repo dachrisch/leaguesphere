@@ -220,14 +220,27 @@ REST_FRAMEWORK = {
     },
 }
 
+
+# MYSQL_DB_NAME / MYSQL_PWD are legacy aliases; the canonical names are the
+# MariaDB image-standard MYSQL_DATABASE / MYSQL_PASSWORD. Keep the fallbacks
+# until every deployment supplies the canonical pair. Presence (not truthiness)
+# decides which name wins, so an intentionally empty password stays empty.
+def _db_setting(canonical, legacy, default):
+    if canonical in os.environ:
+        return os.environ[canonical]
+    if legacy in os.environ:
+        return os.environ[legacy]
+    return default
+
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": os.environ.get("MYSQL_DB_NAME", "test_db"),
+        "NAME": _db_setting("MYSQL_DATABASE", "MYSQL_DB_NAME", "test_db"),
         # 'NAME': 'test_5erdffl$league_manager2',
         # 'NAME': 'test_demodffl$default',
         "USER": os.environ.get("MYSQL_USER", "user"),
-        "PASSWORD": os.environ.get("MYSQL_PWD", "user"),
+        "PASSWORD": _db_setting("MYSQL_PASSWORD", "MYSQL_PWD", "user"),
         "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
         "PORT": os.environ.get("MYSQL_PORT", "3306"),
         "CONN_MAX_AGE": 300,

@@ -14,13 +14,15 @@ SETTINGS_PACKAGE = "league_manager.settings"
 PACKAGE_FALLBACK_MODULE = f"{SETTINGS_PACKAGE}.prod"
 LOCAL_SETTINGS_SELECTORS = ("dev", "test_sqlite")
 
+# The canonical DB pair uses the MariaDB image-standard names. The aliases are
+# deprecated but still accepted so staged infra/app rollouts work in any order.
 REQUIRED_ENV_VARS = (
     "SECRET_KEY",
     "MYSQL_HOST",
-    "MYSQL_DB_NAME",
     "MYSQL_USER",
-    "MYSQL_PWD",
 )
+CANONICAL_DB_VARS = ("MYSQL_DATABASE", "MYSQL_PASSWORD")
+LEGACY_DB_VARS = ("MYSQL_DB_NAME", "MYSQL_PWD")
 
 
 def is_active_settings_module(module_name):
@@ -40,6 +42,14 @@ def require_env_vars(module_name, label):
     if not is_active_settings_module(module_name):
         return
     missing = [var for var in REQUIRED_ENV_VARS if not os.environ.get(var)]
+    # Either a complete canonical pair or a complete legacy pair suffices.
+    if any(not os.environ.get(var) for var in CANONICAL_DB_VARS) and any(
+        not os.environ.get(var) for var in LEGACY_DB_VARS
+    ):
+        missing.append(
+            "MYSQL_DATABASE and MYSQL_PASSWORD "
+            "(legacy aliases MYSQL_DB_NAME and MYSQL_PWD are also accepted)"
+        )
     if missing:
         raise ImproperlyConfigured(
             f"{label} settings require these environment variables to be set: "
