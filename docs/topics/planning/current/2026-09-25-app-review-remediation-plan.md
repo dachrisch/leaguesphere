@@ -182,7 +182,7 @@ Goal: close every High that is a config change. Target: a single PR touching `le
   - **Done (2026-11-24):** removed the `bump2version` test dependency and the entire `[tool.bumpversion]` configuration; release-please is the sole versioning path. Stale Django version in agent/architecture docs corrected to 6.1.3.
   - **Done (2026-11-24, follow-up PR):** `[tool.setuptools.packages.find]` no longer includes the removed `fe_template*` and `locust_testing*` packages and now includes the previously omitted `gameday_designer*`, `journey*` and `matchreport*`.
 - `[tool.setuptools.packages.find]` omits `gameday_designer`, `matchreport`, `journey`: add them.
-- `.env.demo` uses `MYSQL_PASSWORD`/`MYSQL_DATABASE`, `base.py` reads `MYSQL_PWD`/`MYSQL_DB_NAME`: pick one naming and use it in `base.py`, `demo.py`, `.env_template` and the compose files.
+- **Done:** `.env.demo` and `base.py` now share the canonical `MYSQL_DATABASE`/`MYSQL_PASSWORD` naming (`.env_template`, compose docs and CI env were converged too). `MYSQL_DB_NAME`/`MYSQL_PWD` remain temporary fallbacks in `base.py` and the prod/stage env guard so the companion infra rollout can land in either order.
 - The 17 GitHub Actions workflows are marked deactivated in favour of CircleCI: delete them, or keep only `release-please*.yaml` if those still run.
 
 **Phase 4 done when:** `black --check`, the link checker and `check_scope_coverage.py` all run in CI and pass, and the root holds only config files, `README.md`, `CHANGELOG.md`, `LICENSE` and `AGENTS.md`.

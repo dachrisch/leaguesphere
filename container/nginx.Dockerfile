@@ -49,9 +49,9 @@ RUN rm -rf gameday_designer/static/gameday_designer/js
 # in the final nginx image, only collected static files do)
 RUN SECRET_KEY=build-only-dummy-secret-key-not-for-production \
     MYSQL_HOST=127.0.0.1 \
-    MYSQL_DB_NAME=build_dummy \
+    MYSQL_DATABASE=build_dummy \
     MYSQL_USER=build_dummy \
-    MYSQL_PWD=build_dummy \
+    MYSQL_PASSWORD=build_dummy \
     .venv/bin/python manage.py collectstatic --no-input --clear
 
 FROM node:26-slim AS node-builder

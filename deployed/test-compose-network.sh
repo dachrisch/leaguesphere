@@ -10,9 +10,9 @@ echo "Testing docker-compose network configuration: $COMPOSE_FILE ($ENV_NAME)"
 cat > ls.env.ci <<EOF
 SECRET_KEY=ci-test-secret-key
 MYSQL_HOST=mysql-mock.example.com
-MYSQL_DB_NAME=ci_test_db
+MYSQL_DATABASE=ci_test_db
 MYSQL_USER=ci_test_user
-MYSQL_PWD=ci_test_password
+MYSQL_PASSWORD=ci_test_password
 DEBUG=False
 EOF
 

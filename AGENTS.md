@@ -89,7 +89,7 @@ npm --prefix gameday_designer/ run test:run
 npm --prefix gameday_designer/ run watch
 
 # Required environment variables (see .env_template)
-export SECRET_KEY="..." MYSQL_HOST="127.0.0.1" MYSQL_DB_NAME="..." MYSQL_USER="..." MYSQL_PWD="..."
+export SECRET_KEY="..." MYSQL_HOST="127.0.0.1" MYSQL_DATABASE="..." MYSQL_USER="..." MYSQL_PASSWORD="..."
 
 # Production-like local run / faster tests / e2e
 uv run gunicorn -b 0.0.0.0:8000 league_manager.wsgi
