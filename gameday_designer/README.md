@@ -12,4 +12,4 @@ A sophisticated React-based flowchart tool for creating, managing, and applying 
 - **Tests**: `npm run test:run`
 - **Build**: `npm run build`
 
-Refer to `gameday_designer/GEMINI.md` for detailed agent-specific instructions.
+Refer to `gameday_designer/AGENTS.md` for detailed agent instructions.

@@ -86,14 +86,14 @@ Module READMEs stay in their directories (`accounts/README.md`, `gameday_designe
 **DO NOT:**
 - Create documentation outside `/docs/topics/` without explicit approval
 - Scatter docs in module directories (except module-specific READMEs)
-- Leave docs in conductor/, gameday_designer/, or root level (except CLAUDE.md, GEMINI.md, README.md, CHANGELOG.md)
+- Leave docs in conductor/, gameday_designer/, or root level (except AGENTS.md, README.md, CHANGELOG.md)
 - Create temporary docs that don't get linked and indexed
 
 ## Enforcement
 
 - CI lint checks that new .md files only exist in `/docs/` (except module READMEs and root files)
 - PR reviews will catch documentation outside this structure
-- Agents are trained via CLAUDE.md and GEMINI.md to follow these rules
+- Agents are instructed via the root and per-module `AGENTS.md` files to follow these rules
 
 ## Questions?
 

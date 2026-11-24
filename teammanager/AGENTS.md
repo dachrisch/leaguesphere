@@ -1,15 +1,37 @@
 # teammanager/ — AGENTS.md
 
-Agent guide for the `teammanager` module.
+> Module guide. For repo-wide commands, testing setup, and deployment policy see the [root AGENTS.md](../AGENTS.md).
 
-> **Source of truth: [CLAUDE.md](CLAUDE.md)** — always read it first before working in this module. It is kept up to date; this file is only a quick index.
+## Purpose
+The management UI for **teams, clubs, users, and player rosters** — CRUD screens for registering
+teams, editing rosters, handling player transfers, and viewing achievements.
 
-## Index
-- Purpose
-- Role in the system
-- Key files
-- Routes (`urls.py`)
-- Conventions & gotchas
-- Tests
+## Role in the system
+A view/forms layer over domain models owned by [gamedays](../gamedays/AGENTS.md) — `teammanager`
+has **no `models.py` of its own** and imports `gamedays.models` (`Team`, `Person`, etc.). It is the
+primary human-facing entry point for team data that scheduling and scoring then consume.
 
-For repo-wide commands, testing setup, and deployment policy, see the [root AGENTS.md](../AGENTS.md) and [root CLAUDE.md](../CLAUDE.md).
+## Key files
+- `views.py` — the CRUD views (imports `gamedays.models`).
+- `forms.py` — team/user/player forms.
+- `urls.py` — routes below.
+
+## Routes (`urls.py`)
+Team CRUD: `addteam/`, `team/<id>`, `editteam/<id>`, `deleteteam/<id>`.
+User CRUD: `createuser/<team_id>`, `edituser/<user_id>`, `deleteuser/<user_id>`.
+Players: `playerdetail/<player_id>`, `uploadplayers/<team_id>` (bulk upload), `achievements/`.
+
+## Conventions & gotchas
+- **Do not add domain models here** — teams/persons are defined in gamedays; add fields there.
+- `uploadplayers/` does bulk roster import; validate against gamedays' `Team` relationships.
+- Player eligibility rules for gamedays are enforced in [passcheck](../passcheck/AGENTS.md), not here.
+
+## Tests
+```bash
+cd leaguesphere && pytest teammanager
+```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-officials shard scope (includes `teammanager/` tests).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).

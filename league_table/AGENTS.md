@@ -1,16 +1,55 @@
 # league_table/ — AGENTS.md
 
-Agent guide for the `league_table` module.
+> Module guide. For repo-wide commands, testing setup, and deployment policy see the [root AGENTS.md](../AGENTS.md).
 
-> **Source of truth: [CLAUDE.md](CLAUDE.md)** — always read it first before working in this module. It is kept up to date; this file is only a quick index.
+## Purpose
+Computes and serves **league standings** — points, wins/losses, and tie-breakers — for both
+group-phase and overall-league formats.
 
-## Index
-- Purpose
-- Role in the system
-- Key models (`models.py`)
-- Service layer (`service/`)
-- Routes (`urls.py`)
-- Conventions & gotchas
-- Tests
+## Role in the system
+A read/compute layer over game results owned by [gamedays](../gamedays/AGENTS.md). It defines the
+ranking rules (rulesets, tie-break steps, point adjustments) and produces the tables shown in the
+web UI and exposed for export.
 
-For repo-wide commands, testing setup, and deployment policy, see the [root AGENTS.md](../AGENTS.md) and [root CLAUDE.md](../CLAUDE.md).
+## Key models (`models.py`)
+`LeagueGroup`, `LeagueRuleset`, `TieBreakStep`, `LeagueRulesetTieBreak`, `LeagueSeasonConfig`,
+`OverrideOfficialGamedaySetting`, `TeamPointAdjustments`.
+
+`LeagueSeasonConfig` is `unique_together`-constrained on `(league, season)` — at most one row per
+league+season, since [officials](../officials/AGENTS.md)'s
+`officials_compliance_service.py` and `signup_service.py` both resolve config by that pair alone
+and assume a single match.
+
+`LeagueSeasonConfig`'s `check_officials_automatically`/`min_officials_*` fields (and its
+`exclude_gamedays` M2M, reused as the exclusion list for this check too) are read by
+[officials](../officials/AGENTS.md)'s `officials_compliance_service.py`, itself consumed by
+[matchreport](../matchreport/AGENTS.md) — a cross-app dependency to keep in mind when changing
+this model's shape.
+
+## Service layer (`service/`)
+Standings logic is centralized here so the web UI and exports stay consistent — **change ranking
+behavior here, not in views:**
+- `league_table.py`, `league_table_service.py` — table assembly.
+- `ranking/` — ranking + tie-break resolution.
+- `leaguetable_repository.py` — data access; `datatypes.py` — value types;
+  `leaguetable_settings.py` — configuration.
+
+## Routes (`urls.py`)
+- `<str:league>/<str:season>/` — standings for a league+season.
+- `<str:league>/` — league overview.
+- `all-games/` — full game list.
+
+## Conventions & gotchas
+- Tie-break ordering is data-driven (`TieBreakStep` / `LeagueRulesetTieBreak`); extend the ruleset
+  models rather than hard-coding comparison logic.
+- `TeamPointAdjustments` applies manual point corrections — factor it in for any new aggregation.
+
+## Tests
+```bash
+cd leaguesphere && pytest league_table
+```
+
+
+## CI scope (scoped CI)
+
+Changes here run: **python-gamedays (pytest gamedays/ league_table/) — coupled with gamedays.** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).
