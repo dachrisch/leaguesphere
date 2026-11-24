@@ -30,7 +30,6 @@ fe_template/.*
 \.github/.*
 \.claude/.*
 \.opencode/.*
-\.qwen/.*
 (.*/)?\.gitignore
 \.pre-commit-config\.yaml
 \.codecov\.yml
