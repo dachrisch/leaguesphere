@@ -173,12 +173,14 @@ Goal: close every High that is a config change. Target: a single PR touching `le
 - Fold `GEMINI.md` and `QWEN.md` into `AGENTS.md` and make `CLAUDE.md` the Claude-specific delta only, so there is one source of truth. Decide whether the 35 module-level `AGENTS.md` and `CLAUDE.md` pairs should also collapse to one file each.
 - Delete `coverage-reports/` (only a README) and the `conductor/` tracks if they are no longer used.
 - Update `.circleci/scope-mapping.txt` and `scope-exclude.txt` for every move and run `python3 scripts/check_scope_coverage.py`.
-- **Done (2026-11-24):** deleted the four root release-analysis docs; folded `GEMINI.md`/`QWEN.md` and all module `CLAUDE.md` files into `AGENTS.md` and removed the platform-specific files. Root script moves, `test_settings.py` and `coverage-reports/`/`conductor/` remain open.
+- **Done (2026-11-24):** deleted the four root release-analysis docs; folded `GEMINI.md`/`QWEN.md` and all module `CLAUDE.md` files into `AGENTS.md` and removed the platform-specific files.
+- **Done (2026-11-24, follow-up PR):** removed `coverage-reports/`, `conductor/`, `fe_template/`, `locust_testing/` (superseded by `tests/load/`) and the docs-only `dashboard/`. `hardening/` was kept: `docs/topics/testing/hardening-domain-knowledge.md` documents it as a reusable harness. Root script moves and `test_settings.py` remain open.
 
 ### 4.4 Config drift (item 17)
 - `CLAUDE.md` says Django 5.2, `pyproject.toml` pins Django 6.0.8: fix the doc.
 - `[tool.bumpversion] current_version = "4.26.4-rc.4"` is stale and release-please owns versioning: delete the bumpversion section and drop `bump2version` from test deps, or update it if it is still used for the `package.json` files.
   - **Done (2026-11-24):** removed the `bump2version` test dependency and the entire `[tool.bumpversion]` configuration; release-please is the sole versioning path. Stale Django version in agent/architecture docs corrected to 6.1.3.
+  - **Done (2026-11-24, follow-up PR):** `[tool.setuptools.packages.find]` no longer includes the removed `fe_template*` and `locust_testing*` packages and now includes the previously omitted `gameday_designer*`, `journey*` and `matchreport*`.
 - `[tool.setuptools.packages.find]` omits `gameday_designer`, `matchreport`, `journey`: add them.
 - `.env.demo` uses `MYSQL_PASSWORD`/`MYSQL_DATABASE`, `base.py` reads `MYSQL_PWD`/`MYSQL_DB_NAME`: pick one naming and use it in `base.py`, `demo.py`, `.env_template` and the compose files.
 - The 17 GitHub Actions workflows are marked deactivated in favour of CircleCI: delete them, or keep only `release-please*.yaml` if those still run.
@@ -193,6 +195,7 @@ Goal: close every High that is a config change. Target: a single PR touching `le
 - **Where:** five apps with five `package.json`, five ESLint, Vite and Vitest configs; exact pins in `gameday_designer` and `journey_dashboard`, carets elsewhere; `fe_template/` still carries `webpack.config.js` and a legacy `.eslintrc.json`.
 - **How:** Introduce an npm workspace at the root (`package.json` `workspaces`), a shared `eslint.config.mjs` and `vite.shared.mts` that each app extends, and let Renovate group the shared deps. Delete `fe_template/` or rebuild it as the workspace template. Keep JS + Redux in liveticker and scorecard for now; converting them to TypeScript is a separate decision.
 - **Verify:** `npm run eslint` and `npm run test:run` pass from the root for all apps; CircleCI node jobs still pass with the path scoping.
+- **Done (2026-11-24, follow-up PR):** `fe_template/` deleted, so the legacy webpack/ESLint scaffold and its Renovate updates are gone. The npm workspace/toolchain consolidation itself is still open.
 
 ### 5.2 Remove lint suppressions (item 18)
 - Nine `react-hooks/exhaustive-deps` disables: `gameday_designer/src/components/ListDesignerApp.tsx:335,369,383`, `.../dashboard/GamedayDashboard.tsx:319`, `passcheck/src/components/GameOverview.tsx:32`, `PlayerModal.tsx:46`, `RosterOverview.tsx:60,74,91`. Each hides a possible stale closure. Fix by moving the effect body into `useCallback` with correct deps, or by using a ref for the value that must not retrigger.

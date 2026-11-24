@@ -9,10 +9,7 @@
 docs/.*
 
 # --- manual / exploratory (not built or tested in CI) ---
-conductor/.*
 history/.*
-coverage-reports/.*
-locust_testing/.*
 load-test-k6\.js
 e2e-game-test\.js
 find-game-id\.js
@@ -22,9 +19,6 @@ capture_screenshot\.sh
 hardening/.*
 scorecard_v2/tests/e2e_scenarios/.*
 scripts/run_scorecard_scenarios\.sh
-
-# --- legacy / dead code (not installed, not built) ---
-fe_template/.*
 
 # --- deactivated CI / editor and agent metadata ---
 \.github/.*

@@ -86,7 +86,7 @@ Module READMEs stay in their directories (`accounts/README.md`, `gameday_designe
 **DO NOT:**
 - Create documentation outside `/docs/topics/` without explicit approval
 - Scatter docs in module directories (except module-specific READMEs)
-- Leave docs in conductor/, gameday_designer/, or root level (except AGENTS.md, README.md, CHANGELOG.md)
+- Leave docs in gameday_designer/ or root level (except AGENTS.md, README.md, CHANGELOG.md)
 - Create temporary docs that don't get linked and indexed
 
 ## Enforcement

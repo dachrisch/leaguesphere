@@ -116,7 +116,6 @@ LeagueSphere is a **hybrid Django + React** application for tournament managemen
   - `liveticker`: Real-time fan updates
   - `scorecard`: On-field scoring entry
   - `journey_dashboard`: Game progress dashboard (shows gameday schedule and live score updates)
-  - `dashboard`: Legacy dashboard (being phased out)
 
 - **Database (MariaDB/MySQL)**: Central persistence layer. Test environment uses dedicated LXC container (`servyy-test`).
 
@@ -150,7 +149,6 @@ guide in this repo; there are no platform-specific variants.
 - [matchreport/](matchreport/AGENTS.md) — per-game match report generation (service-only)
 - [journey/](journey/AGENTS.md) — Game Progress dashboard **backend** (read-only progress API)
 - [home/](home/AGENTS.md) — personal home page (`/home/`): next gameday, checks, staff readiness/nudge
-- [dashboard/](dashboard/AGENTS.md) — ⚠️ **legacy**, being phased out (prefer `journey`)
 
 **Hybrid (Django app + co-located React app in the same folder)**
 - [passcheck/](passcheck/AGENTS.md) — player eligibility verification (TS, Context/hooks)

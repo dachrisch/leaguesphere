@@ -61,15 +61,16 @@ gameevents = ["sport/*.json"]
 include = [
     "accounts*",
     "gameevents*",
+    "gameday_designer*",
     "gamedays*",
+    "journey*",
     "league_manager*",
     "league_table*",
     "liveticker*",
-    "locust_testing*",
+    "matchreport*",
     "officials*",
     "passcheck*",
     "scorecard*",
     "scorecard_v2*",
-    "teammanager*",
-    "fe_template*"
+    "teammanager*"
 ]
