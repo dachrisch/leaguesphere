@@ -49,7 +49,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 # Directories excluded from CI as legacy/dead code (see
 # .circleci/scope-exclude.txt). Their package.json is never built or
 # released, so it is not a version file.
-DEAD_CODE_DIRS = {"fe_template", "hardening"}
+DEAD_CODE_DIRS = {"hardening"}
 
 CHANGELOG_AT_BASE = (
     "# Changelog\n\n"
