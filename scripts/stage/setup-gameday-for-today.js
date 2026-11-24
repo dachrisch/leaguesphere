@@ -92,7 +92,7 @@ async function main() {
   console.log('🔧 Setting up gameday for TODAY\n');
 
   // Login
-  console.log('1️⃣  Logging in as ' + TEST_USERNAME);
+  console.log('1️⃣  Logging in...');
   let cookies = {};
 
   const loginPageRes = await makeRequest('GET', '/login/', null, cookies);

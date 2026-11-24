@@ -88,7 +88,7 @@ async function main() {
   console.log('🔍 Finding available gamedays on stage...\n');
 
   // Login
-  console.log('1️⃣  Logging in as ' + TEST_USERNAME);
+  console.log('1️⃣  Logging in...');
   let cookies = {};
 
   // Get CSRF token

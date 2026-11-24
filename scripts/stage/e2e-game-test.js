@@ -64,7 +64,6 @@ if (!GAME_ID) {
 
 console.log(`🎮 E2E Game Lifecycle Test`);
 console.log(`   Target: ${TARGET_HOST}`);
-console.log(`   User: ${TEST_USERNAME}`);
 console.log(`   Gameday: ${GAMEDAY_ID}`);
 console.log(`   Game: ${GAME_ID}`);
 console.log();
@@ -281,7 +280,7 @@ class GameLifecycleTest {
       throw new Error(`Login failed with status ${loginRes.status}`);
     }
 
-    this.log('Login', 'PASS', `Logged in as ${TEST_USERNAME}`, { cookies: Object.keys(this.client.cookies).join(', ') });
+    this.log('Login', 'PASS', 'Logged in', { cookies: Object.keys(this.client.cookies).join(', ') });
   }
 
   async fetchGameDetails() {
