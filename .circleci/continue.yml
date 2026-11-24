@@ -167,7 +167,9 @@ commands:
             MYSQL_HOST: 127.0.0.1
             MYSQL_DATABASE: test_test_db
             MYSQL_USER: root
-            MYSQL_PASSWORD: ""
+            # Non-empty on both sides: an empty value here would let the
+            # project-level legacy MYSQL_PWD win and fail authentication.
+            MYSQL_PASSWORD: ci-test-pw
           command: |
             uv run pytest << parameters.paths >> -n 4 --nomigrations --junitxml=test-reports/<< parameters.junit >> --cov=. --cov-report=xml --cov-report=html
       - store_test_results:
@@ -241,7 +243,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -266,7 +268,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -291,7 +293,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -316,7 +318,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -341,7 +343,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -366,7 +368,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -646,7 +648,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -668,7 +670,7 @@ jobs:
             MYSQL_HOST: 127.0.0.1
             MYSQL_DATABASE: test_test_db
             MYSQL_USER: root
-            MYSQL_PASSWORD: ""
+            MYSQL_PASSWORD: ci-test-pw
           command: |
             uv run pytest scorecard/tests/e2e/ -v \
               --junitxml=test-reports/e2e-scorecard-results.xml
@@ -681,7 +683,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -701,7 +703,7 @@ jobs:
             MYSQL_HOST: 127.0.0.1
             MYSQL_DATABASE: test_test_db
             MYSQL_USER: root
-            MYSQL_PASSWORD: ""
+            MYSQL_PASSWORD: ci-test-pw
           command: |
             uv run pytest scorecard_v2/tests/e2e/ -v \
               --junitxml=test-reports/e2e-scorecard-v2-results.xml
