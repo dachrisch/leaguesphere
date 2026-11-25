@@ -230,7 +230,7 @@ A coordinated load test with three distinct worker types running through one com
 
 ## E2E Game Lifecycle Spike (Single Game Test)
 
-**File:** `e2e-game-test.js`
+**File:** `scripts/stage/e2e-game-test.js`
 
 **Purpose:** Validate the complete game lifecycle API without load testing framework overhead. Tests:
 - ✅ Login and session management
@@ -241,16 +241,17 @@ A coordinated load test with three distinct worker types running through one com
 
 **Usage:**
 ```bash
-# Default credentials (chrisd user on stage)
-node e2e-game-test.js --gameid=9001 --password=YOUR_PASSWORD
+# Supply your own stage credentials
+export TEST_USERNAME=YOUR_USERNAME
+node scripts/stage/e2e-game-test.js --gameid=9001 --password=YOUR_PASSWORD
 
 # Or with environment variables
 export TEST_PASSWORD=YOUR_PASSWORD
 export GAME_ID=9001
-node e2e-game-test.js
+node scripts/stage/e2e-game-test.js
 
 # Specify custom target
-node e2e-game-test.js --gameid=9001 --password=X --target=https://stage.leaguesphere.app
+node scripts/stage/e2e-game-test.js --gameid=9001 --password=X --target=https://stage.leaguesphere.app
 ```
 
 **Output:**
@@ -336,7 +337,7 @@ Time (minutes)  |  Setup (1 VU)  |  Performers (5-10)  |  Spectators (50-100)
 2. **Run the E2E Spike:**
    ```bash
    export TEST_PASSWORD=bumbleFLIES1  # or your password
-   node e2e-game-test.js --gameid=9001
+   node scripts/stage/e2e-game-test.js --gameid=9001
    ```
 
 3. **Verify Output:**
@@ -422,8 +423,7 @@ Time (minutes)  |  Setup (1 VU)  |  Performers (5-10)  |  Spectators (50-100)
 
 **Documentation:**
 - This file: Realistic load testing design
-- Original spec: `docs/superpowers/specs/2026-05-31-load-testing-design.md` (read-only test)
-- Implementation plan: `docs/superpowers/plans/2026-05-31-load-testing-plan.md`
+- Historical load-testing notes: `history/2026-05-31_load-testing-infrastructure.md`
 
 **Demo Data:**
 - Staging site: `https://stage.leaguesphere.app/`

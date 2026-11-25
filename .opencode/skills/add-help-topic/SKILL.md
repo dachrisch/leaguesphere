@@ -87,7 +87,7 @@ chromium --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
   "https://stage.leaguesphere.app/<path>/"
 ```
 
-Authenticated pages: log in first (or reuse `capture_screenshot.sh` where a
+Authenticated pages: log in first (or reuse `scripts/stage/capture_screenshot.sh` where a
 `google-chrome` is available). Prefer obfuscated/public data; never expose real
 personal names.
 

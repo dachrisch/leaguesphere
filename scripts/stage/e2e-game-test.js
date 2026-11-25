@@ -12,12 +12,12 @@
  * 6. Finalize game
  *
  * Usage:
- *   node e2e-game-test.js --gameid=9001 --username=chrisd --password=PASSWORD
- *   node e2e-game-test.js --gameid=9001 (uses defaults)
+ *   node scripts/stage/e2e-game-test.js --gameid=9001 --username=USER --password=PASSWORD
+ *   node scripts/stage/e2e-game-test.js --gameid=9001 (uses defaults)
  *
  * Environment variables (can override args):
  *   TARGET_HOST: Base URL (default: https://stage.leaguesphere.app)
- *   TEST_USERNAME: Login username (default: chrisd)
+ *   TEST_USERNAME: Login username (required)
  *   TEST_PASSWORD: Login password
  *   GAME_ID: Game ID to test
  */
@@ -37,13 +37,18 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
 
 // Configuration
 const TARGET_HOST = process.env.TARGET_HOST || args.target || 'https://stage.leaguesphere.app';
-const TEST_USERNAME = process.env.TEST_USERNAME || args.username || 'chrisd';
+const TEST_USERNAME = process.env.TEST_USERNAME || args.username;
 const TEST_PASSWORD = process.env.TEST_PASSWORD || args.password;
 const GAMEDAY_ID = process.env.GAMEDAY_ID || args.gamedayid;
 const GAME_ID = process.env.GAME_ID || args.gameid;
 
 if (!TEST_PASSWORD) {
   console.error('ERROR: Password required. Set TEST_PASSWORD env var or use --password=...');
+  process.exit(1);
+}
+
+if (!TEST_USERNAME) {
+  console.error('ERROR: Username required. Set TEST_USERNAME env var or use --username=...');
   process.exit(1);
 }
 
@@ -59,7 +64,6 @@ if (!GAME_ID) {
 
 console.log(`🎮 E2E Game Lifecycle Test`);
 console.log(`   Target: ${TARGET_HOST}`);
-console.log(`   User: ${TEST_USERNAME}`);
 console.log(`   Gameday: ${GAMEDAY_ID}`);
 console.log(`   Game: ${GAME_ID}`);
 console.log();
@@ -276,7 +280,7 @@ class GameLifecycleTest {
       throw new Error(`Login failed with status ${loginRes.status}`);
     }
 
-    this.log('Login', 'PASS', `Logged in as ${TEST_USERNAME}`, { cookies: Object.keys(this.client.cookies).join(', ') });
+    this.log('Login', 'PASS', 'Logged in', { cookies: Object.keys(this.client.cookies).join(', ') });
   }
 
   async fetchGameDetails() {

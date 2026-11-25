@@ -165,7 +165,7 @@ Timeline:
 | `BASE_URL` | `https://stage.leaguesphere.app` | Target server URL | `https://www.leaguesphere.app` |
 | `NUM_GAMEDAYS` | `5` | Number of gamedays to discover and test | `10` |
 | `SPECTATORS_PER_GAMEDAY` | `3` | Number of spectators per gameday | `5` |
-| `TEST_USERNAME` | `chrisd` | Test account username | `testuser` |
+| `TEST_USERNAME` | `k6` | Test account username (`tests/load/` default) | `testuser` |
 | `TEST_PASSWORD` | `bumbleFLIES1` | Test account password | `secretpass123` |
 | `PHASE` | `all` | Which phase(s) to run: `discovery`, `perform`, `watch`, or `all` | `discover` |
 | `COORDINATION_FILE` | `/tmp/gameday_coordination.json` | Path to coordination file (created by discovery) | `/var/tmp/coord.json` |

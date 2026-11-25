@@ -1,8 +1,7 @@
 """
 Swiss-system round resolver (issue #1970).
 
-Implements the JLT Flag 2026 pairing rules scoped in
-``docs/plans/2026-09-20-swiss-system-1970-design.md``:
+Implements the JLT Flag 2026 pairing rules (issue #1970):
 
 - Teams are grouped by current points (descending).
 - Within each group, teams are ordered by the pre-tournament seed list and
