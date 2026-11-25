@@ -1,4 +1,5 @@
 """Build the JS snippet used to show/update the burned-in caption overlay."""
+
 import json
 
 OVERLAY_ID = "lsphere-tutorial-caption"
@@ -26,7 +27,9 @@ def build_caption_script(caption: str) -> str:
     embedded, so arbitrary caption text (quotes, backslashes, HTML) can
     never break out of the JS string literal it's embedded in.
     """
-    return _INJECT_TEMPLATE.format(overlay_id=json.dumps(OVERLAY_ID), caption=json.dumps(caption))
+    return _INJECT_TEMPLATE.format(
+        overlay_id=json.dumps(OVERLAY_ID), caption=json.dumps(caption)
+    )
 
 
 def build_clear_script() -> str:

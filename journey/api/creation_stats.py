@@ -29,12 +29,12 @@ class LeagueAdoptionSerializer:
 
     def to_dict(self):
         return {
-            'league_name': self.league_name,
-            'league_id': self.league_id,
-            'designer': self.designer,
-            'legacy': self.legacy,
-            'total': self.total,
-            'designer_percentage': round(self.designer_percentage, 1),
+            "league_name": self.league_name,
+            "league_id": self.league_id,
+            "designer": self.designer,
+            "legacy": self.legacy,
+            "total": self.total,
+            "designer_percentage": round(self.designer_percentage, 1),
         }
 
 
@@ -55,11 +55,11 @@ class TimePeriodStatsSerializer:
 
     def to_dict(self):
         return {
-            'designer': self.designer,
-            'legacy': self.legacy,
-            'migrations': self.migrations,
-            'total': self.total,
-            'designer_percentage': round(self.designer_percentage, 1),
+            "designer": self.designer,
+            "legacy": self.legacy,
+            "migrations": self.migrations,
+            "total": self.total,
+            "designer_percentage": round(self.designer_percentage, 1),
         }
 
 
@@ -76,11 +76,10 @@ class GameCreationStatsSerializer:
 
     def to_dict(self):
         return {
-            'summary': {
-                period: stats.to_dict()
-                for period, stats in self.summary.items()
+            "summary": {
+                period: stats.to_dict() for period, stats in self.summary.items()
             },
-            'by_league': {
+            "by_league": {
                 period: [league.to_dict() for league in leagues]
                 for period, leagues in self.by_league.items()
             },
@@ -140,7 +139,7 @@ class GameCreationStatsService:
 
             # Count legacy gamedays migrated to the Designer (journey events)
             migrations_count = JourneyEvent.objects.filter(
-                event_name='gameday_migrated',
+                event_name="gameday_migrated",
                 created_at__gte=timezone.make_aware(
                     datetime.combine(start_date, datetime.min.time())
                 ),
@@ -156,20 +155,20 @@ class GameCreationStatsService:
             for gameday in queryset:
                 league_key = (gameday.league.name, gameday.league.pk)
                 if league_key not in league_stats:
-                    league_stats[league_key] = {'designer': 0, 'legacy': 0}
+                    league_stats[league_key] = {"designer": 0, "legacy": 0}
 
-                if hasattr(gameday, 'designer_state'):
-                    league_stats[league_key]['designer'] += 1
+                if hasattr(gameday, "designer_state"):
+                    league_stats[league_key]["designer"] += 1
                 else:
-                    league_stats[league_key]['legacy'] += 1
+                    league_stats[league_key]["legacy"] += 1
 
             # Convert to LeagueAdoptionSerializer list and sort by designer_percentage descending
             league_list = [
                 LeagueAdoptionSerializer(
                     league_name=league_key[0],
                     league_id=league_key[1],
-                    designer=counts['designer'],
-                    legacy=counts['legacy'],
+                    designer=counts["designer"],
+                    legacy=counts["legacy"],
                 )
                 for league_key, counts in league_stats.items()
             ]
@@ -197,15 +196,16 @@ class GameCreationStatsViewSet(viewsets.ViewSet):
         - Query parameters (days, league, season)
         """
         try:
-            latest_gameday_pk = Gameday.objects.values_list(
-                'pk', flat=True
-            ).order_by('-pk').first() or 'none'
+            latest_gameday_pk = (
+                Gameday.objects.values_list("pk", flat=True).order_by("-pk").first()
+                or "none"
+            )
         except Gameday.DoesNotExist:
-            latest_gameday_pk = 'none'
+            latest_gameday_pk = "none"
 
-        days = request.query_params.get('days', '7,30,90')
-        league = request.query_params.get('league', '')
-        season = request.query_params.get('season', '')
+        days = request.query_params.get("days", "7,30,90")
+        league = request.query_params.get("league", "")
+        season = request.query_params.get("season", "")
 
         etag_data = f"{latest_gameday_pk}:{days}:{league}:{season}"
         return f'"{hashlib.md5(etag_data.encode()).hexdigest()}"'
@@ -227,15 +227,17 @@ class GameCreationStatsViewSet(viewsets.ViewSet):
             ValidationError (400): If days parameter is invalid.
         """
         # Parse days parameter
-        days_param = request.query_params.get('days', '7,30,90')
+        days_param = request.query_params.get("days", "7,30,90")
         try:
-            days_list = [int(d.strip()) for d in days_param.split(',')]
+            days_list = [int(d.strip()) for d in days_param.split(",")]
         except (ValueError, AttributeError):
-            raise ValidationError({'days': 'Must be comma-separated integers (e.g., "7,30,90")'})
+            raise ValidationError(
+                {"days": 'Must be comma-separated integers (e.g., "7,30,90")'}
+            )
 
         # Get optional filters
-        league_filter = request.query_params.get('league')
-        season_filter = request.query_params.get('season')
+        league_filter = request.query_params.get("league")
+        season_filter = request.query_params.get("season")
 
         # Get stats via service
         stats = GameCreationStatsService.get_stats(

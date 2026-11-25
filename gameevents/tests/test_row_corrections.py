@@ -63,21 +63,23 @@ def test_undoing_a_penalty_deletes_only_that_row(client):
     login(client)
     game, _home, _away = make_game("rowundo")
 
+    post_events(client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)})
     post_events(
-        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
-    )
-    post_events(
-        client, game, {"events": [penalty("Fehlstart", player=None)], "client_id": sub_id(2)}
+        client,
+        game,
+        {"events": [penalty("Fehlstart", player=None)], "client_id": sub_id(2)},
     )
     post_events(
         client,
         game,
-        {"events": [{"type": "timeout", "code": "home", "side": "home"}], "client_id": sub_id(3)},
+        {
+            "events": [{"type": "timeout", "code": "home", "side": "home"}],
+            "client_id": sub_id(3),
+        },
     )
 
     rows = {
-        row.event: row
-        for row in TeamLog.objects.filter(gameinfo=game).order_by("pk")
+        row.event: row for row in TeamLog.objects.filter(gameinfo=game).order_by("pk")
     }
     holding = next(
         row for row in TeamLog.objects.filter(gameinfo=game, input="Holding")
@@ -93,15 +95,15 @@ def test_undoing_a_penalty_deletes_only_that_row(client):
     holding.refresh_from_db()
     assert holding.isDeleted
     # The sibling penalty, the timeout and the game markers are untouched.
-    assert TeamLog.objects.filter(
-        gameinfo=game, isDeleted=False, event="Strafe"
-    ).count() == 1
-    assert TeamLog.objects.filter(
-        gameinfo=game, isDeleted=False, event="Auszeit"
-    ).count() == 1
-    assert TeamLog.objects.filter(
-        gameinfo=game, isDeleted=True
-    ).count() == 1
+    assert (
+        TeamLog.objects.filter(gameinfo=game, isDeleted=False, event="Strafe").count()
+        == 1
+    )
+    assert (
+        TeamLog.objects.filter(gameinfo=game, isDeleted=False, event="Auszeit").count()
+        == 1
+    )
+    assert TeamLog.objects.filter(gameinfo=game, isDeleted=True).count() == 1
 
     # A penalty never scores; the correction must not either.
     state = GameState.objects.get(game=game)
@@ -171,9 +173,7 @@ def test_undoing_a_penalty_leaves_the_projection_reconciled(client):
     login(client)
     game, _home, _away = make_game("rowundo")
 
-    post_events(
-        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
-    )
+    post_events(client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)})
     holding = TeamLog.objects.get(gameinfo=game, input="Holding")
     undo(client, game, GameEvent.objects.get(game=game, team_log=holding).seq)
 
@@ -199,8 +199,7 @@ def test_a_rebuild_relinks_the_group_rows_it_recreates(client):
         },
     )
     before = {
-        event.seq: event.team_log_id
-        for event in GameEvent.objects.filter(game=game)
+        event.seq: event.team_log_id for event in GameEvent.objects.filter(game=game)
     }
 
     result = rebuild_game(game)
@@ -209,8 +208,7 @@ def test_a_rebuild_relinks_the_group_rows_it_recreates(client):
     # sequence 0 is left alone, so its link still points at the same row.
     assert result.rows_written == 1
     after = {
-        event.seq: event.team_log_id
-        for event in GameEvent.objects.filter(game=game)
+        event.seq: event.team_log_id for event in GameEvent.objects.filter(game=game)
     }
     assert set(after) == set(before)
     assert all(value is not None for value in after.values())
@@ -231,9 +229,7 @@ def test_the_legacy_delete_records_a_correction_for_a_linked_penalty_row(client)
     # v2 app sends -- no reconciliation flag.
     login(client)
     game, home, _away = make_game("rowundo")
-    post_events(
-        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
-    )
+    post_events(client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)})
     row = TeamLog.objects.get(gameinfo=game, input="Holding")
 
     response = client.delete(
@@ -305,7 +301,10 @@ def test_a_legacy_post_answers_its_own_rows_with_their_seq(client):
         legacy_body(
             game,
             home,
-            [{"name": "Touchdown", "player": 7}, {"name": "Strafe", "input": "Holding"}],
+            [
+                {"name": "Touchdown", "player": 7},
+                {"name": "Strafe", "input": "Holding"},
+            ],
             client_id=sub_id(1),
         ),
     )
@@ -322,9 +321,7 @@ def test_a_row_level_correction_refuses_an_event_without_a_linked_row(client):
     # the shared bucket).
     login(client)
     game, _home, _away = make_game("rowundo")
-    post_events(
-        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
-    )
+    post_events(client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)})
     event = GameEvent.objects.get(game=game, type="penalty")
     GameEvent.objects.filter(pk=event.pk).update(team_log=None)
 
@@ -354,9 +351,7 @@ def test_undoing_the_undo_of_a_penalty_restores_that_row(client):
     login(client)
     game, _home, _away = make_game("rowundo")
 
-    post_events(
-        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
-    )
+    post_events(client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)})
     row = TeamLog.objects.get(gameinfo=game, input="Holding")
     undo_seq = GameEvent.objects.get(game=game, team_log=row).seq
 
@@ -404,9 +399,7 @@ def test_the_log_payload_skips_a_group_whose_sequence_is_zero(client):
     # created directly -- this is the guard against stored data.
     login(client)
     game, home, _away = make_game("rowundo")
-    post_events(
-        client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)}
-    )
+    post_events(client, game, {"events": [penalty("Holding")], "client_id": sub_id(1)})
     row = TeamLog.objects.get(gameinfo=game, input="Holding")
     event = GameEvent.objects.get(game=game, team_log=row)
     GameEvent.objects.filter(pk=event.pk).update(team_log=None, legacy_sequence=0)

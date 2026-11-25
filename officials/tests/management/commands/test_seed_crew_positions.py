@@ -15,11 +15,14 @@ def test_it_copies_the_defaults_into_the_league():
 
     call_command("seed_crew_positions", league.slug)
 
-    assert list(
-        CrewPosition.objects.filter(league=league).values(
-            "position", "label", "order", "required"
+    assert (
+        list(
+            CrewPosition.objects.filter(league=league).values(
+                "position", "label", "order", "required"
+            )
         )
-    ) == DEFAULT_CREW_POSITIONS
+        == DEFAULT_CREW_POSITIONS
+    )
 
 
 @pytest.mark.django_db

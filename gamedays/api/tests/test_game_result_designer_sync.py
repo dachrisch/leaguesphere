@@ -85,7 +85,11 @@ class TestGameResultSyncsDesignerNode:
         gameday = _gameday()
         GamedayDesignerState.objects.create(
             gameday=gameday,
-            state_data={"nodes": [_game_node("game-1")], "edges": [], "globalTeams": []},
+            state_data={
+                "nodes": [_game_node("game-1")],
+                "edges": [],
+                "globalTeams": [],
+            },
         )
         game = _gameinfo(gameday, "game-1")
 
@@ -123,9 +127,9 @@ class TestGameResultSyncsDesignerNode:
 
         nodes = {
             n["id"]: n
-            for n in GamedayDesignerState.objects.get(
-                gameday=gameday
-            ).state_data["nodes"]
+            for n in GamedayDesignerState.objects.get(gameday=gameday).state_data[
+                "nodes"
+            ]
         }
         assert "final_score" not in nodes["game-1"]["data"]
         assert nodes["game-2"]["data"]["final_score"] == {"home": 9, "away": 8}
@@ -136,7 +140,11 @@ class TestGameResultSyncsDesignerNode:
         gameday = _gameday()
         GamedayDesignerState.objects.create(
             gameday=gameday,
-            state_data={"nodes": [_game_node("game-1")], "edges": [], "globalTeams": []},
+            state_data={
+                "nodes": [_game_node("game-1")],
+                "edges": [],
+                "globalTeams": [],
+            },
         )
         game = _gameinfo(gameday, node_id="")
 

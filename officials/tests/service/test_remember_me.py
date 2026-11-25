@@ -74,7 +74,10 @@ class TestRememberMeService(TestCase):
         assert result.cookie_value != cookie
         assert result.cookie_value.split(":", 1)[0] == selector
         # the returned cookie must itself restore successfully
-        assert RememberMeService.restore(result.cookie_value).official_id == self.official.pk
+        assert (
+            RememberMeService.restore(result.cookie_value).official_id
+            == self.official.pk
+        )
 
     def test_restore_misses_on_none_or_malformed(self):
         assert RememberMeService.restore(None).official_id is None

@@ -15,6 +15,7 @@ paint into X11. This module builds the replacement capture pipeline:
 
 Stdlib only; see ``tests/test_wayland_recording.py``.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,17 +37,32 @@ def build_gst_pipeline(node_id: int, output_path: str) -> list[str]:
     finalized cleanly instead of truncated.
     """
     return [
-        "gst-launch-1.0", "-e",
-        "pipewiresrc", f"path={node_id}", "!",
-        "videoconvert", "!",
-        "x264enc", "tune=zerolatency", "bitrate=4096", "speed-preset=veryfast", "!",
-        "mp4mux", "!", "filesink", f"location={output_path}",
+        "gst-launch-1.0",
+        "-e",
+        "pipewiresrc",
+        f"path={node_id}",
+        "!",
+        "videoconvert",
+        "!",
+        "x264enc",
+        "tune=zerolatency",
+        "bitrate=4096",
+        "speed-preset=veryfast",
+        "!",
+        "mp4mux",
+        "!",
+        "filesink",
+        f"location={output_path}",
     ]
 
 
 def write_pidfile(pidfile: Path | str, recorder_pid: int, output: str) -> dict:
     """Persist the recorder session; returns the payload written."""
-    payload = {"backend": PIDFILE_BACKEND, "recorder_pid": recorder_pid, "output": output}
+    payload = {
+        "backend": PIDFILE_BACKEND,
+        "recorder_pid": recorder_pid,
+        "output": output,
+    }
     Path(pidfile).write_text(json.dumps(payload))
     return payload
 

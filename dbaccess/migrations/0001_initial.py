@@ -15,72 +15,166 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='GrantableTable',
+            name="GrantableTable",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=64, unique=True)),
-                ('label', models.CharField(blank=True, max_length=120)),
-                ('grantable', models.BooleanField(default=True)),
-                ('note', models.CharField(blank=True, max_length=200)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=64, unique=True)),
+                ("label", models.CharField(blank=True, max_length=120)),
+                ("grantable", models.BooleanField(default=True)),
+                ("note", models.CharField(blank=True, max_length=200)),
             ],
             options={
-                'ordering': ['name'],
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='AccessRequest',
+            name="AccessRequest",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('person', models.CharField(help_text='Handle the MySQL account is derived from: dbeaver_prod_<person>', max_length=21)),
-                ('purpose', models.TextField()),
-                ('ticket_url', models.URLField(blank=True)),
-                ('tables_csv', models.TextField(help_text='Comma-separated table names')),
-                ('ttl_hours', models.PositiveSmallIntegerField(default=4)),
-                ('state', models.CharField(choices=[('draft', 'Draft'), ('requested', 'Requested'), ('approved', 'Approved'), ('active', 'Active'), ('revoke_requested', 'Revoke requested'), ('expired', 'Expired'), ('dropped', 'Dropped'), ('rejected', 'Rejected'), ('failed', 'Failed')], db_index=True, default='draft', max_length=20)),
-                ('failure_reason', models.TextField(blank=True)),
-                ('db_user', models.CharField(blank=True, max_length=32, null=True)),
-                ('grant_host', models.CharField(blank=True, max_length=32, null=True)),
-                ('secret', models.TextField(blank=True, null=True)),
-                ('secret_ct', models.TextField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('activated_at', models.DateTimeField(blank=True, null=True)),
-                ('dropped_at', models.DateTimeField(blank=True, null=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('approver', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='dbaccess_approvals', to=settings.AUTH_USER_MODEL)),
-                ('requester', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='dbaccess_requests', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "person",
+                    models.CharField(
+                        help_text="Handle the MySQL account is derived from: dbeaver_prod_<person>",
+                        max_length=21,
+                    ),
+                ),
+                ("purpose", models.TextField()),
+                ("ticket_url", models.URLField(blank=True)),
+                (
+                    "tables_csv",
+                    models.TextField(help_text="Comma-separated table names"),
+                ),
+                ("ttl_hours", models.PositiveSmallIntegerField(default=4)),
+                (
+                    "state",
+                    models.CharField(
+                        choices=[
+                            ("draft", "Draft"),
+                            ("requested", "Requested"),
+                            ("approved", "Approved"),
+                            ("active", "Active"),
+                            ("revoke_requested", "Revoke requested"),
+                            ("expired", "Expired"),
+                            ("dropped", "Dropped"),
+                            ("rejected", "Rejected"),
+                            ("failed", "Failed"),
+                        ],
+                        db_index=True,
+                        default="draft",
+                        max_length=20,
+                    ),
+                ),
+                ("failure_reason", models.TextField(blank=True)),
+                ("db_user", models.CharField(blank=True, max_length=32, null=True)),
+                ("grant_host", models.CharField(blank=True, max_length=32, null=True)),
+                ("secret", models.TextField(blank=True, null=True)),
+                ("secret_ct", models.TextField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("activated_at", models.DateTimeField(blank=True, null=True)),
+                ("dropped_at", models.DateTimeField(blank=True, null=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "approver",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="dbaccess_approvals",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "requester",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="dbaccess_requests",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'dbaccess_request',
-                'ordering': ['-created_at'],
-                'permissions': [('approve_requests', 'Can approve temporary database access requests')],
+                "db_table": "dbaccess_request",
+                "ordering": ["-created_at"],
+                "permissions": [
+                    (
+                        "approve_requests",
+                        "Can approve temporary database access requests",
+                    )
+                ],
             },
         ),
         migrations.CreateModel(
-            name='AccessEvent',
+            name="AccessEvent",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('at', models.DateTimeField(auto_now_add=True)),
-                ('actor', models.CharField(help_text='username, or "system"', max_length=64)),
-                ('action', models.CharField(max_length=32)),
-                ('detail', models.TextField(blank=True)),
-                ('from_ip', models.GenericIPAddressField(blank=True, null=True)),
-                ('request', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='events', to='dbaccess.accessrequest')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "actor",
+                    models.CharField(help_text='username, or "system"', max_length=64),
+                ),
+                ("action", models.CharField(max_length=32)),
+                ("detail", models.TextField(blank=True)),
+                ("from_ip", models.GenericIPAddressField(blank=True, null=True)),
+                (
+                    "request",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="events",
+                        to="dbaccess.accessrequest",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'dbaccess_event',
-                'ordering': ['-at'],
+                "db_table": "dbaccess_event",
+                "ordering": ["-at"],
             },
         ),
         migrations.AddIndex(
-            model_name='accessrequest',
-            index=models.Index(fields=['state', 'created_at'], name='dbaccess_re_state_b416fe_idx'),
+            model_name="accessrequest",
+            index=models.Index(
+                fields=["state", "created_at"], name="dbaccess_re_state_b416fe_idx"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='accessrequest',
-            constraint=models.CheckConstraint(condition=models.Q(('approver__isnull', True), models.Q(('approver', models.F('requester')), _negated=True), _connector='OR'), name='dbaccess_approver_is_not_requester'),
+            model_name="accessrequest",
+            constraint=models.CheckConstraint(
+                condition=models.Q(
+                    ("approver__isnull", True),
+                    models.Q(("approver", models.F("requester")), _negated=True),
+                    _connector="OR",
+                ),
+                name="dbaccess_approver_is_not_requester",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='accessrequest',
-            constraint=models.CheckConstraint(condition=models.Q(('ttl_hours__gte', 1), ('ttl_hours__lte', 8)), name='dbaccess_ttl_within_cap'),
+            model_name="accessrequest",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("ttl_hours__gte", 1), ("ttl_hours__lte", 8)),
+                name="dbaccess_ttl_within_cap",
+            ),
         ),
     ]

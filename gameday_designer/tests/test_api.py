@@ -28,20 +28,25 @@ from gameday_designer.models import (
 class TestTemplateListEndpoint:
     """Test GET /api/designer/templates/ (list)."""
 
-    def test_anonymous_cannot_list_templates(self, api_client, template, global_template):
+    def test_anonymous_cannot_list_templates(
+        self, api_client, template, global_template
+    ):
         """Anonymous users cannot list templates — IsStaffOrReadOnly requires authentication for reads."""
         response = api_client.get("/api/designer/templates/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_list_returns_lightweight_serializer(self, api_client, association_user, template_with_slots):
+    def test_list_returns_lightweight_serializer(
+        self, api_client, association_user, template_with_slots
+    ):
         """List endpoint uses lightweight serializer (no nested data)."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get("/api/designer/templates/")
 
         assert response.status_code == status.HTTP_200_OK
         template_data = next(
-            (t for t in response.data["results"] if t["id"] == template_with_slots.pk), None
+            (t for t in response.data["results"] if t["id"] == template_with_slots.pk),
+            None,
         )
 
         assert template_data is not None
@@ -75,7 +80,9 @@ class TestTemplateListEndpoint:
         )
         UserProfile.objects.create(user=association_user, team=own_team)
 
-        other_association = Association.objects.create(name="Other Association", abbr="OTH")
+        other_association = Association.objects.create(
+            name="Other Association", abbr="OTH"
+        )
         other_associations_template = ScheduleTemplate.objects.create(
             name="Other Association Template",
             description="Belongs to a different association",
@@ -96,7 +103,9 @@ class TestTemplateListEndpoint:
         returned_ids = [t["id"] for t in response.data["results"]]
         assert other_associations_template.id not in returned_ids
 
-    def test_filtering_by_association(self, api_client, association_user, template, global_template):
+    def test_filtering_by_association(
+        self, api_client, association_user, template, global_template
+    ):
         """Authenticated users can filter templates by association."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get(
@@ -109,16 +118,30 @@ class TestTemplateListEndpoint:
             if t["association"] is not None:
                 assert t["association"] == template.association.pk
 
-    def test_list_filters_by_sharing_personal(self, api_client, staff_user, association, db):
+    def test_list_filters_by_sharing_personal(
+        self, api_client, staff_user, association, db
+    ):
         """sharing=personal returns only PRIVATE templates created by the requesting user."""
         other_user = User.objects.create_user(username="other_sharing", password="pw")
         ScheduleTemplate.objects.create(
-            name="Mine", num_teams=6, num_fields=2, num_groups=1, game_duration=70,
-            sharing=ScheduleTemplate.SHARING_PRIVATE, created_by=staff_user, updated_by=staff_user,
+            name="Mine",
+            num_teams=6,
+            num_fields=2,
+            num_groups=1,
+            game_duration=70,
+            sharing=ScheduleTemplate.SHARING_PRIVATE,
+            created_by=staff_user,
+            updated_by=staff_user,
         )
         ScheduleTemplate.objects.create(
-            name="Theirs", num_teams=6, num_fields=2, num_groups=1, game_duration=70,
-            sharing=ScheduleTemplate.SHARING_PRIVATE, created_by=other_user, updated_by=other_user,
+            name="Theirs",
+            num_teams=6,
+            num_fields=2,
+            num_groups=1,
+            game_duration=70,
+            sharing=ScheduleTemplate.SHARING_PRIVATE,
+            created_by=other_user,
+            updated_by=other_user,
         )
         api_client.force_authenticate(user=staff_user)
         response = api_client.get("/api/designer/templates/?sharing=personal")
@@ -130,8 +153,14 @@ class TestTemplateListEndpoint:
     def test_list_filters_by_sharing_global(self, api_client, staff_user, db):
         """sharing=global returns all GLOBAL templates regardless of creator."""
         ScheduleTemplate.objects.create(
-            name="Global One", num_teams=6, num_fields=2, num_groups=1, game_duration=70,
-            sharing=ScheduleTemplate.SHARING_GLOBAL, created_by=staff_user, updated_by=staff_user,
+            name="Global One",
+            num_teams=6,
+            num_fields=2,
+            num_groups=1,
+            game_duration=70,
+            sharing=ScheduleTemplate.SHARING_GLOBAL,
+            created_by=staff_user,
+            updated_by=staff_user,
         )
         api_client.force_authenticate(user=staff_user)
         response = api_client.get("/api/designer/templates/?sharing=global")
@@ -153,21 +182,27 @@ class TestTemplateDetailEndpoint:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_detail_includes_nested_slots(self, api_client, staff_user, template_with_slots, assert_num_queries):
+    def test_detail_includes_nested_slots(
+        self, api_client, staff_user, template_with_slots, assert_num_queries
+    ):
         """Detail endpoint includes nested slots."""
         api_client.force_authenticate(user=staff_user)
         # Warm request-path caches (maintenance-mode SiteConfiguration lookup + connection
         # liveness check) so the query count is not order-dependent under parallel (xdist) runs.
         api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
         with assert_num_queries(3):
-            response = api_client.get(f"/api/designer/templates/{template_with_slots.pk}/")
+            response = api_client.get(
+                f"/api/designer/templates/{template_with_slots.pk}/"
+            )
 
         assert response.status_code == status.HTTP_200_OK
         assert "slots" in response.data
         assert len(response.data["slots"]) == 2
         assert response.data["slots"][0]["slot_order"] == 1
 
-    def test_detail_includes_nested_update_rules(self, api_client, staff_user, template, db, assert_num_queries):
+    def test_detail_includes_nested_update_rules(
+        self, api_client, staff_user, template, db, assert_num_queries
+    ):
         """Detail endpoint includes nested update rules."""
         api_client.force_authenticate(user=staff_user)
         slot = TemplateSlot.objects.create(
@@ -199,7 +234,9 @@ class TestTemplateDetailEndpoint:
         assert len(response.data["update_rules"]) == 1
         assert response.data["update_rules"][0]["pre_finished"] == "Halbfinale"
 
-    def test_retrieve_nonexistent_template_returns_404(self, api_client, association_user):
+    def test_retrieve_nonexistent_template_returns_404(
+        self, api_client, association_user
+    ):
         """Retrieving non-existent template returns 404 (when authenticated)."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get("/api/designer/templates/99999/")
@@ -731,7 +768,9 @@ class TestTemplateCloneEndpoint:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == "My Custom Clone"
 
-    def test_clone_always_private_and_no_association(self, api_client, staff_user, template):
+    def test_clone_always_private_and_no_association(
+        self, api_client, staff_user, template
+    ):
         """Clone is always sharing=PRIVATE with association=None regardless of source."""
         api_client.force_authenticate(user=staff_user)
         response = api_client.post(
@@ -743,7 +782,9 @@ class TestTemplateCloneEndpoint:
         assert cloned.sharing == ScheduleTemplate.SHARING_PRIVATE
         assert cloned.association is None
 
-    def test_clone_sets_created_by_to_requesting_user(self, api_client, staff_user, template):
+    def test_clone_sets_created_by_to_requesting_user(
+        self, api_client, staff_user, template
+    ):
         """Clone's created_by is always the requesting user."""
         api_client.force_authenticate(user=staff_user)
         response = api_client.post(
@@ -758,7 +799,9 @@ class TestTemplateCloneEndpoint:
 class TestTemplateValidateEndpoint:
     """Test GET /api/designer/templates/{id}/validate/ (custom action)."""
 
-    def test_authenticated_user_can_validate_template(self, api_client, association_user, template_with_slots):
+    def test_authenticated_user_can_validate_template(
+        self, api_client, association_user, template_with_slots
+    ):
         """Any authenticated user can validate templates."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get(
@@ -770,7 +813,9 @@ class TestTemplateValidateEndpoint:
         assert "errors" in response.data
         assert "warnings" in response.data
 
-    def test_validate_returns_validation_result(self, api_client, association_user, template_with_slots):
+    def test_validate_returns_validation_result(
+        self, api_client, association_user, template_with_slots
+    ):
         """Validate endpoint returns validation result from service."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get(
@@ -787,7 +832,9 @@ class TestTemplateValidateEndpoint:
 class TestTemplatePreviewEndpoint:
     """Test GET /api/designer/templates/{id}/preview/ (custom action)."""
 
-    def test_authenticated_user_can_preview_template(self, api_client, association_user, template_with_slots):
+    def test_authenticated_user_can_preview_template(
+        self, api_client, association_user, template_with_slots
+    ):
         """Any authenticated user can preview template schedule."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get(
@@ -798,7 +845,9 @@ class TestTemplatePreviewEndpoint:
         assert "slots" in response.data
         assert len(response.data["slots"]) == 2
 
-    def test_preview_includes_slot_details(self, api_client, association_user, template_with_slots):
+    def test_preview_includes_slot_details(
+        self, api_client, association_user, template_with_slots
+    ):
         """Preview includes detailed slot information."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get(
@@ -818,7 +867,9 @@ class TestTemplatePreviewEndpoint:
 class TestTemplateUsageEndpoint:
     """Test GET /api/designer/templates/{id}/usage/ (custom action)."""
 
-    def test_authenticated_user_can_view_usage_statistics(self, api_client, association_user, template):
+    def test_authenticated_user_can_view_usage_statistics(
+        self, api_client, association_user, template
+    ):
         """Any authenticated user can view template usage statistics."""
         api_client.force_authenticate(user=association_user)
         response = api_client.get(f"/api/designer/templates/{template.pk}/usage/")

@@ -41,7 +41,7 @@ class GamedayScheduleResolutionService:
             gameday=self.gameday,
             field=rule.slot.field,
             stage=rule.slot.stage,
-            standing=rule.slot.standing
+            standing=rule.slot.standing,
         )
 
         if target_gis.count() == 0:

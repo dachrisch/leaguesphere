@@ -3,6 +3,7 @@
 from django.db import migrations
 from django.utils.text import slugify
 
+
 def populate_slugs(apps, schema_editor):
     League = apps.get_model("gamedays", "League")
     Season = apps.get_model("gamedays", "Season")
@@ -14,6 +15,7 @@ def populate_slugs(apps, schema_editor):
     for season in Season.objects.all():
         season.slug = slugify(season.name)
         season.save(update_fields=["slug"])
+
 
 class Migration(migrations.Migration):
     dependencies = [

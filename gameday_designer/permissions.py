@@ -9,8 +9,6 @@ from rest_framework import permissions
 from gameday_designer.models import ScheduleTemplate
 
 
-
-
 class IsStaffOrReadOnly(permissions.BasePermission):
     """Read for any authenticated user; write requires staff."""
 

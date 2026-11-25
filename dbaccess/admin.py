@@ -29,7 +29,14 @@ class AccessEventInline(admin.TabularInline):
 
 @admin.register(AccessRequest)
 class AccessRequestAdmin(admin.ModelAdmin):
-    list_display = ("person", "state", "requester", "approver", "ttl_hours", "created_at")
+    list_display = (
+        "person",
+        "state",
+        "requester",
+        "approver",
+        "ttl_hours",
+        "created_at",
+    )
     list_filter = ("state",)
     search_fields = ("person", "db_user", "requester__username")
     # The credential is not an admin field: `secret` holds plaintext until the

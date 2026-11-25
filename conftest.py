@@ -35,10 +35,12 @@ def assertNumQueries(num):
     actual = len(context)
     if actual != num:
         # Print first few queries for debugging
-        queries_str = "\n".join([
-            f"  {i+1}. {q['sql'][:100]}..."
-            for i, q in enumerate(context.captured_queries[:5])
-        ])
+        queries_str = "\n".join(
+            [
+                f"  {i+1}. {q['sql'][:100]}..."
+                for i, q in enumerate(context.captured_queries[:5])
+            ]
+        )
         if len(context) > 5:
             queries_str += f"\n  ... and {len(context) - 5} more"
 
@@ -56,7 +58,7 @@ def assert_num_queries():
 
 
 # Monkey-patch Django TestCase to support assertNumQueries
-if not hasattr(TestCase, 'assertNumQueries'):
+if not hasattr(TestCase, "assertNumQueries"):
     TestCase.assertNumQueries = assertNumQueries
 
 
@@ -71,6 +73,5 @@ def reset_queries():
 def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line(
-        "markers",
-        "skip_query_check: skip query count validation for this test"
+        "markers", "skip_query_check: skip query count validation for this test"
     )

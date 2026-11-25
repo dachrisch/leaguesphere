@@ -36,5 +36,8 @@ def test_render_writes_concat_file_and_invokes_ffmpeg(tmp_path):
     concat_path = tmp_path / "concat.txt"
     render([("frame_001.png", 3.0)], concat_path, "/tmp/out.mp4", run=fake_run)
 
-    assert concat_path.read_text() == "file 'frame_001.png'\nduration 3.0\nfile 'frame_001.png'\n"
+    assert (
+        concat_path.read_text()
+        == "file 'frame_001.png'\nduration 3.0\nfile 'frame_001.png'\n"
+    )
     assert calls == [(build_ffmpeg_command(concat_path, "/tmp/out.mp4"), True)]

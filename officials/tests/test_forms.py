@@ -1,7 +1,10 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from officials.forms import AddExternalGameOfficialEntryForm, GameOfficialImportUploadForm
+from officials.forms import (
+    AddExternalGameOfficialEntryForm,
+    GameOfficialImportUploadForm,
+)
 
 
 class TestGameOfficialImportUploadForm(TestCase):

@@ -5,6 +5,7 @@ SIGTERMs the recorder process (which SIGINTs gst-launch so the mp4 is
 finalized via EOS, then stops its ScreenCast session), waits for its exit,
 and unlinks the pidfile.
 """
+
 import argparse
 import os
 import signal

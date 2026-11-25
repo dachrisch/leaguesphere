@@ -353,9 +353,7 @@ def rebuild_game(game, *, author=None) -> RebuildResult:
     override = author_id_of(author)
 
     existing: dict[int, list] = defaultdict(list)
-    for row in TeamLog.objects.filter(
-        gameinfo=game, sequence__in=owned
-    ).order_by("pk"):
+    for row in TeamLog.objects.filter(gameinfo=game, sequence__in=owned).order_by("pk"):
         existing[row.sequence].append(row)
 
     TeamLog.objects.filter(gameinfo=game, sequence__in=owned).delete()

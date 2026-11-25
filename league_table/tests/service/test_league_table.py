@@ -162,10 +162,10 @@ class TestLeagueTableService(TestCase):
 
     def test_get_league_name_uses_select_related(self):
         from league_table.service.leaguetable_repository import LeagueTableRepository
+
         config = LeagueTableRepository.get_league_season_config_by_slug(
             "test-league", "2026"
         )
         service = LeagueTableService(config)
         league_name = service.get_league_name()
         assert league_name == "Test League"
-

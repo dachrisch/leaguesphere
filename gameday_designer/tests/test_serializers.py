@@ -503,7 +503,9 @@ class TestApplyTemplateRequestSerializer:
         assert not serializer.is_valid()
         assert "team_mapping" in serializer.errors
 
-    def test_optional_override_fields_are_accepted(self, template, gameday, api_factory):
+    def test_optional_override_fields_are_accepted(
+        self, template, gameday, api_factory
+    ):
         """ApplyTemplateRequestSerializer accepts optional override fields."""
         from datetime import time
         from gameday_designer.serializers import ApplyTemplateRequestSerializer
@@ -535,7 +537,9 @@ class TestApplyTemplateRequestSerializer:
         assert serializer.validated_data["break_duration"] == 10
         assert serializer.validated_data["num_fields"] == 1
 
-    def test_optional_override_fields_default_to_none(self, template, gameday, api_factory):
+    def test_optional_override_fields_default_to_none(
+        self, template, gameday, api_factory
+    ):
         """ApplyTemplateRequestSerializer defaults optional fields to None when omitted."""
         from gameday_designer.serializers import ApplyTemplateRequestSerializer
 

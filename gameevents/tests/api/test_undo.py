@@ -48,8 +48,7 @@ def live_score(game):
     return sum(
         row.value
         for row in TeamLog.objects.filter(gameinfo=game, isDeleted=False)
-        if row.event
-        not in ("Strafe", "Spielzeit", "Auszeit", "First Down")
+        if row.event not in ("Strafe", "Spielzeit", "Auszeit", "First Down")
     )
 
 
@@ -84,14 +83,18 @@ def test_a_legacy_undo_is_recorded_as_a_correction(client):
     state = GameState.objects.get(game=game)
     replayed = project_game(game).state
     assert (
-        state.score_home,
-        state.score_away,
-        state.last_seq,
-    ) == (
-        replayed.score_home,
-        replayed.score_away,
-        replayed.last_seq,
-    ) == (0, 0, 3)
+        (
+            state.score_home,
+            state.score_away,
+            state.last_seq,
+        )
+        == (
+            replayed.score_home,
+            replayed.score_away,
+            replayed.last_seq,
+        )
+        == (0, 0, 3)
+    )
     assert state.score_home + state.score_away == live_score(game) == 0
     assert state.needs_reconciliation is False
     # The result table follows the rows, as it did before the correction.

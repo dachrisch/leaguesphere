@@ -12,6 +12,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
+# Commit SHA baked into the image at build time (container/app.Dockerfile).
+# /health/version/ reports it so the Phase 0c equivalence harness can prove
+# which candidate is actually live. "unknown" outside a Docker build.
+BUILD_SHA = os.environ.get("LEAGUESPHERE_GIT_SHA", "unknown")
+
 # Every React app is served (or dev-proxied) same-origin. Third-party pages may
 # read exactly two things, both anonymous, read-only and never credentialed:
 #   - /api/snapshot/            the public API

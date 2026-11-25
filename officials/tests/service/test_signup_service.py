@@ -2,7 +2,9 @@ import pytest
 from django.test import TestCase
 
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from league_table.tests.setup_factories.factories_leaguetable import LeagueSeasonConfigFactory
+from league_table.tests.setup_factories.factories_leaguetable import (
+    LeagueSeasonConfigFactory,
+)
 from officials.models import Official, OfficialGamedaySignup
 from officials.service.signup_service import (
     MaxSignupError,

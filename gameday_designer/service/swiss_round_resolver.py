@@ -113,9 +113,7 @@ class SwissRoundResolver:
                 # group's pool has the same parity as the running total, so
                 # the last group's pool is always even (see the invariant
                 # check below for what happens if that ever stops holding).
-                floater = max(
-                    pool, key=lambda t: seed_index.get(t, len(seed_order))
-                )
+                floater = max(pool, key=lambda t: seed_index.get(t, len(seed_order)))
                 pool = [t for t in pool if t != floater]
                 floaters.append(floater)
                 carry = [floater]
@@ -160,9 +158,7 @@ class SwissRoundResolver:
     ) -> List[tuple]:
         if not previous_pairings:
             return list(pairings)
-        group_of = {
-            team: pts for pts, members in groups.items() for team in members
-        }
+        group_of = {team: pts for pts, members in groups.items() for team in members}
 
         def same_group(*teams: str) -> bool:
             return len({group_of.get(t) for t in teams}) == 1
@@ -191,9 +187,7 @@ class SwissRoundResolver:
                         result[i] = (home, other_away)
                         result[j] = (other_home, away)
                         break
-        if any(
-            frozenset({home, away}) in previous_pairings for home, away in result
-        ):
+        if any(frozenset({home, away}) in previous_pairings for home, away in result):
             result = SwissRoundResolver._repair_rematches_global(
                 result, previous_pairings, group_of, seed_index
             )

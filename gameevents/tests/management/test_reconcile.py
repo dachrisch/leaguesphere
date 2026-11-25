@@ -139,18 +139,22 @@ def test_rebuild_restores_the_state_and_the_rows(client):
     state = GameState.objects.get(game=game)
     replayed = project_game(game).state
     assert (
-        state.score_home,
-        state.score_away,
-        state.period,
-        state.in_possession,
-        state.last_seq,
-    ) == (
-        replayed.score_home,
-        replayed.score_away,
-        replayed.period,
-        replayed.in_possession,
-        replayed.last_seq,
-    ) == (7, 0, 1, None, 2)
+        (
+            state.score_home,
+            state.score_away,
+            state.period,
+            state.in_possession,
+            state.last_seq,
+        )
+        == (
+            replayed.score_home,
+            replayed.score_away,
+            replayed.period,
+            replayed.in_possession,
+            replayed.last_seq,
+        )
+        == (7, 0, 1, None, 2)
+    )
     assert state.needs_reconciliation is False
 
     rows = TeamLog.objects.filter(gameinfo=game).order_by("pk")
@@ -170,9 +174,7 @@ def test_rebuild_restores_the_state_and_the_rows(client):
 def test_rebuild_restores_the_author_each_event_recorded(client):
     game, _home, _away = event_game("recheck-authors")
     login(client)
-    response = post_events(
-        client, game, {"events": [TD, PAT], "client_id": sub_id(1)}
-    )
+    response = post_events(client, game, {"events": [TD, PAT], "client_id": sub_id(1)})
     assert response.status_code == 201
     actor_id = GameEvent.objects.get(game=game, seq=1).author_id
     # Someone (or a broken write) reassigned the ticks; the log still knows who
@@ -193,11 +195,7 @@ def test_rebuild_uses_the_game_author_when_an_event_has_no_actor(client):
     # A system write: the events record no actor and no rows are written.
     append_submission(
         game,
-        [
-            GameEventValue(
-                type="score", code="touchdown", side="home", player=7, seq=1
-            )
-        ],
+        [GameEventValue(type="score", code="touchdown", side="home", player=7, seq=1)],
         client_id="system-1",
         source=GameEvent.Source.STAFF,
         write_rows=False,
@@ -222,11 +220,7 @@ def test_rebuild_takes_the_author_override_for_actorless_rows(client):
     game, _home, _away = event_game("recheck-author-flag")
     append_submission(
         game,
-        [
-            GameEventValue(
-                type="score", code="touchdown", side="home", player=7, seq=1
-            )
-        ],
+        [GameEventValue(type="score", code="touchdown", side="home", player=7, seq=1)],
         client_id="system-1",
         source=GameEvent.Source.STAFF,
         write_rows=False,
@@ -252,11 +246,7 @@ def test_rebuild_refuses_when_no_author_can_be_found(client):
     game, _home, _away = event_game("recheck-author-missing")
     append_submission(
         game,
-        [
-            GameEventValue(
-                type="score", code="touchdown", side="home", player=7, seq=1
-            )
-        ],
+        [GameEventValue(type="score", code="touchdown", side="home", player=7, seq=1)],
         client_id="system-1",
         source=GameEvent.Source.STAFF,
         write_rows=False,

@@ -120,9 +120,7 @@ def build_assets(static_root=None):
         for name in os.listdir(directory)
         if os.path.isfile(os.path.join(directory, name))
     )
-    return tuple(
-        f"{APP_STATIC_DIR}/{PRECACHE_BUILD_DIR}/{name}" for name in names
-    )
+    return tuple(f"{APP_STATIC_DIR}/{PRECACHE_BUILD_DIR}/{name}" for name in names)
 
 
 def precache_urls():

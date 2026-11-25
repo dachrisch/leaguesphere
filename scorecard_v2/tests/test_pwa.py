@@ -105,8 +105,7 @@ class TestServiceWorkerView(WebTest):
         response = self.app.get(reverse("scorecard-v2-sw"))
 
         assert (
-            response.headers["Content-Type"]
-            == "application/javascript; charset=utf-8"
+            response.headers["Content-Type"] == "application/javascript; charset=utf-8"
         )
 
     def test_worker_lives_on_the_app_scope(self):

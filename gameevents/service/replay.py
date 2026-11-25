@@ -44,11 +44,7 @@ def _groups(values):
     group = []
     key = None
     for value in values:
-        ident = (
-            value.client_id
-            if value.client_id is not None
-            else ("event", value.seq)
-        )
+        ident = value.client_id if value.client_id is not None else ("event", value.seq)
         if group and ident == key:
             group.append(value)
         else:

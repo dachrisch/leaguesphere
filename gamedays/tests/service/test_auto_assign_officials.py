@@ -157,7 +157,9 @@ class TestAutoAssignOfficialsService(TestCase):
             status="DRAFT",
             format="4_1",
         )
-        teams = [Team.objects.create(name=f"Team {i}", description=f"T{i}") for i in range(4)]
+        teams = [
+            Team.objects.create(name=f"Team {i}", description=f"T{i}") for i in range(4)
+        ]
         games_data = [
             ("10:00", 0, 1),
             ("11:10", 2, 3),
@@ -494,7 +496,9 @@ class TestAutoAssignOfficialsServiceDesignerState(TestCase):
         service = AutoAssignOfficialsService(gameday.pk)
         assignments = service.assign()
 
-        assert len(assignments) == 6, f"Expected 6 assignments, got {len(assignments)}: {assignments}"
+        assert (
+            len(assignments) == 6
+        ), f"Expected 6 assignments, got {len(assignments)}: {assignments}"
 
         state = GamedayDesignerState.objects.get(gameday=gameday)
         ref_counts: dict[str, int] = {}
@@ -505,7 +509,9 @@ class TestAutoAssignOfficialsServiceDesignerState(TestCase):
 
         assert len(ref_counts) > 0, "No referees were assigned"
         values = list(ref_counts.values())
-        assert max(values) - min(values) <= 1, f"Referee counts imbalanced: {ref_counts}"
+        assert (
+            max(values) - min(values) <= 1
+        ), f"Referee counts imbalanced: {ref_counts}"
 
     def test_four_teams_two_fields_designer_state_skips_when_impossible(self):
         """4 teams on 2 fields in designer state — games are concurrent

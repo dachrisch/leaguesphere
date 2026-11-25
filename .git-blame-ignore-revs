@@ -1,0 +1,10 @@
+# Revisions that should be ignored by `git blame`.
+#
+# Format: one full commit hash per line (comments and blank lines are allowed).
+# GitHub honours this file automatically; locally run:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# One mechanical reformat so far (Phase 0b, dachrisch/leaguesphere#2536).
+# Merge that commit with a MERGE COMMIT, not squash/rebase: rewriting it
+# invalidates the hash below.
+a4720b5149aefeb850704076bcc52f2bdb9f56ca

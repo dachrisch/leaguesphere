@@ -1,4 +1,5 @@
 import os
+
 # Must be set before any Django imports
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
@@ -14,7 +15,9 @@ def _login(page: Page, live_server_url: str) -> str:
     username = "testuser"
     password = "password123"
     if not User.objects.filter(username=username).exists():
-        User.objects.create_superuser(username=username, password=password, email="test@test.com")
+        User.objects.create_superuser(
+            username=username, password=password, email="test@test.com"
+        )
 
     page.goto(f"{live_server_url}/scorecard/#/login")
     page.fill('input[name="username"]', username)
@@ -28,11 +31,13 @@ def _login(page: Page, live_server_url: str) -> str:
     page.evaluate("token => localStorage.setItem('token', token)", token)
     page.route(
         "**/*",
-        lambda route: route.continue_(
-            headers={**route.request.headers, "Authorization": f"Token {token}"}
-        )
-        if "/api/" in route.request.url or "/accounts/auth/" in route.request.url
-        else route.continue_(),
+        lambda route: (
+            route.continue_(
+                headers={**route.request.headers, "Authorization": f"Token {token}"}
+            )
+            if "/api/" in route.request.url or "/accounts/auth/" in route.request.url
+            else route.continue_()
+        ),
     )
     return token
 
@@ -42,7 +47,9 @@ def _navigate_to_games_list(page: Page, gameday: Gameday):
     expect(page.get_by_text("Scorecard")).to_be_visible(timeout=15000)
     page.click('button:has-text("Scorecard")')
     expect(page.get_by_text(gameday.name)).to_be_visible(timeout=10000)
-    page.get_by_role("row", name=gameday.name).get_by_role("button", name="Auswählen").click()
+    page.get_by_role("row", name=gameday.name).get_by_role(
+        "button", name="Auswählen"
+    ).click()
     expect(page.get_by_text("Bitte Spiel auswählen")).to_be_visible(timeout=10000)
     # Show all games (not just user-officiated games)
     page.click('label:has-text("Zeige alle Spiele")')
@@ -112,9 +119,13 @@ def test_schedule_update_resolves_finalrunde_teams(live_server, page: Page):
 
     # ---- 5. Phase 1: verify Finalrunde shows placeholder team names -----
     # Spiel 4 row: "Gewinner Spiel 1 vs Gewinner Spiel 2" (winners bracket, unresolved)
-    expect(page.get_by_text("Gewinner Spiel 1 vs Gewinner Spiel 2")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Gewinner Spiel 1 vs Gewinner Spiel 2")).to_be_visible(
+        timeout=5000
+    )
     # Spiel 3 row: "Verlierer Spiel 1 vs Verlierer Spiel 2" (losers bracket, unresolved)
-    expect(page.get_by_text("Verlierer Spiel 1 vs Verlierer Spiel 2")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Verlierer Spiel 1 vs Verlierer Spiel 2")).to_be_visible(
+        timeout=5000
+    )
 
     # ---- 6. Complete Vorrunde games via ORM (A1 and A3 win) -------------
     _complete_vorrunde_game(spiel1, home_score=6, away_score=0)  # A1 wins Spiel 1
@@ -138,6 +149,6 @@ def test_schedule_update_resolves_finalrunde_teams(live_server, page: Page):
     expect(page.get_by_text("Gewinner Spiel 1 vs Gewinner Spiel 2")).not_to_be_visible(
         timeout=5000
     )
-    expect(page.get_by_text("Verlierer Spiel 1 vs Verlierer Spiel 2")).not_to_be_visible(
-        timeout=5000
-    )
+    expect(
+        page.get_by_text("Verlierer Spiel 1 vs Verlierer Spiel 2")
+    ).not_to_be_visible(timeout=5000)

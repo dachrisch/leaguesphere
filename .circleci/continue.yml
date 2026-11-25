@@ -1129,6 +1129,21 @@ jobs:
             # point at a declared parameter, and full_gate must fan in every
             # job that runs on tags. stdlib only.
             python3 scripts/check_ci_gate.py
+      - run:
+          name: Check gamedays dependency boundary
+          command: |
+            # Also always-on (Phase 0a, issue #2536): `gamedays` is the core
+            # domain app and may not import its consumer apps. New edges fail
+            # unless allowlisted; stale entries fail so the list only shrinks.
+            # stdlib only.
+            python3 scripts/check_app_boundaries.py --root .
+      - run:
+          name: Check Python formatting
+          command: |
+            # Also always-on (Phase 0b, issue #2536): the whole tree is black
+            # formatted, so a diff can never reintroduce drift. The pin matches
+            # pyproject.toml's black requirement; no project deps are needed.
+            pip install black==26.10.1 && black --check .
 
   check_version_sequence:
     docker:

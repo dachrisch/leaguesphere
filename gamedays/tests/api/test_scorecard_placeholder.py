@@ -6,7 +6,6 @@ from gamedays.tests.setup_factories.db_setup import DBSetup
 from gameday_designer.models import ScheduleTemplate, TemplateSlot, TemplateApplication
 
 
-
 class ScorecardPlaceholderTest(APITestCase):
     def setUp(self):
         self.user = User.objects.create_superuser(username="admin", password="password")
@@ -63,5 +62,5 @@ class ScorecardPlaceholderTest(APITestCase):
 
         assert response.status_code == status.HTTP_200_OK
         data = response.data
-        assert data['home']['name'] == "Winner SF1"
-        assert data['away']['name'] == "Winner SF2"
+        assert data["home"]["name"] == "Winner SF1"
+        assert data["away"]["name"] == "Winner SF2"

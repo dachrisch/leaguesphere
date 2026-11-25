@@ -8,8 +8,8 @@ class GameResultProgressSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Gameresult
-        fields = ['fh', 'sh', 'pa']
-        read_only_fields = ['fh', 'sh', 'pa']
+        fields = ["fh", "sh", "pa"]
+        read_only_fields = ["fh", "sh", "pa"]
 
 
 class GameinfoProgressSerializer(serializers.ModelSerializer):
@@ -20,13 +20,13 @@ class GameinfoProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gameinfo
         fields = [
-            'id',
-            'field',
-            'scheduled',
-            'status',
-            'gameStarted',
-            'gameFinished',
-            'gameresult',
+            "id",
+            "field",
+            "scheduled",
+            "status",
+            "gameStarted",
+            "gameFinished",
+            "gameresult",
         ]
         read_only_fields = fields
 
@@ -35,7 +35,7 @@ class GameinfoProgressSerializer(serializers.ModelSerializer):
         # gameStarted/gameFinished are stored UTC wall-clock times; emit them
         # as self-describing UTC ISO-8601 timestamps. `scheduled` stays the
         # human-entered local wall-clock time and is left untouched.
-        for field in ('gameStarted', 'gameFinished'):
+        for field in ("gameStarted", "gameFinished"):
             value = getattr(instance, field, None)
             if value is not None:
                 data[field] = utc_time_as_iso(value)
@@ -57,40 +57,42 @@ class GamedayProgressSerializer(serializers.ModelSerializer):
     """
 
     games = GameinfoProgressSerializer(
-        source='gameinfo_set',
+        source="gameinfo_set",
         many=True,
         read_only=True,
     )
-    league_display = serializers.CharField(source='league.name', read_only=True)
-    season_display = serializers.CharField(source='season.name', read_only=True)
+    league_display = serializers.CharField(source="league.name", read_only=True)
+    season_display = serializers.CharField(source="season.name", read_only=True)
     computed_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Gameday
         fields = [
-            'id',
-            'name',
-            'date',
-            'start',
-            'status',
-            'league',
-            'league_display',
-            'season',
-            'season_display',
-            'games',
-            'computed_status',
+            "id",
+            "name",
+            "date",
+            "start",
+            "status",
+            "league",
+            "league_display",
+            "season",
+            "season_display",
+            "games",
+            "computed_status",
         ]
         read_only_fields = fields
 
     def get_computed_status(self, obj):
         """Compute status from games when Gameday.status is empty."""
-        gameday_has_status = obj.status is not None and obj.status != ''
+        gameday_has_status = obj.status is not None and obj.status != ""
         if gameday_has_status:
             return None
 
         games_list = list(obj.gameinfo_set.all())
         if not games_list:
-            return 'PUBLISHED'
+            return "PUBLISHED"
 
-        all_completed = all(game.status == Gameinfo.STATUS_COMPLETED for game in games_list)
-        return 'COMPLETED' if all_completed else 'PUBLISHED'
+        all_completed = all(
+            game.status == Gameinfo.STATUS_COMPLETED for game in games_list
+        )
+        return "COMPLETED" if all_completed else "PUBLISHED"

@@ -197,15 +197,13 @@ def test_scorecard_v2_saved_strip_keeps_its_height(live_server, page: Page):
     page.set_viewport_size({"width": 320, "height": 568})
     expect(page.locator(".trackok .trackok-actions")).to_be_visible(timeout=20000)
 
-    heights = page.evaluate(
-        """() => {
+    heights = page.evaluate("""() => {
              const strip = document.querySelector('.trackok');
              const before = strip.getBoundingClientRect().height;
              strip.querySelector('.trackok-actions').remove();
              const after = strip.getBoundingClientRect().height;
              return { before, after };
-           }"""
-    )
+           }""")
 
     assert heights["after"] == pytest.approx(heights["before"], abs=0.5), heights
 

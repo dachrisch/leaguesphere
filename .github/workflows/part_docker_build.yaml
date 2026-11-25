@@ -36,6 +36,8 @@ jobs:
           file: ${{ inputs.dockerfile }}
           tags: ${{ inputs.image_name }}:latest
           outputs: type=docker,dest=/tmp/${{ inputs.image_name }}.tar
+          build-args: |
+            GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

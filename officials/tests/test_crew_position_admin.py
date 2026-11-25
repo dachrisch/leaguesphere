@@ -46,13 +46,18 @@ def test_a_superuser_opens_the_crew_position_pages(client):
     superuser = UserFactory(username="root", is_staff=True, is_superuser=True)
     client.force_login(superuser)
 
-    assert client.get(reverse("admin:officials_crewposition_changelist")).status_code == 200
+    assert (
+        client.get(reverse("admin:officials_crewposition_changelist")).status_code
+        == 200
+    )
     assert client.get(reverse("admin:officials_crewposition_add")).status_code == 200
 
     CrewPosition.objects.create(
         league=league, position="Referee", label="Schiedsrichter", order=1
     )
-    change_url = reverse("admin:officials_crewposition_change", args=[CrewPosition.objects.get().pk])
+    change_url = reverse(
+        "admin:officials_crewposition_change", args=[CrewPosition.objects.get().pk]
+    )
     assert client.get(change_url).status_code == 200
 
 

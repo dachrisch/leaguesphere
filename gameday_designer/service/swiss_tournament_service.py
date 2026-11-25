@@ -150,9 +150,7 @@ class SwissTournamentService:
         state_data.pop("swiss", None)
         state.state_data = state_data
         state.save()
-        swiss_games = Gameinfo.objects.filter(
-            gameday=self.gameday, stage=SWISS_STAGE
-        )
+        swiss_games = Gameinfo.objects.filter(gameday=self.gameday, stage=SWISS_STAGE)
         # Count first: delete() reports cascaded Gameresult rows as well.
         deleted_games = swiss_games.count()
         swiss_games.delete()
@@ -505,7 +503,9 @@ class SwissTournamentService:
                 )
             if round_no == 1:
                 continue
-            _rh, _rm = (int(part) for part in round_start_times[str(round_no)].split(":"))
+            _rh, _rm = (
+                int(part) for part in round_start_times[str(round_no)].split(":")
+            )
             _round_start = dtime(_rh, _rm)
             for game_no in range(1, games_per_round + 1):
                 field_no = ((game_no - 1) % fields) + 1
@@ -585,9 +585,7 @@ class SwissTournamentService:
             ) from exc
 
     @staticmethod
-    def _validate_generate_overrides(
-        overrides: dict, config: dict
-    ) -> tuple:
+    def _validate_generate_overrides(overrides: dict, config: dict) -> tuple:
         """Validate a full-manual override envelope against the tournament.
 
         Returns ``(pairings, bye, per_game)`` with str team ids, where
@@ -606,9 +604,7 @@ class SwissTournamentService:
                 f"invalid bye_team_id {bye!r} in overrides"
             ) from exc
         if bye_id is not None and bye_id not in seed_set:
-            raise SwissTournamentError(
-                f"unknown bye team in overrides: {bye_id}"
-            )
+            raise SwissTournamentError(f"unknown bye team in overrides: {bye_id}")
         if len(seed_set) % 2 == 0:
             if bye_id is not None:
                 raise SwissTournamentError(
@@ -631,9 +627,7 @@ class SwissTournamentService:
                 ) from exc
             for tid in (home, away):
                 if tid not in seed_set:
-                    raise SwissTournamentError(
-                        f"unknown team in overrides: {tid}"
-                    )
+                    raise SwissTournamentError(f"unknown team in overrides: {tid}")
             seen.extend([home, away])
             field = entry.get("field")
             if field is not None:
@@ -654,13 +648,9 @@ class SwissTournamentService:
             per_game.append({"field": field, "start_time": start_time})
         if len(set(seen)) != len(seen):
             dupes = sorted({tid for tid in seen if seen.count(tid) > 1})
-            raise SwissTournamentError(
-                f"overrides contain duplicate teams: {dupes}"
-            )
+            raise SwissTournamentError(f"overrides contain duplicate teams: {dupes}")
         if bye_id is not None and bye_id in seen:
-            raise SwissTournamentError(
-                f"bye team {bye_id} is also paired in overrides"
-            )
+            raise SwissTournamentError(f"bye team {bye_id} is also paired in overrides")
         covered = set(seen)
         if bye_id is not None:
             covered.add(bye_id)

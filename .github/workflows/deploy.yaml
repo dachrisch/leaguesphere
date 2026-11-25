@@ -4,8 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
-        required: true
+        # Optional only so a candidate build can omit it; the `deploy` job
+        # below rejects an empty value on the normal stage/demo path.
+        description: "Target environment (required unless agent_candidate_ref is set)"
+        required: false
         type: choice
         options:
           - staging
@@ -19,14 +21,36 @@ on:
           - patch
           - minor
           - major
+      agent_candidate_ref:
+        description: "Build an agent image from this branch/tag/SHA (skips the version bump)"
+        required: false
+        default: ""
+      agent_tag:
+        description: "Image tag for the agent build (agent-candidate = cand, agent-ref = phase baseline)"
+        required: false
+        type: choice
+        options:
+          - agent-candidate
+          - agent-ref
+        default: agent-candidate
 
 permissions:
   contents: write
 
 jobs:
   deploy:
+    if: inputs.agent_candidate_ref == ''
     runs-on: ubuntu-latest
     steps:
+      - name: Require an environment for a stage/demo deploy
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          if [ -z "$ENVIRONMENT" ]; then
+            echo "::error::environment is required unless agent_candidate_ref is set."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
@@ -116,3 +140,49 @@ jobs:
           echo "| **Tag** | \`v$NEW_VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Create a PR to \`master\` to trigger the deployment." >> "$GITHUB_STEP_SUMMARY"
+
+  # Phase 0c (dachrisch/leaguesphere#2536): build an image for the equivalence
+  # harness. `agent-candidate` is the moving candidate (picked up by the
+  # servyy-test timer); `agent-ref` is the phase baseline, rebuilt deliberately
+  # from the stack base and never auto-updated.
+  agent-image:
+    if: inputs.agent_candidate_ref != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.agent_candidate_ref }}
+          fetch-depth: 0
+
+      - name: Resolve commit SHA
+        id: ref
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log into registry
+        uses: docker/login-action@v4
+        with:
+          registry: docker.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push the agent image
+        uses: docker/build-push-action@v7
+        with:
+          # Build the ref this job checked out. Without `context: .` the action
+          # defaults to the workflow ref (the branch head), so a build of
+          # `agent_candidate_ref=<base sha>` silently produced HEAD content -
+          # the phase baseline then served the stack head's code.
+          context: .
+          file: container/app.Dockerfile
+          push: true
+          tags: docker.io/leaguesphere/backend:${{ inputs.agent_tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.ref.outputs.sha }}
+            org.opencontainers.image.version=${{ inputs.agent_tag }}
+          build-args: |
+            GIT_SHA=${{ steps.ref.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

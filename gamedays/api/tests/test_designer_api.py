@@ -65,8 +65,9 @@ class DesignerAPITest(APITestCase):
 
         assert response.status_code == status.HTTP_200_OK
         assert (
-            GamedayDesignerState.objects.get(gameday=self.gameday)
-            .state_data["nodes"][0]["id"]
+            GamedayDesignerState.objects.get(gameday=self.gameday).state_data["nodes"][
+                0
+            ]["id"]
             == "m"
         )
 

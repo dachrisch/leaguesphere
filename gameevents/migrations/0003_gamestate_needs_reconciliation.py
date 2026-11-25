@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('gameevents', '0002_gameevent_legacy_sequence'),
+        ("gameevents", "0002_gameevent_legacy_sequence"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='gamestate',
-            name='needs_reconciliation',
+            model_name="gamestate",
+            name="needs_reconciliation",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='gamestate',
-            name='reconciliation_note',
-            field=models.CharField(blank=True, default='', max_length=255),
+            model_name="gamestate",
+            name="reconciliation_note",
+            field=models.CharField(blank=True, default="", max_length=255),
         ),
     ]

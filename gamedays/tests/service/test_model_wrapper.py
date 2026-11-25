@@ -20,8 +20,12 @@ from gamedays.service.gameday_settings import (
 from gamedays.service.model_wrapper import GamedayModelWrapper
 from gamedays.tests.setup_factories.dataframe_setup import DataFrameAssertion
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
-from league_table.tests.setup_factories.factories_leaguetable import LeagueSeasonConfigFactory
+from league_table.tests.setup_factories.db_setup_leaguetable import (
+    LEAGUE_TABLE_TEST_RULESET,
+)
+from league_table.tests.setup_factories.factories_leaguetable import (
+    LeagueSeasonConfigFactory,
+)
 
 
 class TestGamedayModelWrapper(TestCase):
@@ -72,7 +76,9 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         qualify_table = gmw.get_qualify_table()
         del qualify_table["team_id"]
-        DataFrameAssertion.expect(qualify_table).to_equal_json("ts_qualify_main_round_table")
+        DataFrameAssertion.expect(qualify_table).to_equal_json(
+            "ts_qualify_main_round_table"
+        )
 
     @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
     def test_get_qualify_table(self, mock_get_league_config_ruleset):
@@ -82,9 +88,7 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         qualify_table = gmw.get_qualify_table()
         del qualify_table["team_id"]
-        DataFrameAssertion.expect(qualify_table).to_equal_json(
-            "ts_qualify_table"
-        )
+        DataFrameAssertion.expect(qualify_table).to_equal_json("ts_qualify_table")
 
     def test_empty_get_final_table(self):
         gameday = DBSetup().g62_qualify_finished()
@@ -101,9 +105,7 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         table = gmw.get_final_table()
         del table["team_id"]
-        DataFrameAssertion.expect(table).to_equal_json(
-            "ts_final_table_6_teams"
-        )
+        DataFrameAssertion.expect(table).to_equal_json("ts_final_table_6_teams")
 
     @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
     def test_get_final_table_for_7_teams(self, mock_get_league_config_ruleset):
@@ -113,9 +115,7 @@ class TestGamedayModelWrapper(TestCase):
         gmw = GamedayModelWrapper(gameday.pk)
         table = gmw.get_final_table()
         del table["team_id"]
-        DataFrameAssertion.expect(table).to_equal_json(
-            "ts_final_table_7_teams"
-        )
+        DataFrameAssertion.expect(table).to_equal_json("ts_final_table_7_teams")
 
     def test_get_final_table_for_main_round_is_empty(self):
         gameday = DBSetup().create_main_round_gameday(status="beendet", number_teams=4)
@@ -211,7 +211,7 @@ class TestGamedayModelWrapper(TestCase):
     def test_get_mulitple_teams_by_standing_and_points(self):
         gameday = DBSetup().g72_qualify_finished()
         all_games = Gameinfo.objects.filter(gameday=gameday)
-        all_games.update(status='beendet')
+        all_games.update(status="beendet")
         for game in all_games:
             update_gameresults(game)
         gmw = GamedayModelWrapper(gameday.pk)

@@ -24,7 +24,9 @@ def create_tiebreak_steps_and_defaults(apps, schema_editor):
         TieBreakStep.objects.get_or_create(key=key, label=label)
 
     # Fetch the rulesets or create them if they don't exist
-    standard_ruleset, _ = LeagueRuleset.objects.get_or_create(name="Standard Flag Tie Break Regeln")
+    standard_ruleset, _ = LeagueRuleset.objects.get_or_create(
+        name="Standard Flag Tie Break Regeln"
+    )
     dffl_ruleset, _ = LeagueRuleset.objects.get_or_create(
         name="DFFL Liga Regeln",
         defaults={
@@ -34,7 +36,7 @@ def create_tiebreak_steps_and_defaults(apps, schema_editor):
             "points_draw_other_league": 1,
             "max_points_same_league": 1,
             "max_points_other_league": 2,
-        }
+        },
     )
 
     # Default order for Standard Flag Tie Break Regeln
@@ -51,7 +53,9 @@ def create_tiebreak_steps_and_defaults(apps, schema_editor):
     for key, order, sort_order in standard_orders:
         step = TieBreakStep.objects.get(key=key)
         LeagueRulesetTieBreak.objects.get_or_create(
-            ruleset=standard_ruleset, step=step, defaults={"order": order, "sort_order": sort_order}
+            ruleset=standard_ruleset,
+            step=step,
+            defaults={"order": order, "sort_order": sort_order},
         )
 
     # Default order for DFFL Liga Regeln
@@ -69,14 +73,19 @@ def create_tiebreak_steps_and_defaults(apps, schema_editor):
     for key, order, sort_order in dffl_orders:
         step = TieBreakStep.objects.get(key=key)
         LeagueRulesetTieBreak.objects.get_or_create(
-            ruleset=dffl_ruleset, step=step, defaults={"order": order, "sort_order": sort_order}
+            ruleset=dffl_ruleset,
+            step=step,
+            defaults={"order": order, "sort_order": sort_order},
         )
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("league_table", "0010_alter_tiebreakstep_key"),  # adjust to your last migration
+        (
+            "league_table",
+            "0010_alter_tiebreakstep_key",
+        ),  # adjust to your last migration
     ]
 
     operations = [

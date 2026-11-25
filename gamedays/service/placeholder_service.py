@@ -19,8 +19,7 @@ class GamedayPlaceholderService:
         self.gameday = Gameday.objects.filter(pk=gameday_id).first()
         self._template = None
         self._gameinfos = {
-            gi.pk: gi
-            for gi in Gameinfo.objects.filter(gameday_id=gameday_id)
+            gi.pk: gi for gi in Gameinfo.objects.filter(gameday_id=gameday_id)
         }
         self._slots_by_field = None
 
@@ -63,7 +62,9 @@ class GamedayPlaceholderService:
             return self._slots_by_field
 
         self._slots_by_field = {}
-        for slot in TemplateSlot.objects.filter(template=template).order_by('field', 'slot_order'):
+        for slot in TemplateSlot.objects.filter(template=template).order_by(
+            "field", "slot_order"
+        ):
             self._slots_by_field.setdefault(slot.field, []).append(slot)
         return self._slots_by_field
 
@@ -104,7 +105,9 @@ class GamedayPlaceholderService:
                     else "TBD"
                 )
         except (Gameinfo.DoesNotExist, IndexError, AttributeError) as e:
-            logger.warning(f"Placeholder resolution failed for game {gameinfo_id}: {str(e)}")
+            logger.warning(
+                f"Placeholder resolution failed for game {gameinfo_id}: {str(e)}"
+            )
             return "TBD"
 
     def _find_slot_for_game(self, gi: Gameinfo) -> TemplateSlot:
@@ -116,7 +119,8 @@ class GamedayPlaceholderService:
         # Count how many games (including this one) are on this field at or before this time
         # This matches the 'slot_order' logic used during template application
         game_index = sum(
-            1 for g in self._gameinfos.values()
+            1
+            for g in self._gameinfos.values()
             if g.field == gi.field and g.scheduled <= gi.scheduled
         )
 

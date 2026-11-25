@@ -23,9 +23,7 @@ from gameday_designer.models import TemplateSlot, TemplateUpdateRule
 # Matches the reference patterns that the frontend's parseReference()
 # (templateMapper.ts) can resolve into graph edges. Anything that doesn't
 # match will silently produce empty dropdowns in the designer.
-_PARSEABLE_REF_RE = re.compile(
-    r"^(?:Winner|Loser) .+$|^Rank \d+(?: .+?)? from .+$"
-)
+_PARSEABLE_REF_RE = re.compile(r"^(?:Winner|Loser) .+$|^Rank \d+(?: .+?)? from .+$")
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +57,7 @@ class GamedayMigrationService:
     def _parse_custom_format(fmt: str) -> tuple[int, int]:
         m = GamedayMigrationService._CUSTOM_FORMAT_RE.search(fmt)
         if not m:
-            raise GamedayMigrationError(
-                f"Cannot parse custom format string {fmt!r}"
-            )
+            raise GamedayMigrationError(f"Cannot parse custom format string {fmt!r}")
         return int(m.group(1)), int(m.group(2))
 
     def _build_custom_plan(self) -> dict:
@@ -106,12 +102,8 @@ class GamedayMigrationService:
         slots = []
 
         for gi in gameinfos:
-            home_result = Gameresult.objects.filter(
-                gameinfo=gi, isHome=True
-            ).first()
-            away_result = Gameresult.objects.filter(
-                gameinfo=gi, isHome=False
-            ).first()
+            home_result = Gameresult.objects.filter(gameinfo=gi, isHome=True).first()
+            away_result = Gameresult.objects.filter(gameinfo=gi, isHome=False).first()
 
             home_team = home_result.team if home_result else None
             away_team = away_result.team if away_result else None
@@ -124,29 +116,31 @@ class GamedayMigrationService:
             field_game_counters[gi.field] += 1
             slot_order = field_game_counters[gi.field]
 
-            slots.append({
-                "field": gi.field,
-                "slot_order": slot_order,
-                "stage": gi.stage or "Hauptrunde",
-                "stage_type": "STANDARD",
-                "stage_category": gi.stage_category
-                or derive_legacy_stage_category(gi.stage or "Hauptrunde"),
-                "standing": gi.standing,
-                "home_group": standing_idx,
-                "home_team": home_idx,
-                "home_reference": "",
-                "away_group": standing_idx,
-                "away_team": away_idx,
-                "away_reference": "",
-                "official_group": official_group,
-                "official_team": official_idx,
-                "official_reference": "",
-                "break_after": 0,
-                "start_time": (
-                    gi.scheduled.strftime("%H:%M") if gi.scheduled else None
-                ),
-                "manual_time": True,
-            })
+            slots.append(
+                {
+                    "field": gi.field,
+                    "slot_order": slot_order,
+                    "stage": gi.stage or "Hauptrunde",
+                    "stage_type": "STANDARD",
+                    "stage_category": gi.stage_category
+                    or derive_legacy_stage_category(gi.stage or "Hauptrunde"),
+                    "standing": gi.standing,
+                    "home_group": standing_idx,
+                    "home_team": home_idx,
+                    "home_reference": "",
+                    "away_group": standing_idx,
+                    "away_team": away_idx,
+                    "away_reference": "",
+                    "official_group": official_group,
+                    "official_team": official_idx,
+                    "official_reference": "",
+                    "break_after": 0,
+                    "start_time": (
+                        gi.scheduled.strftime("%H:%M") if gi.scheduled else None
+                    ),
+                    "manual_time": True,
+                }
+            )
 
         group_config = []
         for g_idx in range(num_groups):
@@ -158,10 +152,12 @@ class GamedayMigrationService:
 
         officials_in_plan = group_team_index.get(official_group, {})
         if officials_in_plan:
-            group_config.append({
-                "name": "Offizielle",
-                "team_count": len(officials_in_plan),
-            })
+            group_config.append(
+                {
+                    "name": "Offizielle",
+                    "team_count": len(officials_in_plan),
+                }
+            )
 
         return {
             "template_id": None,
@@ -384,18 +380,22 @@ class GamedayMigrationService:
 
             team_rules = []
             for team_rule in rule.team_rules.all():
-                team_rules.append({
-                    "role": team_rule.role,
-                    "standing": team_rule.standing,
-                    "place": team_rule.place,
-                    "points": team_rule.points,
-                })
+                team_rules.append(
+                    {
+                        "role": team_rule.role,
+                        "standing": team_rule.standing,
+                        "place": team_rule.place,
+                        "points": team_rule.points,
+                    }
+                )
 
-            rules.append({
-                "slot_standing": slot.standing,
-                "slot_field": slot.field,
-                "pre_finished": rule.pre_finished,
-                "team_rules": team_rules,
-            })
+            rules.append(
+                {
+                    "slot_standing": slot.standing,
+                    "slot_field": slot.field,
+                    "pre_finished": rule.pre_finished,
+                    "team_rules": team_rules,
+                }
+            )
 
         return rules

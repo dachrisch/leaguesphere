@@ -71,15 +71,9 @@ class Command(BaseCommand):
             default="ScorecardV2!2026",
             help="Password set on the demo user (stage only).",
         )
-        parser.add_argument(
-            "--league", default=DEMO_LEAGUE, help="Demo league name."
-        )
-        parser.add_argument(
-            "--season", default=DEMO_SEASON, help="Demo season name."
-        )
-        parser.add_argument(
-            "--address", default="Testfeld", help="Gameday address."
-        )
+        parser.add_argument("--league", default=DEMO_LEAGUE, help="Demo league name.")
+        parser.add_argument("--season", default=DEMO_SEASON, help="Demo season name.")
+        parser.add_argument("--address", default="Testfeld", help="Gameday address.")
         parser.add_argument(
             "--players-per-team",
             type=int,
@@ -226,9 +220,7 @@ class Command(BaseCommand):
                 )
             player = Player.objects.filter(pass_number=pass_number).first()
             if player is None:
-                player = Player.objects.create(
-                    person=person, pass_number=pass_number
-                )
+                player = Player.objects.create(person=person, pass_number=pass_number)
             playerlist = Playerlist.objects.filter(
                 team=team, jersey_number=jersey, left_on__isnull=True
             ).first()
@@ -273,7 +265,10 @@ class Command(BaseCommand):
             game.league_group = group
             game.officials = officials_team
             game.save()
-            for is_home, team in ((True, teams[home_index]), (False, teams[away_index])):
+            for is_home, team in (
+                (True, teams[home_index]),
+                (False, teams[away_index]),
+            ):
                 Gameresult.objects.get_or_create(
                     gameinfo=game,
                     team=team,

@@ -12,8 +12,8 @@ class LeagueSeasonConfigForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.season_id:
-            self.fields['exclude_gamedays'].queryset = (
-                Gameday.objects.filter(season=self.instance.season, league=self.instance.league)
+            self.fields["exclude_gamedays"].queryset = Gameday.objects.filter(
+                season=self.instance.season, league=self.instance.league
             )
 
 
@@ -26,6 +26,7 @@ class OverrideOfficialGamedaySettingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.instance: OverrideOfficialGamedaySetting
         if self.instance and self.instance.league_season_config_id:
-            self.fields['gameday'].queryset = (
-                Gameday.objects.filter(season=self.instance.league_season_config.season, league=self.instance.league_season_config.league)
+            self.fields["gameday"].queryset = Gameday.objects.filter(
+                season=self.instance.league_season_config.season,
+                league=self.instance.league_season_config.league,
             )

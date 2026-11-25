@@ -15,7 +15,16 @@ INDIVIDUAL_STATISTIC_EVENTS = [
     "Safety (+1)",
 ]
 
-TEAM_LOG_COLUMNS = ["id", "gameinfo__gameday_id", "team__name", "team_id", "team__description", "player", "event", "value"]
+TEAM_LOG_COLUMNS = [
+    "id",
+    "gameinfo__gameday_id",
+    "team__name",
+    "team_id",
+    "team__description",
+    "player",
+    "event",
+    "value",
+]
 
 
 class LeagueStatisticsModelWrapper:
@@ -85,17 +94,23 @@ class LeagueStatisticsModelWrapper:
             "playerlist__player__person__last_name": "last_name",
         }
 
-        passcheck_players = pd.DataFrame(
-            PlayerlistGameday.objects
-                .filter(gameday__season__name=self.season)
-                .values(*key_mapping.keys())
-        ).rename(columns=key_mapping).astype({
-            "gameday_id": int,
-            "gameday_jersey": int,
-            "team_id": int,
-            "first_name": str,
-            "last_name": str,
-        })
+        passcheck_players = (
+            pd.DataFrame(
+                PlayerlistGameday.objects.filter(
+                    gameday__season__name=self.season
+                ).values(*key_mapping.keys())
+            )
+            .rename(columns=key_mapping)
+            .astype(
+                {
+                    "gameday_id": int,
+                    "gameday_jersey": int,
+                    "team_id": int,
+                    "first_name": str,
+                    "last_name": str,
+                }
+            )
+        )
         return passcheck_players
 
     def _aggregate_team_logs(self):
@@ -117,15 +132,23 @@ class LeagueStatisticsModelWrapper:
             config = safe_config.get_season_statistic_settings()
 
         if config.get(SHOW_PLAYER_NAMES, False):
-            passcheck_player_names_df = self._get_season_passcheck_player_jersey_number()
+            passcheck_player_names_df = (
+                self._get_season_passcheck_player_jersey_number()
+            )
             self.team_logs["team_player"] = self.team_logs.merge(
                 passcheck_player_names_df,
                 left_on=["gameinfo__gameday_id", "player", "team_id"],
                 right_on=["gameday_id", "gameday_jersey", "team_id"],
                 how="left",
-            ).apply(lambda x: f"{x.team__name}" + (
-                f" #{x.player}" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"
-            ), axis=1)
+            ).apply(
+                lambda x: f"{x.team__name}"
+                + (
+                    f" #{x.player}"
+                    if pd.isna(x.first_name)
+                    else f" - {x.first_name} {x.last_name}"
+                ),
+                axis=1,
+            )
         else:
             self.team_logs["team_player"] = self.team_logs.apply(
                 lambda x: f"{x['team__name']} #{x['player']}", axis=1

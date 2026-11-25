@@ -59,7 +59,10 @@ class TestBackfillStageCategory(TestCase):
             gameday=gameday,
             state_data={
                 "nodes": [
-                    {"type": "stage", "data": {"name": "Liga", "category": "preliminary"}}
+                    {
+                        "type": "stage",
+                        "data": {"name": "Liga", "category": "preliminary"},
+                    }
                 ]
             },
         )
@@ -73,14 +76,17 @@ class TestBackfillStageCategory(TestCase):
         gameday = DBSetup().create_empty_gameday()
         gi_designer = GameinfoFactory(gameday=gameday, stage="Liga")
         gi_heuristic = GameinfoFactory(gameday=gameday, stage="Hauptrunde")
-        Gameinfo.objects.filter(
-            pk__in=[gi_designer.pk, gi_heuristic.pk]
-        ).update(stage_category="")
+        Gameinfo.objects.filter(pk__in=[gi_designer.pk, gi_heuristic.pk]).update(
+            stage_category=""
+        )
         GamedayDesignerState.objects.create(
             gameday=gameday,
             state_data={
                 "nodes": [
-                    {"type": "stage", "data": {"name": "Liga", "category": "preliminary"}}
+                    {
+                        "type": "stage",
+                        "data": {"name": "Liga", "category": "preliminary"},
+                    }
                 ]
             },
         )

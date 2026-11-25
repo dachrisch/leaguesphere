@@ -169,9 +169,7 @@ def legacy_state(game) -> GameStateValue:
     if possession:
         for is_home, name, description in results:
             if possession in (name, description):
-                state = replace(
-                    state, in_possession="home" if is_home else "away"
-                )
+                state = replace(state, in_possession="home" if is_home else "away")
                 break
     return state
 

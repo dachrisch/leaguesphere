@@ -12,5 +12,7 @@ urlpatterns = [
         LeagueTableAPIView.as_view(),
         name=API_LEAGUE_TABLE_BY_SEASON,
     ),
-    path("<str:league>/", LeagueTableAPIView.as_view(), name=API_LEAGUE_TABLE_BY_LEAGUE),
+    path(
+        "<str:league>/", LeagueTableAPIView.as_view(), name=API_LEAGUE_TABLE_BY_LEAGUE
+    ),
 ]

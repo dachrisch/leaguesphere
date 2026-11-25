@@ -26,8 +26,9 @@ def make_gameday():
 
 def make_teams(n):
     return [
-        Team.objects.create(name=f"PubT{i}", description=f"Public team {i}",
-                            location="Test City")
+        Team.objects.create(
+            name=f"PubT{i}", description=f"Public team {i}", location="Test City"
+        )
         for i in range(n)
     ]
 

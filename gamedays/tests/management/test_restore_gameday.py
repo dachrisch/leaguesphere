@@ -22,8 +22,14 @@ class RestoreGamedayCommandTest(TestCase):
         GameresultFactory(gameinfo=gi, fh=3, sh=4, isHome=True)
         GameresultFactory(gameinfo=gi, fh=1, sh=2, isHome=False)
         # author FK is explicit so the test never depends on a user id 1 existing
-        TeamLogFactory(gameinfo=gi, sequence=1, event="Touchdown", half=1,
-                       input="TD", author=gameday.author)
+        TeamLogFactory(
+            gameinfo=gi,
+            sequence=1,
+            event="Touchdown",
+            half=1,
+            input="TD",
+            author=gameday.author,
+        )
         return gameday, gi
 
     def _wipe_and_republish(self, gameday):
@@ -40,23 +46,35 @@ class RestoreGamedayCommandTest(TestCase):
 
             wiped = self._wipe_and_republish(gameday)
             self.assertEqual(
-                Gameresult.objects.filter(gameinfo__gameday_id=gameday.id).count(), 0)
+                Gameresult.objects.filter(gameinfo__gameday_id=gameday.id).count(), 0
+            )
 
-            call_command("restore_gameday", gameday=gameday.id,
-                         load=export_path, execute=True, backup_dir=tmp)
+            call_command(
+                "restore_gameday",
+                gameday=gameday.id,
+                load=export_path,
+                execute=True,
+                backup_dir=tmp,
+            )
 
             # original gameinfo restored with its ORIGINAL pk
             self.assertTrue(Gameinfo.objects.filter(pk=gi.pk).exists())
             # results and logs are back
             self.assertEqual(
-                Gameresult.objects.filter(gameinfo__gameday_id=gameday.id).count(), 2)
+                Gameresult.objects.filter(gameinfo__gameday_id=gameday.id).count(), 2
+            )
             self.assertEqual(
-                TeamLog.objects.filter(gameinfo__gameday_id=gameday.id).count(), 1)
+                TeamLog.objects.filter(gameinfo__gameday_id=gameday.id).count(), 1
+            )
             # the empty re-published game is gone
             self.assertFalse(Gameinfo.objects.filter(pk=wiped.pk).exists())
             # a pre-image rollback backup was written
-            self.assertTrue(any(f.startswith(f"gameday_{gameday.id}_preimage_")
-                                for f in os.listdir(tmp)))
+            self.assertTrue(
+                any(
+                    f.startswith(f"gameday_{gameday.id}_preimage_")
+                    for f in os.listdir(tmp)
+                )
+            )
 
     def test_dry_run_makes_no_changes(self):
         gameday, gi = self._build_gameday()
@@ -67,14 +85,16 @@ class RestoreGamedayCommandTest(TestCase):
             wiped = self._wipe_and_republish(gameday)
 
             # no --execute -> dry run
-            call_command("restore_gameday", gameday=gameday.id,
-                         load=export_path, backup_dir=tmp)
+            call_command(
+                "restore_gameday", gameday=gameday.id, load=export_path, backup_dir=tmp
+            )
 
             # nothing changed: original still absent, wiped row still present
             self.assertFalse(Gameinfo.objects.filter(pk=gi.pk).exists())
             self.assertTrue(Gameinfo.objects.filter(pk=wiped.pk).exists())
             self.assertEqual(
-                Gameresult.objects.filter(gameinfo__gameday_id=gameday.id).count(), 0)
+                Gameresult.objects.filter(gameinfo__gameday_id=gameday.id).count(), 0
+            )
 
     def test_refuses_wrong_gameday_file(self):
         gameday, _ = self._build_gameday()
@@ -85,12 +105,20 @@ class RestoreGamedayCommandTest(TestCase):
 
             # applying that file against a different gameday id must be rejected
             with self.assertRaises(CommandError):
-                call_command("restore_gameday", gameday=other.id,
-                             load=export_path, execute=True, backup_dir=tmp)
+                call_command(
+                    "restore_gameday",
+                    gameday=other.id,
+                    load=export_path,
+                    execute=True,
+                    backup_dir=tmp,
+                )
 
     def test_refuses_empty_export(self):
         empty = GamedayFactory(name="Empty")
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(CommandError):
-                call_command("restore_gameday", gameday=empty.id,
-                             export=os.path.join(tmp, "gd.json"))
+                call_command(
+                    "restore_gameday",
+                    gameday=empty.id,
+                    export=os.path.join(tmp, "gd.json"),
+                )

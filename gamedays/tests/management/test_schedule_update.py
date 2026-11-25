@@ -17,7 +17,9 @@ from gamedays.models import Gameday, Gameinfo, Gameresult
 from gamedays.service.model_wrapper import GamedayModelWrapper
 from gamedays.tests.setup_factories.dataframe_setup import DataFrameAssertion
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
+from league_table.tests.setup_factories.db_setup_leaguetable import (
+    LEAGUE_TABLE_TEST_RULESET,
+)
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )
@@ -189,9 +191,11 @@ class TestScheduleUpdate(TransactionTestCase):
 
         gmw = GamedayModelWrapper(gameday.pk)
         final_table = gmw.get_final_table()
-        del final_table['team_id']
-        DataFrameAssertion.expect(gmw.get_schedule()).to_equal_json('schedule_9_teams_3_fields')
-        DataFrameAssertion.expect(final_table).to_equal_json('final_table_9_teams')
+        del final_table["team_id"]
+        DataFrameAssertion.expect(gmw.get_schedule()).to_equal_json(
+            "schedule_9_teams_3_fields"
+        )
+        DataFrameAssertion.expect(final_table).to_equal_json("final_table_9_teams")
 
     @patch("league_table.service.datatypes.LeagueConfigRuleset.from_ruleset")
     def test_update_11_teams_3_fields(self, mock_get_league_config_ruleset):
@@ -255,13 +259,11 @@ class TestScheduleUpdate(TransactionTestCase):
 
         gmw = GamedayModelWrapper(gameday.pk)
         final_table = gmw.get_final_table()
-        del final_table['team_id']
+        del final_table["team_id"]
         DataFrameAssertion.expect(gmw.get_schedule()).to_equal_json(
             "schedule_11_teams_3_fields"
         )
-        DataFrameAssertion.expect(final_table).to_equal_json(
-            "final_table_11_teams"
-        )
+        DataFrameAssertion.expect(final_table).to_equal_json("final_table_11_teams")
 
     def test_update_semifinal_and_p5(self):
         gameday = DBSetup().g62_qualify_finished()
@@ -272,7 +274,9 @@ class TestScheduleUpdate(TransactionTestCase):
         assert results_p5[1].team.name == "B3"
 
         info_semifinals = Gameinfo.objects.filter(standing="HF")
-        results_sf1_qs = Gameresult.objects.filter(gameinfo=info_semifinals[0]).order_by("id")
+        results_sf1_qs = Gameresult.objects.filter(
+            gameinfo=info_semifinals[0]
+        ).order_by("id")
         assert results_sf1_qs[0].team.name == "B2"
         assert results_sf1_qs[1].team.name == "A1"
 
@@ -286,7 +290,9 @@ class TestScheduleUpdate(TransactionTestCase):
         assert results_sf1_qs[0].team.name == "B2"
         assert results_sf1_qs[1].team.name == "A1"
 
-        results_sf2_qs = Gameresult.objects.filter(gameinfo=info_semifinals[1]).order_by("id")
+        results_sf2_qs = Gameresult.objects.filter(
+            gameinfo=info_semifinals[1]
+        ).order_by("id")
         assert results_sf2_qs[0].team.name == "A2"
         assert results_sf2_qs[1].team.name == "B1"
 

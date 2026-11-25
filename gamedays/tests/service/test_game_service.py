@@ -422,7 +422,10 @@ class TestConcurrentIdenticalSubmissions(TransactionTestCase):
         def write():
             try:
                 _, was_applied = GameService(game.pk).create_gamelog_once(
-                    home.pk, TOUCHDOWN_WITH_PAT, gameday.author, 1,
+                    home.pk,
+                    TOUCHDOWN_WITH_PAT,
+                    gameday.author,
+                    1,
                     client_id=client_id,
                 )
                 applied.append(was_applied)
@@ -444,11 +447,7 @@ class TestConcurrentIdenticalSubmissions(TransactionTestCase):
         assert applied.count(True) == 1
         assert applied.count(False) == self.WRITERS - 1
         assert (
-            GameLogSubmission.objects.filter(
-                gameinfo=game, client_id=client_id
-            ).count()
+            GameLogSubmission.objects.filter(gameinfo=game, client_id=client_id).count()
             == 1
         )
-        assert (
-            TeamLog.objects.filter(gameinfo=game, event="Touchdown").count() == 1
-        )
+        assert TeamLog.objects.filter(gameinfo=game, event="Touchdown").count() == 1

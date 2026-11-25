@@ -11,7 +11,7 @@ from .progress_serializers import GamedayProgressSerializer
 
 class GameProgressPagination(PageNumberPagination):
     page_size = 20
-    page_size_query_param = 'page_size'
+    page_size_query_param = "page_size"
     max_page_size = 100
 
 
@@ -29,8 +29,8 @@ class GameProgressViewSet(viewsets.ReadOnlyModelViewSet):
     # Default ordering surfaces the gamedays closest to "today" first (see
     # `distance_from_today` annotation) so today's games land on the first page
     # and aren't pushed off the end by the lookback window.
-    ordering = ['distance_from_today', 'date']
-    ordering_fields = ['date', 'name']
+    ordering = ["distance_from_today", "date"]
+    ordering_fields = ["date", "name"]
 
     def get_queryset(self):
         """
@@ -45,35 +45,39 @@ class GameProgressViewSet(viewsets.ReadOnlyModelViewSet):
         start_date = today - timedelta(days=7)
         end_date = today + timedelta(days=14)
 
-        queryset = Gameday.objects.filter(
-            date__gte=start_date,
-            date__lte=end_date,
-        ).exclude(
-            status=Gameday.STATUS_DRAFT,
-        ).annotate(
-            distance_from_today=Abs(
-                ExpressionWrapper(F('date') - today, output_field=DurationField())
+        queryset = (
+            Gameday.objects.filter(
+                date__gte=start_date,
+                date__lte=end_date,
+            )
+            .exclude(
+                status=Gameday.STATUS_DRAFT,
+            )
+            .annotate(
+                distance_from_today=Abs(
+                    ExpressionWrapper(F("date") - today, output_field=DurationField())
+                )
             )
         )
 
-        league = self.request.query_params.get('league')
+        league = self.request.query_params.get("league")
         if league:
             queryset = queryset.filter(league__name__icontains=league)
 
-        season = self.request.query_params.get('season')
+        season = self.request.query_params.get("season")
         if season:
             queryset = queryset.filter(season__name__icontains=season)
 
         home_results_prefetch = Prefetch(
-            'gameinfo_set__gameresult_set',
-            queryset=Gameresult.objects.filter(isHome=True)
+            "gameinfo_set__gameresult_set",
+            queryset=Gameresult.objects.filter(isHome=True),
         )
 
         queryset = queryset.select_related(
-            'league',
-            'season',
+            "league",
+            "season",
         ).prefetch_related(
-            'gameinfo_set',
+            "gameinfo_set",
             home_results_prefetch,
         )
 

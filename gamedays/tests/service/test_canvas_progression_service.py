@@ -409,4 +409,6 @@ class TestProgressionResolvesViaEdges:
 
         CanvasBracketProgressionService(hf2).apply()
 
-        assert Gameresult.objects.get(gameinfo=final, isHome=False).team.name == "Team D"
+        assert (
+            Gameresult.objects.get(gameinfo=final, isHome=False).team.name == "Team D"
+        )

@@ -29,35 +29,38 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Database configuration for demo environment
 # Local dev uses SQLite, Docker uses MySQL
-mysql_host = os.environ.get('MYSQL_HOST', 'demo-db')
-if mysql_host == 'demo-db' and not os.environ.get('RUNNING_IN_DOCKER'):
+mysql_host = os.environ.get("MYSQL_HOST", "demo-db")
+if mysql_host == "demo-db" and not os.environ.get("RUNNING_IN_DOCKER"):
     # Local development: use SQLite
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'db.demo.sqlite3'),
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+                "db.demo.sqlite3",
+            ),
         }
     }
 else:
     # Docker environment: use MySQL
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.environ.get('MYSQL_DATABASE', 'demo_db'),
-            'USER': os.environ.get('MYSQL_USER', 'demo_user'),
-            'PASSWORD': os.environ.get('MYSQL_PASSWORD'),
-            'HOST': mysql_host,
-            'PORT': os.environ.get('MYSQL_PORT', '3306'),
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-            }
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": os.environ.get("MYSQL_DATABASE", "demo_db"),
+            "USER": os.environ.get("MYSQL_USER", "demo_user"),
+            "PASSWORD": os.environ.get("MYSQL_PASSWORD"),
+            "HOST": mysql_host,
+            "PORT": os.environ.get("MYSQL_PORT", "3306"),
+            "OPTIONS": {
+                "charset": "utf8mb4",
+            },
         }
     }
 
 # Security settings for demo
 # Relaxed on purpose (no HSTS/SSL redirect): these settings also drive local
 # plain-HTTP runs via container/start_dev_server.sh.
-if os.environ.get('RUNNING_IN_DOCKER'):
+if os.environ.get("RUNNING_IN_DOCKER"):
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 else:
@@ -65,7 +68,7 @@ else:
     CSRF_COOKIE_SECURE = False
 
 # Email backend - use console for demo (no external emails)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Disable external integrations in demo
 STRIPE_ENABLED = False
@@ -78,22 +81,22 @@ DEMO_RESET_MINUTE = 0
 
 # Logging configuration for demo reset events
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': 'demo_reset.log',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": "demo_reset.log",
         },
-        'console': {
-            'class': 'logging.StreamHandler',
+        "console": {
+            "class": "logging.StreamHandler",
         },
     },
-    'loggers': {
-        'demo.reset': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+    "loggers": {
+        "demo.reset": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
         },
     },
 }

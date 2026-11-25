@@ -21,7 +21,12 @@ LEAGUE_TABLE_GAME_COLUMNS = [
     "gameinfo__status",
 ]
 
-LEAGUE_TABLE_TEAM_AND_LEAGUE_COLUMNS = ["teams__id", "league_id", "teams__description", "league__name"]
+LEAGUE_TABLE_TEAM_AND_LEAGUE_COLUMNS = [
+    "teams__id",
+    "league_id",
+    "teams__description",
+    "league__name",
+]
 
 
 class LeagueTableService:
@@ -30,10 +35,14 @@ class LeagueTableService:
         self.league_season_config = league_season_config
 
     @classmethod
-    def from_league_and_season(cls, league_slug: str, season_slug: str) -> "LeagueTableService":
+    def from_league_and_season(
+        cls, league_slug: str, season_slug: str
+    ) -> "LeagueTableService":
         try:
-            league_season_config = LeagueTableRepository.get_league_season_config_by_slug(
-                league_slug, season_slug
+            league_season_config = (
+                LeagueTableRepository.get_league_season_config_by_slug(
+                    league_slug, season_slug
+                )
             )
             return cls(league_season_config)
         except LeagueSeasonConfig.DoesNotExist:
@@ -49,7 +58,9 @@ class LeagueTableService:
         try:
             if self.league_season_config is None:
                 raise LeagueSeasonConfig.DoesNotExist
-            league_config = LeagueConfig.from_league_season_config(self.league_season_config)
+            league_config = LeagueConfig.from_league_season_config(
+                self.league_season_config
+            )
             current_season = self.league_season_config.season
             results = (
                 Gameresult.objects.filter(
@@ -58,8 +69,9 @@ class LeagueTableService:
                     gameinfo__status="beendet",
                 )
                 # .exclude(gameinfo__gameday__gte=627)
-                .exclude(gameinfo__gameday__in=league_config.excluded_gameday_ids)
-                .select_related("gameinfo", "team")
+                .exclude(
+                    gameinfo__gameday__in=league_config.excluded_gameday_ids
+                ).select_related("gameinfo", "team")
             )
             if until_date is not None:
                 results = results.filter(gameinfo__gameday__date__lte=until_date)
@@ -189,9 +201,7 @@ class LeagueTableService:
         return []
 
     def get_seasons_for_league_slug(self, league_slug) -> list[str]:
-        return LeagueTableRepository.get_seasons_for_league_slug(
-            league_slug
-        )
+        return LeagueTableRepository.get_seasons_for_league_slug(league_slug)
 
     def get_season_name(self):
         if self.league_season_config is None:

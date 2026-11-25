@@ -6,10 +6,10 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    replaces = [('gamedays', '0023_gameinfo_league_group')]
+    replaces = [("gamedays", "0023_gameinfo_league_group")]
 
     dependencies = [
-        ('league_table', '0001_initial'),
+        ("league_table", "0001_initial"),
     ]
 
     operations = [

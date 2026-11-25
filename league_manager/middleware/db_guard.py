@@ -63,7 +63,10 @@ class DatabaseGuardMiddleware:
         # Skip check for static assets and static info files (robots.txt,
         # sitemap.xml, llms*.txt, .well-known) that must remain reachable
         # during a database outage
-        if request.path.startswith(STATIC_INFO_PREFIXES) or request.path in STATIC_INFO_PATHS.values():
+        if (
+            request.path.startswith(STATIC_INFO_PREFIXES)
+            or request.path in STATIC_INFO_PATHS.values()
+        ):
             return self.get_response(request)
 
         # Check DB status

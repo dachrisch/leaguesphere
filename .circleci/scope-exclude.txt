@@ -21,6 +21,7 @@ scripts/run_scorecard_scenarios\.sh
 \.claude/.*
 \.opencode/.*
 (.*/)?\.gitignore
+\.git-blame-ignore-revs
 \.pre-commit-config\.yaml
 \.codecov\.yml
 renovate\.json

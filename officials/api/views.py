@@ -126,9 +126,7 @@ class OfficialsSearchList(APIView):
             # A person of another team is still a valid suggestion — the
             # ordered case keeps the caller's own crew on top of the list.
             officials = officials.annotate(
-                same_team=Case(
-                    When(team_id=team_id, then=Value(0)), default=Value(1)
-                )
+                same_team=Case(When(team_id=team_id, then=Value(0)), default=Value(1))
             ).order_by("same_team", "last_name", "first_name")
         rows = officials.values(*OfficialTeamListScorecardSerializer.ALL_FIELD_VALUES)[
             :limit

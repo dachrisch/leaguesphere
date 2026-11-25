@@ -114,7 +114,9 @@ def _seed_token_from_env(token_path: Path) -> None:
     try:
         incoming = json.loads(base64.b64decode(raw, validate=True))
     except ValueError as exc:
-        raise SystemExit(f"{TOKEN_ENV_VAR} is not valid base64-encoded JSON: {exc}") from exc
+        raise SystemExit(
+            f"{TOKEN_ENV_VAR} is not valid base64-encoded JSON: {exc}"
+        ) from exc
     if not isinstance(incoming, dict):
         raise SystemExit(f"{TOKEN_ENV_VAR} did not decode to a JSON object.")
     if token_path.exists():
@@ -122,7 +124,9 @@ def _seed_token_from_env(token_path: Path) -> None:
             existing = json.loads(token_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             existing = {}
-        if existing.get("refresh_token") and existing.get("refresh_token") == incoming.get("refresh_token"):
+        if existing.get("refresh_token") and existing.get(
+            "refresh_token"
+        ) == incoming.get("refresh_token"):
             return
     _write_private(token_path, json.dumps(incoming))
 
@@ -223,7 +227,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_upload.add_argument("--title", required=True)
     p_upload.add_argument("--description", default="")
     p_upload.add_argument("--tags", default="")
-    p_upload.add_argument("--privacy", default="unlisted", choices=["private", "unlisted", "public"])
+    p_upload.add_argument(
+        "--privacy", default="unlisted", choices=["private", "unlisted", "public"]
+    )
     p_upload.add_argument("--category", default=LEAGUESPHERE_CATEGORY_ID)
     p_upload.add_argument("--code", help="authorization code (first run only)")
     return parser
@@ -231,7 +237,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
-    return {"auth": cmd_auth, "channel": cmd_channel, "upload": cmd_upload}[args.command](args)
+    return {"auth": cmd_auth, "channel": cmd_channel, "upload": cmd_upload}[
+        args.command
+    ](args)
 
 
 if __name__ == "__main__":
