@@ -22,9 +22,17 @@ on:
           - minor
           - major
       agent_candidate_ref:
-        description: "Build leaguesphere/backend:agent-candidate from this branch/tag/SHA (skips the version bump)"
+        description: "Build an agent image from this branch/tag/SHA (skips the version bump)"
         required: false
         default: ""
+      agent_tag:
+        description: "Image tag for the agent build (agent-candidate = cand, agent-ref = phase baseline)"
+        required: false
+        type: choice
+        options:
+          - agent-candidate
+          - agent-ref
+        default: agent-candidate
 
 permissions:
   contents: write
@@ -133,10 +141,11 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Create a PR to \`master\` to trigger the deployment." >> "$GITHUB_STEP_SUMMARY"
 
-  # Phase 0c (dachrisch/leaguesphere#2536): build the candidate image the
-  # equivalence harness diffs against `ref`. Pushed to the mutable
-  # `agent-candidate` tag; watchtower-dev on servyy-test picks it up.
-  agent-candidate:
+  # Phase 0c (dachrisch/leaguesphere#2536): build an image for the equivalence
+  # harness. `agent-candidate` is the moving candidate (picked up by the
+  # servyy-test timer); `agent-ref` is the phase baseline, rebuilt deliberately
+  # from the stack base and never auto-updated.
+  agent-image:
     if: inputs.agent_candidate_ref != ''
     runs-on: ubuntu-latest
     steps:
@@ -159,12 +168,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build and push agent candidate
+      - name: Build and push the agent image
         uses: docker/build-push-action@v7
         with:
           file: container/app.Dockerfile
           push: true
-          tags: docker.io/leaguesphere/backend:agent-candidate
+          tags: docker.io/leaguesphere/backend:${{ inputs.agent_tag }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.ref.outputs.sha }}
+            org.opencontainers.image.version=${{ inputs.agent_tag }}
           build-args: |
             GIT_SHA=${{ steps.ref.outputs.sha }}
           cache-from: type=gha

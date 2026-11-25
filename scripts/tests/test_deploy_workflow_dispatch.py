@@ -38,3 +38,20 @@ def test_candidate_build_is_a_single_input():
 def test_deploy_job_rejects_an_empty_environment():
     text = read_workflow()
     assert "environment is required unless agent_candidate_ref is set" in text
+
+
+def test_agent_build_pushes_the_selected_tag():
+    text = read_workflow()
+    agent_tag_block = re.search(
+        r"^      agent_tag:\n(?P<body>(?:        .*\n)+)", text, re.M
+    )
+    assert agent_tag_block is not None, "deploy.yaml has no agent_tag input"
+    body = agent_tag_block.group("body")
+    assert "- agent-candidate" in body
+    assert "- agent-ref" in body
+    assert "default: agent-candidate" in body
+    # The pushed tag must come from the input, not a literal one.
+    assert "tags: docker.io/leaguesphere/backend:${{ inputs.agent_tag }}" in text
+    # The build records its commit so `ref` can be verified without the new
+    # /health/version/ endpoint (the baseline predates it).
+    assert "org.opencontainers.image.revision=${{ steps.ref.outputs.sha }}" in text
