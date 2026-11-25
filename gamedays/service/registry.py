@@ -29,6 +29,21 @@ HOOK_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         # fallback to canvas/legacy for a gameday with a TemplateApplication).
         "has_template_application",
     ),
+    "league_table": (
+        "season_settings",
+        "season_config",
+        "rank_by_games",
+        "compute_final_table",
+        "gameday_statistic_settings",
+        "season_statistic_settings",
+        "show_player_names",
+        "top_n_player",
+    ),
+    "passcheck": (
+        "player_jersey_names",
+        "season_player_jersey_names",
+        "staff_passcheck_details",
+    ),
 }
 
 

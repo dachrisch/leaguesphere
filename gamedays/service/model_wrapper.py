@@ -37,14 +37,7 @@ from gamedays.service.gameday_settings import (
 )
 from gamedays.service.stage_category import StageCategory
 from gamedays.service.placeholder_service import GamedayPlaceholderService
-from league_table.models import LeagueSeasonConfig, LeagueRuleset
-from league_table.service.datatypes import LeagueConfigRuleset, LeagueConfig
-from league_table.service.leaguetable_settings import TOP_N_PLAYER, SHOW_PLAYER_NAMES
-from league_table.service.ranking.engine import (
-    FinalRankingEngine,
-    TieBreakerEngine,
-)
-from passcheck.models import PasscheckVerification, PlayerlistGameday
+from gamedays.service import league_table_hooks, passcheck_hooks, registry
 
 
 class DfflPoints(object):
@@ -127,20 +120,10 @@ class GamedayModelWrapper:
         self._games_with_result: DataFrame = games_with_result
         self._resolve_placeholders()
 
-        self.league_season_config = None
-        self.league_season_ruleset = None
-        try:
-            self.league_season_config = LeagueSeasonConfig.objects.get(
-                league=self.gameday.league, season=self.gameday.season
-            )
-            self.league_season_ruleset = self.league_season_config.ruleset
-        except LeagueSeasonConfig.DoesNotExist:
-            self.league_season_config = None
-        except LeagueRuleset.DoesNotExist:
-            try:
-                self.league_season_ruleset = LeagueRuleset.objects.get(pk=2)
-            except LeagueRuleset.DoesNotExist:
-                self.league_season_ruleset = None
+        (
+            self.league_season_config,
+            self.league_season_ruleset,
+        ) = league_table_hooks.season_settings(self.gameday.league, self.gameday.season)
 
     def _resolve_placeholders(self):
         if (
@@ -166,29 +149,7 @@ class GamedayModelWrapper:
                 self._games_with_result.at[index, TEAM_DESCRIPTION] = placeholder
 
     def get_staff_passcheck_details(self, gameday_id):
-        column_mapping = {
-            "created_at": "Zeitpunkt",
-            "official_name": "Schiedsrichter",
-            "user__username": "Account",
-            "team__description": "Team",
-            "note": "Notiz",
-        }
-
-        passchecks = pd.DataFrame(
-            PasscheckVerification.objects.filter(gameday_id=gameday_id).values(
-                *column_mapping.keys()
-            )
-        )
-
-        if passchecks.empty:
-            return pd.DataFrame([], columns=column_mapping.values())
-
-        passchecks["created_at"] = passchecks.created_at.dt.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-        passchecks["note"] = passchecks.note.apply(lambda x: x.replace("\n", "</br>"))
-
-        return passchecks.rename(columns=column_mapping)
+        return passcheck_hooks.staff_passcheck_details(gameday_id)
 
     def has_finalround(self):
         return (
@@ -204,16 +165,12 @@ class GamedayModelWrapper:
 
     def get_qualify_table(self):
         qualify_round = self._get_table()
-        if not apps.is_installed("league_table"):
+        if not registry.is_registered("season_settings"):
             return qualify_round
 
         if self.league_season_ruleset is None:
             return qualify_round
 
-        league_config_ruleset = LeagueConfigRuleset.from_ruleset(
-            self.league_season_ruleset
-        )
-        engine = TieBreakerEngine(league_config_ruleset)
         # TODO
         # qualify_round["win_quotient"] = qualify_round["points"]
         games_with_result = self._games_with_result
@@ -223,7 +180,9 @@ class GamedayModelWrapper:
         ]
         if games_with_result.empty:
             return qualify_round
-        table = engine.rank_by_games(games_with_result)
+        table = league_table_hooks.rank_by_games(
+            games_with_result, self.league_season_ruleset
+        )
         return table.sort_values(by=STANDING)
 
     def get_final_table(self):
@@ -234,40 +193,12 @@ class GamedayModelWrapper:
 
         if self.league_season_ruleset is None:
             return None
-        league_config_ruleset = LeagueConfigRuleset.from_ruleset(
-            self.league_season_ruleset
+        return league_table_hooks.compute_final_table(
+            self._games_with_result, self.league_season_ruleset
         )
-        engine = FinalRankingEngine(league_config_ruleset)
-        return engine.compute_final_table(self._games_with_result)
 
     def _get_passcheck_player_jersey_number(self):
-        key_mapping = {
-            "gameday_id": "gameday_id",
-            "gameday_jersey": "gameday_jersey",
-            "playerlist__team_id": "team_id",
-            "playerlist__player__person__first_name": "first_name",
-            "playerlist__player__person__last_name": "last_name",
-        }
-
-        passcheck_players = pd.DataFrame(
-            PlayerlistGameday.objects.filter(gameday_id=self.gameday).values(
-                *key_mapping.keys()
-            )
-        )
-
-        if passcheck_players.empty:
-            return passcheck_players
-
-        passcheck_players = passcheck_players.rename(columns=key_mapping).astype(
-            {
-                "gameday_id": int,
-                "gameday_jersey": int,
-                "team_id": int,
-                "first_name": str,
-                "last_name": str,
-            }
-        )
-        return passcheck_players
+        return passcheck_hooks.player_jersey_names(self.gameday)
 
     def get_offense_player_statistics_table(self):
         scoring_events = ["Touchdown", "1-Extra-Punkt", "2-Extra-Punkte"]
@@ -290,10 +221,10 @@ class GamedayModelWrapper:
 
         config = dict()
         if safe_config := self.league_season_config:
-            config = safe_config.get_gameday_statistic_settings()
+            config = league_table_hooks.gameday_statistic_settings(safe_config)
 
         if (
-            config.get(SHOW_PLAYER_NAMES, False)
+            league_table_hooks.show_player_names(config)
             and not (
                 passcheck_player_names_df := self._get_passcheck_player_jersey_number()
             ).empty
@@ -342,7 +273,7 @@ class GamedayModelWrapper:
             output_columns
         ]
 
-        return table[table.Platz <= config.get(TOP_N_PLAYER, 10)]
+        return table[table.Platz <= league_table_hooks.top_n_player(config)]
 
     def get_defense_statistic_table(self):
         events_by_type = self._get_all_defense_events()
@@ -396,10 +327,10 @@ class GamedayModelWrapper:
 
         config = dict()
         if safe_config := self.league_season_config:
-            config = safe_config.get_gameday_statistic_settings()
+            config = league_table_hooks.gameday_statistic_settings(safe_config)
 
         if (
-            config.get(SHOW_PLAYER_NAMES, False)
+            league_table_hooks.show_player_names(config)
             and not (
                 passcheck_player_names_df := self._get_passcheck_player_jersey_number()
             ).empty
@@ -458,10 +389,10 @@ class GamedayModelWrapper:
 
         config = dict()
         if safe_config := self.league_season_config:
-            config = safe_config.get_gameday_statistic_settings()
+            config = league_table_hooks.gameday_statistic_settings(safe_config)
 
         if (
-            config.get(SHOW_PLAYER_NAMES, False)
+            league_table_hooks.show_player_names(config)
             and not (
                 passcheck_player_names_df := self._get_passcheck_player_jersey_number()
             ).empty

@@ -20,14 +20,6 @@ gamedays/api/snapshot.py|from league_table.api.standings import build_standings 
 gamedays/api/snapshot.py|from league_table.models import LeagueSeasonConfig  # Phase 1 — API context
 gamedays/api/snapshot.py|from liveticker.service.liveticker_service import LivetickerService  # Phase 1 — API context
 gamedays/api/views.py|from officials.service.game_official_licenses import resolve_current_licenses  # Phase 1 — API context
-gamedays/service/model_statistics_wrapper.py|from league_table.models import LeagueSeasonConfig  # Phase 1 — service inversion
-gamedays/service/model_statistics_wrapper.py|from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER  # Phase 1 — service inversion
-gamedays/service/model_statistics_wrapper.py|from passcheck.models import PlayerlistGameday  # Phase 1 — service inversion
-gamedays/service/model_wrapper.py|from league_table.models import LeagueRuleset, LeagueSeasonConfig  # Phase 1 — service inversion
-gamedays/service/model_wrapper.py|from league_table.service.datatypes import LeagueConfig, LeagueConfigRuleset  # Phase 1 — service inversion
-gamedays/service/model_wrapper.py|from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER  # Phase 1 — service inversion
-gamedays/service/model_wrapper.py|from league_table.service.ranking.engine import FinalRankingEngine, TieBreakerEngine  # Phase 1 — service inversion
-gamedays/service/model_wrapper.py|from passcheck.models import PasscheckVerification, PlayerlistGameday  # Phase 1 — service inversion
 gamedays/service/wrapper/gameinfo_wrapper.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
 gamedays/views.py|from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE  # Phase 1 — detail context
 gamedays/views.py|from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting  # Phase 1 — detail context
