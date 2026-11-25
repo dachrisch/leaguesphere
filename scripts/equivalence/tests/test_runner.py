@@ -323,4 +323,6 @@ def test_unsafe_requests_carry_the_csrf_cookie_and_referer(server_factory):
     assert response.status == 201
     sent = {key.lower(): value for key, value in server.headers[-1].items()}
     assert sent["x-csrftoken"] == "tok"
-    assert sent["referer"] == f"{url}/"
+    # The proxy rewrites Host to localhost, so the Referer host must match it.
+    assert sent["referer"] == "https://localhost/api/gamedays/"
+    assert "origin" not in sent

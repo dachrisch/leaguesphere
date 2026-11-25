@@ -75,14 +75,18 @@ class Session:
         authorization = self._authorization()
         if authorization:
             request_headers["Authorization"] = authorization
-        # DRF's SessionAuthentication enforces CSRF on unsafe methods; a
-        # logged-in scenario write must carry the cookie token and a Referer,
-        # exactly like the browser client it mirrors.
+        # DRF's SessionAuthentication enforces CSRF on unsafe methods, and
+        # Django compares the Referer's host with the request Host. The agent
+        # stage's nginx proxy rewrites Host to `localhost` (see the infra
+        # runbook), so the Referer must say https://localhost too - the tunnel
+        # hostname is not in ALLOWED_HOSTS and never reaches Django. No Origin
+        # header is sent for the same reason.
         if method.upper() not in ("GET", "HEAD", "OPTIONS"):
             csrf_token = self._cookie("csrftoken")
             if csrf_token:
                 request_headers.setdefault("X-CSRFToken", csrf_token)
-            request_headers.setdefault("Referer", self._url("/"))
+            request_path = path if path.startswith("/") else "/" + path
+            request_headers.setdefault("Referer", f"https://localhost{request_path}")
 
         if json_body is not None:
             data = jsonlib.dumps(json_body).encode("utf-8")
@@ -119,12 +123,7 @@ class Session:
         form = {"username": username, "password": password}
         if token:
             form["csrfmiddlewaretoken"] = token
-        return self.request(
-            "/login/",
-            method="POST",
-            form=form,
-            headers={"Referer": self._url("/login/")},
-        )
+        return self.request("/login/", method="POST", form=form)
 
 
 CSRF_MARKER = 'name="csrfmiddlewaretoken" value="'
