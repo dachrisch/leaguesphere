@@ -82,3 +82,15 @@ def test_real_difference_survives_normalisation():
     second = {"game": {"id": 1, "home_score": 4, "updated_at": "2026-11-25T10:00:00Z"}}
 
     assert normalise.normalise_json(first) != normalise.normalise_json(second)
+
+
+def test_scenario_ids_are_normalised_when_requested():
+    payload = {"id": 7, "results": [{"id": 8, "home": 3}], "gameday": 9}
+
+    cleaned = normalise.normalise_json(payload, normalise_ids=True)
+
+    assert cleaned["id"] == "<id>"
+    assert cleaned["results"][0]["id"] == "<id>"
+    assert cleaned["results"][0]["home"] == 3
+    # Only primary keys: a foreign key keeps its (shared-DB) value.
+    assert cleaned["gameday"] == 9

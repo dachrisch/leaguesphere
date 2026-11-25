@@ -118,12 +118,17 @@ def _replace_tokens(value, tokens):
     return value
 
 
-def normalise_json(value, id_tokens=None):
+def normalise_json(value, id_tokens=None, normalise_ids=False):
     """Return a deep copy of ``value`` with per-request noise removed.
 
     ``id_tokens`` maps raw ids created by the scenario to stable tokens
     (``{1234: "<entity-1>"}``); only those ids are rewritten, so unrelated
     ids still diff.
+
+    ``normalise_ids`` is for write-scenario bodies: every ``id`` key is
+    replaced by ``<id>``. Two sides create their own rows, so every primary
+    key differs by construction (including nested GameResult ids); a leaked
+    id is noise, not a behaviour difference.
     """
     id_tokens = id_tokens or {}
     if isinstance(value, dict):
@@ -133,11 +138,18 @@ def normalise_json(value, id_tokens=None):
                 result[key] = TIMESTAMP_PLACEHOLDER if item is not None else None
             elif _is_secret_key(key):
                 result[key] = SECRET_PLACEHOLDER if item is not None else None
+            elif normalise_ids and key == "id" and item is not None:
+                result[key] = "<id>"
             else:
-                result[key] = normalise_json(item, id_tokens)
+                result[key] = normalise_json(
+                    item, id_tokens, normalise_ids=normalise_ids
+                )
         return result
     if isinstance(value, list):
-        return [normalise_json(item, id_tokens) for item in value]
+        return [
+            normalise_json(item, id_tokens, normalise_ids=normalise_ids)
+            for item in value
+        ]
     if isinstance(value, str):
         return _scrub_string(value, id_tokens)
     if isinstance(value, int) and not isinstance(value, bool):

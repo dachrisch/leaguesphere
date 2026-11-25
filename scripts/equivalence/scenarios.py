@@ -245,7 +245,12 @@ def run_scenario(name, sessions, context, run_id):
                 context[step.capture] = value
                 run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
         if isinstance(payload, (dict, list)):
-            normalised = normalise.normalise_json(payload, run.id_tokens)
+            # Scenario rows are new on each side: primary keys differ by
+            # construction, so every `id` key is normalised (the captured
+            # ids are in id_tokens for ids embedded in strings).
+            normalised = normalise.normalise_json(
+                payload, run.id_tokens, normalise_ids=True
+            )
         elif isinstance(payload, str):
             normalised = normalise.normalise_html(payload, run.id_tokens)
         else:
