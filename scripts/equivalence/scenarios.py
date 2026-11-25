@@ -126,6 +126,39 @@ def _publish_steps():
     ]
 
 
+def _read_game_id_steps():
+    """Capture all per-run ids the later read-backs can echo back."""
+    return [
+        Step(
+            name="read-games",
+            method="GET",
+            path="/api/gamedays/{gameday_id}/games/",
+            role="anonymous",
+            expect=200,
+            capture="game_id",
+            capture_path="0.id",
+        ),
+        Step(
+            name="read-games-home-id",
+            method="GET",
+            path="/api/gamedays/{gameday_id}/games/",
+            role="anonymous",
+            expect=200,
+            capture="id_home",
+            capture_path="0.id_home",
+        ),
+        Step(
+            name="read-games-away-id",
+            method="GET",
+            path="/api/gamedays/{gameday_id}/games/",
+            role="anonymous",
+            expect=200,
+            capture="id_away",
+            capture_path="0.id_away",
+        ),
+    ]
+
+
 SCENARIOS = {
     "designer-publish": [
         _gameday_create_step(),
@@ -137,15 +170,7 @@ SCENARIOS = {
             role="anonymous",
             expect=200,
         ),
-        Step(
-            name="read-games",
-            method="GET",
-            path="/api/gamedays/{gameday_id}/games/",
-            role="anonymous",
-            expect=200,
-            capture="game_id",
-            capture_path="0.id",
-        ),
+        *_read_game_id_steps(),
         Step(
             name="read-game-officials",
             method="GET",
@@ -163,14 +188,7 @@ SCENARIOS = {
     "finalize-game": [
         _gameday_create_step(),
         *_publish_steps(),
-        Step(
-            name="read-games",
-            method="GET",
-            path="/api/gamedays/{gameday_id}/games/",
-            role="anonymous",
-            capture="game_id",
-            capture_path="0.id",
-        ),
+        *_read_game_id_steps(),
         Step(
             name="finalize-game",
             method="PUT",
@@ -201,19 +219,8 @@ SCENARIOS = {
     ],
     "finalize-canvas": [
         _gameday_create_step(),
-        Step(
-            name="publish-gameday",
-            method="POST",
-            path="/api/gamedays/{gameday_id}/publish/",
-        ),
-        Step(
-            name="read-games",
-            method="GET",
-            path="/api/gamedays/{gameday_id}/games/",
-            role="anonymous",
-            capture="game_id",
-            capture_path="0.id",
-        ),
+        *_publish_steps(),
+        *_read_game_id_steps(),
         Step(
             name="finalize-game",
             method="PUT",
@@ -253,18 +260,17 @@ SCENARIOS = {
             capture_path="id",
         ),
         Step(
+            name="save-designer-canvas",
+            method="PUT",
+            path="/api/gamedays/{gameday_id}/designer-state/",
+            json={"state_data": MINIMAL_CANVAS},
+        ),
+        Step(
             name="publish-gameday",
             method="POST",
             path="/api/gamedays/{gameday_id}/publish/",
         ),
-        Step(
-            name="read-games",
-            method="GET",
-            path="/api/gamedays/{gameday_id}/games/",
-            role="anonymous",
-            capture="game_id",
-            capture_path="0.id",
-        ),
+        *_read_game_id_steps(),
         Step(
             name="finalize-game",
             method="PUT",
