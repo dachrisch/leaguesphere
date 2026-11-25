@@ -2,7 +2,13 @@ from recording import build_ffmpeg_command, build_xvfb_command, start, stop
 
 
 def test_build_xvfb_command():
-    assert build_xvfb_command(":99", "1280x720") == ["Xvfb", ":99", "-screen", "0", "1280x720x24"]
+    assert build_xvfb_command(":99", "1280x720") == [
+        "Xvfb",
+        ":99",
+        "-screen",
+        "0",
+        "1280x720x24",
+    ]
 
 
 def test_build_ffmpeg_command():
@@ -48,7 +54,9 @@ def test_start_launches_xvfb_then_ffmpeg():
     session = start(":99", "1280x720", "/tmp/out.mp4", popen=fake_popen)
 
     assert fake_popen.calls[0] == build_xvfb_command(":99", "1280x720")
-    assert fake_popen.calls[1] == build_ffmpeg_command(":99", "1280x720", "/tmp/out.mp4")
+    assert fake_popen.calls[1] == build_ffmpeg_command(
+        ":99", "1280x720", "/tmp/out.mp4"
+    )
     assert session.xvfb_proc.pid == 1000
     assert session.ffmpeg_proc.pid == 1001
 

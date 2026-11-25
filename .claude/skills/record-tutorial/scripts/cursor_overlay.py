@@ -6,6 +6,7 @@ across a handful of interpolated frames toward the target element, then flashes 
 expanding ring at the click point, so the recorded video reads as "the mouse moved
 here and clicked" instead of a silent jump-cut between states.
 """
+
 from __future__ import annotations
 
 import json
@@ -65,14 +66,21 @@ _CLEAR_RIPPLE_TEMPLATE = """\
 
 def build_move_script(x: float, y: float) -> str:
     """Return JS that creates (if needed) and repositions the synthetic cursor at (x, y)."""
-    return _MOVE_TEMPLATE.format(cursor_id=json.dumps(CURSOR_ID), x=round(x, 1), y=round(y, 1))
+    return _MOVE_TEMPLATE.format(
+        cursor_id=json.dumps(CURSOR_ID), x=round(x, 1), y=round(y, 1)
+    )
 
 
-def build_click_script(x: float, y: float, size: int = 30, opacity: float = 0.35) -> str:
+def build_click_script(
+    x: float, y: float, size: int = 30, opacity: float = 0.35
+) -> str:
     """Return JS that draws an expanding-ring click indicator centered at (x, y)."""
     return _CLICK_TEMPLATE.format(
-        ripple_id=json.dumps(RIPPLE_ID), x=round(x, 1), y=round(y, 1),
-        size=size, opacity=opacity,
+        ripple_id=json.dumps(RIPPLE_ID),
+        x=round(x, 1),
+        y=round(y, 1),
+        size=size,
+        opacity=opacity,
     )
 
 
@@ -83,7 +91,9 @@ def build_clear_ripple_script() -> str:
 
 def build_clear_script() -> str:
     """Return JS that removes both the synthetic cursor and any click ripple."""
-    return _CLEAR_TEMPLATE.format(cursor_id=json.dumps(CURSOR_ID), ripple_id=json.dumps(RIPPLE_ID))
+    return _CLEAR_TEMPLATE.format(
+        cursor_id=json.dumps(CURSOR_ID), ripple_id=json.dumps(RIPPLE_ID)
+    )
 
 
 def ease_out_cubic(t: float) -> float:
@@ -98,7 +108,10 @@ def ease_out_cubic(t: float) -> float:
 
 
 def interpolate_points(
-    start: tuple[float, float], end: tuple[float, float], steps: int, ease=ease_out_cubic
+    start: tuple[float, float],
+    end: tuple[float, float],
+    steps: int,
+    ease=ease_out_cubic,
 ) -> list[tuple[float, float]]:
     """Return `steps` interpolated points from start to end (start excluded, end included).
 

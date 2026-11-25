@@ -10,13 +10,21 @@ from django_webtest import WebTest
 from rest_framework.reverse import reverse
 
 from gamedays.api.serializers import GamedaySerializer, GameinfoSerializer
-from gamedays.constants import API_GAMEDAY_WHISTLEGAMES, API_GAMEDAY_LIST, API_GAME_OFFICIALS
+from gamedays.constants import (
+    API_GAMEDAY_WHISTLEGAMES,
+    API_GAMEDAY_LIST,
+    API_GAME_OFFICIALS,
+)
 from gamedays.models import Team, Gameday, Gameinfo
 from gamedays.service.auto_assign_officials_service import AutoAssignOfficialsError
 from gamedays.service.gameday_service import EmptySchedule, EmptyQualifyTable
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from league_table.tests.setup_factories.db_setup_leaguetable import LEAGUE_TABLE_TEST_RULESET
-from league_table.tests.setup_factories.factories_leaguetable import LeagueSeasonConfigFactory
+from league_table.tests.setup_factories.db_setup_leaguetable import (
+    LEAGUE_TABLE_TEST_RULESET,
+)
+from league_table.tests.setup_factories.factories_leaguetable import (
+    LeagueSeasonConfigFactory,
+)
 
 
 class TestGamedayAPIViews(WebTest):
@@ -358,8 +366,11 @@ class TestStandaloneViewPermissions(WebTest):
         response = self.app.put_json(
             reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
             {
-                "name": "Hacked", "date": str(gameday.date), "start": gameday.start,
-                "season": gameday.season_id, "league": gameday.league_id,
+                "name": "Hacked",
+                "date": str(gameday.date),
+                "start": gameday.start,
+                "season": gameday.season_id,
+                "league": gameday.league_id,
             },
             expect_errors=True,
         )
@@ -371,8 +382,11 @@ class TestStandaloneViewPermissions(WebTest):
         response = self.app.put_json(
             reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
             {
-                "name": "Hacked", "date": str(gameday.date), "start": gameday.start,
-                "season": gameday.season_id, "league": gameday.league_id,
+                "name": "Hacked",
+                "date": str(gameday.date),
+                "start": gameday.start,
+                "season": gameday.season_id,
+                "league": gameday.league_id,
             },
             headers=DBSetup().get_token_header(user=other_user),
             expect_errors=True,
@@ -384,8 +398,11 @@ class TestStandaloneViewPermissions(WebTest):
         response = self.app.put_json(
             reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
             {
-                "name": "Updated Name", "date": str(gameday.date), "start": gameday.start,
-                "season": gameday.season_id, "league": gameday.league_id,
+                "name": "Updated Name",
+                "date": str(gameday.date),
+                "start": gameday.start,
+                "season": gameday.season_id,
+                "league": gameday.league_id,
             },
             headers=DBSetup().get_token_header(user=author),
         )
@@ -399,8 +416,11 @@ class TestStandaloneViewPermissions(WebTest):
         response = self.app.put_json(
             reverse("api-gameday-retrieve-update", kwargs={"pk": gameday.pk}),
             {
-                "name": "Staff Edit", "date": str(gameday.date), "start": gameday.start,
-                "season": gameday.season_id, "league": gameday.league_id,
+                "name": "Staff Edit",
+                "date": str(gameday.date),
+                "start": gameday.start,
+                "season": gameday.season_id,
+                "league": gameday.league_id,
             },
             headers=DBSetup().get_token_header(user=staff_user),
         )
@@ -452,7 +472,9 @@ class TestStandaloneViewPermissions(WebTest):
         ):
             with self.assertLogs("gamedays.api.views", level="WARNING") as logs:
                 response = self.app.post(
-                    reverse("api-gameday-auto-assign-officials", kwargs={"pk": gameday.pk}),
+                    reverse(
+                        "api-gameday-auto-assign-officials", kwargs={"pk": gameday.pk}
+                    ),
                     headers=DBSetup().get_token_header(user=staff_user),
                     expect_errors=True,
                 )

@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from .models import Journey
 
+
 @receiver(user_logged_in)
 def on_user_logged_in(sender, request, user, **kwargs):
     """Create a new journey when user logs in."""
@@ -14,6 +15,7 @@ def on_user_logged_in(sender, request, user, **kwargs):
 
     # Create new journey
     Journey.objects.create(user=user)
+
 
 @receiver(user_logged_out)
 def on_user_logged_out(sender, user, **kwargs):

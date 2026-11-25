@@ -11,6 +11,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Journey, JourneyEvent
 from .serializers import JourneySerializer, JourneyEventSerializer
 
+
 class JourneyEventViewSet(viewsets.ModelViewSet):
     serializer_class = JourneyEventSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -32,15 +33,17 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
         """Get active journey or create new one if inactive."""
         from django.conf import settings
 
-        inactivity_minutes = getattr(settings, 'JOURNEY_INACTIVITY_MINUTES', 30)
+        inactivity_minutes = getattr(settings, "JOURNEY_INACTIVITY_MINUTES", 30)
         inactivity_threshold = timezone.now() - timedelta(minutes=inactivity_minutes)
 
         # Get the most recent journey
-        active_journey = Journey.objects.filter(user=user, ended_at__isnull=True).first()
+        active_journey = Journey.objects.filter(
+            user=user, ended_at__isnull=True
+        ).first()
 
         if active_journey:
             # Check if the last event was recent
-            last_event = active_journey.events.order_by('-created_at').first()
+            last_event = active_journey.events.order_by("-created_at").first()
             if last_event and last_event.created_at < inactivity_threshold:
                 # Journey is inactive, close it and create new one
                 active_journey.ended_at = timezone.now()
@@ -58,35 +61,39 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
         else:
             qs = JourneyEvent.objects.filter(journey__user=self.request.user)
 
-        journey_id = self.request.query_params.get('journey')
+        journey_id = self.request.query_params.get("journey")
         if journey_id:
             qs = qs.filter(journey_id=journey_id)
 
-        event_name = self.request.query_params.get('event_name')
+        event_name = self.request.query_params.get("event_name")
         if event_name:
             qs = qs.filter(event_name=event_name)
 
-        event_name_in = self.request.query_params.get('event_name__in')
+        event_name_in = self.request.query_params.get("event_name__in")
         if event_name_in:
-            qs = qs.filter(event_name__in=event_name_in.split(','))
+            qs = qs.filter(event_name__in=event_name_in.split(","))
 
-        return qs.order_by('created_at')
+        return qs.order_by("created_at")
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def stats(self, request):
         """Return aggregate event counts for the last 7 days."""
         seven_days_ago = timezone.now() - timedelta(days=7)
-        filters = {'created_at__gte': seven_days_ago}
+        filters = {"created_at__gte": seven_days_ago}
 
         events = JourneyEvent.objects.filter(**filters)
-        stats = events.values('event_name').annotate(count=Count('id')).order_by('-count')
-        return Response({
-            'stats': list(stats),
-            'total_events': events.count(),
-            'unique_event_types': len(list(stats)),
-        })
+        stats = (
+            events.values("event_name").annotate(count=Count("id")).order_by("-count")
+        )
+        return Response(
+            {
+                "stats": list(stats),
+                "total_events": events.count(),
+                "unique_event_types": len(list(stats)),
+            }
+        )
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def adoption(self, request):
         """Return adoption metrics for staff users."""
         if not request.user.is_staff:
@@ -96,28 +103,30 @@ class JourneyEventViewSet(viewsets.ModelViewSet):
         events = JourneyEvent.objects.filter(created_at__gte=thirty_days_ago)
 
         # Optimization: Single query to get all counts
-        counts = events.values('event_name').annotate(count=Count('id'))
-        count_map = {item['event_name']: item['count'] for item in counts}
+        counts = events.values("event_name").annotate(count=Count("id"))
+        count_map = {item["event_name"]: item["count"] for item in counts}
 
         def get_count(name):
             return count_map.get(name, 0)
 
-        return Response({
-            "gameday": {
-                "opens": get_count("gameday_designer_opened"),
-                "published": get_count("gameday_published"),
-                "templates": get_count("template_used"),
-                "migrations": get_count("gameday_migrated"),
-            },
-            "passcheck": {
-                "opens": get_count("passcheck_started"),
-                "completed": get_count("roster_submitted"),
-            },
-            "scorecard": {
-                "opens": get_count("game_started"),
-                "matches": get_count("game_completed"),
+        return Response(
+            {
+                "gameday": {
+                    "opens": get_count("gameday_designer_opened"),
+                    "published": get_count("gameday_published"),
+                    "templates": get_count("template_used"),
+                    "migrations": get_count("gameday_migrated"),
+                },
+                "passcheck": {
+                    "opens": get_count("passcheck_started"),
+                    "completed": get_count("roster_submitted"),
+                },
+                "scorecard": {
+                    "opens": get_count("game_started"),
+                    "matches": get_count("game_completed"),
+                },
             }
-        })
+        )
 
 
 class JourneyViewSet(viewsets.ModelViewSet):
@@ -128,28 +137,29 @@ class JourneyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter journeys by authenticated user or show all if staff."""
         if self.request.user.is_staff:
-            return Journey.objects.all().order_by('-started_at')
-        return Journey.objects.filter(user=self.request.user).order_by('-started_at')
+            return Journey.objects.all().order_by("-started_at")
+        return Journey.objects.filter(user=self.request.user).order_by("-started_at")
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def sessions(self, request):
         """Return per-session user journeys (staff-only) for the last N days."""
         if not request.user.is_staff:
             return Response({"detail": "Permission denied."}, status=403)
 
         try:
-            days = int(request.query_params.get('days', 7))
+            days = int(request.query_params.get("days", 7))
             days = min(max(days, 1), 365)
         except (TypeError, ValueError):
             days = 7
 
         from .api.session_report import build_session_report
+
         return Response(build_session_report(days=days))
 
 
 class JourneyDashboardView(LoginRequiredMixin, TemplateView):
-    template_name = 'journey_dashboard/index.html'
-    login_url = 'login'
+    template_name = "journey_dashboard/index.html"
+    login_url = "login"
 
     def dispatch(self, request, *args, **kwargs):
         """Check email authorization after login verification."""

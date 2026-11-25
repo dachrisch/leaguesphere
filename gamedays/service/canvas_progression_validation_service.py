@@ -257,7 +257,7 @@ class CanvasProgressionValidator:
 
         def find_cycle(key, path):
             if key in in_stack:
-                return path[path.index(key):]
+                return path[path.index(key) :]
             if key in visited:
                 return None
             visited.add(key)

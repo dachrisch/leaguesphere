@@ -19,7 +19,9 @@ def test_caption_script_safely_escapes_hostile_caption():
     # The only way the hostile text can appear is inside a JSON-encoded
     # string literal -- never as a bare, breakable JS expression.
     assert json.dumps(hostile) in script
-    assert 'document.body.innerHTML=""; //"' not in script.replace(json.dumps(hostile), "")
+    assert 'document.body.innerHTML=""; //"' not in script.replace(
+        json.dumps(hostile), ""
+    )
 
 
 def test_clear_script_removes_overlay_by_id():

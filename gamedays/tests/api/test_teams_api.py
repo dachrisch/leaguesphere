@@ -35,9 +35,7 @@ def test_team_search_matches_name(client, teams):
 
 def test_team_search_matches_description(client, teams):
     response = client.get("/api/teams/", {"search": "Erl"})
-    assert [team["name"] for team in response.json()["results"]] == [
-        "Erlangen Sharks"
-    ]
+    assert [team["name"] for team in response.json()["results"]] == ["Erlangen Sharks"]
 
 
 def test_team_payload_exposes_no_sensitive_fields(client, teams):

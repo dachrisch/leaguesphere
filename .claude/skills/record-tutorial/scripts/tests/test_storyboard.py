@@ -23,7 +23,12 @@ VALID = """\
 def test_parses_ordered_steps():
     steps = parse_storyboard(VALID)
     assert steps == [
-        Step(caption="Open the Gameday Designer", action="navigate", target="/designer/", hold=3.0),
+        Step(
+            caption="Open the Gameday Designer",
+            action="navigate",
+            target="/designer/",
+            hold=3.0,
+        ),
         Step(
             caption='Click "New template"',
             action="click",

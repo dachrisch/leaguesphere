@@ -164,7 +164,10 @@ class TestGameDetailJsonLd(TestCase):
         Gameresult.objects.create(
             gameinfo=self.game, team=None, fh=0, sh=0, pa=0, isHome=True
         )
-        self.url = reverse("league-gameday-game-detail", kwargs={"gameday_pk": self.gameday.pk, "pk": self.game.pk})
+        self.url = reverse(
+            "league-gameday-game-detail",
+            kwargs={"gameday_pk": self.gameday.pk, "pk": self.game.pk},
+        )
 
     def test_game_detail_contains_sports_event_json_ld(self):
         response = self.client.get(self.url)
@@ -184,8 +187,9 @@ class TestGameDetailJsonLd(TestCase):
         self.assertEqual(payload["awayTeam"]["score"], 6)
         self.assertEqual(payload["eventStatus"], "https://schema.org/EventPassed")
         # the anonymous result row must not appear as a team
-        self.assertEqual(set(payload.keys()) & {"homeTeam", "awayTeam"},
-                         {"homeTeam", "awayTeam"})
+        self.assertEqual(
+            set(payload.keys()) & {"homeTeam", "awayTeam"}, {"homeTeam", "awayTeam"}
+        )
 
     def test_json_ld_contains_speakable(self):
         response = self.client.get(self.url)
@@ -202,7 +206,9 @@ class TestGameDetailJsonLd(TestCase):
         self.assertNotIn("location", payload)
 
     def test_json_ld_contains_location_when_gameday_has_address(self):
-        gameday = GamedayFactory(status="PUBLISHED", address="Sportplatz 1, 70173 Stuttgart")
+        gameday = GamedayFactory(
+            status="PUBLISHED", address="Sportplatz 1, 70173 Stuttgart"
+        )
         game = Gameinfo.objects.create(
             gameday=gameday,
             scheduled="10:00",
@@ -212,10 +218,15 @@ class TestGameDetailJsonLd(TestCase):
             stage="Gruppe",
             standing="Gruppe 1",
         )
-        url = reverse("league-gameday-game-detail", kwargs={"gameday_pk": gameday.pk, "pk": game.pk})
+        url = reverse(
+            "league-gameday-game-detail",
+            kwargs={"gameday_pk": gameday.pk, "pk": game.pk},
+        )
         payload = self._get_payload(url)
         self.assertEqual(payload["location"]["@type"], "Place")
-        self.assertEqual(payload["location"]["address"], "Sportplatz 1, 70173 Stuttgart")
+        self.assertEqual(
+            payload["location"]["address"], "Sportplatz 1, 70173 Stuttgart"
+        )
 
     def test_json_ld_contains_end_date_after_start_date(self):
         payload = self._get_payload(self.url)
@@ -245,7 +256,9 @@ class TestGameDetailJsonLd(TestCase):
     def test_json_ld_contains_free_offer_with_game_url(self):
         payload = self._get_payload(self.url)
         self.assertEqual(payload["offers"]["price"], "0")
-        self.assertEqual(payload["offers"]["availability"], "https://schema.org/InStock")
+        self.assertEqual(
+            payload["offers"]["availability"], "https://schema.org/InStock"
+        )
         self.assertTrue(payload["offers"]["url"].endswith(self.url))
 
 

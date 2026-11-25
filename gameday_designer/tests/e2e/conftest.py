@@ -16,9 +16,8 @@ def pytest_configure(config):
     """Enforce SQLite settings for E2E tests; exit early with a clear error."""
     import pytest
 
-    ds = (
-        config.getoption("--ds", default=None, skip=True)
-        or config.getini("DJANGO_SETTINGS_MODULE")
+    ds = config.getoption("--ds", default=None, skip=True) or config.getini(
+        "DJANGO_SETTINGS_MODULE"
     )
     if ds != "test_settings":
         pytest.exit(

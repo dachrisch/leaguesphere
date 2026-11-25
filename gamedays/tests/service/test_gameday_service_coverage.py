@@ -23,10 +23,21 @@ class TestGamedayServiceCoverage:
 
     @pytest.mark.django_db
     def test_empty_gameday_service_methods(self):
-        assert EmptyGamedayService().get_games_to_whistle().to_html() == EmptySchedule().to_html()
-        assert EmptyGamedayService().get_schedule().to_html() == EmptySchedule().to_html()
-        assert EmptyGamedayService().get_qualify_table().to_html() == EmptyQualifyTable().to_html()
-        assert EmptyGamedayService().get_final_table().to_html() == EmptyFinalTable().to_html()
+        assert (
+            EmptyGamedayService().get_games_to_whistle().to_html()
+            == EmptySchedule().to_html()
+        )
+        assert (
+            EmptyGamedayService().get_schedule().to_html() == EmptySchedule().to_html()
+        )
+        assert (
+            EmptyGamedayService().get_qualify_table().to_html()
+            == EmptyQualifyTable().to_html()
+        )
+        assert (
+            EmptyGamedayService().get_final_table().to_html()
+            == EmptyFinalTable().to_html()
+        )
 
     def test_gameday_game_service_format_helpers(self):
         # Line 428: Extra point value 0

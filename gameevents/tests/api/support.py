@@ -103,9 +103,11 @@ def db_row_signatures(game, home):
     rows = TeamLog.objects.filter(gameinfo=game).order_by("pk")
     return [
         tuple(
-            ("home" if row.team_id == home.pk else "away")
-            if field == "side"
-            else getattr(row, field)
+            (
+                ("home" if row.team_id == home.pk else "away")
+                if field == "side"
+                else getattr(row, field)
+            )
             for field in ROW_FIELDS
         )
         for row in rows

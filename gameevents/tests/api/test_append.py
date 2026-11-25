@@ -75,9 +75,7 @@ def state_response(response):
 @pytest.mark.parametrize("case", GOLDEN_CASES, ids=lambda case: case.name)
 def test_the_canonical_rows_equal_the_legacy_rows(client, case):
     legacy_game, legacy_home, legacy_away = make_game(f"legacy-{case.name}")
-    canonical_game, canonical_home, canonical_away = make_game(
-        f"canonical-{case.name}"
-    )
+    canonical_game, canonical_home, canonical_away = make_game(f"canonical-{case.name}")
     login(client)
     legacy_team = legacy_home if case.side == "home" else legacy_away
     canonical_team = canonical_home if case.side == "home" else canonical_away
@@ -85,16 +83,12 @@ def test_the_canonical_rows_equal_the_legacy_rows(client, case):
     legacy_response = post_legacy(
         client,
         legacy_game,
-        legacy_body(
-            legacy_game, legacy_team, case.entries, case.half, sub_id(1)
-        ),
+        legacy_body(legacy_game, legacy_team, case.entries, case.half, sub_id(1)),
     )
     canonical_response = post_events(
         client,
         canonical_game,
-        legacy_body(
-            canonical_game, canonical_team, case.entries, case.half, sub_id(2)
-        ),
+        legacy_body(canonical_game, canonical_team, case.entries, case.half, sub_id(2)),
     )
 
     assert legacy_response.status_code == 201
@@ -183,11 +177,14 @@ def test_explicit_sequences_must_be_contiguous(client):
 def test_a_backwards_sequence_names_the_expected_next(client):
     game, _home, _away = make_game("canonical-backwards")
     login(client)
-    assert post_events(
-        client,
-        game,
-        {"events": [envelope(seq=1, code="touchdown")], "client_id": sub_id(1)},
-    ).status_code == 201
+    assert (
+        post_events(
+            client,
+            game,
+            {"events": [envelope(seq=1, code="touchdown")], "client_id": sub_id(1)},
+        ).status_code
+        == 201
+    )
 
     response = post_events(
         client,
@@ -234,7 +231,9 @@ def test_sequences_are_allocated_when_omitted(client):
 
     assert response.status_code == 201
     assert list(
-        GameEvent.objects.filter(game=game).order_by("seq").values_list("seq", flat=True)
+        GameEvent.objects.filter(game=game)
+        .order_by("seq")
+        .values_list("seq", flat=True)
     ) == [1, 2]
 
 
@@ -333,9 +332,7 @@ def test_the_request_client_id_must_agree_with_the_events(client):
 
     event = envelope()
     event["client_id"] = "a"
-    response = post_events(
-        client, game, {"events": [event], "client_id": "b"}
-    )
+    response = post_events(client, game, {"events": [event], "client_id": "b"})
 
     assert response.status_code == 400
     assert GameEvent.objects.count() == 0
@@ -396,9 +393,7 @@ def test_a_possession_envelope_moves_the_projected_possession(client):
         client,
         game,
         {
-            "events": [
-                {"type": "possession", "code": "home", "period": 1}
-            ],
+            "events": [{"type": "possession", "code": "home", "period": 1}],
             "client_id": sub_id(1),
         },
     )
@@ -417,17 +412,20 @@ def test_a_possession_envelope_moves_the_projected_possession(client):
 def test_undo_deletes_the_play_and_drops_its_score(client):
     game, _home, _away = make_game("canonical-undo")
     login(client)
-    assert post_events(
-        client,
-        game,
-        {
-            "events": [
-                envelope(code="touchdown"),
-                envelope(code="pat1"),
-            ],
-            "client_id": sub_id(1),
-        },
-    ).status_code == 201
+    assert (
+        post_events(
+            client,
+            game,
+            {
+                "events": [
+                    envelope(code="touchdown"),
+                    envelope(code="pat1"),
+                ],
+                "client_id": sub_id(1),
+            },
+        ).status_code
+        == 201
+    )
 
     response = post_events(
         client,
@@ -448,7 +446,9 @@ def test_undo_deletes_the_play_and_drops_its_score(client):
     assert response.status_code == 201
     assert body["state"]["score_home"] == 0
     assert body["state"]["last_seq"] == 3
-    assert not TeamLog.objects.filter(gameinfo=game, sequence=1, isDeleted=False).exists()
+    assert not TeamLog.objects.filter(
+        gameinfo=game, sequence=1, isDeleted=False
+    ).exists()
     assert TeamLog.objects.filter(gameinfo=game, sequence=1).count() == 2
     correction = GameEvent.objects.get(game=game, seq=3)
     assert correction.type == "correction"
@@ -605,12 +605,18 @@ def test_a_correction_of_a_shadow_play_deletes_its_real_row_group(client):
     # Two legacy submissions write TeamLog sequences 1 and 2, while their
     # events carry seqs 1,2 and 3,4 -- the two numbering schemes diverge, and
     # a correction must still delete the group that really exists.
-    assert post_legacy(
-        client, game, legacy_body(game, home, entries, client_id=sub_id(1))
-    ).status_code == 201
-    assert post_legacy(
-        client, game, legacy_body(game, home, entries, client_id=sub_id(2))
-    ).status_code == 201
+    assert (
+        post_legacy(
+            client, game, legacy_body(game, home, entries, client_id=sub_id(1))
+        ).status_code
+        == 201
+    )
+    assert (
+        post_legacy(
+            client, game, legacy_body(game, home, entries, client_id=sub_id(2))
+        ).status_code
+        == 201
+    )
     assert GameEvent.objects.get(game=game, seq=3).legacy_sequence == 2
 
     response = post_events(
@@ -638,11 +644,14 @@ def test_a_correction_of_a_shadow_play_deletes_its_real_row_group(client):
 def test_a_canonical_game_keeps_accepting_the_legacy_endpoint(client):
     game, home, _away = make_game("canonical-then-legacy")
     login(client)
-    assert post_events(
-        client,
-        game,
-        {"events": [envelope(code="touchdown")], "client_id": sub_id(1)},
-    ).status_code == 201
+    assert (
+        post_events(
+            client,
+            game,
+            {"events": [envelope(code="touchdown")], "client_id": sub_id(1)},
+        ).status_code
+        == 201
+    )
 
     response = post_legacy(
         client,
@@ -730,9 +739,7 @@ def test_a_replay_is_answered_before_the_device_lock(client, monkeypatch):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "post", [post_legacy, post_events], ids=["gamelog", "events"]
-)
+@pytest.mark.parametrize("post", [post_legacy, post_events], ids=["gamelog", "events"])
 def test_a_second_device_may_not_write_either_endpoint(client, post):
     """The lock is one row and one header, enforced identically on both paths.
 
@@ -797,9 +804,7 @@ def test_a_replay_after_a_staff_release_answers_with_the_log(client):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "post", [post_legacy, post_events], ids=["gamelog", "events"]
-)
+@pytest.mark.parametrize("post", [post_legacy, post_events], ids=["gamelog", "events"])
 def test_a_finished_game_refuses_a_new_submission_on_either_endpoint(client, post):
     """A closed game is the final word on both write paths, not just the old one."""
 
@@ -878,9 +883,7 @@ def test_the_canonical_result_table_equals_the_legacy_result_table(client, case)
         post_legacy(
             client,
             legacy_game,
-            legacy_body(
-                legacy_game, legacy_team, case.entries, case.half, sub_id(1)
-            ),
+            legacy_body(legacy_game, legacy_team, case.entries, case.half, sub_id(1)),
         ).status_code
         == 201
     )

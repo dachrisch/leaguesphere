@@ -325,7 +325,11 @@ class DBSetup:
             TeamFactory(name=name, description=name)
 
     def g4_final4_1_status_empty(self) -> "Gameday":
-        from gamedays.management.schedule_manager import ScheduleCreator, Schedule, GroupSchedule
+        from gamedays.management.schedule_manager import (
+            ScheduleCreator,
+            Schedule,
+            GroupSchedule,
+        )
 
         gameday = self.create_empty_gameday()
         gameday.format = "4_final4_1"
@@ -709,6 +713,10 @@ class DBSetup:
         # A1 wins against A2
         # A2 wins against A3
         # and with the following update A3 wins against A1
-        gameday.gameinfo_set.all()[2].gameresult_set.filter(isHome=True).update(fh=3, sh=0, pa=1)
-        gameday.gameinfo_set.all()[2].gameresult_set.filter(isHome=False).update(fh=1, sh=0, pa=3)
+        gameday.gameinfo_set.all()[2].gameresult_set.filter(isHome=True).update(
+            fh=3, sh=0, pa=1
+        )
+        gameday.gameinfo_set.all()[2].gameresult_set.filter(isHome=False).update(
+            fh=1, sh=0, pa=3
+        )
         return gameday

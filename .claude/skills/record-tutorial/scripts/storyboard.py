@@ -1,4 +1,5 @@
 """Parse a tutorial storyboard markdown file into ordered Step objects."""
+
 from __future__ import annotations
 
 import re
@@ -54,11 +55,20 @@ def parse_storyboard(text: str) -> list[Step]:
         try:
             hold = float(fields["hold"])
         except ValueError as exc:
-            raise StoryboardError(f"step {i} has non-numeric hold '{fields['hold']}'") from exc
+            raise StoryboardError(
+                f"step {i} has non-numeric hold '{fields['hold']}'"
+            ) from exc
         if hold <= 0:
             raise StoryboardError(f"step {i} hold must be positive, got {hold}")
 
-        steps.append(Step(caption=fields["caption"], action=action, target=fields["target"], hold=hold))
+        steps.append(
+            Step(
+                caption=fields["caption"],
+                action=action,
+                target=fields["target"],
+                hold=hold,
+            )
+        )
     return steps
 
 

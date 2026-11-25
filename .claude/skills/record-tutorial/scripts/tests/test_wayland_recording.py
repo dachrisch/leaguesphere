@@ -34,7 +34,9 @@ def test_pidfile_roundtrip(tmp_path: Path):
 
 def test_read_pidfile_rejects_foreign_backend(tmp_path: Path):
     pidfile = tmp_path / "rec.pid"
-    pidfile.write_text(json.dumps({"xvfb_pid": 1, "ffmpeg_pid": 2, "output": "/tmp/x.mp4"}))
+    pidfile.write_text(
+        json.dumps({"xvfb_pid": 1, "ffmpeg_pid": 2, "output": "/tmp/x.mp4"})
+    )
 
     with pytest.raises(ValueError, match="not a wayland recording pidfile"):
         read_pidfile(pidfile)
@@ -47,5 +49,9 @@ def test_gjs_recorder_uses_same_pipeline_elements():
 
     for token in ["pipewiresrc", "videoconvert", "x264enc", "mp4mux", "filesink"]:
         assert token in src, f"record_wayland.js lost pipeline element {token}"
-    assert "'-e'" in src or '"-e"' in src, "record_wayland.js must pass -e for clean EOS"
-    assert "recording started -> " in src, "readiness line consumed by start_wayland_recording.py"
+    assert (
+        "'-e'" in src or '"-e"' in src
+    ), "record_wayland.js must pass -e for clean EOS"
+    assert (
+        "recording started -> " in src
+    ), "readiness line consumed by start_wayland_recording.py"

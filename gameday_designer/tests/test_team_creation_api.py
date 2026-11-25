@@ -118,11 +118,11 @@ class TestTeamBulkCreationView:
         assert Team.objects.filter(name="Team 2").exists()
         assert Team.objects.filter(name="Team 3").exists()
 
-    def test_bulk_create_idempotent_for_existing_teams(self, api_client, staff_user, db):
+    def test_bulk_create_idempotent_for_existing_teams(
+        self, api_client, staff_user, db
+    ):
         """Bulk creation with existing team names returns them without duplicates."""
-        Team.objects.create(
-            name="Team 1", description="Team 1", location="placeholder"
-        )
+        Team.objects.create(name="Team 1", description="Team 1", location="placeholder")
         api_client.force_authenticate(user=staff_user)
         response = api_client.post(self.URL, {"count": 2}, format="json")
 
@@ -186,7 +186,9 @@ class TestLeagueTeamsView:
 
     def test_returns_teams_from_league(self, api_client, staff_user, gameday, teams):
         """Returns all teams in the gameday's league+season."""
-        slt = SeasonLeagueTeam.objects.create(season=gameday.season, league=gameday.league)
+        slt = SeasonLeagueTeam.objects.create(
+            season=gameday.season, league=gameday.league
+        )
         slt.teams.set(teams[:3])
         api_client.force_authenticate(user=staff_user)
 
@@ -200,7 +202,9 @@ class TestLeagueTeamsView:
             assert "id" in item
             assert "name" in item
 
-    def test_returns_empty_list_when_no_season_league_team(self, api_client, staff_user, gameday):
+    def test_returns_empty_list_when_no_season_league_team(
+        self, api_client, staff_user, gameday
+    ):
         """Returns empty list when no SeasonLeagueTeam exists for the gameday."""
         api_client.force_authenticate(user=staff_user)
 

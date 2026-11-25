@@ -16,6 +16,7 @@ Definitions
     purple = tag pushed -> first CI job (tag pipeline created_at -> earliest job started_at)
     green  = first CI job -> pipeline green (earliest started_at -> latest stopped_at)
 """
+
 import argparse
 import json
 import os
@@ -23,22 +24,37 @@ import statistics
 from collections import defaultdict
 from datetime import datetime
 
-
 # Job dependency graph for the PR/branch workflow (from .circleci/continue.yml).
 # Only jobs that gate other jobs need an entry; every other job starts at t0.
 DEPS = {
     "test_backend_image": ["build_backend"],
     "test_frontend_image": ["build_frontend"],
     "test_compose_network": ["build_backend", "build_frontend", "check_migrations"],
-    "full_gate": ["python-core", "python-gamedays", "python-officials", "python-live",
-                  "python-designer", "python-cross", "scorecard_js", "scorecard_v2_js",
-                  "liveticker_js", "passcheck_js", "gameday_designer_js",
-                  "journey_dashboard_js", "share_js",
-                  "e2e_scorecard", "e2e_scorecard_v2", "e2e_designer",
-                  "e2e",  # pre-split runs still in the 35-day window
-                  "check_migrations",
-                  "build_backend", "build_frontend", "test_backend_image",
-                  "test_frontend_image", "test_compose_network"],
+    "full_gate": [
+        "python-core",
+        "python-gamedays",
+        "python-officials",
+        "python-live",
+        "python-designer",
+        "python-cross",
+        "scorecard_js",
+        "scorecard_v2_js",
+        "liveticker_js",
+        "passcheck_js",
+        "gameday_designer_js",
+        "journey_dashboard_js",
+        "share_js",
+        "e2e_scorecard",
+        "e2e_scorecard_v2",
+        "e2e_designer",
+        "e2e",  # pre-split runs still in the 35-day window
+        "check_migrations",
+        "build_backend",
+        "build_frontend",
+        "test_backend_image",
+        "test_frontend_image",
+        "test_compose_network",
+    ],
 }
 
 # Human labels for critical-path phases (grouped; unknown jobs keep their name).
@@ -76,7 +92,9 @@ def fmt(sec):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--cache-dir", default=os.path.join(os.path.dirname(__file__), "..", ".cache"))
+    ap.add_argument(
+        "--cache-dir", default=os.path.join(os.path.dirname(__file__), "..", ".cache")
+    )
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     cache = args.cache_dir
@@ -90,7 +108,9 @@ def main():
 
     def is_pr(p):
         v = p.get("vcs") or {}
-        return bool(v.get("branch")) and not v.get("tag") and v.get("branch") != "master"
+        return (
+            bool(v.get("branch")) and not v.get("tag") and v.get("branch") != "master"
+        )
 
     def main_workflow(p):
         ws = wf.get(p["id"]) or []
@@ -100,10 +120,14 @@ def main():
     def exec_jobs(w):
         if not w:
             return []
-        return [j for j in jb.get(w["id"], [])
-                if j.get("status") == "success"
-                and j.get("type") != "approval"
-                and j.get("started_at") and j.get("stopped_at")]
+        return [
+            j
+            for j in jb.get(w["id"], [])
+            if j.get("status") == "success"
+            and j.get("type") != "approval"
+            and j.get("started_at")
+            and j.get("stopped_at")
+        ]
 
     # ---- job stats over tag + master successful runs -----------------
     agg = defaultdict(list)
@@ -115,15 +139,30 @@ def main():
         if not w or w.get("status") != "success":
             continue
         for j in exec_jobs(w):
-            agg[j["name"]].append((parse(j["stopped_at"]) - parse(j["started_at"])).total_seconds())
+            agg[j["name"]].append(
+                (parse(j["stopped_at"]) - parse(j["started_at"])).total_seconds()
+            )
     jobs = []
     for name, ds in agg.items():
         if len(ds) < 2:
             continue
-        q = statistics.quantiles(ds, n=4) if len(ds) >= 4 else [min(ds), statistics.median(ds), max(ds)]
-        jobs.append({"job": name, "n": len(ds), "mean": statistics.mean(ds),
-                     "std": statistics.pstdev(ds), "min": min(ds), "max": max(ds),
-                     "p25": q[0], "p75": q[2]})
+        q = (
+            statistics.quantiles(ds, n=4)
+            if len(ds) >= 4
+            else [min(ds), statistics.median(ds), max(ds)]
+        )
+        jobs.append(
+            {
+                "job": name,
+                "n": len(ds),
+                "mean": statistics.mean(ds),
+                "std": statistics.pstdev(ds),
+                "min": min(ds),
+                "max": max(ds),
+                "p25": q[0],
+                "p75": q[2],
+            }
+        )
     jobs.sort(key=lambda r: -r["mean"])
 
     # ---- release phases ----------------------------------------------
@@ -153,11 +192,16 @@ def main():
         blue = (tagpush - merge).total_seconds() if merge else None
         if blue is not None and blue < 0:
             blue = None
-        releases.append({
-            "pipeline": p["number"], "tag": v["tag"], "tagpush": p["created_at"],
-            "blue": blue, "purple": (first_ci - tagpush).total_seconds(),
-            "greenp": (green - first_ci).total_seconds(),
-        })
+        releases.append(
+            {
+                "pipeline": p["number"],
+                "tag": v["tag"],
+                "tagpush": p["created_at"],
+                "blue": blue,
+                "purple": (first_ci - tagpush).total_seconds(),
+                "greenp": (green - first_ci).total_seconds(),
+            }
+        )
     releases.sort(key=lambda r: r["tagpush"])
 
     # ---- PR run stats (per-job means + wall clock) ------------------
@@ -170,17 +214,27 @@ def main():
         if not w or w.get("status") != "success":
             continue
         try:
-            pr_wall.append((parse(w["stopped_at"]) - parse(w["created_at"])).total_seconds())
+            pr_wall.append(
+                (parse(w["stopped_at"]) - parse(w["created_at"])).total_seconds()
+            )
         except Exception:
             pass
         for j in exec_jobs(w):
-            pr_agg[j["name"]].append((parse(j["stopped_at"]) - parse(j["started_at"])).total_seconds())
+            pr_agg[j["name"]].append(
+                (parse(j["stopped_at"]) - parse(j["started_at"])).total_seconds()
+            )
     pr_jobs = []
     for name, ds in pr_agg.items():
         if len(ds) < 3:
             continue
-        pr_jobs.append({"job": name, "n": len(ds), "mean": statistics.mean(ds),
-                        "std": statistics.pstdev(ds)})
+        pr_jobs.append(
+            {
+                "job": name,
+                "n": len(ds),
+                "mean": statistics.mean(ds),
+                "std": statistics.pstdev(ds),
+            }
+        )
     pr_jobs.sort(key=lambda r: -r["mean"])
 
     # ---- typical PR run: critical-path wall-clock breakdown --------
@@ -194,8 +248,10 @@ def main():
         w = main_workflow(p)
         if not w or w.get("status") != "success":
             continue
-        jmap = {j["name"]: (parse(j["started_at"]), parse(j["stopped_at"]))
-                for j in exec_jobs(w)}
+        jmap = {
+            j["name"]: (parse(j["started_at"]), parse(j["stopped_at"]))
+            for j in exec_jobs(w)
+        }
         if not jmap:
             continue
         first = min(s for s, _ in jmap.values())
@@ -214,11 +270,21 @@ def main():
             segs[label] = segs.get(label, 0) + (e - s).total_seconds()
             if label not in order:
                 order.append(label)
-        gap = sum(max(0.0, (jmap[chain[i + 1]][0] - jmap[chain[i]][1]).total_seconds())
-                  for i in range(len(chain) - 1))
+        gap = sum(
+            max(0.0, (jmap[chain[i + 1]][0] - jmap[chain[i]][1]).total_seconds())
+            for i in range(len(chain) - 1)
+        )
         lead = max(0.0, (jmap[chain[0]][0] - first).total_seconds())
-        runs.append({"pipeline": p["number"], "wall": (last - first).total_seconds(),
-                     "chain": chain, "segs": segs, "order": order, "queue": gap + lead})
+        runs.append(
+            {
+                "pipeline": p["number"],
+                "wall": (last - first).total_seconds(),
+                "chain": chain,
+                "segs": segs,
+                "order": order,
+                "queue": gap + lead,
+            }
+        )
 
     if runs:
         walls = [r["wall"] for r in runs]
@@ -228,9 +294,12 @@ def main():
         if rep["queue"] > 0.5:
             seg_list.append({"label": "queue / scheduling", "seconds": rep["queue"]})
         pr_critical = {
-            "pipeline": rep["pipeline"], "wall": rep["wall"],
-            "segments": seg_list, "chain": rep["chain"],
-            "median_wall": med, "mean_wall": statistics.mean(walls),
+            "pipeline": rep["pipeline"],
+            "wall": rep["wall"],
+            "segments": seg_list,
+            "chain": rep["chain"],
+            "median_wall": med,
+            "mean_wall": statistics.mean(walls),
             "n_runs": len(runs),
             "n_with_gate": sum(1 for r in runs if "full_gate" in r["chain"]),
         }
@@ -248,12 +317,19 @@ def main():
         "pr_wall_median": statistics.median(pr_wall) if pr_wall else 0,
         "n_jobs": len(agg),
     }
-    data = {"meta": meta, "jobs": jobs, "releases": releases,
-            "pr_jobs": pr_jobs, "pr_critical": pr_critical}
+    data = {
+        "meta": meta,
+        "jobs": jobs,
+        "releases": releases,
+        "pr_jobs": pr_jobs,
+        "pr_critical": pr_critical,
+    }
     with open(out, "w") as f:
         json.dump(data, f, indent=2)
-    print(f"wrote {out}: jobs={len(jobs)} releases={len(releases)} pr_jobs={len(pr_jobs)} "
-          f"pr_runs={meta['n_pr_runs']} pr_wall_med={fmt(meta['pr_wall_median'])}")
+    print(
+        f"wrote {out}: jobs={len(jobs)} releases={len(releases)} pr_jobs={len(pr_jobs)} "
+        f"pr_runs={meta['n_pr_runs']} pr_wall_med={fmt(meta['pr_wall_median'])}"
+    )
 
 
 if __name__ == "__main__":

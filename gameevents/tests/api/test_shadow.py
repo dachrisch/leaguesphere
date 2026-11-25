@@ -34,7 +34,10 @@ def test_the_shadow_records_the_events_of_the_unchanged_payload(client):
     body = legacy_body(
         game,
         home,
-        [{"name": "Touchdown", "player": "7"}, {"name": "1-Extra-Punkt", "player": "7"}],
+        [
+            {"name": "Touchdown", "player": "7"},
+            {"name": "1-Extra-Punkt", "player": "7"},
+        ],
         client_id=SUB_ID,
     )
     response = post_legacy(client, game, body)

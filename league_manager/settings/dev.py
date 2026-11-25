@@ -51,6 +51,7 @@ if DEBUG_TOOLBAR:
         "debug_toolbar.middleware.DebugToolbarMiddleware",
     ]
 
+
 def show_toolbar(request):
     """
     Callback to determine whether to show the debug toolbar.
@@ -58,12 +59,14 @@ def show_toolbar(request):
     from attempting to query the database and causing a crash.
     """
     from django.core.cache import cache
-    if cache.get('db_connection_status') is False:
+
+    if cache.get("db_connection_status") is False:
         return False
     return True
 
+
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': show_toolbar,
+    "SHOW_TOOLBAR_CALLBACK": show_toolbar,
 }
 
 # ProfilingPanel wraps every request in cProfile.Profile().enable() regardless

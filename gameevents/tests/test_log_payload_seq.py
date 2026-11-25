@@ -69,7 +69,9 @@ def test_a_shadow_submission_publishes_the_event_seq_not_the_legacy_sequence(cli
     post_legacy(
         client,
         game,
-        legacy_body(game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)),
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+        ),
     )
     # A canonical submission afterwards takes seq 2 but is projected into the
     # sequence the log allocated (min seq = 2) -- the two schemes still agree.

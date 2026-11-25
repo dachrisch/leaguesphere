@@ -767,7 +767,9 @@ class TestTemplateApplicationServiceOverrides:
             author=user,
         )
         teams = [
-            Team.objects.create(name=f"Team {i}", description=f"Desc {i}", location="City")
+            Team.objects.create(
+                name=f"Team {i}", description=f"Desc {i}", location="City"
+            )
             for i in range(4)
         ]
         team_mapping = {f"0_{i}": teams[i].pk for i in range(4)}
@@ -856,7 +858,9 @@ class TestTemplateApplicationServiceOverrides:
             author=user,
         )
         teams = [
-            Team.objects.create(name=f"Team {i}", description=f"Desc {i}", location="City")
+            Team.objects.create(
+                name=f"Team {i}", description=f"Desc {i}", location="City"
+            )
             for i in range(4)
         ]
         team_mapping = {f"0_{i}": teams[i].pk for i in range(4)}
@@ -928,7 +932,9 @@ class TestTemplateApplicationServiceOverrides:
             author=user,
         )
         teams = [
-            Team.objects.create(name=f"Team {i}", description=f"Desc {i}", location="City")
+            Team.objects.create(
+                name=f"Team {i}", description=f"Desc {i}", location="City"
+            )
             for i in range(4)
         ]
         team_mapping = {f"0_{i}": teams[i].pk for i in range(4)}

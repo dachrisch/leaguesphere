@@ -72,7 +72,9 @@ class DfflPoints(object):
 class GamedayModelWrapper:
 
     def __init__(self, pk, additional_columns=[]):
-        gameinfo = Gameinfo.objects.select_related('gameday__league', 'gameday__season').filter(gameday_id=pk)
+        gameinfo = Gameinfo.objects.select_related(
+            "gameday__league", "gameday__season"
+        ).filter(gameday_id=pk)
         if not gameinfo.exists():
             raise Gameinfo.DoesNotExist
         self.gameday = gameinfo.first().gameday
@@ -83,25 +85,31 @@ class GamedayModelWrapper:
             # not part of the schedule table and must not leak into its snapshots.
             if f.name != "designer_node_id"
         ]
-        self._gameinfo: DataFrame = pd.DataFrame(gameinfo.values(
+        self._gameinfo: DataFrame = pd.DataFrame(
+            gameinfo.values(
                 # select the fields which should be in the dataframe
-                *(
-                    gameinfo_fields
-                    + ["officials__name"]
-                    + additional_columns
-                )
+                *(gameinfo_fields + ["officials__name"] + additional_columns)
             )
         )
         if self._gameinfo.empty:
             raise Gameinfo.DoesNotExist
 
         gameresult = pd.DataFrame(
-            Gameresult.objects.filter(gameinfo_id__in=self._gameinfo['id']).order_by('-' + IS_HOME).values(
-                *([f.name for f in Gameresult._meta.local_fields] + [TEAM_DESCRIPTION, TEAM_ID])))
+            Gameresult.objects.filter(gameinfo_id__in=self._gameinfo["id"])
+            .order_by("-" + IS_HOME)
+            .values(
+                *(
+                    [f.name for f in Gameresult._meta.local_fields]
+                    + [TEAM_DESCRIPTION, TEAM_ID]
+                )
+            )
+        )
         if gameresult.empty:
             self._games_with_result: DataFrame = pd.DataFrame()
             return
-        games_with_result = pd.merge(self._gameinfo, gameresult, left_on='id', right_on=GAMEINFO_ID)
+        games_with_result = pd.merge(
+            self._gameinfo, gameresult, left_on="id", right_on=GAMEINFO_ID
+        )
         games_with_result[IN_POSSESSION] = games_with_result[IN_POSSESSION].astype(str)
         games_with_result = games_with_result.convert_dtypes()
         games_with_result = games_with_result.astype(
@@ -144,7 +152,9 @@ class GamedayModelWrapper:
         # Only proceed if there are missing team names
         if self._games_with_result[TEAM_DESCRIPTION].isna().any():
 
-            placeholder_service = GamedayPlaceholderService(self._gameinfo['gameday'].iloc[0])
+            placeholder_service = GamedayPlaceholderService(
+                self._gameinfo["gameday"].iloc[0]
+            )
 
             # Resolve each missing row
             for index, row in self._games_with_result[
@@ -200,7 +210,9 @@ class GamedayModelWrapper:
         if self.league_season_ruleset is None:
             return qualify_round
 
-        league_config_ruleset = LeagueConfigRuleset.from_ruleset(self.league_season_ruleset)
+        league_config_ruleset = LeagueConfigRuleset.from_ruleset(
+            self.league_season_ruleset
+        )
         engine = TieBreakerEngine(league_config_ruleset)
         # TODO
         # qualify_round["win_quotient"] = qualify_round["points"]
@@ -218,11 +230,13 @@ class GamedayModelWrapper:
         if not self.has_finalround():
             return None
         if self._gameinfo[self._gameinfo[STATUS] != FINISHED].empty is False:
-             return pd.DataFrame()
+            return pd.DataFrame()
 
         if self.league_season_ruleset is None:
             return None
-        league_config_ruleset = LeagueConfigRuleset.from_ruleset(self.league_season_ruleset)
+        league_config_ruleset = LeagueConfigRuleset.from_ruleset(
+            self.league_season_ruleset
+        )
         engine = FinalRankingEngine(league_config_ruleset)
         return engine.compute_final_table(self._games_with_result)
 
@@ -235,22 +249,24 @@ class GamedayModelWrapper:
             "playerlist__player__person__last_name": "last_name",
         }
 
-        passcheck_players = (pd.DataFrame(
-            PlayerlistGameday.objects
-                .filter(gameday_id=self.gameday)
-                .values(*key_mapping.keys())
-        ))
+        passcheck_players = pd.DataFrame(
+            PlayerlistGameday.objects.filter(gameday_id=self.gameday).values(
+                *key_mapping.keys()
+            )
+        )
 
         if passcheck_players.empty:
             return passcheck_players
 
-        passcheck_players = passcheck_players.rename(columns=key_mapping).astype({
-            "gameday_id": int,
-            "gameday_jersey": int,
-            "team_id": int,
-            "first_name": str,
-            "last_name": str,
-        })
+        passcheck_players = passcheck_players.rename(columns=key_mapping).astype(
+            {
+                "gameday_id": int,
+                "gameday_jersey": int,
+                "team_id": int,
+                "first_name": str,
+                "last_name": str,
+            }
+        )
         return passcheck_players
 
     def get_offense_player_statistics_table(self):
@@ -276,15 +292,30 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get(SHOW_PLAYER_NAMES, False) and not (passcheck_player_names_df := self._get_passcheck_player_jersey_number()).empty:
+        if (
+            config.get(SHOW_PLAYER_NAMES, False)
+            and not (
+                passcheck_player_names_df := self._get_passcheck_player_jersey_number()
+            ).empty
+        ):
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],
                 right_on=["gameday_jersey", "team_id"],
                 how="left",
-            ).apply(lambda x: f"{x.team__name} #{x.player}" + (" Unbekannt" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"), axis=1)
+            ).apply(
+                lambda x: f"{x.team__name} #{x.player}"
+                + (
+                    " Unbekannt"
+                    if pd.isna(x.first_name)
+                    else f" - {x.first_name} {x.last_name}"
+                ),
+                axis=1,
+            )
         else:
-            events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
+            events["player"] = events.apply(
+                lambda x: f"{x.team__description} #{x.player}", axis=1
+            )
 
         table = (
             pd.crosstab(
@@ -319,7 +350,7 @@ class GamedayModelWrapper:
         ints = (
             self._process_events_table(
                 events_by_type.get("Interception", pd.DataFrame()),
-                event_plural_name="Interceptions"
+                event_plural_name="Interceptions",
             )
             .reset_index(drop=True)
             .astype(str)
@@ -353,7 +384,7 @@ class GamedayModelWrapper:
             TeamLog.objects.filter(
                 gameinfo__in=self._gameinfo["id"],
                 isDeleted=False,
-                event__in=["Interception", "Safety (+2)"]
+                event__in=["Interception", "Safety (+2)"],
             )
             .exclude(team=None)
             .exclude(player=None)
@@ -367,16 +398,30 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get(SHOW_PLAYER_NAMES, False) and not (passcheck_player_names_df := self._get_passcheck_player_jersey_number()).empty:
+        if (
+            config.get(SHOW_PLAYER_NAMES, False)
+            and not (
+                passcheck_player_names_df := self._get_passcheck_player_jersey_number()
+            ).empty
+        ):
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],
                 right_on=["gameday_jersey", "team_id"],
                 how="left",
-            ).apply(lambda x: f"{x.team__name} #{x.player}" + (
-                " Unbekannt" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"), axis=1)
+            ).apply(
+                lambda x: f"{x.team__name} #{x.player}"
+                + (
+                    " Unbekannt"
+                    if pd.isna(x.first_name)
+                    else f" - {x.first_name} {x.last_name}"
+                ),
+                axis=1,
+            )
         else:
-            events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
+            events["player"] = events.apply(
+                lambda x: f"{x.team__description} #{x.player}", axis=1
+            )
 
         return {event_type: group for event_type, group in events.groupby("event")}
 
@@ -415,16 +460,30 @@ class GamedayModelWrapper:
         if safe_config := self.league_season_config:
             config = safe_config.get_gameday_statistic_settings()
 
-        if config.get(SHOW_PLAYER_NAMES, False) and not (passcheck_player_names_df := self._get_passcheck_player_jersey_number()).empty:
+        if (
+            config.get(SHOW_PLAYER_NAMES, False)
+            and not (
+                passcheck_player_names_df := self._get_passcheck_player_jersey_number()
+            ).empty
+        ):
             events["player"] = events.merge(
                 passcheck_player_names_df,
                 left_on=["player", TEAM_ID],
                 right_on=["gameday_jersey", "team_id"],
                 how="left",
-            ).apply(lambda x: f"{x.team__name} #{x.player}" + (
-                " Unbekannt" if pd.isna(x.first_name) else f" - {x.first_name} {x.last_name}"), axis=1)
+            ).apply(
+                lambda x: f"{x.team__name} #{x.player}"
+                + (
+                    " Unbekannt"
+                    if pd.isna(x.first_name)
+                    else f" - {x.first_name} {x.last_name}"
+                ),
+                axis=1,
+            )
         else:
-            events["player"] = events.apply(lambda x: f"{x.team__description} #{x.player}", axis=1)
+            events["player"] = events.apply(
+                lambda x: f"{x.team__description} #{x.player}", axis=1
+            )
 
         events = (
             events.groupby("player", as_index=False)
@@ -504,7 +563,9 @@ class GamedayModelWrapper:
         qualify_round = self._games_with_result[
             self._games_with_result[STAGE_CATEGORY] == StageCategory.PRELIMINARY
         ]
-        qualify_round = qualify_round.groupby([STANDING, TEAM_DESCRIPTION], as_index=False)
+        qualify_round = qualify_round.groupby(
+            [STANDING, TEAM_DESCRIPTION], as_index=False
+        )
         # Named aggregation: rename the summed "points" column to "win_points"
         # in the output. The source DataFrame only has a "points" column
         # (built in __init__), so the old-style dict form {WIN_POINTS: 'sum'}
@@ -514,21 +575,25 @@ class GamedayModelWrapper:
         # way out instead.
         qualify_round = qualify_round.agg(
             **{
-                WIN_POINTS: (POINTS, 'sum'),
-                PF: (PF, 'sum'),
-                PA: (PA, 'sum'),
-                DIFF: (DIFF, 'sum'),
-                TEAM_ID: (TEAM_ID, 'first'),
+                WIN_POINTS: (POINTS, "sum"),
+                PF: (PF, "sum"),
+                PA: (PA, "sum"),
+                DIFF: (DIFF, "sum"),
+                TEAM_ID: (TEAM_ID, "first"),
             }
         )
-        qualify_round = qualify_round.sort_values(by=[WIN_POINTS, DIFF, PF, PA], ascending=False)
+        qualify_round = qualify_round.sort_values(
+            by=[WIN_POINTS, DIFF, PF, PA], ascending=False
+        )
         qualify_round = qualify_round.sort_values(by=STANDING)
         return qualify_round
 
     def get_qualify_team_by(self, place, standing):
         qualify_round = self._get_table()
         nth_standing = qualify_round.groupby(STANDING).nth(place - 1)
-        return nth_standing[nth_standing[STANDING] == standing][TEAM_DESCRIPTION].iloc[0]
+        return nth_standing[nth_standing[STANDING] == standing][TEAM_DESCRIPTION].iloc[
+            0
+        ]
 
     def get_team_by_points(self, place, standing, points):
         teams = self._get_teams_by(standing, points)

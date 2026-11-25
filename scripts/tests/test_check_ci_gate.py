@@ -96,7 +96,9 @@ def _edit(text: str, old: str, new: str) -> str:
 
 def test_repository_config_passes(checker):
     """The checked-in CI config must satisfy the gate invariant."""
-    with open(os.path.join(REPO_ROOT, ".circleci", "continue.yml"), encoding="utf-8") as fh:
+    with open(
+        os.path.join(REPO_ROOT, ".circleci", "continue.yml"), encoding="utf-8"
+    ) as fh:
         errors = checker.check(fh.read())
     assert errors == []
 
@@ -317,7 +319,9 @@ def test_main_exit_codes(checker, monkeypatch, capsys, tmp_path):
     assert "OK" in capsys.readouterr().out
 
     config.write_text(
-        VALID_CONFIG.replace("          requires:\n            - foo_js\n", "          requires:\n"),
+        VALID_CONFIG.replace(
+            "          requires:\n            - foo_js\n", "          requires:\n"
+        ),
         encoding="utf-8",
     )
     assert checker.main([]) == 1

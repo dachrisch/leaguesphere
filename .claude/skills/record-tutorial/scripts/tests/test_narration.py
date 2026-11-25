@@ -1,7 +1,12 @@
 from pathlib import Path
 
 from storyboard import Step
-from narration import build_concat_list, build_mux_command, build_pad_command, render_step_audio
+from narration import (
+    build_concat_list,
+    build_mux_command,
+    build_pad_command,
+    render_step_audio,
+)
 
 
 class FakeRun:
@@ -13,7 +18,12 @@ class FakeRun:
 
 
 def test_render_step_audio_calls_piper_with_caption_on_stdin(tmp_path):
-    step = Step(caption="Open the Gameday Designer", action="navigate", target="/designer/", hold=3.0)
+    step = Step(
+        caption="Open the Gameday Designer",
+        action="navigate",
+        target="/designer/",
+        hold=3.0,
+    )
     fake_run = FakeRun()
     out_wav = tmp_path / "step-000.wav"
 
@@ -21,7 +31,11 @@ def test_render_step_audio_calls_piper_with_caption_on_stdin(tmp_path):
 
     assert result == out_wav
     assert fake_run.calls[0]["cmd"] == [
-        "piper", "--model", "en_US-amy-medium", "--output_file", str(out_wav),
+        "piper",
+        "--model",
+        "en_US-amy-medium",
+        "--output_file",
+        str(out_wav),
     ]
     assert fake_run.calls[0]["input"] == "Open the Gameday Designer"
     assert fake_run.calls[0]["check"] is True
@@ -44,17 +58,27 @@ def test_build_concat_list_writes_one_quoted_path_per_line(tmp_path):
 
     assert result == concat_file
     lines = concat_file.read_text().splitlines()
-    assert lines == [f"file '{wav_paths[0].resolve()}'", f"file '{wav_paths[1].resolve()}'"]
+    assert lines == [
+        f"file '{wav_paths[0].resolve()}'",
+        f"file '{wav_paths[1].resolve()}'",
+    ]
 
 
 def test_build_mux_command_copies_video_encodes_audio():
-    cmd = build_mux_command(Path("/tmp/video.mp4"), Path("/tmp/narration.wav"), Path("/tmp/out.mp4"))
+    cmd = build_mux_command(
+        Path("/tmp/video.mp4"), Path("/tmp/narration.wav"), Path("/tmp/out.mp4")
+    )
     assert cmd == [
-        "ffmpeg", "-y",
-        "-i", "/tmp/video.mp4",
-        "-i", "/tmp/narration.wav",
-        "-c:v", "copy",
-        "-c:a", "aac",
+        "ffmpeg",
+        "-y",
+        "-i",
+        "/tmp/video.mp4",
+        "-i",
+        "/tmp/narration.wav",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
         "-shortest",
         "/tmp/out.mp4",
     ]

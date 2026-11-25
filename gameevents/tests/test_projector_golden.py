@@ -39,9 +39,11 @@ from gamedays.tests.setup_factories.factories import (
 
 def _db_signature(row, home):
     return tuple(
-        getattr(row, field)
-        if field != "side"
-        else ("home" if row.team_id == home.pk else "away")
+        (
+            getattr(row, field)
+            if field != "side"
+            else ("home" if row.team_id == home.pk else "away")
+        )
         for field in ROW_FIELDS
     )
 

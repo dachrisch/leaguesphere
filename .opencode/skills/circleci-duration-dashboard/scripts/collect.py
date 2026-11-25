@@ -13,6 +13,7 @@ Writes into the cache dir:
 Only tag pipelines, master pipelines and a sample of PR/feature-branch
 pipelines are expanded into workflows/jobs; the rest are kept for metadata.
 """
+
 import argparse
 import json
 import os
@@ -64,7 +65,9 @@ def main():
     ap.add_argument("--project", default="gh/dachrisch/leaguesphere")
     ap.add_argument("--days", type=int, default=35)
     ap.add_argument("--pr-sample", type=int, default=70)
-    ap.add_argument("--cache-dir", default=os.path.join(os.path.dirname(__file__), "..", ".cache"))
+    ap.add_argument(
+        "--cache-dir", default=os.path.join(os.path.dirname(__file__), "..", ".cache")
+    )
     args = ap.parse_args()
 
     os.makedirs(args.cache_dir, exist_ok=True)
@@ -96,7 +99,9 @@ def main():
                 pipes.append(p)
                 seen.add(p["id"])
         oldest = parse(items[-1]["created_at"])
-        print(f"pipelines page {page + 1}: total={len(pipes)} oldest={oldest.date()} remaining={data.get('next_page_token') and 'yes' or 'no'}")
+        print(
+            f"pipelines page {page + 1}: total={len(pipes)} oldest={oldest.date()} remaining={data.get('next_page_token') and 'yes' or 'no'}"
+        )
         if oldest < cutoff:
             break
         page_token = data.get("next_page_token")
@@ -133,14 +138,18 @@ def main():
 
     def is_pr(p):
         v = p.get("vcs") or {}
-        return bool(v.get("branch")) and not v.get("tag") and v.get("branch") != "master"
+        return (
+            bool(v.get("branch")) and not v.get("tag") and v.get("branch") != "master"
+        )
 
     tags = [p for p in pipes if (p.get("vcs") or {}).get("tag")]
     master = [p for p in pipes if (p.get("vcs") or {}).get("branch") == "master"]
     prs = [p for p in pipes if is_pr(p)][: args.pr_sample]
 
     todo = tags + master + prs
-    print(f"expanding {len(todo)} pipelines (tags={len(tags)}, master={len(master)}, pr_sample={len(prs)})")
+    print(
+        f"expanding {len(todo)} pipelines (tags={len(tags)}, master={len(master)}, pr_sample={len(prs)})"
+    )
     for i, p in enumerate(todo):
         expand(p)
         if (i + 1) % 20 == 0:

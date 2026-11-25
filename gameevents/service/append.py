@@ -305,8 +305,7 @@ def _row_flag_events(game, projection: Projection) -> dict:
     if not seqs:
         return {}
     return {
-        event.seq: event
-        for event in GameEvent.objects.filter(game=game, seq__in=seqs)
+        event.seq: event for event in GameEvent.objects.filter(game=game, seq__in=seqs)
     }
 
 

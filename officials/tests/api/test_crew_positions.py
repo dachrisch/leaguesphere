@@ -14,9 +14,7 @@ class TestCrewPositionsForGameAPIView(WebTest):
     def setUp(self):
         self.gameday: Gameday = DBSetup().g62_status_empty()
         self.game: Gameinfo = Gameinfo.objects.first()
-        self.url = reverse(
-            API_CREW_POSITIONS_FOR_GAME, kwargs={"pk": self.game.pk}
-        )
+        self.url = reverse(API_CREW_POSITIONS_FOR_GAME, kwargs={"pk": self.game.pk})
 
     def test_unauthenticated_request_is_rejected(self):
         response = self.app.get(self.url, expect_errors=True)

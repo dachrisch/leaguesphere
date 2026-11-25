@@ -292,9 +292,7 @@ class TemplateApplicationService:
 
         if self.num_fields is not None:
             # Redistribution mode: assign slots round-robin across effective_fields
-            all_slots = list(
-                self.template.slots.all().order_by("field", "slot_order")
-            )
+            all_slots = list(self.template.slots.all().order_by("field", "slot_order"))
 
             # Store ordered slots for _create_gameresults to reuse
             self._ordered_slots = all_slots
@@ -337,7 +335,9 @@ class TemplateApplicationService:
                     gameinfos.append(gameinfo)
         else:
             # Standard mode: process each original field independently
-            self._ordered_slots = None  # Not needed; _create_gameresults uses default order
+            self._ordered_slots = (
+                None  # Not needed; _create_gameresults uses default order
+            )
 
             for field_num in range(1, self.template.num_fields + 1):
                 slots = list(
@@ -452,10 +452,16 @@ class TemplateApplicationService:
         """
         if self.num_fields is not None and self._ordered_slots is not None:
             effective_fields = self.num_fields
-            ordered_slots_for_zip = [s for fn in range(1, effective_fields + 1)
-                                     for s in self._ordered_slots if s._effective_field == fn]
+            ordered_slots_for_zip = [
+                s
+                for fn in range(1, effective_fields + 1)
+                for s in self._ordered_slots
+                if s._effective_field == fn
+            ]
         else:
-            ordered_slots_for_zip = list(self.template.slots.all().order_by("field", "slot_order"))
+            ordered_slots_for_zip = list(
+                self.template.slots.all().order_by("field", "slot_order")
+            )
         for gameinfo, slot in zip(gameinfos, ordered_slots_for_zip):
             # Resolve home team
             home_team = self._resolve_team_placeholder(

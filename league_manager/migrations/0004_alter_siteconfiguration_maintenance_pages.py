@@ -6,13 +6,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('league_manager', '0003_add_maintenance_scope'),
+        ("league_manager", "0003_add_maintenance_scope"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='siteconfiguration',
-            name='maintenance_pages',
-            field=models.JSONField(default=list, help_text='List of regex strings (only used when scope is "Custom"), e.g., ["^/api/.*", "^/dashboard/.*"]'),
+            model_name="siteconfiguration",
+            name="maintenance_pages",
+            field=models.JSONField(
+                default=list,
+                help_text='List of regex strings (only used when scope is "Custom"), e.g., ["^/api/.*", "^/dashboard/.*"]',
+            ),
         ),
     ]

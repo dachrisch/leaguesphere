@@ -109,7 +109,7 @@ class EmptyFinalTable(HtmlAndJsonRendering):
 
 class EmptyFinalTableMainRound(HtmlAndJsonRendering):
     def to_html(self, *args, **kwargs):
-        return 'Abschlusstabelle wird nicht berechnet, da es keine Playoffs gibt.'
+        return "Abschlusstabelle wird nicht berechnet, da es keine Playoffs gibt."
 
     def to_json(self, *args, **kwargs):
         return EMPTY_DATA
@@ -225,7 +225,18 @@ class GamedayService:
         transformations (no German header rename, no HTML/formatting). This is
         the payload source for JSON APIs."""
         schedule = self.gmw.get_schedule()
-        columns = [ID, SCHEDULED, FIELD, HOME, POINTS_HOME, POINTS_AWAY, AWAY, OFFICIALS_NAME, STANDING, STAGE, STATUS,
+        columns = [
+            ID,
+            SCHEDULED,
+            FIELD,
+            HOME,
+            POINTS_HOME,
+            POINTS_AWAY,
+            AWAY,
+            OFFICIALS_NAME,
+            STANDING,
+            STAGE,
+            STATUS,
             GAMEINFO_ID,
         ]
         return schedule[columns]
@@ -319,8 +330,9 @@ class GamedayService:
 
         return format_html(
             """<a href="{}" target="_top" class="btn btn-primary">Zum Spiel<i class="bi bi-chevron-right"></i></a>""",
-            absolute_url
+            absolute_url,
         )
+
 
 class EmptySplitScoreTable:
     @staticmethod
@@ -390,26 +402,34 @@ class GamedayGameService:
 
             placeholder_service = GamedayPlaceholderService(self.game.gameday_id)
 
-            home_rows = self.gameresult[self.gameresult['isHome'] == True]
-            away_rows = self.gameresult[self.gameresult['isHome'] == False]
+            home_rows = self.gameresult[self.gameresult["isHome"] == True]
+            away_rows = self.gameresult[self.gameresult["isHome"] == False]
 
             if not home_rows.empty:
                 home_row = home_rows.iloc[0]
                 self.home_team_id = home_row["team"]
                 self.home_team_name = home_row["team__description"]
                 if pd.isna(self.home_team_name) or self.home_team_name is None:
-                    self.home_team_name = placeholder_service.get_placeholder(pk, is_home=True)
+                    self.home_team_name = placeholder_service.get_placeholder(
+                        pk, is_home=True
+                    )
             else:
-                self.home_team_name = placeholder_service.get_placeholder(pk, is_home=True)
+                self.home_team_name = placeholder_service.get_placeholder(
+                    pk, is_home=True
+                )
 
             if not away_rows.empty:
                 away_row = away_rows.iloc[0]
                 self.away_team_id = away_row["team"]
                 self.away_team_name = away_row["team__description"]
                 if pd.isna(self.away_team_name) or self.away_team_name is None:
-                    self.away_team_name = placeholder_service.get_placeholder(pk, is_home=False)
+                    self.away_team_name = placeholder_service.get_placeholder(
+                        pk, is_home=False
+                    )
             else:
-                self.away_team_name = placeholder_service.get_placeholder(pk, is_home=False)
+                self.away_team_name = placeholder_service.get_placeholder(
+                    pk, is_home=False
+                )
 
         self._score_column_mapping = {
             # "created_time": "Zeit",

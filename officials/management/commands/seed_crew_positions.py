@@ -47,9 +47,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(f"{league.name}: Crew-Positionen vollständig")
             )
-        self.stdout.write(
-            self.style.SUCCESS(f"{created} Crew-Position(en) angelegt.")
-        )
+        self.stdout.write(self.style.SUCCESS(f"{created} Crew-Position(en) angelegt."))
 
     @staticmethod
     def _leagues(identifiers, seed_all: bool) -> list[League]:

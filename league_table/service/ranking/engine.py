@@ -57,8 +57,10 @@ class TeamStatsEngine:
 
         grouped["diff"] = grouped[PF] - grouped[PA]
         grouped[WIN_QUOTIENT] = (
-            grouped[WIN_POINTS] / grouped[MAX_WIN_POINTS]
-        ).fillna(0.0).round(self.ruleset.league_quotient_precision)
+            (grouped[WIN_POINTS] / grouped[MAX_WIN_POINTS])
+            .fillna(0.0)
+            .round(self.ruleset.league_quotient_precision)
+        )
 
         return grouped.reset_index()
 
@@ -200,7 +202,10 @@ class LeagueRankingEngine:
             }
         )
 
-        if self.league_config.group_by_leagues or self.league_config.collapse_standing_to_league:
+        if (
+            self.league_config.group_by_leagues
+            or self.league_config.collapse_standing_to_league
+        ):
             df_games[STANDING] = df_games[LEAGUE__NAME]
 
         team_stats = TeamStatsEngine(self.league_config.ruleset).build(df_games)
@@ -224,8 +229,10 @@ class LeagueRankingEngine:
 
         table = self.apply_team_point_adjustments(table)
 
-        table[WIN_QUOTIENT] = (table[WIN_POINTS] / table[MAX_WIN_POINTS]).fillna(0.0).round(
-            self.league_config.ruleset.league_quotient_precision
+        table[WIN_QUOTIENT] = (
+            (table[WIN_POINTS] / table[MAX_WIN_POINTS])
+            .fillna(0.0)
+            .round(self.league_config.ruleset.league_quotient_precision)
         )
 
         return table

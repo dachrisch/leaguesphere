@@ -50,7 +50,12 @@ def _codes(issues):
 class TestCanvasProgressionValidator:
     def _base_nodes(self, **game_overrides):
         return [
-            {"id": "field-1", "type": "field", "parentId": None, "data": {"type": "field", "name": "F1", "order": 0}},
+            {
+                "id": "field-1",
+                "type": "field",
+                "parentId": None,
+                "data": {"type": "field", "name": "F1", "order": 0},
+            },
             _stage_node("stage-semi", "field-1", "Halbfinale", "final"),
             _stage_node("stage-final", "field-1", "Finale", "final"),
             _game_node("hf1", "stage-semi", "1.-4."),
@@ -113,10 +118,25 @@ class TestCanvasProgressionValidator:
 
     def test_cycle_is_reported(self):
         nodes = [
-            {"id": "field-1", "type": "field", "parentId": None, "data": {"type": "field", "name": "F1", "order": 0}},
+            {
+                "id": "field-1",
+                "type": "field",
+                "parentId": None,
+                "data": {"type": "field", "name": "F1", "order": 0},
+            },
             _stage_node("stage-1", "field-1", "Vorrunde"),
-            _game_node("a", "stage-1", "A", homeTeamDynamic={"type": "winner", "matchName": "B"}),
-            _game_node("b", "stage-1", "B", homeTeamDynamic={"type": "winner", "matchName": "A"}),
+            _game_node(
+                "a",
+                "stage-1",
+                "A",
+                homeTeamDynamic={"type": "winner", "matchName": "B"},
+            ),
+            _game_node(
+                "b",
+                "stage-1",
+                "B",
+                homeTeamDynamic={"type": "winner", "matchName": "A"},
+            ),
         ]
         state = {"nodes": nodes, "edges": []}
         issues = CanvasProgressionValidator(state).validate()

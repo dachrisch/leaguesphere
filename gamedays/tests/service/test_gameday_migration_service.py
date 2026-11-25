@@ -906,15 +906,9 @@ class TestZeroMutation(TestCase):
 
 class TestCustomFormatDetection(TestCase):
     def test_custom_format_detected(self):
-        assert GamedayMigrationService._is_custom_format(
-            "NRW U13_Gruppen1_Felder2"
-        )
-        assert GamedayMigrationService._is_custom_format(
-            "RL NRW_Gruppen2_Felder3"
-        )
-        assert GamedayMigrationService._is_custom_format(
-            "MyLeague_Gruppen4_Felder1"
-        )
+        assert GamedayMigrationService._is_custom_format("NRW U13_Gruppen1_Felder2")
+        assert GamedayMigrationService._is_custom_format("RL NRW_Gruppen2_Felder3")
+        assert GamedayMigrationService._is_custom_format("MyLeague_Gruppen4_Felder1")
 
     def test_numeric_format_not_detected(self):
         assert not GamedayMigrationService._is_custom_format("6_2")
@@ -1064,9 +1058,7 @@ class TestCustomGamedayMigration(TestCase):
 
         plan = GamedayMigrationService(gameday).build_plan()
 
-        team_labels = {
-            k: v["label"] for k, v in plan["team_mapping"].items()
-        }
+        team_labels = {k: v["label"] for k, v in plan["team_mapping"].items()}
         assert "Eagles" in team_labels.values()
         assert "Hawks" in team_labels.values()
         # Keys use numeric group index (0), not standing label

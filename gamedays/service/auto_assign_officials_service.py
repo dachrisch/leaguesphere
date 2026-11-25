@@ -90,9 +90,7 @@ class AutoAssignOfficialsService:
                         continue
                     for gi in gis:
                         game_busy = {
-                            gr.team_id
-                            for gr in gi.gameresult_set.all()
-                            if gr.team_id
+                            gr.team_id for gr in gi.gameresult_set.all() if gr.team_id
                         }
                         per_game_eligible = [
                             t for t in donor_pool if t not in game_busy
@@ -223,9 +221,7 @@ class AutoAssignOfficialsService:
                             if data.get(tkey):
                                 game_busy.add(data[tkey])
                         per_game_eligible = [
-                            t
-                            for t in donor_pool
-                            if t not in game_busy
+                            t for t in donor_pool if t not in game_busy
                         ]
                         if not per_game_eligible:
                             continue

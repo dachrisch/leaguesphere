@@ -5,6 +5,7 @@ Runs as a fresh process that only has PIDs (loaded from the pidfile written
 by a different process), so it signals by PID directly rather than reusing
 recording.stop(), which operates on in-process subprocess.Popen objects.
 """
+
 import argparse
 import json
 import os

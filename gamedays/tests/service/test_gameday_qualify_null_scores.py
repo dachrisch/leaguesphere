@@ -33,9 +33,7 @@ class TestQualifyTableWithNullScores(TestCase):
         LeagueSeasonConfigFactory(league=gameday.league, season=gameday.season)
         # One finished game whose scores were never entered (inconsistent data).
         scoreless = Gameinfo.objects.filter(gameday=gameday).first()
-        Gameresult.objects.filter(gameinfo=scoreless).update(
-            fh=None, sh=None, pa=None
-        )
+        Gameresult.objects.filter(gameinfo=scoreless).update(fh=None, sh=None, pa=None)
 
         gmw = GamedayModelWrapper(gameday.pk)
 

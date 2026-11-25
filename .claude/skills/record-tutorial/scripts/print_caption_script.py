@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """CLI: print the caption-overlay JS snippet for a given caption, or --clear."""
+
 import argparse
 import sys
 from pathlib import Path
@@ -12,7 +13,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--caption", help="Caption text to show")
-    group.add_argument("--clear", action="store_true", help="Print the script that removes the overlay")
+    group.add_argument(
+        "--clear", action="store_true", help="Print the script that removes the overlay"
+    )
     args = parser.parse_args()
     print(build_clear_script() if args.clear else build_caption_script(args.caption))
 

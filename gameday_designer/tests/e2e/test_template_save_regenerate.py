@@ -34,7 +34,9 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     _navigate_to_dashboard(page, live_server.url)
 
     page.get_by_role("button", name="Create Gameday").first.click()
-    expect(page.get_by_test_id("gameday-metadata-accordion")).to_be_visible(timeout=15000)
+    expect(page.get_by_test_id("gameday-metadata-accordion")).to_be_visible(
+        timeout=15000
+    )
 
     page.get_by_test_id("gameday-metadata-toggle").click()
     expect(page.locator("#gamedayName")).to_be_visible(timeout=10000)
@@ -44,7 +46,9 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     page.fill("#gamedayStart", "09:00")
     page.fill("#gamedayVenue", "Template E2E Stadium")
 
-    expect(page.locator("#gamedaySeason option", has_text="2026")).to_be_attached(timeout=10000)
+    expect(page.locator("#gamedaySeason option", has_text="2026")).to_be_attached(
+        timeout=10000
+    )
     page.select_option("#gamedaySeason", label="2026")
     page.select_option("#gamedayLeague", label="Template E2E League")
 
@@ -59,6 +63,7 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
 
     # Apply — advances to the TeamPicker step
     import re as _re
+
     expect(page.get_by_test_id("apply-template-button")).to_be_visible(timeout=5000)
     page.get_by_test_id("apply-template-button").click()
 
@@ -80,19 +85,25 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     expected_game_count = page.locator('tr[id^="game-"]').count()
     expected_stage_count = page.locator('.stage-section[id^="stage-"]').count()
     # Progression slots show winner (⚡) or loser (💔) labels in the react-select value
-    expected_progression_count = page.locator('table').filter(
-        has_text=_re.compile(r'[⚡💔]')
-    ).count()
+    expected_progression_count = (
+        page.locator("table").filter(has_text=_re.compile(r"[⚡💔]")).count()
+    )
     assert expected_game_count > 0, "Built-in template should produce at least one game"
-    assert expected_stage_count > 0, "Built-in template should produce at least one stage"
-    assert expected_progression_count > 0, "Built-in template should produce at least one progression slot"
+    assert (
+        expected_stage_count > 0
+    ), "Built-in template should produce at least one stage"
+    assert (
+        expected_progression_count > 0
+    ), "Built-in template should produce at least one progression slot"
 
     # Assign an official to the first game to exercise the save/restore cycle
     page.get_by_test_id("add-officials-button").click()
     page.wait_for_timeout(500)
     # Add a team to the officials group - use the "Add your first team" button (empty group)
-    page.locator('#group-group-officials').get_by_title("Add your first team to this group").click()
-    
+    page.locator("#group-group-officials").get_by_title(
+        "Add your first team to this group"
+    ).click()
+
     # TeamPickerStep dialog appears; auto-generate a team for the officials group
     expect(page.get_by_text("Select Teams")).to_be_visible(timeout=5000)
     page.get_by_role("button", name=_re.compile(r"Auto-generate")).click()
@@ -100,7 +111,7 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     expect(apply_btn).to_be_enabled(timeout=10000)
     apply_btn.click()
     expect(page.get_by_text("Select Teams")).not_to_be_visible(timeout=5000)
-    
+
     page.wait_for_timeout(500)
 
     # Snapshot team count AFTER adding the officials team — this is the state that
@@ -109,19 +120,27 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     assert expected_team_count > 0, "Built-in template should produce at least one team"
     # Open the official select on the first game and pick the new team (first non-disabled option)
     first_game_row = page.locator('tr[id^="game-"]').first
-    first_game_row.locator('.official-select__control').click()
+    first_game_row.locator(".official-select__control").click()
     page.locator('.official-select__option[aria-disabled="false"]').first.click()
     page.wait_for_timeout(1000)
 
     # Snapshot officials count (games with a selected official shown in the single-value slot)
-    expected_official_count = page.locator('tr[id^="game-"] .official-select__single-value').count()
-    assert expected_official_count > 0, "Should have at least one game with an official assigned"
+    expected_official_count = page.locator(
+        'tr[id^="game-"] .official-select__single-value'
+    ).count()
+    assert (
+        expected_official_count > 0
+    ), "Should have at least one game with an official assigned"
 
     # Snapshot times count (game rows whose time cell shows a real HH:MM time, not '--:--')
-    expected_time_count = page.locator('tr[id^="game-"] > td:nth-child(2)').filter(
-        has_not_text='--:--'
-    ).count()
-    assert expected_time_count > 0, "Built-in template should produce games with calculated start times"
+    expected_time_count = (
+        page.locator('tr[id^="game-"] > td:nth-child(2)')
+        .filter(has_not_text="--:--")
+        .count()
+    )
+    assert (
+        expected_time_count > 0
+    ), "Built-in template should produce games with calculated start times"
 
     # ---- Phase 3: Save the generated structure as a custom template ----------
     page.get_by_test_id("open-template-library-button").click()
@@ -149,17 +168,15 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # (which activates when scrollTop > 50px) resets before we try to open the
     # metadata accordion. Without this, clicking the toggle has no effect because
     # the accordion's useEffect immediately re-collapses it while forceCollapsed=true.
-    page.evaluate(
-        "document.querySelector('.list-designer-app__content').scrollTop = 0"
-    )
+    page.evaluate("document.querySelector('.list-designer-app__content').scrollTop = 0")
     page.wait_for_timeout(300)
 
     # Open the metadata accordion only if it is currently collapsed
     toggle = page.get_by_test_id("gameday-metadata-toggle")
-    if 'collapsed' in (toggle.get_attribute('class') or ''):
+    if "collapsed" in (toggle.get_attribute("class") or ""):
         toggle.click()
         # Wait for Bootstrap accordion animation to finish before clicking children
-        expect(toggle).not_to_have_class(_re.compile(r'collapsed'), timeout=5000)
+        expect(toggle).not_to_have_class(_re.compile(r"collapsed"), timeout=5000)
     clear_btn = page.get_by_test_id("clear-all-button")
     expect(clear_btn).to_be_visible(timeout=5000)
     clear_btn.click()
@@ -202,27 +219,27 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # the apply endpoint succeeds but the designer state is not refreshed)
     expect(page.locator('tr[id^="game-"]').first).to_be_visible(timeout=10000)
     actual_game_count = page.locator('tr[id^="game-"]').count()
-    assert actual_game_count == expected_game_count, (
-        f"Regenerated schedule should have {expected_game_count} games, got {actual_game_count}"
-    )
+    assert (
+        actual_game_count == expected_game_count
+    ), f"Regenerated schedule should have {expected_game_count} games, got {actual_game_count}"
 
     # Teams must also reappear (catches partial-restore where games load but team pool is empty)
     actual_team_count = page.locator('.team-group-card [id^="team-"]').count()
-    assert actual_team_count == expected_team_count, (
-        f"Regenerated schedule should have {expected_team_count} teams, got {actual_team_count}"
-    )
+    assert (
+        actual_team_count == expected_team_count
+    ), f"Regenerated schedule should have {expected_team_count} teams, got {actual_team_count}"
 
     # Stage count must match (catches templates saved/restored without all stages)
     actual_stage_count = page.locator('.stage-section[id^="stage-"]').count()
-    assert actual_stage_count == expected_stage_count, (
-        f"Regenerated schedule should have {expected_stage_count} stages, got {actual_stage_count}"
-    )
+    assert (
+        actual_stage_count == expected_stage_count
+    ), f"Regenerated schedule should have {expected_stage_count} stages, got {actual_stage_count}"
 
     # Progression slots (winner/loser references between stages) must be filled
     # (catches templates where game structure is restored but cross-stage edges are dropped)
-    actual_progression_count = page.locator('table').filter(
-        has_text=_re.compile(r'[⚡💔]')
-    ).count()
+    actual_progression_count = (
+        page.locator("table").filter(has_text=_re.compile(r"[⚡💔]")).count()
+    )
     assert actual_progression_count == expected_progression_count, (
         f"Regenerated schedule should have {expected_progression_count} filled progression slots, "
         f"got {actual_progression_count}"
@@ -232,15 +249,19 @@ def test_save_custom_template_and_regenerate(live_server, page: Page):
     # Use > 0 rather than an exact count because some game types (e.g. progression/
     # final slots) may not carry officials from the template, making a strict count
     # comparison brittle. The key invariant is that officials are not completely lost.
-    actual_official_count = page.locator('tr[id^="game-"] .official-select__single-value').count()
-    assert actual_official_count > 0, (
-        "Regenerated schedule should have at least one game with an official assigned, got 0"
-    )
+    actual_official_count = page.locator(
+        'tr[id^="game-"] .official-select__single-value'
+    ).count()
+    assert (
+        actual_official_count > 0
+    ), "Regenerated schedule should have at least one game with an official assigned, got 0"
 
     # Start times must be preserved (catches templates where startTime is dropped on regeneration)
-    actual_time_count = page.locator('tr[id^="game-"] > td:nth-child(2)').filter(
-        has_not_text='--:--'
-    ).count()
+    actual_time_count = (
+        page.locator('tr[id^="game-"] > td:nth-child(2)')
+        .filter(has_not_text="--:--")
+        .count()
+    )
     assert actual_time_count == expected_time_count, (
         f"Regenerated schedule should have {expected_time_count} games with start times, "
         f"got {actual_time_count}"

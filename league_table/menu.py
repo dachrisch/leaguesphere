@@ -7,16 +7,19 @@ from league_table.service.leaguetable_repository import LeagueTableRepository
 
 class League_tableMenu(BaseMenu):
     def get_name(self):
-        return 'Ligatabelle'
+        return "Ligatabelle"
 
     def get_menu_items(self, request):
         league_list = LeagueTableRepository.get_league_list()
 
-        return [MenuItem.create(
+        return [
+            MenuItem.create(
                 name=league["name"],
                 url=LEAGUE_TABLE_OVERALL_TABLE_BY_LEAGUE,
-                url_kwargs={"league": league["slug"]}
-            ) for league in league_list]
+                url_kwargs={"league": league["slug"]},
+            )
+            for league in league_list
+        ]
         #     MenuItem.create(
         #         name='Alle Einsätze',
         #         url=OFFICIALS_GAME_OFFICIALS_APPEARANCE,

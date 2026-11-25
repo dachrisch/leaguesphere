@@ -2,6 +2,7 @@
 Tests for menu restructure: chooser redirect and non-staff view-only link.
 Uses simple mock users — no database connection required.
 """
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,7 +10,10 @@ from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
 
 from gamedays.menu import GamedaysMenuAdmin
-from gameday_designer.menu import Gameday_designerMenuOrgaEntry, Gameday_designerMenuViewOnlyEntry
+from gameday_designer.menu import (
+    Gameday_designerMenuOrgaEntry,
+    Gameday_designerMenuViewOnlyEntry,
+)
 
 
 @pytest.fixture
@@ -27,6 +31,7 @@ def _make_user(is_staff=False, is_authenticated=True):
 # ---------------------------------------------------------------------------
 # GamedaysMenuAdmin — staff "Orga" group
 # ---------------------------------------------------------------------------
+
 
 def test_orga_erstellen_points_to_chooser(rf):
     req = rf.get("/")
@@ -49,6 +54,7 @@ def test_orga_hidden_for_non_staff(rf):
 # ---------------------------------------------------------------------------
 # Gameday_designerMenuOrgaEntry — "Orga" designer fragment
 # ---------------------------------------------------------------------------
+
 
 def test_designer_orga_entry_no_longer_lists_designen(rf):
     req = rf.get("/")
@@ -84,6 +90,7 @@ def test_designer_orga_entry_hidden_for_non_staff(rf):
 # ---------------------------------------------------------------------------
 # Gameday_designerMenuViewOnlyEntry — "Spieltage" group for non-staff
 # ---------------------------------------------------------------------------
+
 
 def test_view_only_entry_group_name():
     assert Gameday_designerMenuViewOnlyEntry().get_name() == "Spieltage"

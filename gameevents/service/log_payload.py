@@ -42,10 +42,14 @@ def _maps(game_ids) -> tuple[dict[int, dict[int, int]], dict[int, dict[int, int]
 
     per_row: dict[int, dict[int, int]] = {}
     groups: dict[tuple[int, str], list[tuple[int, int | None]]] = {}
-    for game_id, client_id, seq, legacy_sequence, team_log_id in (
-        GameEvent.objects.filter(game_id__in=game_ids).values_list(
-            "game_id", "client_id", "seq", "legacy_sequence", "team_log_id"
-        )
+    for (
+        game_id,
+        client_id,
+        seq,
+        legacy_sequence,
+        team_log_id,
+    ) in GameEvent.objects.filter(game_id__in=game_ids).values_list(
+        "game_id", "client_id", "seq", "legacy_sequence", "team_log_id"
     ):
         if team_log_id is not None:
             per_row.setdefault(game_id, {})[team_log_id] = seq
@@ -105,9 +109,7 @@ def event_seqs_for_rows(rows, game_id) -> dict[int, int]:
     return _compose(rows, per_row.get(game_id, {}), per_sequence.get(game_id, {}))
 
 
-def event_seqs_for_rows_by_game(
-    rows_by_game, game_ids
-) -> dict[int, dict[int, int]]:
+def event_seqs_for_rows_by_game(rows_by_game, game_ids) -> dict[int, dict[int, int]]:
     """The same, for many games, in one query (the snapshot)."""
 
     game_ids = list(game_ids)

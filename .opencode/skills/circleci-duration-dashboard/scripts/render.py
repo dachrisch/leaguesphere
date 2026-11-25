@@ -11,6 +11,7 @@ Charts
 
 The HTML is print-ready; push it to DocStash with create_pdf (see SKILL.md).
 """
+
 import argparse
 import html
 import json
@@ -42,23 +43,32 @@ def chart_jobs(jobs):
         x1 = sx(mean)
         lox, hix = sx(max(0, mean - std)), sx(min(xmax, mean + std))
         col = "#e11d48" if mean > 120 else ("#fb7185" if mean > 60 else "#9ca3af")
-        rows.append(f'''<text x="{left-10}" y="{y+4}" text-anchor="end" font-size="11" fill="#334155">{html.escape(j["job"])}</text>
+        rows.append(
+            f"""<text x="{left-10}" y="{y+4}" text-anchor="end" font-size="11" fill="#334155">{html.escape(j["job"])}</text>
 <rect x="{left}" y="{y-7}" width="{x1-left:.1f}" height="14" rx="3" fill="{col}" opacity="0.92"/>
 <line x1="{lox:.1f}" y1="{y}" x2="{hix:.1f}" y2="{y}" stroke="#1e293b" stroke-width="1.4" opacity="0.75"/>
 <line x1="{lox:.1f}" y1="{y-4}" x2="{lox:.1f}" y2="{y+4}" stroke="#1e293b" stroke-width="1.4" opacity="0.75"/>
 <line x1="{hix:.1f}" y1="{y-4}" x2="{hix:.1f}" y2="{y+4}" stroke="#1e293b" stroke-width="1.4" opacity="0.75"/>
 <circle cx="{x1:.1f}" cy="{y}" r="3.2" fill="#1e293b"/>
 <text x="{hix+8:.1f}" y="{y+4}" font-size="10.5" fill="#1e293b" font-weight="600">{fmt(mean)}</text>
-<text x="{x1:.1f}" y="{y-9}" text-anchor="middle" font-size="8" fill="#64748b">n={j["n"]}</text>''')
+<text x="{x1:.1f}" y="{y-9}" text-anchor="middle" font-size="8" fill="#64748b">n={j["n"]}</text>"""
+        )
         y += 24
     grid = []
     for t in range(0, xmax + 1, 60):
         gx = sx(t)
-        grid.append(f'<line x1="{gx:.1f}" y1="28" x2="{gx:.1f}" y2="{y-4}" stroke="#e5e7eb" stroke-width="1"/>')
-        grid.append(f'<text x="{gx:.1f}" y="{y+16}" text-anchor="middle" font-size="10" fill="#6b7280">{t//60}m</text>')
-    return f'''<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+        grid.append(
+            f'<line x1="{gx:.1f}" y1="28" x2="{gx:.1f}" y2="{y-4}" stroke="#e5e7eb" stroke-width="1"/>'
+        )
+        grid.append(
+            f'<text x="{gx:.1f}" y="{y+16}" text-anchor="middle" font-size="10" fill="#6b7280">{t//60}m</text>'
+        )
+    return (
+        f"""<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
 <text x="{left}" y="20" font-size="12" fill="#6b7280">Average execution time &#177; std dev (successful runs, n&#8805;2) &#183; scale 0&#8211;{xmax//60} min</text>
-{''.join(grid)}{''.join(rows)}</svg>''', jobs
+{''.join(grid)}{''.join(rows)}</svg>""",
+        jobs,
+    )
 
 
 def chart_pr(crit):
@@ -80,27 +90,43 @@ def chart_pr(crit):
         w = (s["seconds"] / total) * pw
         pct = 100 * s["seconds"] / total
         col = colors.get(s["label"], "#f59e0b")
-        parts.append(f'<rect x="{cur:.1f}" y="{pby}" width="{w:.1f}" height="{ph}" fill="{col}"/>')
-        short = {"e2e browser suite": "e2e", "image smoke test": "image", "full gate": "gate",
-                 "queue / scheduling": "queue", "compose network": "compose",
-                 "migrations check": "migrations", "image build": "build"}.get(s["label"], s["label"])
+        parts.append(
+            f'<rect x="{cur:.1f}" y="{pby}" width="{w:.1f}" height="{ph}" fill="{col}"/>'
+        )
+        short = {
+            "e2e browser suite": "e2e",
+            "image smoke test": "image",
+            "full gate": "gate",
+            "queue / scheduling": "queue",
+            "compose network": "compose",
+            "migrations check": "migrations",
+            "image build": "build",
+        }.get(s["label"], s["label"])
         if w > 55:
-            parts.append(f'<text x="{cur+w/2:.1f}" y="{pby+18}" text-anchor="middle" font-size="11.5" fill="#fff" font-weight="700">{html.escape(short)}</text>')
-            parts.append(f'<text x="{cur+w/2:.1f}" y="{pby+33}" text-anchor="middle" font-size="10" fill="#fff">{pct:.0f}%</text>')
+            parts.append(
+                f'<text x="{cur+w/2:.1f}" y="{pby+18}" text-anchor="middle" font-size="11.5" fill="#fff" font-weight="700">{html.escape(short)}</text>'
+            )
+            parts.append(
+                f'<text x="{cur+w/2:.1f}" y="{pby+33}" text-anchor="middle" font-size="10" fill="#fff">{pct:.0f}%</text>'
+            )
         cur += w
     leg = []
     lx = px
     for s in segs:
         col = colors.get(s["label"], "#f59e0b")
-        leg.append(f'<rect x="{lx:.1f}" y="{pby+ph+16}" width="11" height="11" rx="2" fill="{col}"/>')
-        leg.append(f'<text x="{lx+15:.1f}" y="{pby+ph+25}" font-size="10" fill="#334155">{html.escape(s["label"])} {fmt(s["seconds"])}</text>')
+        leg.append(
+            f'<rect x="{lx:.1f}" y="{pby+ph+16}" width="11" height="11" rx="2" fill="{col}"/>'
+        )
+        leg.append(
+            f'<text x="{lx+15:.1f}" y="{pby+ph+25}" font-size="10" fill="#334155">{html.escape(s["label"])} {fmt(s["seconds"])}</text>'
+        )
         lx += 190
     H = pby + ph + 44
-    svg = f'''<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+    svg = f"""<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
 <text x="{px}" y="20" font-size="12" fill="#6b7280">Typical PR run #{crit["pipeline"]} &#8212; actual wall-clock breakdown (total {fmt(total)})</text>
 <text x="{px}" y="36" font-size="9.5" fill="#64748b">Critical path of the median PR run; unit tests and image builds run in parallel under e2e, so they add no wall-clock.</text>
 {''.join(parts)}
-{''.join(leg)}</svg>'''
+{''.join(leg)}</svg>"""
     return svg, segs, total
 
 
@@ -113,7 +139,11 @@ def chart_releases(releases):
     W = 900
     left, right, top, bot, ph = 60, 30, 40, 64, 205
     plot_w = W - left - right
-    ymax = max(600, (int(max((r["blue"] + r["purple"] + r["greenp"]) for r in shown) // 300) + 1) * 300)
+    ymax = max(
+        600,
+        (int(max((r["blue"] + r["purple"] + r["greenp"]) for r in shown) // 300) + 1)
+        * 300,
+    )
     sy = lambda v: top + ph - (v / ymax) * ph
     bw = plot_w / n
     bars, labels = [], []
@@ -121,56 +151,95 @@ def chart_releases(releases):
         x = left + i * bw
         yb = top + ph
         xh, w = x + bw * 0.12, bw * 0.76
-        for val, col in ((r["blue"], "#3b82f6"), (r["purple"], "#8b5cf6"), (r["greenp"], "#22c55e")):
+        for val, col in (
+            (r["blue"], "#3b82f6"),
+            (r["purple"], "#8b5cf6"),
+            (r["greenp"], "#22c55e"),
+        ):
             h = (val / ymax) * ph
-            bars.append(f'<rect x="{xh:.1f}" y="{yb-h:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{col}"/>')
+            bars.append(
+                f'<rect x="{xh:.1f}" y="{yb-h:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{col}"/>'
+            )
             yb -= h
         if i % 5 == 0:
-            labels.append(f'<text x="{x+bw/2:.1f}" y="{top+ph+16}" text-anchor="end" font-size="9" fill="#334155" transform="rotate(-62 {x+bw/2:.1f} {top+ph+16})">{r["tagpush"][5:10]}</text>')
+            labels.append(
+                f'<text x="{x+bw/2:.1f}" y="{top+ph+16}" text-anchor="end" font-size="9" fill="#334155" transform="rotate(-62 {x+bw/2:.1f} {top+ph+16})">{r["tagpush"][5:10]}</text>'
+            )
     avg = statistics.mean(r["blue"] + r["purple"] + r["greenp"] for r in shown)
     ay = sy(avg)
     grid = []
     for m in range(0, ymax // 60 + 1, 5):
         yy = sy(m * 60)
-        grid.append(f'<line x1="{left}" y1="{yy:.1f}" x2="{left+plot_w}" y2="{yy:.1f}" stroke="#e5e7eb" stroke-width="1"/>')
-        grid.append(f'<text x="{left-8}" y="{yy+4:.1f}" text-anchor="end" font-size="10" fill="#6b7280">{m}m</text>')
-    svg = f'''<svg viewBox="0 0 {W} {top+ph+bot}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
+        grid.append(
+            f'<line x1="{left}" y1="{yy:.1f}" x2="{left+plot_w}" y2="{yy:.1f}" stroke="#e5e7eb" stroke-width="1"/>'
+        )
+        grid.append(
+            f'<text x="{left-8}" y="{yy+4:.1f}" text-anchor="end" font-size="10" fill="#6b7280">{m}m</text>'
+        )
+    svg = f"""<svg viewBox="0 0 {W} {top+ph+bot}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
 <text x="{left}" y="20" font-size="12" fill="#6b7280">Each bar = one release tag pipeline (chronological) &#183; PR&#8594;tag + tag&#8594;first CI + CI execution</text>
 {''.join(grid)}{''.join(bars)}{''.join(labels)}
 <line x1="{left}" y1="{ay:.1f}" x2="{left+plot_w}" y2="{ay:.1f}" stroke="#e11d48" stroke-width="2" stroke-dasharray="7 4"/>
 <text x="{left+plot_w}" y="{ay-6:.1f}" text-anchor="end" font-size="10" fill="#e11d48" font-weight="600">avg {fmt(avg)}</text>
-<line x1="{left}" y1="{top+ph}" x2="{left+plot_w}" y2="{top+ph}" stroke="#1e293b" stroke-width="1.5"/></svg>'''
+<line x1="{left}" y1="{top+ph}" x2="{left+plot_w}" y2="{top+ph}" stroke="#1e293b" stroke-width="1.5"/></svg>"""
     return svg, shown, outliers, avg
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--analysis", default=os.path.join(os.path.dirname(__file__), "..", ".cache", "analysis.json"))
-    ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "..", "dashboard.html"))
+    ap.add_argument(
+        "--analysis",
+        default=os.path.join(
+            os.path.dirname(__file__), "..", ".cache", "analysis.json"
+        ),
+    )
+    ap.add_argument(
+        "--out", default=os.path.join(os.path.dirname(__file__), "..", "dashboard.html")
+    )
     args = ap.parse_args()
 
     data = json.load(open(args.analysis))
-    jobs_all, releases, pr_jobs, meta = data["jobs"], data["releases"], data["pr_jobs"], data["meta"]
+    jobs_all, releases, pr_jobs, meta = (
+        data["jobs"],
+        data["releases"],
+        data["pr_jobs"],
+        data["meta"],
+    )
     crit = data["pr_critical"]
 
     svg1, jobs = chart_jobs(jobs_all)
     svg2, pr_segs, pr_total = chart_pr(crit)
     svg3, shown, outliers, avg = chart_releases(releases)
 
-    rows = "".join(f'<tr><td>{html.escape(j["job"])}</td><td>{fmt(j["mean"])}</td><td>&#177;{fmt(j["std"])}</td><td>{j["n"]}</td><td>{fmt(j["p25"])} &#8211; {fmt(j["p75"])}</td></tr>' for j in jobs)
-    all_tot = [r["blue"] + r["purple"] + r["greenp"] for r in releases if r["blue"] is not None]
+    rows = "".join(
+        f'<tr><td>{html.escape(j["job"])}</td><td>{fmt(j["mean"])}</td><td>&#177;{fmt(j["std"])}</td><td>{j["n"]}</td><td>{fmt(j["p25"])} &#8211; {fmt(j["p75"])}</td></tr>'
+        for j in jobs
+    )
+    all_tot = [
+        r["blue"] + r["purple"] + r["greenp"] for r in releases if r["blue"] is not None
+    ]
     shown_tot = [r["blue"] + r["purple"] + r["greenp"] for r in shown]
     latest = [r for r in releases if r["blue"] is not None][-1]
     latest_total = fmt(latest["blue"] + latest["purple"] + latest["greenp"])
-    outlier_txt = ", ".join(f'{html.escape(o["tag"])} ({fmt(o["blue"]+o["purple"]+o["greenp"])})' for o in sorted(outliers, key=lambda r: -(r["blue"] + r["purple"] + r["greenp"])))
-    pr_txt = " &#183; ".join(f'{html.escape(s["label"])} {100*s["seconds"]/pr_total:.0f}%' for s in pr_segs)
-    k = dict(avg_total=fmt(statistics.mean(shown_tot)), med_total=fmt(statistics.median(all_tot)),
-             avg_blue=fmt(statistics.mean(r["blue"] for r in shown)),
-             avg_purple=fmt(statistics.mean(r["purple"] for r in shown)),
-             avg_green=fmt(statistics.mean(r["greenp"] for r in shown)))
+    outlier_txt = ", ".join(
+        f'{html.escape(o["tag"])} ({fmt(o["blue"]+o["purple"]+o["greenp"])})'
+        for o in sorted(
+            outliers, key=lambda r: -(r["blue"] + r["purple"] + r["greenp"])
+        )
+    )
+    pr_txt = " &#183; ".join(
+        f'{html.escape(s["label"])} {100*s["seconds"]/pr_total:.0f}%' for s in pr_segs
+    )
+    k = dict(
+        avg_total=fmt(statistics.mean(shown_tot)),
+        med_total=fmt(statistics.median(all_tot)),
+        avg_blue=fmt(statistics.mean(r["blue"] for r in shown)),
+        avg_purple=fmt(statistics.mean(r["purple"] for r in shown)),
+        avg_green=fmt(statistics.mean(r["greenp"] for r in shown)),
+    )
     bf = next((j for j in jobs if j["job"] == "build_frontend"), jobs[0])
 
-    doc = f'''<!doctype html><html><head><meta charset="utf-8"><style>
+    doc = f"""<!doctype html><html><head><meta charset="utf-8"><style>
 @page{{size:letter;margin:0.7in 0.55in;@bottom-center{{content:"CircleCI Dashboard — {html.escape(meta["project"])} — real workflow data";font-size:8.5pt;color:#6b7280;}}}}
 body{{font-family:system-ui,sans-serif;color:#1a1a1a;background:#fff;font-size:12.5px;line-height:1.45;}}
 h1{{color:#e11d48;font-size:23px;border-bottom:5px solid #e11d48;padding-bottom:9px;margin-bottom:6px;}}
@@ -222,7 +291,7 @@ td{{padding:4px 6px;border-bottom:1px solid #e5e7eb;}}
 <tr><td>Waiting or CI execution the bottleneck?</td><td>3 Release segments</td><td><span class="k">CI execution dominates</span> — mean {k["avg_green"]} of {k["avg_total"]}; PR&#8594;tag and tag&#8594;CI are seconds-to-minutes</td></tr>
 <tr><td>Are individual releases unusually slow?</td><td>3 Release pipeline</td><td>Bars above the dashed avg line are the slow ones; omitted outliers are the extreme cases</td></tr>
 </tbody></table>
-</body></html>'''
+</body></html>"""
     with open(args.out, "w") as f:
         f.write(doc)
     print(f"wrote {args.out} ({len(doc)} bytes)")

@@ -108,9 +108,7 @@ def compute_direct_wins(
         return pd.Series(0, index=df.index)
 
     subset = _subset_direct_games(games_df, tied_teams)
-    return _map_direct_metric(
-        df, subset, lambda g: 1 if (g[FH] + g[SH]) > g[PA] else 0
-    )
+    return _map_direct_metric(df, subset, lambda g: 1 if (g[FH] + g[SH]) > g[PA] else 0)
 
 
 @register_tiebreak("direct_point_diff")

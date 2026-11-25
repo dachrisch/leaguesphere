@@ -46,7 +46,9 @@ GATE_JOB = "full_gate"
 
 JOB_DEF_RE = re.compile(r"^ {2}(?P<name>[A-Za-z0-9_-]+):\s*$")
 ENTRY_RE = re.compile(r"^ {6}- (?P<name>[A-Za-z0-9_-]+):\s*$")
-PARAM_REF_RE = re.compile(r"^<<\s*pipeline\.parameters\.(?P<param>[A-Za-z0-9_-]+)\s*>>$")
+PARAM_REF_RE = re.compile(
+    r"^<<\s*pipeline\.parameters\.(?P<param>[A-Za-z0-9_-]+)\s*>>$"
+)
 
 
 def _indent(line: str) -> int:
@@ -219,7 +221,9 @@ def _parse_entry(name: str, body: list[str]) -> dict[str, object]:
             nested = _block(body, filters_at, 10)
             tags_at = _find_key(nested, "tags", 12)
             if tags_at is not None:
-                tags_opt_in = _scalar(_block(nested, tags_at, 12), "only", 14) is not None
+                tags_opt_in = (
+                    _scalar(_block(nested, tags_at, 12), "only", 14) is not None
+                )
             branches_at = _find_key(nested, "branches", 12)
             if branches_at is not None:
                 tag_only = (
@@ -252,7 +256,9 @@ def check(continue_text: str) -> list[str]:
     jobs = job_definitions(continue_text)
     entries = workflow_entries(continue_text)
     if not entries:
-        return [f"{CONTINUE_CONFIG}: no `{WORKFLOW}` workflow jobs found - failing closed"]
+        return [
+            f"{CONTINUE_CONFIG}: no `{WORKFLOW}` workflow jobs found - failing closed"
+        ]
 
     consumed_params: set[str] = set()
     gate: dict[str, object] | None = None

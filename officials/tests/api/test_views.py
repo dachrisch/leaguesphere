@@ -326,7 +326,6 @@ class TestOfficialAssociationListView(WebTest):
         assert "julia@example.com" in second.text
 
 
-
 class TestOfficialsSearchList(WebTest):
     """Progressive person search for the scorecard's typing picker.
 

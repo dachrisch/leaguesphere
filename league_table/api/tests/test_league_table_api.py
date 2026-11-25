@@ -38,7 +38,9 @@ class LeagueTableApiTestBase(TestCase):
 
         self.team_a = TeamFactory(name="Titans", description="Titans")
         self.team_b = TeamFactory(name="Sharks", description="Sharks")
-        membership = SeasonLeagueTeam.objects.create(season=self.season, league=self.league)
+        membership = SeasonLeagueTeam.objects.create(
+            season=self.season, league=self.league
+        )
         membership.teams.add(self.team_a, self.team_b)
 
         self.gameday = GamedayFactory(
@@ -111,9 +113,7 @@ class TestLeagueTableApiPayload(LeagueTableApiTestBase):
 
     def test_standing_contains_computed_columns(self):
         response = self.client.get(self.url_season)
-        row = next(
-            r for r in self.rows(response) if r["team__description"] == "Titans"
-        )
+        row = next(r for r in self.rows(response) if r["team__description"] == "Titans")
         self.assertEqual(row["wins"], 1)
         self.assertEqual(row["games_played"], 1)
         self.assertEqual(row["pf"], 20)
@@ -132,14 +132,14 @@ class TestLeagueTableApiPayload(LeagueTableApiTestBase):
             gameinfo=scheduled_game, team=self.team_a, fh=0, sh=0, pa=0, isHome=True
         )
         response = self.client.get(self.url_season)
-        row = next(
-            r for r in self.rows(response) if r["team__description"] == "Titans"
-        )
+        row = next(r for r in self.rows(response) if r["team__description"] == "Titans")
         self.assertEqual(row["games_played"], 1)
 
     def test_team_without_games_is_serialized(self):
         lonely = TeamFactory(name="Lone Wolves", description="Lone Wolves")
-        membership = SeasonLeagueTeam.objects.create(season=self.season, league=self.league)
+        membership = SeasonLeagueTeam.objects.create(
+            season=self.season, league=self.league
+        )
         membership.teams.add(lonely)
         response = self.client.get(self.url_season)
         self.assertEqual(response.status_code, 200)

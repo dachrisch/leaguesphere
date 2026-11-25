@@ -9,7 +9,6 @@ from gamedays.service.swiss_constants import (
     SWISS_STAGE as SWISS_GAME_STAGE,
 )
 
-
 OFFICIALS_PLACEHOLDER = "N/A"
 
 # Games owned by SwissTournamentService (gameday_designer) live outside the
@@ -99,13 +98,13 @@ class CanvasPublishService:
             Gameresult.objects.create(
                 gameinfo=gi,
                 team=self._resolve_team(data.get("homeTeamId"), global_teams)
-                    or self._resolve_dynamic_team(data.get("homeTeamDynamic")),
+                or self._resolve_dynamic_team(data.get("homeTeamDynamic")),
                 isHome=True,
             )
             Gameresult.objects.create(
                 gameinfo=gi,
                 team=self._resolve_team(data.get("awayTeamId"), global_teams)
-                    or self._resolve_dynamic_team(data.get("awayTeamDynamic")),
+                or self._resolve_dynamic_team(data.get("awayTeamDynamic")),
                 isHome=False,
             )
 

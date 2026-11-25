@@ -36,11 +36,11 @@ class Gameday_designerMenuOrgaEntry(BaseMenu):
 
         return [
             MenuItem.create(
-                name='🎨 Spieltag Designer',
+                name="🎨 Spieltag Designer",
                 url="gameday_designer_app:index",  # Reverses to /gamedays/gameday/design/
             ),
             MenuItem.create(
-                name='📊 Live Status',
+                name="📊 Live Status",
                 url="game-progress-page",  # Reverses to /gamedays/progress/
             ),
         ]

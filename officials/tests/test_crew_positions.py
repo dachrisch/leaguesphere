@@ -73,8 +73,7 @@ class TestCrewPositionModel(TestCase):
         )
 
         assert [
-            row.position
-            for row in CrewPosition.objects.filter(league=league).all()
+            row.position for row in CrewPosition.objects.filter(league=league).all()
         ] == ["Referee", "Down Judge"]
 
 
@@ -87,9 +86,12 @@ class TestCrewPositionDefaults(TestCase):
             "Field Judge",
             "Side Judge",
         ]
-        assert [
-            row["label"] for row in DEFAULT_CREW_POSITIONS if row["required"]
-        ] == ["Schiedsrichter", "Down Judge", "Field Judge", "Side Judge"]
+        assert [row["label"] for row in DEFAULT_CREW_POSITIONS if row["required"]] == [
+            "Schiedsrichter",
+            "Down Judge",
+            "Field Judge",
+            "Side Judge",
+        ]
         assert [
             row["position"] for row in DEFAULT_CREW_POSITIONS if not row["required"]
         ] == ["Scorecard Judge"]
@@ -187,9 +189,7 @@ class TestCrewPositionsForLeague(TestCase):
             required=False,
         )
 
-        assert [
-            slot["position"] for slot in crew_positions_for_league(league.pk)
-        ] == [
+        assert [slot["position"] for slot in crew_positions_for_league(league.pk)] == [
             "Scorecard Judge",
             "Referee",
             "Zeitnehmer",

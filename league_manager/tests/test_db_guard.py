@@ -24,8 +24,12 @@ def test_default_database_connect_timeout_is_bounded():
     options = settings.DATABASES["default"].get("OPTIONS", {})
     connect_timeout = options.get("connect_timeout")
 
-    assert connect_timeout is not None, "default DATABASES OPTIONS must set connect_timeout"
-    assert 0 < connect_timeout <= 5, f"connect_timeout must be short (got {connect_timeout})"
+    assert (
+        connect_timeout is not None
+    ), "default DATABASES OPTIONS must set connect_timeout"
+    assert (
+        0 < connect_timeout <= 5
+    ), f"connect_timeout must be short (got {connect_timeout})"
 
 
 def _reset_maintenance_scope_safe():
