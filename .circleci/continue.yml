@@ -386,7 +386,7 @@ jobs:
             - checkout
             - setup_uv
             - python_shard_test:
-                paths: "tests/ scripts/tests/"
+                paths: "tests/ scripts/tests/ scripts/equivalence/tests/"
                 junit: "test-results-cross.xml"
                 cov_flag: "python-cross"
 
