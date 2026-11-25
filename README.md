@@ -24,6 +24,7 @@ The project uses a structured documentation approach in the `docs/` directory fo
 - `docs/topics/deployment/`: Deployment and infrastructure policy.
 - `docs/topics/testing/`: Test scenarios and testing strategies.
 - `docs/topics/planning/`: Active (`current/`) and archived (`history/`) plans.
+- **Architecture remediation** ([#2536–#2541](docs/topics/planning/current/2026-11-25-architecture-remediation-roadmap.md)): [Phase 5 plan](docs/topics/planning/current/2026-11-25-phase5-plan.md) — enforcement and docs, stacked on `phase4-scorecard-v2`.
 
 ## Installation
 
