@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.27.6](https://github.com/dachrisch/leaguesphere/compare/v5.27.5...v5.27.6) (2026-11-25)
+
+
+### Bug Fixes
+
+* **ci:** use a non-empty MySQL password for ephemeral DBs ([e0a8b04](https://github.com/dachrisch/leaguesphere/commit/e0a8b0480b4e7a7ef3032d2bd6ef4b65a317346e))
+* **settings:** accept canonical MySQL env names with legacy fallbacks ([cec4414](https://github.com/dachrisch/leaguesphere/commit/cec4414ee2e2db2d3211392eb71268993ce2de9f))
+* stop logging stage username in E2E helpers ([a390c2c](https://github.com/dachrisch/leaguesphere/commit/a390c2c41d90aa1d5f765e7abcbc24c9d54adb16))
+
 ## [5.27.5](https://github.com/dachrisch/leaguesphere/compare/v5.27.4...v5.27.5) (2026-11-24)
 
 
