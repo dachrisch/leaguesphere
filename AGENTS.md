@@ -254,7 +254,7 @@ Before marking a task complete:
 1. ✅ Write tests first (TDD: RED → GREEN → REFACTOR)
 2. ✅ All backend tests pass: `pytest`
 3. ✅ All frontend tests pass: `npm run test:run` (in each app)
-4. ✅ Format backend code: `black .`
+4. ✅ Format backend code: `black .` (CI enforces `uv run black --check .`)
 5. ✅ Lint frontend: `npm run eslint` (ZERO errors)
 6. ✅ Scoped CI coverage passes: `python3 scripts/check_scope_coverage.py` (update `.circleci/scope-mapping.txt`/`scope-exclude.txt` when adding files or CI rules — see [Scoped CI](docs/topics/deployment/scoped-ci.md))
 7. ✅ Dependency boundary passes: `python3 scripts/check_app_boundaries.py --root .` (`gamedays` must not import its consumer apps; the allowlist may only shrink — see [Phase 0 plan](docs/topics/planning/current/2026-11-25-phase0-plan.md))
