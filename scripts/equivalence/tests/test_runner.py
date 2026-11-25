@@ -35,6 +35,7 @@ class Handler(BaseHTTPRequestHandler):
     def _handle(self, method):
         server = self.server
         server.requests.append((method, self.path))
+        server.headers.append(dict(self.headers))
         if server.require_auth and not self.headers.get("Authorization"):
             self._respond(401, "auth required", "text/plain")
             return
@@ -59,6 +60,9 @@ class Handler(BaseHTTPRequestHandler):
         body = payload.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", content_type)
+        if self.path == "/login/":
+            # Django sets csrftoken on the login form render.
+            self.send_header("Set-Cookie", "csrftoken=tok; Path=/")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -76,6 +80,7 @@ def server_factory():
         server.routes = routes
         server.require_auth = require_auth
         server.requests = []
+        server.headers = []
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         servers.append(server)
@@ -107,6 +112,7 @@ def routes_for(sha, name="Cup"):
             "application/json",
         ),
         ("GET", "/staff/"): (200, "<html>staff</html>", "text/html"),
+        ("POST", "/api/gamedays/"): (201, {"id": 7}, "application/json"),
     }
 
 
@@ -305,3 +311,16 @@ def test_selftest_reports_skipped_roles_without_credentials(server_factory, tmp_
     manifest = write_manifest(tmp_path, with_staff=True)
 
     assert selftest.main(["--url", url, "--manifest", str(manifest)]) == 0
+
+
+def test_unsafe_requests_carry_the_csrf_cookie_and_referer(server_factory):
+    server, url = server_factory(routes_for("sha-ref"))
+    session = Session(url)
+    session.login("agent_staff", "secret")
+
+    response = session.request("/api/gamedays/", method="POST", json_body={"name": "x"})
+
+    assert response.status == 201
+    sent = {key.lower(): value for key, value in server.headers[-1].items()}
+    assert sent["x-csrftoken"] == "tok"
+    assert sent["referer"] == f"{url}/"

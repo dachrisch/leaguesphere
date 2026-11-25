@@ -60,6 +60,12 @@ class Session:
         raw = f"{self.username}:{self.password}".encode("utf-8")
         return "Basic " + base64.b64encode(raw).decode("ascii")
 
+    def _cookie(self, name):
+        for cookie in self._cookies:
+            if cookie.name == name:
+                return cookie.value
+        return ""
+
     def request(self, path, method="GET", json_body=None, form=None, headers=None):
         data = None
         request_headers = {"Accept": "application/json, text/html;q=0.9"}
@@ -69,6 +75,14 @@ class Session:
         authorization = self._authorization()
         if authorization:
             request_headers["Authorization"] = authorization
+        # DRF's SessionAuthentication enforces CSRF on unsafe methods; a
+        # logged-in scenario write must carry the cookie token and a Referer,
+        # exactly like the browser client it mirrors.
+        if method.upper() not in ("GET", "HEAD", "OPTIONS"):
+            csrf_token = self._cookie("csrftoken")
+            if csrf_token:
+                request_headers.setdefault("X-CSRFToken", csrf_token)
+            request_headers.setdefault("Referer", self._url("/"))
 
         if json_body is not None:
             data = jsonlib.dumps(json_body).encode("utf-8")
