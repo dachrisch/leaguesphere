@@ -55,3 +55,5 @@ def test_agent_build_pushes_the_selected_tag():
     # The build records its commit so `ref` can be verified without the new
     # /health/version/ endpoint (the baseline predates it).
     assert "org.opencontainers.image.revision=${{ steps.ref.outputs.sha }}" in text
+    # The build context must be the checked-out ref, not the workflow ref.
+    assert "context: ." in text

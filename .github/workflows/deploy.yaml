@@ -171,6 +171,11 @@ jobs:
       - name: Build and push the agent image
         uses: docker/build-push-action@v7
         with:
+          # Build the ref this job checked out. Without `context: .` the action
+          # defaults to the workflow ref (the branch head), so a build of
+          # `agent_candidate_ref=<base sha>` silently produced HEAD content -
+          # the phase baseline then served the stack head's code.
+          context: .
           file: container/app.Dockerfile
           push: true
           tags: docker.io/leaguesphere/backend:${{ inputs.agent_tag }}
