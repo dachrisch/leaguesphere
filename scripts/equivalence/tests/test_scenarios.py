@@ -25,6 +25,7 @@ class FakeApi:
     def __init__(self, id_base):
         self.id_base = id_base
         self.calls = []
+        self.empty_games = False
 
     def request(self, path, method="GET", json_body=None, form=None, headers=None):
         self.calls.append(
@@ -40,7 +41,14 @@ class FakeApi:
         if method == "GET" and path == f"/api/gameday/{self.id_base}/":
             return self._json(200, {"id": self.id_base, "status": "PUBLISHED"})
         if method == "GET" and path.endswith("/games/"):
-            return self._json(200, [{"id": self.id_base + 50, "home": "Team A"}])
+            return self._json(
+                200,
+                (
+                    []
+                    if self.empty_games
+                    else [{"id": self.id_base + 50, "home": "Team A"}]
+                ),
+            )
         if method == "POST" and path.endswith("/finalize"):
             return self._json(200, {"id": self.id_base + 50, "finished": True})
         if method == "GET" and "/gamelog/" in path:
@@ -117,3 +125,32 @@ def test_officials_signup_skips_without_an_official_session():
     )
 
     assert run.skipped == ["signup-list", "signup-add"]
+
+
+def test_officials_signup_runs_when_an_official_session_exists():
+    api = FakeApi(id_base=900)
+
+    run = scenarios.run_scenario(
+        "officials-signup",
+        {"staff": api, "official": api},
+        CONTEXT,
+        "eq-5-ref",
+    )
+
+    assert run.skipped == []
+    assert [step.name for step in run.steps] == [
+        "create-gameday",
+        "signup-list",
+        "signup-add",
+    ]
+
+
+def test_missing_capture_does_not_abort_the_scenario():
+    api = FakeApi(id_base=900)
+    api.empty_games = True
+
+    run = scenarios.run_scenario(
+        "designer-publish", {"staff": api, "anonymous": api}, CONTEXT, "eq-6-ref"
+    )
+
+    assert "game_id" not in run.id_tokens

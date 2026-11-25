@@ -28,22 +28,6 @@ class Diff:
         return f"{self.path} ({self.kind})"
 
 
-def _type_name(value):
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "bool"
-    if isinstance(value, (int, float)):
-        return "number"
-    if isinstance(value, str):
-        return "string"
-    if isinstance(value, list):
-        return "array"
-    if isinstance(value, dict):
-        return "object"
-    return type(value).__name__
-
-
 def diff_json(left, right, path="$"):
     """Compare two normalised JSON values; return paths that differ."""
     diffs = []

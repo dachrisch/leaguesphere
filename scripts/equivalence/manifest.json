@@ -50,7 +50,6 @@
     {"name": "gameday-list-api", "path": "/api/gamedays/", "kind": "json", "role": "anonymous"},
     {"name": "snapshot-api", "path": "/api/snapshot/", "kind": "json", "role": "anonymous"},
     {"name": "health", "path": "/health/", "kind": "json", "role": "anonymous"},
-    {"name": "health-version", "path": "/health/version/", "kind": "json", "role": "anonymous"},
     {"name": "season-page", "path": "/gamedays/{season_id}/", "kind": "html", "role": "anonymous", "categories": ["published"]},
     {"name": "gameday-page", "path": "/gamedays/gameday/{gameday_id}/", "kind": "html", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
     {"name": "gameday-api", "path": "/api/gameday/{gameday_id}/", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
