@@ -145,7 +145,7 @@ def _read_game_id_steps():
             role="anonymous",
             expect=200,
             capture="id_home",
-            capture_path="0.id_home",
+            capture_path="0.results.0.id",
         ),
         Step(
             name="read-games-away-id",
@@ -154,7 +154,7 @@ def _read_game_id_steps():
             role="anonymous",
             expect=200,
             capture="id_away",
-            capture_path="0.id_away",
+            capture_path="0.results.1.id",
         ),
     ]
 
