@@ -19,6 +19,8 @@ See [current/](./current/) for active planning work.
 - [2026-10-27 Scorecard — Layer Plan](./current/2026-10-27-scorecard-layers-plan.md): the concrete stack (L2 logos → L3 crew labels → L4 period templates → L5 start confirmation) with per-layer specs, acceptance and the subagent protocol
 - [2026-11-05 Scorecard — Rules Validation](./current/2026-11-05-scorecard-rules-validation.md): IFAF 2023 against the field app (9 defects, 5 kept simplifications), the `flag_football_5v5` rule definition as data, the `gh stack` layer chain R0–R15 and the 2026-11-05 meeting cross-check
 - [2026-11-08 Scorecard — Field Test 9316](./current/2026-11-08-scorecard-field-test-9316.md): an operator's first-half feedback triaged against the code (series engine, try state, play wizard, board layout, timeout/half-time dialogs) as layers L1–L6, with the implementation status and the resolved decisions
+- [2026-11-25 Architecture Remediation Roadmap](./current/2026-11-25-architecture-remediation-roadmap.md): agreed five-issue ranking, phase order 0a → 0c → 0b → 1–5, equivalence step, delivery workflow and all 18 user decisions
+- [2026-11-25 Phase 0 Implementation Plan](./current/2026-11-25-phase0-plan.md): self-contained brief for the implementing session — 0a boundary check, 0c equivalence harness (repo + infra PR), 0b black reformat, as a `gh stack`
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
