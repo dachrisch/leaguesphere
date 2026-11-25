@@ -341,7 +341,7 @@ See `gamedays/tests/setup_factories/db_setup.py::DBSetup.create_playoff_placehol
 For detailed protocols and standards, refer to:
 - **[Contributor Guide](docs/topics/guides/contributor-guide.md)**: Build, test, code style, and safety guidelines (primary reference)
 - **[Architecture Overview](docs/topics/architecture/architecture-overview.md)**: System design and tech stack decisions
-- **[Coding Standards](docs/topics/guides/coding-standards.md)**: Python, TypeScript, and CSS conventions
+- **[Coding Standards](docs/topics/guides/coding-standards.md)**: Python, TypeScript, and CSS conventions. For UI work also follow the **[UI Button Patterns](docs/topics/guides/ui-button-patterns.md)** (primary CTA full width, cancel `btn-outline-danger`).
 - **[Infrastructure Policy](docs/topics/deployment/infrastructure-policy.md)**: Deployment safety and Ansible rules
 - **[Setup Guide](docs/topics/guides/setup-guide.md)**: Local environment configuration
 
