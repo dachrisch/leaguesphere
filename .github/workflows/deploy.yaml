@@ -4,8 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
-        required: true
+        # Optional only so a candidate build can omit it; the `deploy` job
+        # below rejects an empty value on the normal stage/demo path.
+        description: "Target environment (required unless agent_candidate_ref is set)"
+        required: false
         type: choice
         options:
           - staging
@@ -32,6 +34,15 @@ jobs:
     if: inputs.agent_candidate_ref == ''
     runs-on: ubuntu-latest
     steps:
+      - name: Require an environment for a stage/demo deploy
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          if [ -z "$ENVIRONMENT" ]; then
+            echo "::error::environment is required unless agent_candidate_ref is set."
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
