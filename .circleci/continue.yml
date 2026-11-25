@@ -1129,6 +1129,14 @@ jobs:
             # point at a declared parameter, and full_gate must fan in every
             # job that runs on tags. stdlib only.
             python3 scripts/check_ci_gate.py
+      - run:
+          name: Check gamedays dependency boundary
+          command: |
+            # Also always-on (Phase 0a, issue #2536): `gamedays` is the core
+            # domain app and may not import its consumer apps. New edges fail
+            # unless allowlisted; stale entries fail so the list only shrinks.
+            # stdlib only.
+            python3 scripts/check_app_boundaries.py --root .
 
   check_version_sequence:
     docker:

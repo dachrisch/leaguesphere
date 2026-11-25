@@ -257,7 +257,8 @@ Before marking a task complete:
 4. ✅ Format backend code: `black .`
 5. ✅ Lint frontend: `npm run eslint` (ZERO errors)
 6. ✅ Scoped CI coverage passes: `python3 scripts/check_scope_coverage.py` (update `.circleci/scope-mapping.txt`/`scope-exclude.txt` when adding files or CI rules — see [Scoped CI](docs/topics/deployment/scoped-ci.md))
-7. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
+7. ✅ Dependency boundary passes: `python3 scripts/check_app_boundaries.py --root .` (`gamedays` must not import its consumer apps; the allowlist may only shrink — see [Phase 0 plan](docs/topics/planning/current/2026-11-25-phase0-plan.md))
+8. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
 
 ---
 
