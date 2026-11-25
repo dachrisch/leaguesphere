@@ -34,7 +34,7 @@ class FakeApi:
         gameday_id = f"/{self.id_base}/"
         if method == "POST" and path == "/api/gamedays/":
             return self._json(201, {"id": self.id_base, "name": json_body["name"]})
-        if method == "PUT" and path.endswith("/designer-state"):
+        if method == "PUT" and path.endswith("/designer-state/"):
             return self._json(200, {"state_data": json_body["state_data"]})
         if method == "POST" and path.endswith("/publish/"):
             return self._json(200, {"id": self.id_base, "status": "PUBLISHED"})
@@ -49,7 +49,7 @@ class FakeApi:
                     else [{"id": self.id_base + 50, "home": "Team A"}]
                 ),
             )
-        if method == "POST" and path.endswith("/finalize"):
+        if method == "PUT" and path.endswith("/finalize"):
             return self._json(200, {"id": self.id_base + 50, "finished": True})
         if method == "GET" and "/gamelog/" in path:
             return self._json(200, {"events": [{"game": self.id_base + 50}]})

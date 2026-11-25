@@ -115,7 +115,7 @@ def _publish_steps():
         Step(
             name="save-designer-canvas",
             method="PUT",
-            path="/api/gamedays/{gameday_id}/designer-state",
+            path="/api/gamedays/{gameday_id}/designer-state/",
             json={"state_data": MINIMAL_CANVAS},
         ),
         Step(
@@ -160,7 +160,7 @@ SCENARIOS = {
         ),
         Step(
             name="finalize-game",
-            method="POST",
+            method="PUT",
             path="/api/game/{game_id}/finalize",
             json={},
             expect=(200, 409),
