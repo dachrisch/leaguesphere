@@ -7,7 +7,12 @@ from unittest.mock import patch
 
 import pytest
 
-from gameday_designer.models import ScheduleTemplate, TemplateSlot, TemplateUpdateRule
+from gameday_designer.models import (
+    ScheduleTemplate,
+    TemplateApplication,
+    TemplateSlot,
+    TemplateUpdateRule,
+)
 from gameday_designer.service import gamedays_hooks as hooks
 from gamedays.models import Gameday
 from gamedays.tests.setup_factories.db_setup import DBSetup
@@ -49,6 +54,20 @@ def test_update_rules_without_a_pre_finished_filter(designer_context):
 
     assert len(hooks.update_rules_for_template(template)) == 2
     assert len(hooks.update_rules_for_template(template, pre_finished="Gruppe 1")) == 1
+
+
+@pytest.mark.django_db
+def test_template_prefers_the_application(designer_context):
+    gameday, template, _ = designer_context
+    TemplateApplication.objects.create(
+        gameday=gameday, template=template, team_mapping={}
+    )
+    other = ScheduleTemplate.objects.create(
+        name=f"schedule_{gameday.format}", num_teams=6, num_fields=2
+    )
+
+    assert hooks.template_for_gameday(gameday).pk == template.pk
+    assert hooks.template_for_gameday(gameday).pk != other.pk
 
 
 @pytest.mark.django_db
