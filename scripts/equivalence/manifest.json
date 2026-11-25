@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "roles": {
+    "anonymous": {},
+    "staff": {
+      "username_env": "LS_AGENT_STAFF_USER",
+      "password_env": "LS_AGENT_STAFF_PASSWORD"
+    },
+    "team_manager": {
+      "username_env": "LS_AGENT_TEAM_MANAGER_USER",
+      "password_env": "LS_AGENT_TEAM_MANAGER_PASSWORD"
+    },
+    "official": {
+      "username_env": "LS_AGENT_OFFICIAL_USER",
+      "password_env": "LS_AGENT_OFFICIAL_PASSWORD"
+    }
+  },
+  "discovery": {
+    "path": "/api/gamedays/",
+    "results_key": "results"
+  },
+  "categories": [
+    {
+      "name": "designer-template",
+      "description": "draft or published gameday with a designer canvas",
+      "where": {"has_designer_state": true}
+    },
+    {
+      "name": "canvas-published",
+      "description": "published gameday without a designer state (legacy/canvas output)",
+      "where": {"status": "PUBLISHED", "has_designer_state": false}
+    },
+    {
+      "name": "completed",
+      "description": "finished gameday with entered results",
+      "where": {"status": "COMPLETED"}
+    },
+    {
+      "name": "upcoming",
+      "description": "published gameday that has not started",
+      "where": {"status": "PUBLISHED"}
+    }
+  ],
+  "sample_per_category": 2,
+  "probes": [
+    {"name": "root", "path": "/", "kind": "html", "role": "anonymous"},
+    {"name": "gameday-list-page", "path": "/gamedays/", "kind": "html", "role": "anonymous"},
+    {"name": "league-table-page", "path": "/leaguetable/", "kind": "html", "role": "anonymous"},
+    {"name": "login-page", "path": "/login/", "kind": "html", "role": "anonymous"},
+    {"name": "gameday-list-api", "path": "/api/gamedays/", "kind": "json", "role": "anonymous"},
+    {"name": "snapshot-api", "path": "/api/snapshot/", "kind": "json", "role": "anonymous"},
+    {"name": "health", "path": "/health/", "kind": "json", "role": "anonymous"},
+    {"name": "health-version", "path": "/health/version/", "kind": "json", "role": "anonymous"},
+    {"name": "season-page", "path": "/gamedays/{season_id}/", "kind": "html", "role": "anonymous", "categories": ["published"]},
+    {"name": "gameday-page", "path": "/gamedays/gameday/{gameday_id}/", "kind": "html", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
+    {"name": "gameday-api", "path": "/api/gameday/{gameday_id}/", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
+    {"name": "gameday-schedule-api", "path": "/api/gameday/{gameday_id}/details?get=schedule", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
+    {"name": "gameday-games-api", "path": "/api/gamedays/{gameday_id}/games/", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
+    {"name": "gameday-standings-api", "path": "/api/snapshot/?league={league_id}&season={season_id}&include=games,standings", "kind": "json", "role": "anonymous", "categories": ["completed"]},
+    {"name": "gameday-update-page", "path": "/gamedays/gameday/{gameday_id}/update/", "kind": "html", "role": "staff", "categories": ["designer-template"]},
+    {"name": "teammanager-page", "path": "/teammanager/", "kind": "html", "role": "team_manager"},
+    {"name": "officials-page", "path": "/officials/", "kind": "html", "role": "official"}
+  ]
+}
