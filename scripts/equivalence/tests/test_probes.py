@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import probes  # noqa: E402
 from diff import Diff, VALUE  # noqa: E402
-from transport import RecordedSession  # noqa: E402
+from transport import RecordedSession, Response  # noqa: E402
 
 GAMEDAYS = [
     {
@@ -150,6 +150,80 @@ def test_planted_noise_is_normalised_away():
     )
 
     assert probes.compare_probe_results(first, second) == {}
+
+
+def test_run_probes_discovers_when_no_probe_list_is_given():
+    manifest = MANIFEST
+    results, skipped = probes.run_probes({"anonymous": discovery_session()}, manifest)
+
+    assert "root" in results
+    assert skipped == ["staff-page"]
+
+
+def test_etag_probe_expands_and_revalidates():
+    class EtagSession:
+        def __init__(self):
+            self.headers_seen = []
+
+        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+            self.headers_seen.append(dict(headers or {}))
+            if any(
+                key.lower() == "if-none-match" and value
+                for key, value in (headers or {}).items()
+            ):
+                return Response(304, {}, "", url=path, method=method)
+            return Response(
+                200, {"ETag": '"abc"'}, '{"ok": true}', url=path, method=method
+            )
+
+    manifest = {
+        "roles": {"anonymous": {}},
+        "probes": [
+            {
+                "name": "snapshot",
+                "path": "/api/snapshot/",
+                "kind": "json",
+                "role": "anonymous",
+            },
+            {
+                "name": "snapshot-304",
+                "path": "/api/snapshot/",
+                "kind": "json",
+                "role": "anonymous",
+                "headers": {"If-None-Match": "@etag:snapshot"},
+            },
+            {
+                "name": "snapshot-literal-header",
+                "path": "/api/snapshot/",
+                "kind": "json",
+                "role": "anonymous",
+                "headers": {"X-Test": "literal"},
+            },
+            {
+                "name": "snapshot-304-missing-source",
+                "path": "/api/snapshot/",
+                "kind": "json",
+                "role": "anonymous",
+                "headers": {"If-None-Match": "@etag:not-there"},
+            },
+        ],
+    }
+    session = EtagSession()
+
+    results, skipped = probes.run_probes(
+        {"anonymous": session}, manifest, probes.expand_probes(manifest, [])
+    )
+
+    assert skipped == []
+    assert results["snapshot"].etag == '"abc"'
+    assert results["snapshot-304"].status == 304
+    assert results["snapshot-304-missing-source"].status == 200
+    assert session.headers_seen[1] == {"If-None-Match": '"abc"'}
+    assert session.headers_seen[2] == {"X-Test": "literal"}
+    assert session.headers_seen[3] == {"If-None-Match": ""}
+    assert probes.expand_probes(manifest, [])[1].headers == {
+        "If-None-Match": "@etag:snapshot"
+    }
 
 
 def test_real_difference_is_reported():

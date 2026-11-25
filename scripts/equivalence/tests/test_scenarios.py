@@ -51,6 +51,10 @@ class FakeApi:
             )
         if method == "PUT" and path.endswith("/finalize"):
             return self._json(200, {"id": self.id_base + 50, "finished": True})
+        if method == "GET" and path.endswith("/officials"):
+            return self._json(200, {"officials": []})
+        if method == "GET" and path.endswith("/summary"):
+            return self._json(200, {"game": {"id": self.id_base + 50}})
         if method == "GET" and "/gamelog/" in path:
             return self._json(200, {"events": [{"game": self.id_base + 50}]})
         if path == "/officials/gameday/sign-up/":

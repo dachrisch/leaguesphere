@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 from django.apps import apps
-from django.core.checks import Error
+from django.core.checks import Error, run_checks
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 
@@ -67,40 +67,40 @@ def test_names_is_sorted_and_reset_clears(clean_registry):
     assert hooks.names() == ()
 
 
+@pytest.mark.django_db
 def test_system_check_reports_missing_hook(clean_registry, monkeypatch):
     monkeypatch.setattr(
         hooks, "HOOK_REQUIREMENTS", {"league_table": ("season_settings",)}
     )
     assert apps.is_installed("league_table")
+    call_command("check", fail_level="CRITICAL")
     errors = [
-        error
-        for error in call_command("check", fail_level=50)
-        if getattr(error, "id", None) == "phase1.E001"
+        error for error in run_checks() if getattr(error, "id", None) == "phase1.E001"
     ]
     assert errors
     assert any("league_table" in str(error) for error in errors)
     assert any("season_settings" in str(error) for error in errors)
 
 
+@pytest.mark.django_db
 def test_system_check_silent_when_hook_registered(clean_registry, monkeypatch):
     monkeypatch.setattr(
         hooks, "HOOK_REQUIREMENTS", {"league_table": ("season_settings",)}
     )
     hooks.register("season_settings", lambda: 1, "league_table")
+    call_command("check", fail_level="CRITICAL")
     errors = [
-        error
-        for error in call_command("check", fail_level=50)
-        if getattr(error, "id", None) == "phase1.E001"
+        error for error in run_checks() if getattr(error, "id", None) == "phase1.E001"
     ]
     assert errors == []
 
 
+@pytest.mark.django_db
 def test_system_check_ignores_apps_not_installed(clean_registry, monkeypatch):
     monkeypatch.setattr(hooks, "HOOK_REQUIREMENTS", {"not_installed_app": ("hook",)})
+    call_command("check", fail_level="CRITICAL")
     errors = [
-        error
-        for error in call_command("check", fail_level=50)
-        if getattr(error, "id", None) == "phase1.E001"
+        error for error in run_checks() if getattr(error, "id", None) == "phase1.E001"
     ]
     assert errors == []
 

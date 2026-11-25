@@ -22,7 +22,7 @@ Rules:
   only shrink as Phase 1 removes imports.
 
 The two schema-level FKs (`Gameinfo.league_group`,
-`Gameinfo.official`) are string references, not imports: they are kept
+`GameOfficial.official`) are string references, not imports: they are kept
 by decision and documented in the allowlist header, not modelled here.
 
 Stdlib only (`ast`, `argparse`, `pathlib`, `sys`): the always-on
@@ -73,7 +73,11 @@ HEADER = """\
 #
 # Kept by decision, not modelled here (string FK references, not imports):
 #   gamedays/models.py: Gameinfo.league_group -> "league_table.LeagueGroup"
-#   gamedays/models.py: Gameinfo.official -> "officials.Official"
+#   gamedays/models.py: GameOfficial.official -> "officials.Official"
+#
+# Dynamic back-edges are normalised too: apps.get_model("app", "Model"),
+# apps.get_model("app.Model") and importlib.import_module("app.module")
+# cannot be hidden in a function body or a nested call.
 """
 
 
@@ -108,6 +112,27 @@ def boundary_modules(node):
     ]
 
 
+def dynamic_modules(node):
+    """Normalise dynamic back-edges (get_model / import_module calls)."""
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+        return []
+    args = [
+        arg.value
+        for arg in node.args
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
+    ]
+    if node.func.attr == "get_model" and args:
+        raw = ".".join(args[:2])
+    elif node.func.attr == "import_module" and args:
+        raw = args[0]
+    else:
+        return []
+    top = raw.split(".")[0]
+    if top not in BOUNDARY_MODULES:
+        return []
+    return [(f'{node.func.attr}("{raw}")', [top])]
+
+
 def is_scanned(relative_path):
     parts = relative_path.parts
     if "tests" in parts or "migrations" in parts:
@@ -140,16 +165,19 @@ def scan(root):
 
         found_in_file = 0
         for node in ast.walk(tree):
-            if not isinstance(node, (ast.Import, ast.ImportFrom)):
-                continue
-            modules = boundary_modules(node)
-            if not modules:
-                continue
-            statement = f"{relative_path.as_posix()}|{normalise(node)}"
-            for module in modules:
-                counts[module] += 1
-            entries[statement] = modules[0]
-            found_in_file += 1
+            matches = []
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                modules = boundary_modules(node)
+                if modules:
+                    matches.append((normalise(node), modules))
+            else:
+                matches.extend(dynamic_modules(node))
+            for statement, modules in matches:
+                key = f"{relative_path.as_posix()}|{statement}"
+                for module in modules:
+                    counts[module] += 1
+                entries[key] = modules[0]
+                found_in_file += 1
         if found_in_file:
             files += 1
 
@@ -265,5 +293,7 @@ def main(argv=None):
     return check(root, allowlist)
 
 
-if __name__ == "__main__":
+if (
+    __name__ == "__main__"
+):  # pragma: no cover -- CLI entrypoint exercised via subprocess
     sys.exit(main())

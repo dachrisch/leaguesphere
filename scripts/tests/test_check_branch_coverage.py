@@ -52,11 +52,13 @@ def make_repo(tmp_path, base=None, head=None, untracked=None):
         path.write_text(text, encoding="utf-8")
     if head:
         git(repo, "add", "-A")
-        git(repo, "commit", "-qm", "head")
+        git(repo, "commit", "--allow-empty", "-qm", "head")
     return repo
 
 
-def function(name, executed=(), missing=(), excluded=(), missing_branches=(), branches=()):
+def function(
+    name, executed=(), missing=(), excluded=(), missing_branches=(), branches=()
+):
     return {
         "executed_lines": list(executed),
         "missing_lines": list(missing),
@@ -85,6 +87,8 @@ def invoke(gate, repo, coverage, *extra, base="HEAD~1", cwd=None):
             str(coverage),
             "--base",
             base,
+            "--root",
+            str(repo),
             *extra,
         ]
     )
@@ -129,8 +133,12 @@ def test_fail_lists_missing_branch(gate, tmp_path, capsys):
 def test_diff_touches_function_scope(gate, tmp_path, capsys):
     repo = make_repo(
         tmp_path,
-        base={"gamedays/service/demo.py": "def a():\n    return 1\ndef b():\n    return 2\n"},
-        head={"gamedays/service/demo.py": "def a():\n    return 1\ndef b():\n    return 3\n"},
+        base={
+            "gamedays/service/demo.py": "def a():\n    return 1\ndef b():\n    return 2\n"
+        },
+        head={
+            "gamedays/service/demo.py": "def a():\n    return 1\ndef b():\n    return 3\n"
+        },
     )
     coverage = write_coverage(
         tmp_path,
@@ -339,9 +347,7 @@ def test_pragma_without_reason_fails(gate, tmp_path, capsys):
         tmp_path,
         base={"gamedays/service/demo.py": "def f():\n    return 1\n"},
         head={
-            "gamedays/service/demo.py": (
-                "def f():\n    return 1  # pragma: no cover\n"
-            )
+            "gamedays/service/demo.py": ("def f():\n    return 1  # pragma: no cover\n")
         },
     )
     coverage = write_coverage(
@@ -358,7 +364,7 @@ def test_missing_coverage_json_fails_clearly(gate, tmp_path, capsys):
     assert "coverage JSON not found" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("raw", ["{", '{"files": 5}'])
+@pytest.mark.parametrize("raw", ["{", '{"files": 5}', "[1]"])
 def test_invalid_coverage_json_fails_clearly(gate, tmp_path, raw, capsys):
     repo = make_repo(tmp_path, base={"gamedays/service/demo.py": "x = 1\n"})
     coverage = write_coverage(tmp_path, {}, raw=raw)
@@ -413,9 +419,7 @@ def test_branch_endpoints_put_function_in_scope(gate, tmp_path, capsys):
         tmp_path,
         {
             "gamedays/service/demo.py": {
-                "functions": {
-                    "f": function("f", executed=[2], branches=[[2, 3]])
-                }
+                "functions": {"f": function("f", executed=[2], branches=[[2, 3]])}
             }
         },
     )
@@ -423,19 +427,118 @@ def test_branch_endpoints_put_function_in_scope(gate, tmp_path, capsys):
     assert "1 functions in scope" in capsys.readouterr().out
 
 
+def test_deleted_python_file_is_ignored(gate, tmp_path, capsys):
+    repo = make_repo(
+        tmp_path,
+        base={"gamedays/service/old.py": "def f():\n    return 1\n"},
+        head={"gamedays/service/keep.py": "x = 1\n"},
+    )
+    (repo / "gamedays/service/old.py").unlink()
+    coverage = write_coverage(tmp_path, {"gamedays/service/keep.py": {"functions": {}}})
+    assert invoke(gate, repo, coverage) == 0
+    assert "0 functions in scope" in capsys.readouterr().out
+
+
+def test_pragma_reason_must_not_be_empty(gate, tmp_path, capsys):
+    repo = make_repo(
+        tmp_path,
+        base={"gamedays/service/demo.py": "def f():\n    return 1\n"},
+        head={
+            "gamedays/service/demo.py": (
+                "def f():\n    return 1  # pragma: no cover --\n"
+            )
+        },
+    )
+    coverage = write_coverage(
+        tmp_path,
+        {"gamedays/service/demo.py": {"functions": {"f": function("f", executed=[2])}}},
+    )
+    assert invoke(gate, repo, coverage) == 1
+    assert "pragma without inline reason" in capsys.readouterr().out
+
+
+def test_require_file_skips_files_outside_the_override(gate, tmp_path, capsys):
+    repo = make_repo(
+        tmp_path,
+        base={
+            "gamedays/service/a.py": "def f():\n    return 1\n",
+            "gamedays/service/b.py": "def g():\n    return 1\n",
+        },
+        head={
+            "gamedays/service/a.py": "def f():\n    return 2\n",
+            "gamedays/service/b.py": "def g():\n    return 2\n",
+        },
+    )
+    coverage = write_coverage(
+        tmp_path,
+        {
+            "gamedays/service/a.py": {"functions": {"f": function("f", executed=[2])}},
+            "gamedays/service/b.py": {"functions": {"g": function("g", executed=[2])}},
+        },
+    )
+    assert (
+        invoke(
+            gate,
+            repo,
+            coverage,
+            "--require-file",
+            "gamedays/service/a.py",
+        )
+        == 0
+    )
+    assert "1 functions in scope" in capsys.readouterr().out
+
+
+def test_untracked_git_failure_is_tolerated(gate, tmp_path, monkeypatch, capsys):
+    repo = make_repo(tmp_path, base={"gamedays/service/demo.py": "x = 1\n"})
+    coverage = write_coverage(tmp_path, {})
+    real_git = gate.git
+
+    def fake_git(root, *args):
+        if args[0] == "ls-files":
+            return subprocess.CompletedProcess(args, 1, "", "boom")
+        return real_git(root, *args)
+
+    monkeypatch.setattr(gate, "git", fake_git)
+    assert invoke(gate, repo, coverage) == 0
+    assert "0 functions in scope" in capsys.readouterr().out
+
+
+def test_gate_runs_as_a_script(gate, tmp_path):
+    repo = make_repo(tmp_path, base={"gamedays/service/demo.py": "x = 1\n"})
+    coverage = write_coverage(tmp_path, {})
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(Path(gate.__file__).resolve()),
+            "--coverage",
+            str(coverage),
+            "--base",
+            "HEAD",
+            "--root",
+            str(repo),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "0 functions in scope" in result.stdout
+
+
 def test_excluded_lines_put_function_in_scope(gate, tmp_path, capsys):
     repo = make_repo(
         tmp_path,
         base={"gamedays/service/demo.py": "def f():\n    return 1\n"},
-        head={"gamedays/service/demo.py": "def f():\n    return 1  # pragma: no cover -- x\n"},
+        head={
+            "gamedays/service/demo.py": "def f():\n    return 1  # pragma: no cover -- x\n"
+        },
     )
     coverage = write_coverage(
         tmp_path,
         {
             "gamedays/service/demo.py": {
-                "functions": {
-                    "f": function("f", executed=[1], excluded=[2])
-                }
+                "functions": {"f": function("f", executed=[1], excluded=[2])}
             }
         },
     )
