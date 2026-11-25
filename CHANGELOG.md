@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.27.7](https://github.com/dachrisch/leaguesphere/compare/v5.27.6...v5.27.7) (2026-11-25)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/react to v19.3.3 ([#2546](https://github.com/dachrisch/leaguesphere/issues/2546)) ([a24ef14](https://github.com/dachrisch/leaguesphere/commit/a24ef143bf49566012fd8e4e9b6ec9d68ec8943c))
+
 ## [5.27.6](https://github.com/dachrisch/leaguesphere/compare/v5.27.5...v5.27.6) (2026-11-25)
 
 

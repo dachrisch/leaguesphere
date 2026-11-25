@@ -1,6 +1,6 @@
 {
   "name": "scorecard",
-  "version": "5.27.6",
+  "version": "5.27.7",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
