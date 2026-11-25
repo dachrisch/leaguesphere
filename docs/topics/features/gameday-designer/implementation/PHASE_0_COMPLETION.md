@@ -162,9 +162,9 @@ Phase 0 provides the foundation for Phase 1 implementation:
 ### Run All Tests
 ```bash
 MYSQL_HOST=10.185.182.161 \
-MYSQL_DB_NAME=test_db \
+MYSQL_DATABASE=test_db \
 MYSQL_USER=user \
-MYSQL_PWD=user \
+MYSQL_PASSWORD=user \
 SECRET_KEY=test-secret-key \
 pytest gameday_designer/tests/ -v
 ```

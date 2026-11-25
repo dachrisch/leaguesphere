@@ -75,9 +75,9 @@ All 7 specialized agents have been created in `.claude/agents/`:
 - ✅ Django test commands with LXC MySQL environment:
   ```bash
   MYSQL_HOST=10.185.182.207 \
-  MYSQL_DB_NAME=test_db \
+  MYSQL_DATABASE=test_db \
   MYSQL_USER=user \
-  MYSQL_PWD=user \
+  MYSQL_PASSWORD=user \
   SECRET_KEY=test-secret-key \
   pytest
   ```

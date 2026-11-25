@@ -50,9 +50,9 @@ else
     export league_manager=dev
     export SECRET_KEY='django-insecure-default-key-for-dev'
     export MYSQL_HOST="$CONTAINER_IP"
-    export MYSQL_DB_NAME=test_db
+    export MYSQL_DATABASE=test_db
     export MYSQL_USER=user
-    export MYSQL_PWD=user
+    export MYSQL_PASSWORD=user
 fi
 
 # 3.5 Sync Python dependencies

@@ -165,9 +165,11 @@ commands:
           environment:
             SECRET_KEY: 123456-TEST
             MYSQL_HOST: 127.0.0.1
-            MYSQL_DB_NAME: test_test_db
+            MYSQL_DATABASE: test_test_db
             MYSQL_USER: root
-            MYSQL_PWD: ""
+            # Non-empty on both sides: an empty value here would let the
+            # project-level legacy MYSQL_PWD win and fail authentication.
+            MYSQL_PASSWORD: ci-test-pw
           command: |
             uv run pytest << parameters.paths >> -n 4 --nomigrations --junitxml=test-reports/<< parameters.junit >> --cov=. --cov-report=xml --cov-report=html
       - store_test_results:
@@ -241,7 +243,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -266,7 +268,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -291,7 +293,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -316,7 +318,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -341,7 +343,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -366,7 +368,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -646,7 +648,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -666,9 +668,9 @@ jobs:
           environment:
             SECRET_KEY: 123456-TEST
             MYSQL_HOST: 127.0.0.1
-            MYSQL_DB_NAME: test_test_db
+            MYSQL_DATABASE: test_test_db
             MYSQL_USER: root
-            MYSQL_PWD: ""
+            MYSQL_PASSWORD: ci-test-pw
           command: |
             uv run pytest scorecard/tests/e2e/ -v \
               --junitxml=test-reports/e2e-scorecard-results.xml
@@ -681,7 +683,7 @@ jobs:
       - image: cimg/mysql:26.10
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_ROOT_PASSWORD: ci-test-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
     steps:
@@ -699,9 +701,9 @@ jobs:
           environment:
             SECRET_KEY: 123456-TEST
             MYSQL_HOST: 127.0.0.1
-            MYSQL_DB_NAME: test_test_db
+            MYSQL_DATABASE: test_test_db
             MYSQL_USER: root
-            MYSQL_PWD: ""
+            MYSQL_PASSWORD: ci-test-pw
           command: |
             uv run pytest scorecard_v2/tests/e2e/ -v \
               --junitxml=test-reports/e2e-scorecard-v2-results.xml
@@ -829,9 +831,9 @@ jobs:
                   docker run --rm --detach --network test_network --name test_container \
                     -e SECRET_KEY=test-image-dummy-secret-not-for-production \
                     -e MYSQL_HOST=127.0.0.1 \
-                    -e MYSQL_DB_NAME=ci_dummy \
+                    -e MYSQL_DATABASE=ci_dummy \
                     -e MYSQL_USER=ci_dummy \
-                    -e MYSQL_PWD=ci_dummy \
+                    -e MYSQL_PASSWORD=ci_dummy \
                     backend:latest gunicorn -b 0.0.0.0:8000 league_manager.wsgi
                   sleep 3
                   for i in {1..10}; do
@@ -909,8 +911,8 @@ jobs:
         command: [ --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-storage-engine=InnoDB ]
         environment:
           # A dummy root password, not an empty one: the production settings
-          # guard refuses to load without MYSQL_PWD, and this job deliberately
-          # runs with the production settings (not test_settings).
+          # guard refuses to load without MYSQL_PASSWORD, and this job
+          # deliberately runs with the production settings (not test_settings).
           MYSQL_ROOT_PASSWORD: ci-check-pw
           MYSQL_DATABASE: test_test_db
     working_directory: ~/repo
@@ -922,9 +924,9 @@ jobs:
           environment:
             SECRET_KEY: 123456-TEST
             MYSQL_HOST: 127.0.0.1
-            MYSQL_DB_NAME: test_test_db
+            MYSQL_DATABASE: test_test_db
             MYSQL_USER: root
-            MYSQL_PWD: ci-check-pw
+            MYSQL_PASSWORD: ci-check-pw
           command: |
             # The MySQL service container starts beside the steps, not before
             # them: wait for its port before Django opens a connection.
@@ -978,15 +980,12 @@ jobs:
                   cat > ls.env.ci \<<EOF
                   SECRET_KEY=ci-test-secret-key-not-for-production
                   MYSQL_HOST=db
-                  # base.py (and the app) read these names...
-                  MYSQL_DB_NAME=ci_test_db
-                  MYSQL_USER=ci_test_user
-                  MYSQL_PWD=ci_test_password
-                  MYSQL_ROOT_PASSWORD=ci_test_root_pw
-                  # ...while the mariadb image's own entrypoint creates the DB/user
-                  # from the standard MYSQL_DATABASE/MYSQL_PASSWORD names.
+                  # The app and the mariadb image entrypoint read the same
+                  # canonical names; one pair is enough for both.
                   MYSQL_DATABASE=ci_test_db
+                  MYSQL_USER=ci_test_user
                   MYSQL_PASSWORD=ci_test_password
+                  MYSQL_ROOT_PASSWORD=ci_test_root_pw
                   DEBUG=False
                   EOF
                   cat > dba.env \<<EOF
