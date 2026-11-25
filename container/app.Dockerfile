@@ -42,6 +42,9 @@ LABEL org.opencontainers.image.title="LeagueSphere backend" \
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# Commit SHA of the source baked into the image, reported by /health/version/.
+ARG GIT_SHA=unknown
+ENV LEAGUESPHERE_GIT_SHA=${GIT_SHA}
 ARG APP_USER="django"
 ARG APP_DIR="/app"
 

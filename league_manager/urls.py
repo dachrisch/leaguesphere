@@ -60,6 +60,18 @@ class HealthCheckView(View):
         return JsonResponse({"status": "healthy", "maintenance_mode": maintenance_active})
 
 
+class HealthVersionView(View):
+    """Report the commit SHA baked into this image.
+
+    The Phase 0c equivalence harness compares `/health/version/` on the ref
+    and cand deployments before trusting a report: a cand that silently kept
+    the old image would otherwise look "equivalent".
+    """
+
+    def get(self, request):
+        return JsonResponse({"sha": getattr(settings, "BUILD_SHA", "unknown")})
+
+
 from league_manager.views import (
     ClearCacheView,
     facts_json_view,
@@ -189,6 +201,7 @@ urlpatterns = [
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path("accounts/", include("accounts.urls")),
     path(r"health/", HealthCheckView.as_view()),
+    path(r"health/version/", HealthVersionView.as_view(), name="health-version"),
     # Liveness for the separate SSE worker (see deployed/docker-compose*.yaml).
     path(
         r"health/stream/",
