@@ -1,0 +1,47 @@
+# gamedays dependency boundary allowlist (Phase 0a, dachrisch/leaguesphere#2536).
+#
+# One entry per line: <repo-relative path>|<normalised import statement>
+# followed by an optional "  # <tag>".
+#
+# gamedays may not import these consumer apps:
+#   league_table, gameday_designer, officials, passcheck, liveticker
+# gameevents is allowed by decision (projector boundary): it is reported
+# but never listed here, so this file can only shrink.
+#
+# Stale entries fail the check: when Phase 1 inverts an import, delete the
+# entry in the same change instead of letting the list grow back.
+#
+# Kept by decision, not modelled here (string FK references, not imports):
+#   gamedays/models.py: Gameinfo.league_group -> "league_table.LeagueGroup"
+#   gamedays/models.py: Gameinfo.official -> "officials.Official"
+gamedays/api/game_views.py|from passcheck.models import PasscheckVerification, PlayerlistGameday  # Phase 1 — API context
+gamedays/api/snapshot.py|from league_table.api.etag import standing_state_parts  # Phase 1 — API context
+gamedays/api/snapshot.py|from league_table.api.standings import build_standings  # Phase 1 — API context
+gamedays/api/snapshot.py|from league_table.models import LeagueSeasonConfig  # Phase 1 — API context
+gamedays/api/snapshot.py|from liveticker.service.liveticker_service import LivetickerService  # Phase 1 — API context
+gamedays/api/views.py|from officials.service.game_official_licenses import resolve_current_licenses  # Phase 1 — API context
+gamedays/management/schedule_manager.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
+gamedays/service/gameday_migration_service.py|from gameday_designer.models import TemplateSlot, TemplateUpdateRule  # Phase 1 — service inversion
+gamedays/service/model_statistics_wrapper.py|from league_table.models import LeagueSeasonConfig  # Phase 1 — service inversion
+gamedays/service/model_statistics_wrapper.py|from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER  # Phase 1 — service inversion
+gamedays/service/model_statistics_wrapper.py|from passcheck.models import PlayerlistGameday  # Phase 1 — service inversion
+gamedays/service/model_wrapper.py|from league_table.models import LeagueRuleset, LeagueSeasonConfig  # Phase 1 — service inversion
+gamedays/service/model_wrapper.py|from league_table.service.datatypes import LeagueConfig, LeagueConfigRuleset  # Phase 1 — service inversion
+gamedays/service/model_wrapper.py|from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER  # Phase 1 — service inversion
+gamedays/service/model_wrapper.py|from league_table.service.ranking.engine import FinalRankingEngine, TieBreakerEngine  # Phase 1 — service inversion
+gamedays/service/model_wrapper.py|from passcheck.models import PasscheckVerification, PlayerlistGameday  # Phase 1 — service inversion
+gamedays/service/placeholder_service.py|from gameday_designer.models import ScheduleTemplate, TemplateApplication, TemplateSlot  # Phase 1 — service inversion
+gamedays/service/schedule_resolution_service.py|from gameday_designer.models import TemplateUpdateRule  # Phase 1 — service inversion
+gamedays/service/signals.py|from gameday_designer.models import TemplateApplication  # Phase 1 — scheduling registry
+gamedays/service/wrapper/gameinfo_wrapper.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
+gamedays/views.py|from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE  # Phase 1 — detail context
+gamedays/views.py|from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting  # Phase 1 — detail context
+gamedays/views.py|from league_table.service.leaguetable_repository import LeagueTableRepository  # Phase 1 — detail context
+gamedays/views.py|from league_table.service.leaguetable_settings import TOP_N_PLAYER  # Phase 1 — detail context
+gamedays/views.py|from liveticker.service.today_status import today_statuses  # Phase 1 — detail context
+gamedays/views.py|from liveticker.urls import gameday_ticker_url  # Phase 1 — detail context
+gamedays/views.py|from officials.service.signup_service import OfficialSignupService  # Phase 1 — detail context
+gamedays/views.py|from officials.urls import OFFICIALS_PROFILE_LICENSE  # Phase 1 — detail context
+gamedays/views.py|from officials.urls import OFFICIALS_SIGN_UP_LIST  # Phase 1 — detail context
+gamedays/wizard/gameday_format.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
+gamedays/wizard/gameinfo.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
