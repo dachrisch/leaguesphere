@@ -18,7 +18,15 @@ _OWNERS: dict[str, str] = {}
 
 # Single source of truth for the startup system check. A layer adds a hook
 # here only when the consumer that implements it exists.
-HOOK_REQUIREMENTS: dict[str, tuple[str, ...]] = {}
+HOOK_REQUIREMENTS: dict[str, tuple[str, ...]] = {
+    "gameday_designer": (
+        "template_for_gameday",
+        "slots_for_template",
+        "update_rules_for_template",
+        "update_rule_for_slot",
+        "has_template_application",
+    ),
+}
 
 
 def owner_for_hook(name):

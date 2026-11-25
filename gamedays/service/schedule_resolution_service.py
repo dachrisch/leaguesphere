@@ -1,9 +1,7 @@
 import logging
 
-from gameday_designer.models import (
-    TemplateUpdateRule,
-)
 from gamedays.models import Team, Gameinfo, Gameresult, Gameday
+from gamedays.service import designer_hooks
 from gamedays.service.model_wrapper import GamedayModelWrapper
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 
@@ -27,14 +25,14 @@ class GamedayScheduleResolutionService:
             return
 
         # Find rules that depend on the stage that just finished
-        rules = TemplateUpdateRule.objects.filter(
-            template=self.template, pre_finished=finished_standing
+        rules = designer_hooks.update_rules_for_template(
+            self.template, pre_finished=finished_standing
         )
 
         for rule in rules:
             self._apply_rule(rule)
 
-    def _apply_rule(self, rule: TemplateUpdateRule):
+    def _apply_rule(self, rule):
         # Find the Gameinfo object in this gameday that matches the slot
         # We match by field, stage, and standing
         target_gis = Gameinfo.objects.filter(

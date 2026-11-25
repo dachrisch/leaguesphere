@@ -18,8 +18,8 @@ def slots_for_template(template):
     return get("slots_for_template")(template)
 
 
-def update_rules_for_template(template):
-    return get("update_rules_for_template")(template)
+def update_rules_for_template(template, pre_finished=None):
+    return get("update_rules_for_template")(template, pre_finished=pre_finished)
 
 
 def update_rule_for_slot(slot):

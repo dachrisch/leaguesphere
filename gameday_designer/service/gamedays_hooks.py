@@ -52,8 +52,11 @@ def slots_for_template(template):
     )
 
 
-def update_rules_for_template(template):
-    return list(TemplateUpdateRule.objects.filter(template=template))
+def update_rules_for_template(template, pre_finished=None):
+    queryset = TemplateUpdateRule.objects.filter(template=template)
+    if pre_finished is not None:
+        queryset = queryset.filter(pre_finished=pre_finished)
+    return list(queryset)
 
 
 def update_rule_for_slot(slot):
@@ -82,12 +85,8 @@ def register():
     registry.register(
         "update_rules_for_template", update_rules_for_template, "gameday_designer"
     )
-    registry.register(
-        "update_rule_for_slot", update_rule_for_slot, "gameday_designer"
-    )
+    registry.register("update_rule_for_slot", update_rule_for_slot, "gameday_designer")
     registry.register(
         "has_template_application", has_template_application, "gameday_designer"
     )
-    register_strategy(
-        10, "designer-template", strategy_applies, strategy_resolve
-    )
+    register_strategy(10, "designer-template", strategy_applies, strategy_resolve)
