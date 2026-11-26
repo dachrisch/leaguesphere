@@ -17,14 +17,5 @@
 gamedays/api/game_views.py|from passcheck.models import PasscheckVerification, PlayerlistGameday  # Phase 1 — API context
 gamedays/api/views.py|from officials.service.game_official_licenses import resolve_current_licenses  # Phase 1 — API context
 gamedays/service/wrapper/gameinfo_wrapper.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
-gamedays/views.py|from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE  # Phase 1 — detail context
-gamedays/views.py|from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting  # Phase 1 — detail context
-gamedays/views.py|from league_table.service.leaguetable_repository import LeagueTableRepository  # Phase 1 — detail context
-gamedays/views.py|from league_table.service.leaguetable_settings import TOP_N_PLAYER  # Phase 1 — detail context
-gamedays/views.py|from liveticker.service.today_status import today_statuses  # Phase 1 — detail context
-gamedays/views.py|from liveticker.urls import gameday_ticker_url  # Phase 1 — detail context
-gamedays/views.py|from officials.service.signup_service import OfficialSignupService  # Phase 1 — detail context
-gamedays/views.py|from officials.urls import OFFICIALS_PROFILE_LICENSE  # Phase 1 — detail context
-gamedays/views.py|from officials.urls import OFFICIALS_SIGN_UP_LIST  # Phase 1 — detail context
 gamedays/wizard/gameday_format.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
 gamedays/wizard/gameinfo.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion

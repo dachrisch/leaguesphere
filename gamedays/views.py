@@ -25,13 +25,7 @@ from django.views.generic import (
 )
 from formtools.wizard.views import SessionWizardView
 
-from league_manager.utils.url_service import UrlService
-from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE
-from league_table.models import LeagueSeasonConfig, OverrideOfficialGamedaySetting
-from league_table.service.leaguetable_repository import LeagueTableRepository
-from league_table.service.leaguetable_settings import TOP_N_PLAYER
-from liveticker.service.today_status import today_statuses
-from liveticker.urls import gameday_ticker_url
+from gamedays.service import detail_context, league_table_hooks, liveticker_hooks
 from .constants import (
     LEAGUE_GAMEDAY_DETAIL,
     LEAGUE_GAMEDAY_LIST_AND_YEAR,
@@ -119,7 +113,7 @@ class GamedayListView(View):
         )
         # One shared query (cached for 30 s) covers every row: a gameday with a
         # ticker status today must never cost a query of its own.
-        today_status_by_gameday = today_statuses()
+        today_status_by_gameday = liveticker_hooks.today_statuses()
         gameday_rows = list(gamedays_filtered_by_league)
         for gameday in gameday_rows:
             gameday.today_status = today_status_by_gameday.get(gameday.pk)
@@ -151,12 +145,14 @@ class GamedayLeagueStatisticView(TemplateView):
         context["season_year_league_pattern"] = LEAGUE_GAMEDAY_LIST_AND_YEAR_AND_LEAGUE
         context = {**context, **kwargs}
 
-        try:
-            config = LeagueSeasonConfig.objects.get(
-                league__name=self.kwargs["league"], season__name=self.kwargs["season"]
-            ).get_season_statistic_settings()
-        except LeagueSeasonConfig.DoesNotExist as e:
-            config = dict()
+        season_config = league_table_hooks.season_config(
+            self.kwargs["league"], self.kwargs["season"]
+        )
+        config = (
+            league_table_hooks.season_statistic_settings(season_config)
+            if season_config
+            else dict()
+        )
 
         render_configs = {
             "index": False,
@@ -172,7 +168,7 @@ class GamedayLeagueStatisticView(TemplateView):
         }
 
         lss = LeagueStatisticsService.create(
-            **kwargs, top_n_players=config.get(TOP_N_PLAYER, 10)
+            **kwargs, top_n_players=league_table_hooks.top_n_player(config)
         )
 
         td_table = lss.get_touchdowns_table()
@@ -235,14 +231,6 @@ class GamedayDetailView(DetailView):
             except GamedayMigrationError:
                 context["can_migrate"] = False
 
-        try:
-            config = LeagueSeasonConfig.objects.get(
-                league__name=self.object.league.name,
-                season__name=self.object.season.name,
-            ).get_gameday_statistic_settings()
-        except LeagueSeasonConfig.DoesNotExist as e:
-            config = dict()
-
         render_configs = {
             "index": False,
             "classes": [
@@ -256,73 +244,16 @@ class GamedayDetailView(DetailView):
             "justify": "left",
             "table_id": "schedule",
         }
-        qualify_table = gs.get_qualify_table()
-        if "officials" in settings.INSTALLED_APPS:
-            show_official_names = False
-            if self.request.user.is_staff:
-                show_official_names = True
-            elif self.request.user.username:
-                try:
-                    show_official_names = self.request.user.username in qualify_table
-                except TypeError:
-                    show_official_names = False
-            from officials.service.signup_service import OfficialSignupService
-
-            officials = OfficialSignupService.get_signed_up_officials(
-                gameday.pk, show_official_names
-            )
-            from officials.urls import OFFICIALS_PROFILE_LICENSE
-
-            url_pattern_official = OFFICIALS_PROFILE_LICENSE
-            from officials.urls import OFFICIALS_SIGN_UP_LIST
-
-            url_pattern_official_signup = UrlService.build_absolute_url(
-                OFFICIALS_SIGN_UP_LIST
-            )
-        else:
-            officials = []
-            url_pattern_official = ""
-            url_pattern_official_signup = ""
-
-        final_table = gs.get_final_table()
-        if apps.is_installed("league_table"):
-            qualify_table = TableContextBuilder.build(qualify_table)
-            final_table = TableContextBuilder.build(final_table)
-            season_slug = gameday.season.slug
-            league_slug = gameday.league.slug
-            if season_slug and league_slug:
-                context["league_table_url"] = reverse(
-                    LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE,
-                    kwargs={"season": season_slug, "league": league_slug},
-                )
-                try:
-                    league_season_config = (
-                        LeagueTableRepository.get_league_season_config_by_slug(
-                            league_slug, season_slug
-                        )
-                    )
-                    try:
-                        # if there is an override then check if officials are allowed
-                        if not league_season_config.overrideofficialgamedaysetting_set.get(
-                            gameday=gameday
-                        ).allow_officials_to_register:
-                            officials = []
-                            url_pattern_official = ""
-                            url_pattern_official_signup = ""
-                    except OverrideOfficialGamedaySetting.DoesNotExist:
-                        # there is obviously no override so use default league configs
-                        if not league_season_config.allow_officials_to_register:
-                            officials = []
-                            url_pattern_official = ""
-                            url_pattern_official_signup = ""
-                except LeagueSeasonConfig.DoesNotExist:
-                    officials = []
-                    url_pattern_official = ""
-                    url_pattern_official_signup = ""
-
-        else:
-            qualify_table = qualify_table.to_html(**render_configs)
-            final_table = final_table.to_html(**render_configs)
+        draft = detail_context.DetailContextDraft(
+            request=self.request,
+            gameday=gameday,
+            gs=gs,
+            context=context,
+            render_configs=render_configs,
+        )
+        draft.qualify_table = gs.get_qualify_table()
+        draft.final_table = gs.get_final_table()
+        detail_context.build(draft)
 
         schedule = gs.get_schedule()
         if not self.request.user.is_staff:
@@ -333,9 +264,9 @@ class GamedayDetailView(DetailView):
             # Only this table keeps escape=False: get_schedule() wraps the
             # officials column in <i> markup and hand-escapes the rest.
             "schedule": schedule.to_html(**{**render_configs, "escape": False}),
-            "qualify_table": qualify_table,
-            "final_table": final_table,
-            "officials": officials,
+            "qualify_table": draft.qualify_table,
+            "final_table": draft.final_table,
+            "officials": draft.officials,
             "offense_table": gs.get_offense_player_statistics_table().to_html(
                 **render_configs
             ),
@@ -346,10 +277,10 @@ class GamedayDetailView(DetailView):
                 {"description": url.description, "url": url.url}
                 for url in gameday.resourceurl_set.all()
             ],
-            "url_pattern_official": url_pattern_official,
-            "url_pattern_official_signup": url_pattern_official_signup,
-            "url_pattern_liveticker": gameday_ticker_url(gameday),
-            "extended_info": config.get("show_player_names", False),
+            "url_pattern_official": draft.url_pattern_official,
+            "url_pattern_official_signup": draft.url_pattern_official_signup,
+            "url_pattern_liveticker": draft.url_pattern_liveticker,
+            "extended_info": draft.config.get("show_player_names", False),
         }
 
         return context

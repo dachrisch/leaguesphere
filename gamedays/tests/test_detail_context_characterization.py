@@ -25,7 +25,13 @@ class DetailContextCharacterization(TestCase):
         gameday = DBSetup().create_empty_gameday()
         with patch(
             "gamedays.views.settings.INSTALLED_APPS",
-            [app for app in __import__("django.conf", fromlist=["settings"]).settings.INSTALLED_APPS if app != "officials"],
+            [
+                app
+                for app in __import__(
+                    "django.conf", fromlist=["settings"]
+                ).settings.INSTALLED_APPS
+                if app != "officials"
+            ],
         ):
             response = self.client.get(self._url(gameday))
         assert response.status_code == 200

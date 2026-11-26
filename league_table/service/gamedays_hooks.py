@@ -7,9 +7,14 @@ gamedays; ruleset/config/engine resolution lives here.
 from __future__ import annotations
 
 from django.db.models import Q
+from django.urls import reverse
 
-from gamedays.service import registry
+from gamedays.service import detail_context, registry
 from league_table.api.etag import standing_state_parts as _standing_state_parts
+from league_table.constants import (
+    LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE as _TABLE_URL,
+)
+from league_table.service.leaguetable_repository import LeagueTableRepository
 from league_table.api.standings import build_standings as _build_standings
 from league_table.models import LeagueRuleset, LeagueSeasonConfig
 from league_table.service.datatypes import LeagueConfigRuleset
@@ -69,6 +74,7 @@ def top_n_player(settings):
 
 
 def register():
+    detail_context.register_contributor("league_table", 10, detail_contributor)
     for name, implementation in (
         ("season_settings", season_settings),
         ("season_config", season_config),
@@ -103,3 +109,40 @@ def standing_state_parts(configs):
 
 def build_standings(configs):
     return _build_standings(configs)
+
+
+def detail_contributor(draft):
+    from league_table.models import OverrideOfficialGamedaySetting
+
+    gameday = draft.gameday
+    try:
+        draft.config = LeagueSeasonConfig.objects.get(
+            league__name=gameday.league.name, season__name=gameday.season.name
+        ).get_gameday_statistic_settings()
+    except LeagueSeasonConfig.DoesNotExist:
+        draft.config = {}
+
+    from gamedays.service.builders import TableContextBuilder
+
+    draft.qualify_table = TableContextBuilder.build(draft.qualify_table)
+    draft.final_table = TableContextBuilder.build(draft.final_table)
+    season_slug = gameday.season.slug
+    league_slug = gameday.league.slug
+    if season_slug and league_slug:
+        draft.context["league_table_url"] = reverse(
+            _TABLE_URL, kwargs={"season": season_slug, "league": league_slug}
+        )
+        try:
+            config = LeagueTableRepository.get_league_season_config_by_slug(
+                league_slug, season_slug
+            )
+            try:
+                draft.allow_officials_to_register = (
+                    config.overrideofficialgamedaysetting_set.get(
+                        gameday=gameday
+                    ).allow_officials_to_register
+                )
+            except OverrideOfficialGamedaySetting.DoesNotExist:
+                draft.allow_officials_to_register = config.allow_officials_to_register
+        except LeagueSeasonConfig.DoesNotExist:
+            draft.allow_officials_to_register = False
