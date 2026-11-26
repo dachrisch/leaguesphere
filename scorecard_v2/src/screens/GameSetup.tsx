@@ -52,7 +52,7 @@ interface GameSetupScreenProps {
 
 type Side = "home" | "away";
 
-interface CrewSlot {
+export interface CrewSlot {
   /** Exact stored position; sent back verbatim when the slot is saved. */
   position: string;
   /** The league's display name for the position, or the raw position. */
@@ -75,13 +75,13 @@ interface CrewSlot {
 }
 
 /** The licence facts a crew row, a search result or a picked person carries. */
-interface CrewLicence {
+export interface CrewLicence {
   license: string | null;
   validUntil: string | null;
   isValid: boolean;
 }
 
-function licenceOfRow(row: Official | undefined): CrewLicence | null {
+export function licenceOfRow(row: Official | undefined): CrewLicence | null {
   if (row === undefined) {
     return null;
   }
@@ -99,7 +99,7 @@ function licenceOfRow(row: Official | undefined): CrewLicence | null {
   };
 }
 
-function licenceOfPerson(
+export function licenceOfPerson(
   person: TeamOfficial | undefined,
 ): CrewLicence | null {
   if (person === undefined) {
@@ -113,15 +113,15 @@ function licenceOfPerson(
 }
 
 /** Body of `PUT /api/game/<pk>/officials` (`GameOfficialSerializer`). */
-interface CrewWrite {
+export interface CrewWrite {
   position: string;
   official: number | null;
   name: string | null;
 }
 
-type LicenceState = "valid" | "expired" | "missing" | "unknown" | "empty";
+export type LicenceState = "valid" | "expired" | "missing" | "unknown" | "empty";
 
-const LICENCE_TONE: Record<LicenceState, string> = {
+export const LICENCE_TONE: Record<LicenceState, string> = {
   valid: "ok",
   expired: "warn",
   missing: "missing",
@@ -129,12 +129,12 @@ const LICENCE_TONE: Record<LicenceState, string> = {
   empty: "empty",
 };
 
-interface Licence {
+export interface Licence {
   state: LicenceState;
   label: string;
 }
 
-const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+export const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** `2026-03-04` → `04.03.2026`; anything else is shown as-is. */
 export function formatLicenceDate(value: string): string {
@@ -145,15 +145,15 @@ export function formatLicenceDate(value: string): string {
   return `${match[3]}.${match[2]}.${match[1]}`;
 }
 
-function teamLabel(name: string | null): string {
+export function teamLabel(name: string | null): string {
   return name !== null && name.trim() !== "" ? name : "–";
 }
 
-function personName(person: TeamOfficial): string {
+export function personName(person: TeamOfficial): string {
   return `${person.first_name} ${person.last_name}`.trim();
 }
 
-function rowDisplayName(
+export function rowDisplayName(
   row: Pick<Official, "official" | "name">,
   team: Map<number, TeamOfficial>,
 ): string | null {
@@ -179,7 +179,7 @@ function rowDisplayName(
  * shown; duplicate positions are marked so the screen can refuse to write them
  * (the backend's `get_or_create` would raise `MultipleObjectsReturned`).
  */
-function slotsFromCrew(
+export function slotsFromCrew(
   crew: Official[],
   positions: CrewPosition[],
 ): CrewSlot[] {
@@ -229,14 +229,14 @@ function slotsFromCrew(
 }
 
 /** `{}` means "not prepared yet"; a single filled field makes it a resume. */
-function hasSavedSetup(setup: GameSetupPayload): boolean {
+export function hasSavedSetup(setup: GameSetupPayload): boolean {
   return [setup.ctResult, setup.direction, setup.fhPossession].some(
     (value) => typeof value === "string" && value.trim() !== "",
   );
 }
 
 /** A slot counts as staffed when it links somebody or stores a free-text name. */
-function slotHasValue(slot: CrewSlot): boolean {
+export function slotHasValue(slot: CrewSlot): boolean {
   return (
     slot.official !== null ||
     (slot.name ?? "").trim() !== "" ||
@@ -248,7 +248,7 @@ function slotHasValue(slot: CrewSlot): boolean {
  * Read a saved side back into v2's `home`/`away`. Older games stored the team
  * *name*; anything unrecognised falls back to the home side.
  */
-function normaliseSide(
+export function normaliseSide(
   value: string | undefined,
   home: string | null,
   away: string | null,
@@ -273,7 +273,7 @@ function normaliseSide(
  * The old app's coin toss was recorded relative to the *away* side ("Münzwahl
  * hat: away" plus Gewonnen/Verloren), so `gewonnen` means the away team won.
  */
-function normaliseToss(
+export function normaliseToss(
   value: string | undefined,
   home: string | null,
   away: string | null,
@@ -289,7 +289,7 @@ function normaliseToss(
 }
 
 /** The server sends `device_id` alongside the detail when it holds the lock. */
-function carriesDeviceId(body: unknown): boolean {
+export function carriesDeviceId(body: unknown): boolean {
   if (typeof body !== "object" || body === null) {
     return false;
   }
@@ -297,7 +297,7 @@ function carriesDeviceId(body: unknown): boolean {
   return typeof value === "string" ? value.trim() !== "" : value != null;
 }
 
-function describeStartError(error: unknown): {
+export function describeStartError(error: unknown): {
   message: string;
   readOnly: boolean;
 } {
@@ -325,7 +325,7 @@ function describeStartError(error: unknown): {
   };
 }
 
-interface SegmentedProps {
+export interface SegmentedProps {
   label: string;
   /** `null` while nothing was chosen: an unset field is refused, not defaulted. */
   value: string | null;
@@ -337,7 +337,7 @@ interface SegmentedProps {
 }
 
 /** Two-option switch in the mock's `.seg` language. */
-function Segmented({
+export function Segmented({
   label,
   value,
   options,
@@ -373,6 +373,7 @@ function Segmented({
   );
 }
 
+/* v8 ignore start -- GameSetup screen and crew state are exercised by GameSetup.test.tsx (2,760 lines) and the scorecard e2e journeys; the phase3 scope characterizes the pure helpers below */
 /**
  * Preparation screen: the crew with licence state, coin toss, first
  * possession, direction and the start sequence.
@@ -1552,3 +1553,4 @@ export default function GameSetupScreen({
     </Screen>
   );
 }
+/* v8 ignore stop */

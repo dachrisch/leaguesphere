@@ -11,7 +11,8 @@
     "test:run": "vitest run --coverage",
     "eslint": "eslint ./src",
     "eslint:junit": "eslint ./src --format junit -o /tmp/eslint/js-lint-results-scorecard-v2.xml",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "test:phase3": "vitest run --config vitest.phase3.config.ts --coverage"
   },
   "dependencies": {
     "@fontsource/barlow-condensed": "5.3.0",
