@@ -99,6 +99,7 @@ def run(args):
     cand_sha = baked_sha(cand_sessions["anonymous"])
 
     gamedays = probe_mod.discover(ref_sessions["anonymous"], manifest)
+    gamedays = probe_mod.discover_games(ref_sessions["anonymous"], manifest, gamedays)
     probes = probe_mod.expand_probes(manifest, gamedays)
     ref_results, ref_skipped = probe_mod.run_probes(ref_sessions, manifest, probes)
     cand_results, cand_skipped = probe_mod.run_probes(cand_sessions, manifest, probes)
@@ -118,6 +119,8 @@ def run(args):
         if team_ids:
             context["wizard_team_ids"] = team_ids
         context.update(scenario_mod.discover_template_context(ref_sessions))
+        # The Phase 2 wizard scenario also needs two real team ids.
+        context["team_id"] = scenario_mod.discover_team_id(ref_sessions["anonymous"])
         for name in scenario_mod.SCENARIOS:
             if args.scenarios and name not in args.scenarios:
                 continue
@@ -133,10 +136,9 @@ def run(args):
                 continue
             scenario_runs[name] = sorted(set(ref_run.skipped) | set(cand_run.skipped))
             found = compare_scenario_runs(ref_run, cand_run)
-            if found:
-                scenario_diffs[name] = [
-                    item for step_diffs in found.values() for item in step_diffs
-                ]
+            # Keep the ``<scenario>:<step>`` keys so ``--intended`` can declare
+            # a single deliberate step diff (Phase 2, PROVISIONAL P4).
+            scenario_diffs.update(found)
 
     text = report_mod.render_report(
         run_id=run_id,
@@ -161,7 +163,14 @@ def run(args):
             check=False,
         )
 
-    return 1 if scenario_diffs or _has_unexplained(diffs, args.intended) else 0
+    # Fail on unexplained probe OR scenario diffs; declared scenario diffs are
+    # rendered in the Intended diffs section and do not fail the run.
+    return (
+        1
+        if _has_unexplained(diffs, args.intended)
+        or _has_unexplained(scenario_diffs, args.intended)
+        else 0
+    )
 
 
 def _load_intended(path):

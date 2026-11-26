@@ -61,7 +61,10 @@ def render_report(
     errors,
 ):
     intended_diffs, unexplained = split_intended(diffs, intended)
-    all_diffs = {**unexplained, **scenario_diffs}
+    # Phase 2: scenario diffs are keyed ``<scenario>:<step>`` and may be
+    # declared intended exactly like probe diffs. Unexplained ones fail the run.
+    intended_scenarios, unexplained_scenarios = split_intended(scenario_diffs, intended)
+    all_diffs = {**unexplained, **unexplained_scenarios}
     counts = summarise([item for found in all_diffs.values() for item in found])
 
     lines = [
@@ -86,15 +89,15 @@ def render_report(
         lines.append("")
 
     lines += ["### Unexplained diffs", ""]
-    if unexplained:
-        lines += _format_diffs(unexplained)
+    if all_diffs:
+        lines += _format_diffs(all_diffs)
     else:
         lines.append("None.")
     lines.append("")
 
-    if intended_diffs:
+    if intended_diffs or intended_scenarios:
         lines += ["### Intended diffs (declared by this phase)", ""]
-        lines += _format_diffs(intended_diffs)
+        lines += _format_diffs({**intended_diffs, **intended_scenarios})
         lines.append("")
 
     lines += ["### Write scenarios", ""]

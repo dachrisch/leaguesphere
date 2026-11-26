@@ -20,6 +20,7 @@ PLACEHOLDERS = {
     "gameday_id": "id",
     "season_id": "season",
     "league_id": "league",
+    "game_id": "game_id",
 }
 
 
@@ -65,6 +66,32 @@ def discover(session, manifest):
     payload = response.json()
     results = payload.get(discovery.get("results_key", "results"), payload)
     return results if isinstance(results, list) else []
+
+
+def discover_games(session, manifest, gamedays):
+    """Add one sampled game id to each gameday for the feed probes.
+
+    Reuses the games endpoint already probed by the harness; one extra read
+    per sampled gameday, no new endpoint. A gameday without games keeps
+    ``game_id`` unset, so the placeholder stays literal and never points at a
+    made-up game.
+    """
+    template = manifest.get("game_discovery", {}).get(
+        "path", "/api/gamedays/{gameday_id}/games/"
+    )
+    enriched = []
+    for gameday in gamedays:
+        item = dict(gameday)
+        response = session.request(_fill(template, gameday))
+        if response.status == 200:
+            try:
+                games = response.json()
+            except ValueError:
+                games = []
+            if games and isinstance(games[0], dict) and games[0].get("id") is not None:
+                item["game_id"] = games[0]["id"]
+        enriched.append(item)
+    return enriched
 
 
 def _matches(gameday, where):
@@ -152,7 +179,19 @@ def run_probes(sessions, manifest, probes=None):
         headers = {}
         for key, value in probe.headers.items():
             if value.startswith("@etag:"):
-                source = results.get(value[len("@etag:") :])
+                source_name = value[len("@etag:") :]
+                source = results.get(source_name)
+                if source is None:
+                    # Category-expanded probes are named ``base#category:id``;
+                    # a revalidation probe references the base name.
+                    source = next(
+                        (
+                            result
+                            for name, result in results.items()
+                            if name.startswith(source_name + "#")
+                        ),
+                        None,
+                    )
                 value = source.etag if source else ""
             headers[key] = value
         response = session.request(probe.path, headers=headers)

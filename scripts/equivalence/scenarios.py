@@ -20,6 +20,8 @@ if the coordinator supplies a harness Moodle session.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
+import uuid
 
 import normalise
 
@@ -37,6 +39,8 @@ class Step:
     capture_path: str | None = None
     required_capture: bool = False
     no_redirect: bool = False
+    # "url" captures the gameday id from a wizard redirect (Phase 2).
+    capture_from: str | None = None
 
 
 @dataclass
@@ -355,6 +359,72 @@ def _read_game_id_steps(required=False):
     ]
 
 
+def _shadow_steps():
+    """Setup and the legacy v1 write whose shadow event the feed exposes."""
+
+    return [
+        _gameday_create_step(),
+        *_publish_steps(),
+        *_read_game_id_steps(),
+        Step(
+            name="read-home-team",
+            method="GET",
+            path="/api/gamedays/{gameday_id}/games/",
+            role="anonymous",
+            expect=200,
+            capture="team_id",
+            capture_path="0.results.0.team_id",
+        ),
+        Step(
+            name="write-shadow-event",
+            method="POST",
+            path="/api/gamelog/{game_id}",
+            json={
+                "gameId": "{game_id}",
+                "team": "{team_id}",
+                "event": [{"name": "Touchdown", "player": 7}],
+                "half": 1,
+                "client_id": "{client_id}",
+            },
+            expect=(200, 201),
+        ),
+    ]
+
+
+# A compact legacy schedule: the wizard's ``CUSTOM`` format writes these rows
+# directly, without the canvas publish path the old finalize-legacy scenario
+# reused. The run id tags every created gameday.
+LEGACY_SCHEDULE = {
+    "games": [
+        {
+            "scheduled": "10:00",
+            "field": 1,
+            "stage": "Hauptrunde",
+            "standing": "Gruppe 1",
+        }
+    ]
+}
+
+
+def _legacy_schedule_form():
+    """Turn ``LEGACY_SCHEDULE`` into the wizard's formset payload."""
+
+    form = {
+        "gameinfo_wizard-current_step": "gameinfo-step",
+        "gameinfo-step-TOTAL_FORMS": str(len(LEGACY_SCHEDULE["games"])),
+        "gameinfo-step-INITIAL_FORMS": "0",
+        "gameinfo-step-MIN_NUM_FORMS": "0",
+        "gameinfo-step-MAX_NUM_FORMS": "1000",
+    }
+    for index, game in enumerate(LEGACY_SCHEDULE["games"]):
+        for key, value in game.items():
+            form[f"gameinfo-step-{index}-{key}"] = str(value)
+        form[f"gameinfo-step-{index}-home"] = "{team_id}"
+        form[f"gameinfo-step-{index}-away"] = "{team_id}"
+        form[f"gameinfo-step-{index}-id"] = ""
+    return form
+
+
 SCENARIOS = {
     "designer-publish": [
         _gameday_create_step(),
@@ -532,6 +602,166 @@ SCENARIOS = {
             expect=200,
         ),
     ],
+    "v2-events-write": [
+        _gameday_create_step(),
+        *_publish_steps(),
+        *_read_game_id_steps(),
+        Step(
+            name="write-events",
+            method="POST",
+            path="/api/game/{game_id}/events",
+            json={
+                "events": [
+                    {
+                        "type": "score",
+                        "code": "touchdown",
+                        "side": "home",
+                        "player": 7,
+                        "period": 1,
+                        "client_id": "{client_id}",
+                    }
+                ]
+            },
+            expect=(200, 201),
+        ),
+        Step(
+            name="read-feed",
+            method="GET",
+            path="/api/game/{game_id}/feed",
+            role="anonymous",
+            expect=200,
+        ),
+        Step(
+            name="read-gamelog",
+            method="GET",
+            path="/api/gamelog/{game_id}",
+            role="anonymous",
+            expect=200,
+        ),
+        Step(
+            name="read-liveticker",
+            method="GET",
+            path="/api/liveticker/",
+            role="anonymous",
+            expect=200,
+        ),
+    ],
+    "v1-shadow-write": [
+        *_shadow_steps(),
+        Step(
+            name="read-gamelog",
+            method="GET",
+            path="/api/gamelog/{game_id}",
+            role="anonymous",
+            expect=200,
+        ),
+        Step(
+            name="read-feed",
+            method="GET",
+            path="/api/game/{game_id}/feed",
+            role="anonymous",
+            expect=200,
+        ),
+        Step(
+            name="read-liveticker",
+            method="GET",
+            path="/api/liveticker/",
+            role="anonymous",
+            expect=200,
+        ),
+    ],
+    "reconciliation-flag": [
+        *_shadow_steps(),
+        Step(
+            name="flag-projection",
+            method="DELETE",
+            path="/api/gamelog/{game_id}",
+            json={"sequence": 0},
+            expect=(200, 204),
+        ),
+        Step(
+            name="read-feed",
+            method="GET",
+            path="/api/game/{game_id}/feed",
+            role="anonymous",
+            expect=(409, 200),
+        ),
+        Step(
+            name="read-liveticker",
+            method="GET",
+            path="/api/liveticker/",
+            role="anonymous",
+            expect=200,
+        ),
+    ],
+    "legacy-wizard-finalize": [
+        Step(
+            name="wizard-create-gameday",
+            method="POST",
+            path="/gamedays/gameday/new/",
+            form={
+                "name": "Equivalence {run_id} legacy wizard",
+                "season": "{season_id}",
+                "league": "{league_id}",
+                "date": "2030-02-01",
+                "start": "10:00",
+                "address": "equivalence legacy wizard {run_id}",
+                "action": "gameinfos_create",
+                "urls-TOTAL_FORMS": "0",
+                "urls-INITIAL_FORMS": "0",
+                "urls-MIN_NUM_FORMS": "0",
+                "urls-MAX_NUM_FORMS": "1000",
+            },
+            capture="gameday_id",
+            capture_from="url",
+        ),
+        Step(
+            name="wizard-legacy-json-schedule",
+            method="POST",
+            path="/gamedays/gameday/{gameday_id}/gameinfos/wizard/",
+            form={
+                "gameinfo_wizard-current_step": "field-group-step",
+                "field-group-step-format": "CUSTOM",
+                "field-group-step-number_fields": "1",
+                "field-group-step-number_groups": "1",
+            },
+        ),
+        Step(
+            name="wizard-write-schedule-rows",
+            method="POST",
+            path="/gamedays/gameday/{gameday_id}/gameinfos/wizard/",
+            form=_legacy_schedule_form(),
+        ),
+        Step(
+            name="read-games",
+            method="GET",
+            path="/api/gamedays/{gameday_id}/games/",
+            role="anonymous",
+            expect=200,
+            capture="game_id",
+            capture_path="0.id",
+        ),
+        Step(
+            name="finalize-game",
+            method="PUT",
+            path="/api/game/{game_id}/finalize",
+            json={},
+            expect=(200, 409),
+        ),
+        Step(
+            name="read-gamelog",
+            method="GET",
+            path="/api/gamelog/{game_id}",
+            role="anonymous",
+            expect=200,
+        ),
+        Step(
+            name="read-game-summary",
+            method="GET",
+            path="/api/game/{game_id}/summary",
+            expect=200,
+        ),
+    ],
     "officials-signup": [
         _gameday_create_step(),
         Step(
@@ -574,11 +804,29 @@ def _pluck(payload, path):
     return current
 
 
+def discover_team_id(session):
+    """One throwaway team id for the legacy-wizard schedule form."""
+
+    response = session.request("/api/teams/")
+    if response.status == 200:
+        try:
+            teams = response.json().get("results", [])
+        except ValueError:
+            teams = []
+        if teams:
+            return teams[0].get("id")
+    return None
+
+
 def run_scenario(name, sessions, context, run_id):
     """Run one scenario against one deployment. Returns a ``ScenarioRun``."""
     run = ScenarioRun(name=name, run_id=run_id)
     run.id_tokens[run_id] = "<run-id>"
-    context = {**context, "run_id": run_id}
+    # A run-id-derived UUID keeps client ids deterministic and lets the
+    # normaliser collapse the two sides' different ids.
+    client_id = str(uuid.uuid5(uuid.NAMESPACE_URL, run_id))
+    run.id_tokens[client_id] = "<client-id>"
+    context = {**context, "run_id": run_id, "client_id": client_id}
 
     for step in SCENARIOS[name]:
         role_session = sessions.get(step.role)
@@ -611,6 +859,13 @@ def run_scenario(name, sessions, context, run_id):
             except (IndexError, KeyError, TypeError):
                 value = None
             if value is not None:
+                context[step.capture] = value
+                run.captured[step.capture] = value
+                run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
+        if step.capture and step.capture_from == "url":
+            match = re.search(r"/gamedays/gameday/(\d+)/", response.url)
+            if match:
+                value = int(match.group(1))
                 context[step.capture] = value
                 run.captured[step.capture] = value
                 run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"

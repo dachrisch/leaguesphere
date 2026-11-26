@@ -43,6 +43,13 @@ python3 scripts/equivalence/runner.py \
   credentials in `LS_AGENT_STAFF_*`, `LS_AGENT_TEAM_MANAGER_*`,
   `LS_AGENT_OFFICIAL_*`; without them those probes are reported as *skipped*,
   never faked.
+- Phase 2 adds liveticker HTML/JSON probes, a per-game feed probe and their
+  `If-None-Match` revalidation probes (the SSE `/api/liveticker/stream/`
+  endpoint is deliberately not diffed). Three write scenarios exercise the
+  v2 event write, the legacy v1 shadow write and the reconciliation flag; a
+  fourth creates a gameday through the legacy wizard with a compact legacy
+  JSON schedule and finalises its game. Client ids are run-id-derived UUIDs
+  and normalised.
 - The officials sign-up flow is Moodle-gated (`MOODLE_LOGGED_IN_USER`), so
   with harness accounts the scenario only exercises the guard redirect.
 
@@ -62,8 +69,11 @@ JSON file and passes it with `--intended`:
 {"snapshot-api": ["$.schema_version"]}
 ```
 
-Matching diffs are reported separately as intended; anything else is
-unexplained and fails the run.
+Scenario diffs use the same file with `<scenario>:<step>` keys, e.g.
+`{"v1-shadow-write:read-feed": ["$.events[]"]}`. Matching diffs are reported
+separately as intended; anything else is unexplained and fails the run. The
+revalidation probes assert the 200↔304 contract; literal ETag values stay
+normalised noise.
 
 ## Files
 

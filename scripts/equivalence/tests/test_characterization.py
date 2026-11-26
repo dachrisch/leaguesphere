@@ -26,13 +26,27 @@ from test_runner import routes_for, server_factory, write_manifest  # noqa: E402
 from test_scenarios import CONTEXT  # noqa: E402
 
 GAMEDAYS = [
-    {"id": 11, "season": 3, "league": 7, "status": "PUBLISHED", "has_designer_state": True},
-    {"id": 12, "season": 3, "league": 7, "status": "PUBLISHED", "has_designer_state": True},
+    {
+        "id": 11,
+        "season": 3,
+        "league": 7,
+        "status": "PUBLISHED",
+        "has_designer_state": True,
+    },
+    {
+        "id": 12,
+        "season": 3,
+        "league": 7,
+        "status": "PUBLISHED",
+        "has_designer_state": True,
+    },
 ]
 MANIFEST = {
     "roles": {"anonymous": {}},
     "discovery": {"path": "/api/gamedays/", "results_key": "results"},
-    "categories": [{"name": "designer-template", "where": {"has_designer_state": True}}],
+    "categories": [
+        {"name": "designer-template", "where": {"has_designer_state": True}}
+    ],
     "sample_per_category": 2,
     "probes": [
         {
@@ -96,21 +110,25 @@ def test_characterization_compare_scenario_runs_all_diff_kinds():
     def run(step, status, body):
         return scenarios.StepResult(step, status, body)
 
-    left = SimpleNamespace(as_results=lambda: {
-        "s:status": run("status", 200, {}),
-        "s:json": run("json", 200, {"a": 1}),
-        "s:text": run("text", 200, "<p>a</p>"),
-        "s:type": run("type", 200, 1),
-        "s:same": run("same", 200, {"ok": True}),
-    })
-    right = SimpleNamespace(as_results=lambda: {
-        "s:status": run("status", 201, {}),
-        "s:json": run("json", 200, {"a": 2}),
-        "s:text": run("text", 200, "<p>b</p>"),
-        "s:type": run("type", 200, "1"),
-        "s:same": run("same", 200, {"ok": True}),
-        "s:extra": run("extra", 200, {}),
-    })
+    left = SimpleNamespace(
+        as_results=lambda: {
+            "s:status": run("status", 200, {}),
+            "s:json": run("json", 200, {"a": 1}),
+            "s:text": run("text", 200, "<p>a</p>"),
+            "s:type": run("type", 200, 1),
+            "s:same": run("same", 200, {"ok": True}),
+        }
+    )
+    right = SimpleNamespace(
+        as_results=lambda: {
+            "s:status": run("status", 201, {}),
+            "s:json": run("json", 200, {"a": 2}),
+            "s:text": run("text", 200, "<p>b</p>"),
+            "s:type": run("type", 200, "1"),
+            "s:same": run("same", 200, {"ok": True}),
+            "s:extra": run("extra", 200, {}),
+        }
+    )
 
     found = runner.compare_scenario_runs(left, right)
 
@@ -150,10 +168,14 @@ def test_characterization_probes_diff_every_body_shape():
         {"p": result(200, 1)}, {"p": result(200, "1")}
     )
     assert scalar["p"] == [Diff("$", TYPE)]
-    assert probes.compare_probe_results({"p": result(200, 1)}, {"q": result(200, 1)}) == {}
+    assert (
+        probes.compare_probe_results({"p": result(200, 1)}, {"q": result(200, 1)}) == {}
+    )
 
 
-def test_characterization_scenario_context_and_missing_game(monkeypatch, tmp_path, server_factory):
+def test_characterization_scenario_context_and_missing_game(
+    monkeypatch, tmp_path, server_factory
+):
     assert runner.scenario_context([]) == {}
     assert runner.scenario_context(GAMEDAYS) == {"season_id": 3, "league_id": 7}
 
@@ -172,8 +194,16 @@ def test_characterization_scenario_context_and_missing_game(monkeypatch, tmp_pat
     out = tmp_path / "report.md"
     code = runner.main(
         [
-            "--ref", ref_url, "--cand", cand_url, "--manifest", str(manifest),
-            "--report", str(out), "--scenarios", "designer-publish",
+            "--ref",
+            ref_url,
+            "--cand",
+            cand_url,
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(out),
+            "--scenarios",
+            "designer-publish",
         ]
     )
     assert code == 0
@@ -196,9 +226,16 @@ def test_characterization_scenario_capture_failure_is_tolerated():
         "finalize-game", {"staff": api, "anonymous": api}, CONTEXT, "eq-char-ref"
     )
     assert [step.name for step in run.steps] == [
-        "create-gameday", "save-designer-canvas", "publish-gameday", "read-games",
-        "read-games-home-id", "read-games-away-id", "finalize-game",
-        "read-game-officials", "read-game-summary", "read-gamelog",
+        "create-gameday",
+        "save-designer-canvas",
+        "publish-gameday",
+        "read-games",
+        "read-games-home-id",
+        "read-games-away-id",
+        "finalize-game",
+        "read-game-officials",
+        "read-game-summary",
+        "read-gamelog",
     ]
 
 
@@ -241,8 +278,12 @@ def test_characterization_scenario_context_skips_incomplete_gameday():
 
 
 def test_characterization_equal_scalar_scenario_bodies_are_not_a_diff():
-    left = SimpleNamespace(as_results=lambda: {"s:x": scenarios.StepResult("x", 200, 1)})
-    right = SimpleNamespace(as_results=lambda: {"s:x": scenarios.StepResult("x", 200, 1)})
+    left = SimpleNamespace(
+        as_results=lambda: {"s:x": scenarios.StepResult("x", 200, 1)}
+    )
+    right = SimpleNamespace(
+        as_results=lambda: {"s:x": scenarios.StepResult("x", 200, 1)}
+    )
     assert runner.compare_scenario_runs(left, right) == {}
 
 
@@ -253,14 +294,25 @@ def test_characterization_run_reports_missing_probe_and_comments(
     cand, cand_url = server_factory(routes_for("c"))
     manifest = write_manifest(tmp_path, with_staff=False)
     out = tmp_path / "report.md"
-    monkeypatch.setattr(probe_mod_for_test(), "only_left", lambda left, right: ["ghost"])
+    monkeypatch.setattr(
+        probe_mod_for_test(), "only_left", lambda left, right: ["ghost"]
+    )
     calls = []
     monkeypatch.setattr(runner.subprocess, "run", lambda *a, **k: calls.append(a))
 
     code = runner.main(
         [
-            "--ref", ref_url, "--cand", cand_url, "--manifest", str(manifest),
-            "--report", str(out), "--comment-pr", "123", "--skip-scenarios",
+            "--ref",
+            ref_url,
+            "--cand",
+            cand_url,
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(out),
+            "--comment-pr",
+            "123",
+            "--skip-scenarios",
         ]
     )
 
@@ -273,7 +325,9 @@ def probe_mod_for_test():
     return runner.probe_mod
 
 
-def test_characterization_run_reports_scenario_diff(monkeypatch, server_factory, tmp_path):
+def test_characterization_run_reports_scenario_diff(
+    monkeypatch, server_factory, tmp_path
+):
     ref, ref_url = server_factory(routes_for("r"))
     cand, cand_url = server_factory(routes_for("c"))
     manifest = write_manifest(tmp_path, with_staff=False)
@@ -295,8 +349,16 @@ def test_characterization_run_reports_scenario_diff(monkeypatch, server_factory,
 
     code = runner.main(
         [
-            "--ref", ref_url, "--cand", cand_url, "--manifest", str(manifest),
-            "--report", str(out), "--scenarios", "designer-publish",
+            "--ref",
+            ref_url,
+            "--cand",
+            cand_url,
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(out),
+            "--scenarios",
+            "designer-publish",
         ]
     )
     assert code == 1
