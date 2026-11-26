@@ -76,8 +76,10 @@ class DetailContextCharacterization(TestCase):
     def test_default_config_allow_and_deny(self):
         for allow in (True, False):
             gameday = DBSetup().create_empty_gameday()
-            LeagueSeasonConfig.objects.filter(
+            config, _ = LeagueSeasonConfig.objects.get_or_create(
                 league=gameday.league, season=gameday.season
-            ).update(allow_officials_to_register=allow)
+            )
+            config.allow_officials_to_register = allow
+            config.save()
             response = self.client.get(self._url(gameday))
             assert response.status_code == 200
