@@ -24,6 +24,9 @@ HOOK_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "slots_for_template",
         "update_rules_for_template",
         "update_rule_for_slot",
+        # Required: the designer-template strategy's applies() predicate.
+        # An installed designer without it fails phase1.E001 (no silent
+        # fallback to canvas/legacy for a gameday with a TemplateApplication).
         "has_template_application",
     ),
 }

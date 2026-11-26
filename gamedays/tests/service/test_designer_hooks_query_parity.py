@@ -54,6 +54,12 @@ class DesignerHooksQueryParity(TestCase):
             )
         assert [rule.pk for rule in hooked] == [rule.pk for rule in direct]
 
+    def test_rules_hook_without_pre_finished_keeps_the_old_null_filter(self):
+        """The old query filtered pre_finished=None, which matches no rule."""
+        with self.assertNumQueries(1):
+            hooked = designer_hooks.update_rules_for_template(self.template)
+        assert hooked == []
+
     def test_update_rule_for_slot_matches_direct_query(self):
         with self.assertNumQueries(1):
             hooked = designer_hooks.update_rule_for_slot(self.slot)

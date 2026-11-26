@@ -66,6 +66,26 @@ def test_failing_resolver_is_logged_and_does_not_raise(strategies, caplog):
     assert "RuntimeError" in message
 
 
+def test_failing_applies_is_logged_and_does_not_raise(strategies, caplog):
+    """A raising predicate once aborted finalisation; now it is logged."""
+
+    def explode(instance):
+        raise RuntimeError("predicate boom")
+
+    def must_not_run(instance):
+        pytest.fail("resolver must not run when applies() raises")
+
+    schedule_strategies.register(10, "designer-template", explode, must_not_run)
+
+    with caplog.at_level("ERROR", logger="gamedays.service.schedule_strategies"):
+        assert schedule_strategies.resolve(_instance()) is None
+
+    message = caplog.text
+    assert "designer-template" in message
+    assert "42" in message
+    assert "predicate boom" in message
+
+
 def test_re_registration_replaces_the_same_name(strategies):
     first = MagicMock()
     second = MagicMock()

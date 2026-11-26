@@ -25,12 +25,6 @@ def register(order, name, applies, resolver):
     _STRATEGIES[name] = (order, applies, resolver)
 
 
-def reset():
-    """Reset to the two gamedays-owned built-ins (tests only)."""
-    _STRATEGIES.clear()
-    register_builtins()
-
-
 def register_builtins():
     register(
         20,
@@ -51,11 +45,25 @@ def register_builtins():
 
 
 def resolve(instance):
-    """Run the first applicable strategy; return its name or ``None``."""
+    """Run the first applicable strategy; return its name or ``None``.
+
+    Both the predicate and the resolver run inside the failure guard: the old
+    signal had its existence checks inside the broad ``except`` too, so a DB
+    error or a raising predicate was logged while finalisation succeeded.
+    """
     for name, (order, applies, resolver) in sorted(
         _STRATEGIES.items(), key=lambda item: item[1][0]
     ):
-        if not applies(instance):
+        try:
+            matched = applies(instance)
+        except Exception:
+            logger.exception(
+                "schedule resolution failed strategy=%s gameinfo=%s",
+                name,
+                instance.pk,
+            )
+            return None
+        if not matched:
             continue
         try:
             resolver(instance)

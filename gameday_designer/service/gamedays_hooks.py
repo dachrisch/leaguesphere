@@ -53,10 +53,11 @@ def slots_for_template(template):
 
 
 def update_rules_for_template(template, pre_finished=None):
-    queryset = TemplateUpdateRule.objects.filter(template=template)
-    if pre_finished is not None:
-        queryset = queryset.filter(pre_finished=pre_finished)
-    return list(queryset)
+    # Keep the old meaning of pre_finished=None: the original query filtered
+    # on it (IS NULL), so it matched no rule. All callers pass a real stage.
+    return list(
+        TemplateUpdateRule.objects.filter(template=template, pre_finished=pre_finished)
+    )
 
 
 def update_rule_for_slot(slot):
@@ -68,7 +69,9 @@ def has_template_application(gameday):
 
 
 def strategy_applies(instance):
-    return has_template_application(instance.gameday)
+    # The predicate is a required hook, so an installed designer without it
+    # fails phase1.E001 at check time and fails loudly here at call time.
+    return registry.get("has_template_application")(instance.gameday)
 
 
 def strategy_resolve(instance):
