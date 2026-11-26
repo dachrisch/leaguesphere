@@ -389,6 +389,18 @@ jobs:
                 paths: "tests/ scripts/tests/ scripts/equivalence/tests/"
                 junit: "test-results-cross.xml"
                 cov_flag: "python-cross"
+            - run:
+                name: Frontend journey harness branch gate (python-cross)
+                command: |
+                  python3 -m coverage run --rcfile=scripts/equivalence/frontend/.coveragerc \
+                    -m pytest --confcutdir=scripts/equivalence/frontend/tests \
+                    scripts/equivalence/frontend/tests -q
+                  python3 -m coverage json -o coverage-frontend.json
+                  python3 scripts/check_branch_coverage.py \
+                    --coverage coverage-frontend.json --base origin/master \
+                    --root . \
+                    --require-file scripts/equivalence/frontend/capture.py \
+                    --require-file scripts/equivalence/frontend/runner.py
 
   scorecard_js:
     parameters:

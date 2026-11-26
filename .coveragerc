@@ -2,6 +2,8 @@
 [run]
 source = .
 branch = True
+# Phase 3 frontend harness is covered by its own pytest run and branch gate
+# (scripts/equivalence/frontend/README.md), not by the Python shards.
 omit =
    *venv/*
    *venv/bin/*
@@ -19,6 +21,9 @@ omit =
    */asgi.py
    */urls.py
 
+   # Phase 3 frontend harness: covered by its own pytest run and branch gate
+   # (see scripts/equivalence/frontend/README.md), not by the Python shards.
+   scripts/equivalence/frontend/*
    *__init__*
    */__pycache__/*
    */site-packages/*

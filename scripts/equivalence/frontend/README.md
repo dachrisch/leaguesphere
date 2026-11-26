@@ -81,7 +81,7 @@ DB and see each other's rows by design.
 ```bash
 python3 -m pytest --confcutdir=scripts/equivalence/frontend/tests \
   scripts/equivalence/frontend/tests -q
-python3 -m coverage run --branch --source=scripts/equivalence/frontend \
+python3 -m coverage run --rcfile=scripts/equivalence/frontend/.coveragerc \
   -m pytest --confcutdir=scripts/equivalence/frontend/tests \
   scripts/equivalence/frontend/tests -q
 python3 -m coverage json -o coverage-frontend.json
