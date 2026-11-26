@@ -55,7 +55,6 @@ import ScoreHeader, { isPossessing } from "../components/ScoreHeader";
 import { directionFromWire } from "../components/DirectionText";
 import GameInfo from "../components/GameInfo";
 import SnapshotHint from "../components/SnapshotHint";
-import StrandedEntries from "../components/StrandedEntries";
 import SyncBadge, { pauseReason, SyncDetails } from "../components/SyncBadge";
 import {
   ArrowRight,
@@ -71,7 +70,7 @@ import {
   SwapArrows,
   User,
 } from "../components/icons";
-import MoreSheet, { type MoreMode } from "../components/sheets/MoreSheet";
+import MoreSheet from "../components/sheets/MoreSheet";
 import SpielzugSheet, {
   type SpielzugPick,
 } from "../components/sheets/SpielzugSheet";
@@ -87,10 +86,7 @@ import JerseyPicker from "../components/JerseyPicker";
 import QuarterbackPick from "../components/QuarterbackPick";
 import ChallengeSheet from "../components/sheets/ChallengeSheet";
 import FieldPositionSheet from "../components/sheets/FieldPositionSheet";
-import PlaySheet, {
-  type PlayResult,
-  type PlayType,
-} from "../components/sheets/PlaySheet";
+import PlaySheet from "../components/sheets/PlaySheet";
 import EditSheet from "../components/sheets/EditSheet";
 import Sheet from "../components/sheets/Sheet";
 import { errorMessage, IgnoredWrite } from "../components/sheets/errors";
@@ -114,10 +110,33 @@ import {
   undoneTouchdown,
 } from "../session/possessionUndo";
 import { eventOfRow } from "../session/events";
-import { isStranded, strandedNotice } from "../session/stranded";
-import { useSyncStatus, type SyncStatus } from "../session/useSyncStatus";
+import { isStranded } from "../session/stranded";
+import { useSyncStatus } from "../session/useSyncStatus";
 import { useArmed } from "./useArmed";
 import { useTrackingShortcuts } from "./useTrackingShortcuts";
+export {
+  describeSaved,
+  flipsPossession,
+  secondHalfPossession,
+  trackingSubtitle,
+  trackingTitle,
+  writeTeam,
+} from "./tracking-flow/logic";
+export { SyncStrip } from "./tracking-flow/SyncStrip";
+import { SyncStrip } from "./tracking-flow/SyncStrip";
+import {
+  ONE_TAP_EVENT,
+  addsJerseyLater,
+  describeSaved,
+  flipsPossession,
+  secondHalfPossession,
+  trackingSubtitle,
+  trackingTitle,
+  writeTeam,
+  type JerseyLater,
+  type SheetState,
+  type Side,
+} from "./tracking-flow/logic";
 
 interface TrackingScreenProps {
   game: Game;
@@ -145,203 +164,6 @@ interface TrackingScreenProps {
   onLogout?: () => void;
 }
 
-type Side = RosterPlayer["side"];
-
-/** The open sheet: the touchdown entry, a series/time entry, or a more event. */
-type SheetState =
-  | { kind: "touchdown" }
-  | { kind: "play"; type?: PlayType; result?: PlayResult }
-  | { kind: "challenge" }
-  | { kind: "fieldpos" }
-  | { kind: "series"; mode: SeriesMode }
-  | { kind: "penalty" }
-  | { kind: "more"; mode: MoreMode }
-  | { kind: "quarterback" }
-  | { kind: "spielzug" };
-
-/** The log's event name for each one-tap entry, to find the row it wrote. */
-const ONE_TAP_EVENT: Partial<Record<SeriesMode, string>> = {
-  first: "First Down",
-  turnover: "Turnover",
-  interception: "Interception",
-};
-
-/**
- * One-tap entries whose jersey is optional: they save on the first tap and
- * their tile offers "Nr. ergänzen" for the second. A Turnover names nobody.
- */
-type JerseyLater = "first" | "interception";
-
-function addsJerseyLater(mode: SeriesMode): mode is JerseyLater {
-  return mode === "first" || mode === "interception";
-}
-
-/**
- * Header title: the field and the round, the two facts an official needs to be
- * sure they opened the right game. `standing` stands in when a game carries no
- * stage (designer-built rows often only have the bracket label).
- */
-export function trackingTitle(game: Game): string {
-  const stage = game.stage.trim() || game.standing.trim();
-  return stage === "" ? `Feld ${game.field}` : `Feld ${game.field} · ${stage}`;
-}
-
-/** Header context: gameday and league, each part optional. */
-export function trackingSubtitle(
-  gamedayName?: string,
-  leagueLabel?: string,
-): string | undefined {
-  const parts = [gamedayName?.trim(), leagueLabel?.trim()].filter(
-    (part): part is string => part !== undefined && part !== "",
-  );
-  return parts.length === 0 ? undefined : parts.join(" · ");
-}
-
-const CONFIRMATION: Record<string, string> = {
-  Touchdown: "Touchdown gespeichert",
-  "1-Extra-Punkt": "Extrapunkt gespeichert",
-  "2-Extra-Punkte": "2 Extrapunkte gespeichert",
-  "First Down": "1st Down gespeichert",
-  Turnover: "Turnover gespeichert",
-  Interception: "Interception gespeichert",
-  Spielzeit: "Spielzeit gespeichert",
-  Auszeit: "Auszeit gespeichert",
-  Strafe: "Strafe gespeichert",
-  "Safety (+1)": "Safety gespeichert",
-  "Safety (+2)": "Safety gespeichert",
-  Overtime: "Overtime gespeichert",
-  Pass: "Pass gespeichert",
-  "Pass unvollständig": "Pass gespeichert",
-  Run: "Run gespeichert",
-  Sack: "Sack gespeichert",
-  Challenge: "Challenge gespeichert",
-  Feldposition: "Feldposition gespeichert",
-  "Overtime starten": "Overtime gestartet",
-};
-
-/**
- * Events after which the ball stays where it is.
- *
- * Everything else hands the ball to the other team — a turnover, an
- * interception, a safety and an overtime score all kick off again. v1 also
- * flipped on an `Auszeit`, which was a bug: a timeout is called by the team in
- * possession and does not change it. A touchdown is *not* a ball change any
- * more: the try belongs to the scoring team, so only the try's result flips.
- * A mixed write group (a play and its Turnover row) flips as soon as one of
- * its rows does.
- */
-const KEEP_POSSESSION = new Set([
-  "Strafe",
-  "Spielzeit",
-  "Auszeit",
-  "First Down",
-  // A scrimmage play is the snap itself: the ball stays where it is.
-  "Pass",
-  "Pass unvollständig",
-  "Run",
-  "Sack",
-  "Challenge",
-  "Feldposition",
-  "Overtime starten",
-  // A touchdown keeps the ball: the try belongs to the scoring team, and the
-  // flip is written when the try ends (+1/+2, a miss, a defensive score).
-  "Touchdown",
-]);
-
-/** Whether a successful write hands the ball to the other team. */
-export function flipsPossession(events: GameLogEventInput[]): boolean {
-  // True as soon as **one** entry hands the ball over: a failed fourth down
-  // writes the play and its Turnover row in one submission, and that mixed
-  // submission must flip even though the play alone would keep the ball.
-  // A legacy touchdown+conversion submission flips on its conversion.
-  return events.some((event) => !KEEP_POSSESSION.has(event.name));
-}
-
-/**
- * Read a stored first possession back into a side. v2 writes `home`/`away`,
- * the old app wrote the team name, and `{}` means "no setup".
- */
-function setupSide(
-  value: string | undefined,
-  home: string | null,
-  away: string | null,
-): Side | null {
-  const token = (value ?? "").trim().toLowerCase();
-  if (token === "") {
-    return null;
-  }
-  if (token === "home") {
-    return "home";
-  }
-  if (token === "away") {
-    return "away";
-  }
-  if (home !== null && token === home.trim().toLowerCase()) {
-    return "home";
-  }
-  if (away !== null && token === away.trim().toLowerCase()) {
-    return "away";
-  }
-  return null;
-}
-
-/**
- * The team that starts the second half: the side that did **not** receive the
- * opening kickoff, exactly like v1 (`Details.handleHalftime` flips
- * `gameSetup.fhPossession`, not the current possession).
- *
- * Returns `null` when the setup carries no usable first possession — the caller
- * then falls back to handing the ball to the other team.
- */
-export function secondHalfPossession(
-  setup: GameSetup | null | undefined,
-  home: string | null,
-  away: string | null,
-): string | null {
-  const first = setupSide(setup?.fhPossession, home, away);
-  if (first === null) {
-    return null;
-  }
-  return first === "home" ? away : home;
-}
-
-/**
- * The team a submission is recorded for.
- *
- * Everything is credited to the possessing team, except an interception: the
- * defense statistics read the row's team as the team that made the play, and
- * v1 records it for the opponent. Sending the passer would credit every
- * interception to the wrong side.
- *
- * Throws when the write must not happen at all, so the calling sheet keeps its
- * state and shows why.
- */
-export function writeTeam(
-  events: GameLogEventInput[],
-  possession: string | null,
-  opponent: string | null,
-): string {
-  const intercepts = events.some((event) => event.name === "Interception");
-  const team = intercepts ? opponent : possession;
-  if (possession === null || team === null) {
-    throw new IgnoredWrite("Kein Ballbesitz – bitte Team wählen.");
-  }
-  return team;
-}
-
-/** Short confirmation after a write, with the jersey or time it recorded. */
-export function describeSaved(events: GameLogEventInput[]): string {
-  const [first] = events;
-  if (first === undefined) {
-    return "Eintrag gespeichert";
-  }
-  const label = CONFIRMATION[first.name] ?? `${first.name} gespeichert`;
-  if (first.input !== undefined) {
-    return `${label} · ${first.input}`;
-  }
-  return first.player === undefined ? label : `${label} · #${first.player}`;
-}
-
 /**
  * Live tracking shell: score header, possession switch, the action block, the
  * event log and undo.
@@ -359,150 +181,6 @@ export function describeSaved(events: GameLogEventInput[]): string {
  * the touchdown sheet falls back to a numeric jersey field instead of
  * blocking the game.
  */
-/**
- * The one place the screen talks about transmission: read-only (another
- * device, an expired session), offline with what is waiting, sending, or
- * "Alles gesendet" for a moment after the queue drained. The app-bar chip
- * only carries the short state, so nothing is said twice.
- */
-export function SyncStrip({
-  status,
-  drained,
-  onResume,
-  serverLog,
-  deviceLog,
-  canRelease = false,
-  onTakeOver,
-}: {
-  status: SyncStatus;
-  drained: boolean;
-  onResume: () => void;
-  /** The official log and the device's optimistic one (stranded note). */
-  serverLog: GameLog;
-  deviceLog: GameLog;
-  /** Staff: offer "Spiel übernehmen" for a game another device holds. */
-  canRelease?: boolean;
-  onTakeOver?: () => Promise<void>;
-}) {
-  // Taking a game over locks the other device out: the button asks once more.
-  const { armed, arm, disarm } = useArmed<"takeover">();
-  const confirming = armed === "takeover";
-  const [takingOver, setTakingOver] = useState(false);
-  const [takeOverError, setTakeOverError] = useState<string | null>(null);
-  const waiting =
-    status.pending === 1
-      ? "1 Eintrag noch nicht übertragen"
-      : `${status.pending} Einträge noch nicht übertragen`;
-  if (status.paused === "device" || status.paused === "auth") {
-    return (
-      <div aria-label="Übertragung" className="syncstrip syncstrip-stop" role="status">
-        <p className="syncstrip-text">
-          {status.paused === "device"
-            ? "Nur lesen – das Spiel läuft auf einem anderen Gerät."
-            : "Schreiben gesperrt – bitte neu anmelden."}
-          {status.paused === "device" && status.pending > 0 ? (
-            <span className="syncstrip-sub syncstranded-head">
-              {strandedNotice(status.pending)}
-            </span>
-          ) : null}
-          {status.paused === "device" && confirming ? (
-            <span className="syncstrip-sub">
-              Das andere Gerät kann danach nicht mehr schreiben. Nur
-              übernehmen, wenn es ausgefallen ist.
-            </span>
-          ) : status.paused === "device" && !canRelease ? (
-            <span className="syncstrip-sub">
-              Die Turnierleitung kann die Gerätesperre aufheben.
-            </span>
-          ) : null}
-          {takeOverError === null ? null : (
-            <span className="syncstrip-sub" role="alert">
-              {takeOverError}
-            </span>
-          )}
-        </p>
-        {status.paused === "device" && status.pending > 0 ? (
-          <StrandedEntries
-            deviceLog={deviceLog}
-            serverLog={serverLog}
-            status={status}
-          />
-        ) : null}
-        {status.paused === "device" && canRelease && onTakeOver !== undefined ? (
-          <span className="syncstrip-actions">
-            <button className="syncstrip-btn" onClick={onResume} type="button">
-              Erneut prüfen
-            </button>
-            <button
-              className={
-                confirming
-                  ? "syncstrip-btn syncstrip-btn-strong is-armed"
-                  : "syncstrip-btn"
-              }
-              disabled={takingOver}
-              onClick={() => {
-                if (!confirming) {
-                  arm("takeover");
-                  return;
-                }
-                disarm();
-                setTakingOver(true);
-                setTakeOverError(null);
-                onTakeOver()
-                  .catch((failure: unknown) =>
-                    setTakeOverError(
-                      errorMessage(
-                        failure,
-                        "Übernehmen hat nicht geklappt. Bitte erneut versuchen.",
-                      ),
-                    ),
-                  )
-                  .finally(() => setTakingOver(false));
-              }}
-              type="button"
-            >
-              {takingOver
-                ? "Übernehmen …"
-                : confirming
-                  ? "Übernehmen"
-                  : "Spiel übernehmen"}
-            </button>
-          </span>
-        ) : (
-          <button className="syncstrip-btn" onClick={onResume} type="button">
-            Erneut prüfen
-          </button>
-        )}
-      </div>
-    );
-  }
-  if (status.paused === "offline" || !status.online) {
-    return (
-      <div aria-label="Übertragung" className="syncstrip syncstrip-off" role="status">
-        <p className="syncstrip-text">
-          Offline ·{" "}
-          {status.pending > 0 ? waiting : "Einträge werden hier gespeichert"}
-        </p>
-      </div>
-    );
-  }
-  if (status.pending > 0) {
-    return (
-      <div aria-label="Übertragung" className="syncstrip syncstrip-wait" role="status">
-        <p className="syncstrip-text">Spielstand vorläufig · {waiting}</p>
-      </div>
-    );
-  }
-  if (drained) {
-    return (
-      <div aria-label="Übertragung" className="syncstrip syncstrip-ok" role="status">
-        <p className="syncstrip-text">✓ Alles gesendet</p>
-      </div>
-    );
-  }
-  return null;
-}
-
 export default function TrackingScreen({
   game,
   initialLog,
