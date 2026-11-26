@@ -59,7 +59,8 @@ def run(context, run_id, credentials):
         locked = fixture.create(view, f"fe-locked-{run_id}", started=True, locked=True)
         games.append(locked)
         locked_tokens = id_tokens(
-            {locked["gameday_id"]: "<entity-1>", locked["game_id"]: "<entity-2>"}, run_id
+            {locked["gameday_id"]: "<entity-1>", locked["game_id"]: "<entity-2>"},
+            run_id,
         )
         run_steps(
             view,
