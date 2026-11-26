@@ -33,9 +33,7 @@ def make_args(**overrides):
     return argparse.Namespace(**values)
 
 
-def make_deps(
-    steps_ref=None, steps_cand=None, skipped=(), journeys=None, errors=()
-):
+def make_deps(steps_ref=None, steps_cand=None, skipped=(), journeys=None, errors=()):
     default_steps = {
         "open": {"requests": [], "dom": "same", "aria": "same"},
         "action": {"requests": [], "dom": "same", "aria": "same"},

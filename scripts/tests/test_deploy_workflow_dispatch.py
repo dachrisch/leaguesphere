@@ -57,3 +57,19 @@ def test_agent_build_pushes_the_selected_tag():
     assert "org.opencontainers.image.revision=${{ steps.ref.outputs.sha }}" in text
     # The build context must be the checked-out ref, not the workflow ref.
     assert "context: ." in text
+
+
+def test_static_proof_pins_the_built_digest_and_named_bundles():
+    text = read_workflow()
+    proof = text.split("Prove the agent frontend serves every built bundle", 1)[1]
+    assert 'image="docker.io/leaguesphere/frontend@${digest}"' in proof
+    assert "steps.build_frontend_ref.outputs.digest" in proof
+    assert "steps.build_frontend_candidate.outputs.digest" in proof
+    for bundle in (
+        "scorecard_v2/js/scorecard_v2.js",
+        "gameday_designer/js/index.js",
+        "passcheck/js/passcheck.js",
+        "liveticker/js/liveticker.js",
+    ):
+        assert bundle in proof
+    assert "find " not in proof  # an arbitrary .js chunk is not proof

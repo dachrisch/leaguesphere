@@ -189,4 +189,6 @@ def test_compare_steps_reports_line_numbers_and_optional_state():
     assert Diff("$.aria:line 1", "line") in diffs["tracking:step"]
     assert Diff("$.absent[]", "length") in diffs["tracking:step"]
     # Requests are structural; only DOM/ARIA text is diffed by line.
-    assert not any(item.path.startswith("$.requests") for item in diffs["tracking:step"])
+    assert not any(
+        item.path.startswith("$.requests") for item in diffs["tracking:step"]
+    )

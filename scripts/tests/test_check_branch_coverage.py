@@ -229,9 +229,9 @@ def test_line_outside_any_function_is_ignored(gate, tmp_path, capsys):
 
 def test_frontend_omission_mirrors_coveragerc(gate):
     """The harness omission is documented in .coveragerc, not an ad-hoc rule."""
-    coveragerc = (
-        Path(__file__).resolve().parents[2] / ".coveragerc"
-    ).read_text(encoding="utf-8")
+    coveragerc = (Path(__file__).resolve().parents[2] / ".coveragerc").read_text(
+        encoding="utf-8"
+    )
     assert "scripts/equivalence/frontend/*" in coveragerc
     assert gate.is_omitted("scripts/equivalence/frontend/capture.py")
     assert not gate.is_omitted("scripts/equivalence/probes.py")

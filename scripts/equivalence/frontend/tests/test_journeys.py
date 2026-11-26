@@ -27,6 +27,10 @@ class FakeLocator:
     def count(self):
         return self._count
 
+    def click(self):
+        self.clicked += 1
+
+    @property
     def first(self):
         return self
 

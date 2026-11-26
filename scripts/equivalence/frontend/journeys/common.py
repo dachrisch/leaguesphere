@@ -150,24 +150,61 @@ def run_steps(
     try:
         page.goto(path, wait_until=wait)
         wait_for_quiet(page, capture)
-        steps[f"{prefix}{step_name}"] = capture_step(
-            page, capture=capture, tokens=tokens
-        )
+        opening = capture_step(page, capture=capture, tokens=tokens)
+        opening["absent"] = []
+        steps[f"{prefix}{step_name}"] = opening
         for name, action in actions:
             step_name = name
-            action(page)
+            absent = []
+            action(page, absent)
             wait_for_quiet(page, capture)
-            steps[f"{prefix}{step_name}"] = capture_step(
-                page, capture=capture, tokens=tokens
-            )
+            step = capture_step(page, capture=capture, tokens=tokens)
+            # An optional click that found nothing is recorded, not silently
+            # turned into an identical step; compare_steps diffs this list.
+            step["absent"] = absent
+            steps[f"{prefix}{step_name}"] = step
     except Exception as error:  # a missing selector is a skip, never a fake diff
         skipped.append(f"{path}:{step_name}: {type(error).__name__}")
     finally:
         page.close()
 
 
-def click_if_present(page, selector):
-    """Click a selector when it exists; otherwise leave the state unchanged."""
+def required_click(page, selector):
+    """Click a selector that must exist; absence fails the journey loudly."""
     locator = page.locator(selector)
-    if locator.count():
-        locator.first.click()
+    if not locator.count():
+        raise LookupError(f"required selector absent: {selector}")
+    locator.first.click()
+
+
+def optional_click(page, selector, absent):
+    """Click when present, otherwise record ``absent`` for the step capture.
+
+    Only use this for a state that is genuinely optional (for example a
+    "Fortsetzen" button that exists only once a setup was saved).
+    """
+    locator = page.locator(selector)
+    if not locator.count():
+        absent.append(selector)
+        return
+    locator.first.click()
+
+
+def no_op(page, absent):
+    """An action that only waits and captures (keyboard steps use this)."""
+    del page, absent
+
+
+def click(selector):
+    """Build a required-click action for ``run_steps``."""
+    return lambda page, absent: required_click(page, selector)
+
+
+def optional(selector):
+    """Build an optional-click action for ``run_steps``."""
+    return lambda page, absent: optional_click(page, selector, absent)
+
+
+def press(key):
+    """Build a keyboard action for ``run_steps``."""
+    return lambda page, absent: page.keyboard.press(key)

@@ -1,40 +1,42 @@
-"""GameSetup journey: crew selection and the start confirmation screen."""
+"""GameSetup journey: crew selection, a real start and the saved-setup state."""
 
-from .common import click_if_present, discover, role_view, run_steps
+from . import fixture
+from .common import click, optional, press, role_view, run_steps
 
 
 def run(context, run_id, credentials):
-    """Capture the crew and start slices on a planned game (no writes)."""
+    """Write a crew/start through the UI, then re-open the saved setup."""
     view = role_view(context, "staff")
     if view is None:
         return {}, ["gamesetup:staff-login-unavailable"]
-    ids = discover(view, game_status="Geplant")
-    if not ids.get("gameday_id"):
-        return {}, ["gamesetup:no-planned-game-on-stage"]
-    tokens = {ids["gameday_id"]: "<entity-1>", ids["game_id"]: "<entity-2>"}
     steps, skipped = {}, []
-    actions = [
-        # The crew picker is opened from a slot's ARIA label, not a CSS class
-        # that the component may rename when the crew slice is extracted.
-        (
-            "crew-open",
-            lambda page: click_if_present(page, 'button[aria-label*="wählen"]'),
-        ),
-        ("crew-close", lambda page: page.keyboard.press("Escape")),
-        # The first tap of the two-step start only opens the confirmation; it
-        # never posts a start. The run-id-tagged game is left untouched.
-        (
-            "start-confirm",
-            lambda page: click_if_present(page, 'button:has-text("Fortsetzen")'),
-        ),
-        ("start-close", lambda page: page.keyboard.press("Escape")),
-    ]
-    run_steps(
-        view,
-        f"/scorecard/v2/gameday/{ids['gameday_id']}/game/{ids['game_id']}/",
-        steps,
-        skipped,
-        actions=actions,
-        tokens=tokens,
-    )
+    game = fixture.create(view, f"fe-setup-{run_id}")
+    try:
+        tokens = {game["gameday_id"]: "<entity-1>", game["game_id"]: "<entity-2>"}
+        path = f"/scorecard/v2/gameday/{game['gameday_id']}/game/{game['game_id']}/"
+        actions = [
+            # The crew picker is opened from a slot's ARIA label; the option is
+            # genuinely optional (a stage with no officials still starts).
+            ("crew-open", click('button[aria-label*="Offiziellen wählen"]')),
+            ("crew-option", optional('[role="option"]:not([aria-disabled="true"])')),
+            ("crew-close", press("Escape")),
+            # First tap opens the confirmation; the sheet's button writes the
+            # crew and setup and starts the game.
+            ("start-open", click(".setupfoot button.startbtn")),
+            ("start-write", click(".sheet .sheetfoot button.startbtn")),
+        ]
+        run_steps(view, path, steps, skipped, actions=actions, tokens=tokens)
+        # A saved setup changes the primary action to "Fortsetzen"; if the
+        # start was refused, record the absence instead of faking the state.
+        run_steps(
+            view,
+            path,
+            steps,
+            skipped,
+            prefix="saved-",
+            actions=[("resume", optional('button:has-text("Fortsetzen")'))],
+            tokens=tokens,
+        )
+    finally:
+        fixture.cleanup(view, game)
     return steps, skipped

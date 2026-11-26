@@ -66,19 +66,22 @@ Relative clock labels become `<time>` rather than dropping the line.
 
 ## Journeys
 
-`scorecard_v2_tracking` (log filter, Spielzug sheet, extra-point sheet and
-panels of a live game; no writes to the shared prod-clone stage),
-`scorecard_v2_gamesetup` (crew picker and start confirmation of a planned
-game; the first tap only opens the confirmation), `designer_gametable` (team
-cell), `officials_pages` (signup guard + licence view), `passcheck`
-(eligibility list), `liveticker` (public page and its XHR sequence). All six
-run on **every** layer (PROVISIONAL P10); a failure is attributed by journey
-and step in the report. The first two journeys exercise every screen split by
-Phase 3 Layers 6–12, so the DOM/ARIA diff is a real behaviour witness.
+`scorecard_v2_tracking` (log filter, Spielzug sheet, a real touchdown + extra
+point write and undo, halftime write, series tile, and the live/finished/
+stranded panel states), `scorecard_v2_gamesetup` (crew picker, a real start
+write and the saved-setup "Fortsetzen" state), `designer_gametable` (team cell
+and the grouped team-option menu), `officials_pages` (signup guard + licence
+view), `passcheck` (eligibility list), `liveticker` (public page and its XHR
+sequence). All six run on **every** layer (PROVISIONAL P10); a failure is
+attributed by journey and step in the report. The first two journeys exercise
+every screen split by Phase 3 Layers 6–12, so the DOM/ARIA diff is a real
+behaviour witness.
 
-Writes use run-id-tagged entities discovered through the API; ids are
-normalised to `<entity-N>`. Stage rows are never deleted — both sides share one
-DB and see each other's rows by design.
+Writes use dedicated run-id-tagged gamedays/games created through the same API
+steps as the backend write fixtures, so ref and cand start from identical
+state and never write to each other's rows; captured ids are normalised to
+`<entity-N>` and the fixtures are removed at the end of each journey. Optional
+clicks record their selector in the step's `absent` list, which is diffed too.
 
 ## Tests and coverage
 
