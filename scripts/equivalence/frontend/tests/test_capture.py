@@ -40,8 +40,13 @@ def test_body_shape_covers_every_json_type():
         "a": {"c": "null"},
         "b": "number",
     }
-    assert capture.body_shape([{"x": True}, "ignored"]) == [{"x": "bool"}]
-    assert capture.body_shape([]) == []
+    # Every array element and its length are part of the shape: dropping the
+    # tail would hide a write that added an event to the captured body.
+    assert capture.body_shape([{"x": True}, "ignored"]) == {
+        "len": 2,
+        "items": [{"x": "bool"}, "string"],
+    }
+    assert capture.body_shape([]) == {"len": 0, "items": []}
     assert capture.body_shape(1.5) == "number"
     assert capture.body_shape("text") == "string"
     assert capture.body_shape(None) == "null"
@@ -101,6 +106,10 @@ def test_normalise_dom_filters_volatile_nodes_and_scrubs_values():
     assert "gerade eben" not in result
     assert "[focused]" not in result
     assert "fade-in" not in result
+    # Only the volatile token is stripped: the rest of the ARIA line survives
+    # so a button that disappears on one side is still a real diff.
+    assert "- button: Spiel erfassen" in result
+    assert result.count("<time>") == 2
     assert "<redacted>" in result and "<timestamp>" in result
     # An explicit empty allowlist proves the filter, not the normaliser, drops them.
     unfiltered = capture.normalise_dom(text, volatile=())
@@ -152,7 +161,32 @@ def test_compare_steps_covers_missing_extra_changed_and_equal():
         "missing": {"requests": [], "dom": "a", "aria": "a"},
     }
     diffs = capture.compare_steps(left, right, "tracking")
-    assert diffs["tracking:changed"] == [Diff("$.dom", "value")]
+    assert diffs["tracking:changed"] == [Diff("$.dom:line 1", "replace")]
     assert diffs["tracking:extra"] == [Diff("$", "missing")]
     assert diffs["tracking:missing"] == [Diff("$", "extra")]
     assert "tracking:open" not in diffs
+
+
+def test_compare_steps_reports_line_numbers_and_optional_state():
+    left = {
+        "step": {
+            "requests": [{"method": "POST", "path": "/api/x", "body_shape": "empty"}],
+            "dom": "one\ntwo\nthree",
+            "aria": "- button: Spiel",
+            "absent": [],
+        }
+    }
+    right = {
+        "step": {
+            "requests": [{"method": "POST", "path": "/api/x", "body_shape": "empty"}],
+            "dom": "one\nTWO\nthree",
+            "aria": "- button: Spiel [focused]",
+            "absent": ["optional-target"],
+        }
+    }
+    diffs = capture.compare_steps(left, right, "tracking")
+    assert Diff("$.dom:line 2", "replace") in diffs["tracking:step"]
+    assert Diff("$.aria:line 1", "replace") in diffs["tracking:step"]
+    assert Diff("$.absent[]", "length") in diffs["tracking:step"]
+    # Requests are structural; only DOM/ARIA text is diffed by line.
+    assert not any(item.path.startswith("$.requests") for item in diffs["tracking:step"])
