@@ -30,8 +30,8 @@ from diff import Diff, diff_json, diff_text  # noqa: E402
 # documented and reviewed at the first ref-vs-ref noise floor; it is never
 # widened silently. Each entry is (pattern, replacement, reason).
 VOLATILE_NODES = (
-    (r"^vor \d+\s*(?:s|sek|min|h)\b$", "<time>", "relative clock label"),
-    (r"^gerade eben$", "<time>", "relative clock label"),
+    (r"\bvor \d+\s*(?:s|sek|min|h)\b", "<time>", "relative clock label"),
+    (r"\bgerade eben\b", "<time>", "relative clock label"),
     (r"\[(?:focused|active)\]", "", "focus state of the last clicked control"),
     (r"\b(?:fade|slide|transition)-(?:in|out)\b", "", "CSS transition state"),
 )
