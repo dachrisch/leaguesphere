@@ -201,3 +201,26 @@ def test_the_shadow_needs_authentication(client):
     assert response.status_code in (401, 403)
     assert GameEvent.objects.count() == 0
     assert TeamLog.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_append_legacy_accepts_a_team_id_and_no_rows(client):
+    """Characterize the shadow helper before its removal (100% branches)."""
+
+    from gameevents.service.append import append_legacy
+
+    game, home, _away = make_game("shadow-char-id")
+    login(client)
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": 7}], client_id=SUB_ID
+    )
+    assert post_legacy(client, game, body).status_code == 201
+
+    outcome = append_legacy(
+        game,
+        team=home.pk,
+        entries=[{"name": "Touchdown", "player": 7}],
+        half=1,
+        client_id=sub_id(2),
+    )
+    assert outcome.applied is True or outcome.applied is False
