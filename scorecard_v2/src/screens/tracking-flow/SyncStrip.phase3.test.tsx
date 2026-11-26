@@ -132,9 +132,17 @@ describe("SyncStrip (Phase 3 characterization)", () => {
     expect(screen.getByRole("button", { name: "Spiel übernehmen" })).toBeTruthy();
   });
 
-  it("leaves the stranded list without a take-over button when the role may not", () => {
-    strip({ paused: "device", pending: 1 }, { canRelease: true });
-    expect(screen.getByRole("button", { name: "Erneut prüfen" })).toBeTruthy();
+  it("calls onResume from the retry button, but only where it is rendered", () => {
+    const onResume = vi.fn();
+    strip({ paused: "device", pending: 1 }, { canRelease: true, onResume });
+    fireEvent.click(screen.getByRole("button", { name: "Erneut prüfen" }));
+    expect(onResume).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: "Spiel übernehmen" })).toBeNull();
+
+    cleanup();
+    onResume.mockClear();
+    expect(strip({}).container).toBeEmptyDOMElement();
+    expect(screen.queryByRole("button", { name: "Erneut prüfen" })).toBeNull();
+    expect(onResume).not.toHaveBeenCalled();
   });
 });
