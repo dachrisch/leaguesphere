@@ -9,7 +9,8 @@ stack PRs with ``gh pr comment``.
 
 No journey is trusted before the ref-vs-ref noise floor passes with all four
 role credentials present. Phase 3 declares no intended diffs (roadmap decision
-7): any unexplained diff makes the runner exit non-zero.
+7): the runner exits non-zero on any unexplained diff, skipped step, harness
+error or journey that captured fewer than ``--min-steps`` steps.
 
 Usage::
 
@@ -73,6 +74,9 @@ def render_report(
     skipped,
     errors,
     intended,
+    step_counts=None,
+    min_steps=2,
+    insufficient=(),
 ):
     """Render the redacted frontend report (journey/step paths and counts only)."""
     declared, unexplained = backend_report.split_intended(diffs, intended)
@@ -89,8 +93,19 @@ def render_report(
         "",
         f"Journeys compared: **{journey_count}** · "
         f"diffs: **{len(unexplained)}** · errors: **{len(errors)}**",
+        f"Minimum captured steps per journey: **{min_steps}** "
+        f"(ref/cand: {step_counts or {}})",
         "",
     ]
+    if insufficient:
+        lines += [
+            "### Journeys with too few captured steps",
+            "",
+            "A skipped or empty journey cannot witness behaviour:",
+            "",
+        ]
+        lines += [f"- `{item}`" for item in sorted(insufficient)]
+        lines.append("")
     if errors:
         lines += ["### Harness errors", ""]
         lines += [f"- {error}" for error in errors]
@@ -152,6 +167,9 @@ def run(args, deps):
     }
     diffs = {}
     skipped = {}
+    step_counts = {}
+    insufficient = []
+    min_steps = getattr(args, "min_steps", 2)
     for name in selected:
         journey = deps["journeys"][name]
         left_steps, left_skipped = journey(
@@ -166,6 +184,10 @@ def run(args, deps):
         combined = sorted(set(left_skipped) | set(right_skipped))
         if combined:
             skipped[f"{name}:steps"] = combined
+        counts = (len(left_steps), len(right_steps))
+        step_counts[name] = counts
+        if min(counts) < min_steps:
+            insufficient.append(f"{name}: {counts[0]}/{counts[1]}")
     # Each side's contexts (and their pages) are closed after the journeys so
     # no SSE/fetch connection is left pinning a side's worker.
     deps["close_contexts"](contexts)
@@ -180,6 +202,9 @@ def run(args, deps):
         skipped=skipped,
         errors=errors,
         intended=intended,
+        step_counts=step_counts,
+        min_steps=min_steps,
+        insufficient=insufficient,
     )
     if args.report:
         Path(args.report).write_text(text, encoding="utf-8")
@@ -187,7 +212,9 @@ def run(args, deps):
     for pr in args.comment_pr or []:
         deps["comment"](pr, text)
     _, unexplained = backend_report.split_intended(diffs, intended)
-    return 1 if unexplained else 0
+    # A green report must witness the moved code: an unexplained diff, a
+    # skipped step, a harness error or a too-short journey all fail the run.
+    return 1 if (unexplained or skipped or errors or insufficient) else 0
 
 
 def main(argv=None, deps=None):
@@ -210,6 +237,12 @@ def main(argv=None, deps=None):
     )
     parser.add_argument(
         "--intended", default=None, help="JSON file declaring intended step diffs"
+    )
+    parser.add_argument(
+        "--min-steps",
+        type=int,
+        default=2,
+        help="minimum captured steps per journey (default: 2)",
     )
     args = parser.parse_args(argv)
     try:
