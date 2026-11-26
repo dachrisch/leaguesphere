@@ -73,11 +73,20 @@ class SeasonRolloverCharacterization(TestCase):
         assert response.status_code == 200
 
     def test_setup_get(self):
+        # A second league/assignment makes the per-league loop run twice: a
+        # dropped prefetch_related("teams") would add a query per row here.
+        second_league = LeagueFactory(name="Second Division")
+        SeasonLeagueTeamFactory(
+            season=self.previous,
+            league=second_league,
+            teams=[TeamFactory(name="falcons")],
+        )
         with self.assertNumQueries(9):
             response = self.client.get(
                 reverse(LEAGUE_SEASON_LEAGUE_SETUP, args=[self.season.pk])
             )
         assert response.status_code == 200
+        assert len(response.context["rows"]) == 2
 
     def test_copy_get_redirects_to_setup(self):
         with self.assertNumQueries(2):
@@ -136,7 +145,8 @@ class SeasonRolloverCharacterization(TestCase):
     def test_copy_post_without_any_previous_season_warns(self):
         oldest = SeasonFactory(name="2000/2001")
         url = reverse(LEAGUE_SEASON_LEAGUE_COPY, args=[oldest.pk])
-        response = self.client.post(url, follow=True)
+        with self.assertNumQueries(13):
+            response = self.client.post(url, follow=True)
         assert "Keine Vorsaison gefunden" in response.content.decode()
 
     def test_assign_post_valid(self):
@@ -160,10 +170,12 @@ class SeasonRolloverCharacterization(TestCase):
         staff_only = reverse(LEAGUE_SEASON_LIST)
         self.client.logout()
         for url in (chooser, staff_only):
-            response = self.client.get(url)
+            with self.assertNumQueries(0):
+                response = self.client.get(url)
             assert response.status_code == 302
             assert "/login/" in response.url
         self.client.force_login(UserFactory(username="plain", is_staff=False))
         for url in (chooser, staff_only):
-            response = self.client.get(url)
+            with self.assertNumQueries(3):
+                response = self.client.get(url)
             assert response.status_code == 403
