@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.28.1](https://github.com/dachrisch/leaguesphere/compare/v5.28.0...v5.28.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/node to v26.6.11 ([#2571](https://github.com/dachrisch/leaguesphere/issues/2571)) ([48e735e](https://github.com/dachrisch/leaguesphere/commit/48e735e882d35921872d4a0ce1d1713675218793))
+* **deps:** update dependency @types/node to v26.6.11 ([#2572](https://github.com/dachrisch/leaguesphere/issues/2572)) ([b703f01](https://github.com/dachrisch/leaguesphere/commit/b703f01634051ab7ced1c7d08e130481fd84e02e))
+
 ## [5.28.0](https://github.com/dachrisch/leaguesphere/compare/v5.27.8...v5.28.0) (2026-11-25)
 
 
