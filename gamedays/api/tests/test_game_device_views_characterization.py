@@ -123,7 +123,10 @@ class DeviceViewCharacterization(TestCase):
 
     def test_halftime_rejects_illegal_transition(self):
         with (
-            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch(
+                "gamedays.api.game_device_views._device_lock_response",
+                return_value=None,
+            ),
             patch("gamedays.api.game_device_views.GameService") as service,
         ):
             service.return_value.update_halftime.side_effect = IllegalGameTransition(
@@ -135,7 +138,8 @@ class DeviceViewCharacterization(TestCase):
     def test_device_conflict_short_circuits_both_views(self):
         conflict = Response({"detail": "locked"}, status=HTTPStatus.CONFLICT)
         with patch(
-            "gamedays.api.game_device_views._device_lock_response", return_value=conflict
+            "gamedays.api.game_device_views._device_lock_response",
+            return_value=conflict,
         ):
             halftime = GameHalftimeAPIView().put(self._request(), pk=self.game.pk)
             finalize = GameFinalizeUpdateView().update(
@@ -146,7 +150,10 @@ class DeviceViewCharacterization(TestCase):
 
     def test_finalize_creates_a_missing_setup_row(self):
         with (
-            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch(
+                "gamedays.api.game_device_views._device_lock_response",
+                return_value=None,
+            ),
             patch("gamedays.api.game_device_views.GameService"),
             patch("gamedays.api.game_device_views.GameFinalizer") as serializer,
         ):
@@ -160,7 +167,10 @@ class DeviceViewCharacterization(TestCase):
 
     def test_finalize_not_found_and_serializer_errors(self):
         with (
-            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch(
+                "gamedays.api.game_device_views._device_lock_response",
+                return_value=None,
+            ),
             patch("gamedays.api.game_device_views.GameService") as service,
         ):
             service.side_effect = Gameinfo.DoesNotExist
@@ -169,7 +179,10 @@ class DeviceViewCharacterization(TestCase):
 
         GameSetup.objects.create(gameinfo=self.game)
         with (
-            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch(
+                "gamedays.api.game_device_views._device_lock_response",
+                return_value=None,
+            ),
             patch("gamedays.api.game_device_views.GameService"),
             patch("gamedays.api.game_device_views.GameFinalizer") as serializer,
         ):
