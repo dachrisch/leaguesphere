@@ -14,8 +14,8 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text"],
       include: [
-        "src/screens/game-setup/crew.tsx",
-        "src/screens/game-setup/useCrewSetup.ts",
+        "src/screens/game-setup/start.ts",
+        "src/screens/game-setup/useGameStart.ts",
       ],
       thresholds: { branches: 100, perFile: true },
     },
