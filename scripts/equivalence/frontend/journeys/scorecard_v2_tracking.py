@@ -1,55 +1,76 @@
-"""Tracking journey: log, series, PAT and panels on a live game."""
+"""Tracking journey: real play/undo, PAT, halftime and the panel states."""
 
-import re
+from . import fixture
+from .common import click, optional, press, role_view, run_steps
 
-from .common import click_if_present, discover, role_view, run_steps
 
-
-def _open_pat_sheet(page):
-    """Open the extra-point sheet; a read-only game is a skip, not a timeout."""
-    tile = page.get_by_role("button", name=re.compile(r"^Touchdown\b")).first
-    if not tile.count() or not tile.is_enabled():
-        raise LookupError("touchdown tile is read-only")
-    tile.click()
+def _sheet_save(page, absent):
+    """Save the open sheet (touchdown, extra point, halftime confirmation)."""
+    del absent
+    page.locator(".sheet .sheetfoot button.startbtn").first.click()
 
 
 def run(context, run_id, credentials):
-    """Capture every Tracking slice, without writing to the shared game.
-
-    The stage is a prod clone, so the journey opens an in-progress game that
-    the staff harness account may view and drives only local UI state: the
-    log filter, the Spielzug sheet, the extra-point sheet and the panels. The
-    write paths are covered by the app's vitest/e2e suites; here the DOM/ARIA
-    of each split area is the behaviour witness for the equivalence diff.
-    """
+    """Drive every Tracking slice on dedicated run-id-tagged games."""
     view = role_view(context, "staff")
     if view is None:
         return {}, ["tracking:staff-login-unavailable"]
-    ids = discover(view, game_status="2. Halbzeit", prefer_last=True)
-    if not ids.get("game_id"):
-        return {}, ["tracking:no-live-game-on-stage"]
-    tokens = {
-        ids["gameday_id"]: "<entity-1>",
-        ids["game_id"]: "<entity-2>",
-    }
-    path = f"/scorecard/v2/gameday/{ids['gameday_id']}/game/{ids['game_id']}/"
     steps, skipped = {}, []
-    actions = [
-        (
-            "log-filter",
-            lambda page: click_if_present(page, 'button:has-text("Nur Punkte")'),
-        ),
-        (
-            "series-sheet",
-            lambda page: click_if_present(page, 'button:has-text("Spielzug")'),
-        ),
-        ("series-close", lambda page: page.keyboard.press("Escape")),
-        ("pat-sheet", _open_pat_sheet),
-        ("pat-close", lambda page: page.keyboard.press("Escape")),
-        (
-            "panels",
-            lambda page: click_if_present(page, 'button:has-text("Feldposition")'),
-        ),
-    ]
-    run_steps(view, path, steps, skipped, actions=actions, tokens=tokens)
+    games = []
+    try:
+        live = fixture.create(view, f"fe-track-{run_id}", started=True)
+        games.append(live)
+        tokens = {live["gameday_id"]: "<entity-1>", live["game_id"]: "<entity-2>"}
+        path = f"/scorecard/v2/gameday/{live['gameday_id']}/game/{live['game_id']}/"
+        actions = [
+            ("log-filter", click('button:has-text("Nur Punkte")')),
+            ("series-sheet", click(".action.spielzug")),
+            ("series-close", press("Escape")),
+            # A real write: the touchdown sheet's save posts the event and
+            # opens the extra-point sheet, which the next step writes too.
+            ("play-td", click(".tdbtn")),
+            ("play-save", _sheet_save),
+            ("pat-save", _sheet_save),
+            ("play-undo", click('button:has-text("Rückgängig")')),
+            ("halftime-open", click(".halfbtn")),
+            ("halftime-write", _sheet_save),
+            ("series-tile", optional('.action:has-text("1st Down")')),
+            ("panels", click('button:has-text("Feldposition")')),
+        ]
+        run_steps(view, path, steps, skipped, actions=actions, tokens=tokens)
+
+        # The finished panel is a different state of the same component.
+        done = fixture.create(view, f"fe-done-{run_id}", started=True, finished=True)
+        games.append(done)
+        done_tokens = {
+            done["gameday_id"]: "<entity-1>",
+            done["game_id"]: "<entity-2>",
+        }
+        run_steps(
+            view,
+            f"/scorecard/v2/gameday/{done['gameday_id']}/game/{done['game_id']}/",
+            steps,
+            skipped,
+            prefix="finished-",
+            tokens=done_tokens,
+        )
+
+        # A stored device lock reaches the stranded/read-only branch.
+        locked = fixture.create(view, f"fe-locked-{run_id}", started=True, locked=True)
+        games.append(locked)
+        locked_tokens = {
+            locked["gameday_id"]: "<entity-1>",
+            locked["game_id"]: "<entity-2>",
+        }
+        run_steps(
+            view,
+            f"/scorecard/v2/gameday/{locked['gameday_id']}/game/{locked['game_id']}/",
+            steps,
+            skipped,
+            prefix="stranded-",
+            tokens=locked_tokens,
+        )
+    finally:
+        for game in games:
+            fixture.cleanup(view, game)
     return steps, skipped

@@ -1,6 +1,6 @@
-"""Designer journey: open a gameday's team table and inspect a row."""
+"""Designer journey: team-option menu and row state on a team cell."""
 
-from .common import click_if_present, discover, role_view, run_steps
+from .common import click, discover, press, role_view, run_steps
 
 
 def run(context, run_id, credentials):
@@ -13,14 +13,12 @@ def run(context, run_id, credentials):
     tokens = {ids["gameday_id"]: "<entity-1>"}
     steps, skipped = {}, []
     actions = [
-        (
-            "select-team",
-            lambda page: click_if_present(page, "[id^='team-']"),
-        ),
-        (
-            "read-row",
-            lambda page: click_if_present(page, "tr[id^='game-']"),
-        ),
+        # The cell itself, then the react-select control that owns the grouped
+        # team-option menu extracted by Layer 5.
+        ("select-team", click("[id^='team-']")),
+        ("team-options", click("[id^='team-'] .official-select__control")),
+        ("options-close", press("Escape")),
+        ("read-row", click("tr[id^='game-']")),
     ]
     run_steps(
         view,

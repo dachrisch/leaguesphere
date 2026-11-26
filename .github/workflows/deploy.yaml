@@ -233,7 +233,11 @@ jobs:
       - name: Prove the agent frontend serves every built bundle
         run: |
           set -euo pipefail
-          image="docker.io/leaguesphere/frontend:${{ inputs.agent_tag }}"
+          # Pin the proof to the image this job actually built, not to the
+          # mutable tag another dispatch may overwrite in between.
+          digest="${{ steps.build_frontend_ref.outputs.digest }}${{ steps.build_frontend_candidate.outputs.digest }}"
+          test -n "$digest"
+          image="docker.io/leaguesphere/frontend@${digest}"
           name="ls-agent-static-proof-$$"
           docker run -d --rm --name "$name" -p 127.0.0.1::80 "$image" >/dev/null
           trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
@@ -247,9 +251,15 @@ jobs:
           # This is the exact probe that failed on the backend-only stage.
           body="$(curl -fsS "http://127.0.0.1:$port/static/league_manager/js/live_nav.js")"
           test -n "$body"
-          for app in scorecard_v2 gameday_designer passcheck liveticker; do
-            entry="$(docker exec "$name" find "/static/$app" -name '*.js' -size +0c -print -quit)"
-            test -n "$entry"
+          # Assert the exact built entries the Django templates request; an
+          # arbitrary .js chunk under /static/$app is not sufficient proof.
+          for bundle in \
+            scorecard_v2/js/scorecard_v2.js \
+            gameday_designer/js/index.js \
+            passcheck/js/passcheck.js \
+            liveticker/js/liveticker.js; do
+            body="$(curl -fsS "http://127.0.0.1:$port/static/$bundle")"
+            test -n "$body"
           done
           echo "static proof passed for $image"
 
