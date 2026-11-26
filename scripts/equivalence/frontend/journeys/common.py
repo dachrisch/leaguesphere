@@ -139,6 +139,21 @@ def wait_until(page, predicate, timeout_ms=8000, poll_ms=100):
     raise TimeoutError("page did not reach the expected ready state")
 
 
+def wait_for_dom_quiet(page, timeout_ms=4000, quiet_ms=600):
+    """Wait until the visible text stops changing after the last request."""
+    deadline = time.monotonic() + timeout_ms / 1000
+    last = page.evaluate("() => document.body.innerText || ''")
+    stable = 0
+    while time.monotonic() < deadline:
+        page.wait_for_timeout(100)
+        current = page.evaluate("() => document.body.innerText || ''")
+        stable = stable + 100 if current == last else 0
+        if stable >= quiet_ms:
+            break
+        last = current
+>>>>>>> 0ebc29264 (fix: capture frontend steps after the DOM settles)
+
+
 def run_steps(
     context,
     path,
@@ -174,6 +189,7 @@ def run_steps(
         if ready is not None:
             wait_until(page, ready)
         wait_for_quiet(page, capture)
+        wait_for_dom_quiet(page)
         opening = capture_step(page, capture=capture, tokens=tokens)
         opening["absent"] = []
         steps[f"{prefix}{step_name}"] = opening
@@ -182,6 +198,7 @@ def run_steps(
             absent = []
             action(page, absent)
             wait_for_quiet(page, capture)
+            wait_for_dom_quiet(page)
             step = capture_step(page, capture=capture, tokens=tokens)
             # An optional click that found nothing is recorded, not silently
             # turned into an identical step; compare_steps diffs this list.
