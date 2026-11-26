@@ -8,7 +8,10 @@ six-query budget (five checks plus one legacy count) with or without
 
 Classification follows the cutover contract: only games whose events carry a
 ``source=v2`` event must reconcile. Shadow-only (``source=legacy``) games and
-games with rows but no events are the explicitly accepted legacy set.
+games with rows but no events are the explicitly accepted legacy set; the
+``shadow_only`` breakdown is reported separately. ``legacy_cutoff`` bounds the
+set by game id so the published digest can be reproduced after new v1 games
+have been written.
 """
 
 from __future__ import annotations
@@ -19,11 +22,12 @@ from gameevents.models import GameEvent
 
 
 def legacy_digest(legacy_games) -> str:
-    """SHA-256 of the sorted ids of games with rows and no events.
+    """SHA-256 of the sorted ids of the whole accepted legacy set.
 
     Sorting makes the digest stable regardless of row order, so two runs on
     the same data produce the same value. Only ids are hashed -- no personal
-    data, names or values enter the public acceptance record.
+    data, names or values enter the public acceptance record. The empty set
+    hashes to the standard SHA-256 of an empty byte string.
     """
     ids = sorted(game_id for game_id, _season_id in legacy_games)
     return hashlib.sha256(
@@ -31,8 +35,23 @@ def legacy_digest(legacy_games) -> str:
     ).hexdigest()
 
 
-def build_report(*, checks, legacy_games, generated_at, ref_sha, cand_sha) -> dict:
+def build_report(
+    *,
+    checks,
+    legacy_games,
+    shadow_only_games=(),
+    legacy_cutoff=None,
+    generated_at,
+    ref_sha,
+    cand_sha,
+) -> dict:
     """Assemble the report payload from already-loaded data."""
+
+    def within_cutoff(game):
+        return legacy_cutoff is None or game[0] <= legacy_cutoff
+
+    accepted = [game for game in legacy_games if within_cutoff(game)]
+    shadow_only = [game for game in shadow_only_games if within_cutoff(game)]
 
     event_checks = [check for check in checks if not check.legacy]
     by_source = {
@@ -44,23 +63,27 @@ def build_report(*, checks, legacy_games, generated_at, ref_sha, cand_sha) -> di
     drift = []
     flagged = []
 
-    for check in event_checks:
-        by_source[check.source] = by_source.get(check.source, 0) + 1
-        season_key = str(check.season_id)
-        season = per_season.setdefault(
-            season_key,
+    def season_bucket(season_id):
+        return per_season.setdefault(
+            str(season_id),
             {
                 "event_games": 0,
                 "legacy_without_events": 0,
+                "shadow_only": 0,
                 "drift": 0,
                 "flagged": 0,
             },
         )
+
+    for check in event_checks:
+        by_source[check.source] = by_source.get(check.source, 0) + 1
+        season = season_bucket(check.season_id)
         season["event_games"] += 1
         if check.drift is not None:
             drift.append(
                 {
                     "game_id": check.game_id,
+                    "source": check.source,
                     "seq": check.drift.seq,
                     "kind": check.drift.kind,
                     "detail": check.drift.detail,
@@ -68,20 +91,13 @@ def build_report(*, checks, legacy_games, generated_at, ref_sha, cand_sha) -> di
             )
             season["drift"] += 1
             if check.drift.kind == "flag":
-                flagged.append(check.game_id)
+                flagged.append({"game_id": check.game_id, "source": check.source})
                 season["flagged"] += 1
 
-    for _game_id, season_id in legacy_games:
-        season = per_season.setdefault(
-            str(season_id),
-            {
-                "event_games": 0,
-                "legacy_without_events": 0,
-                "drift": 0,
-                "flagged": 0,
-            },
-        )
-        season["legacy_without_events"] += 1
+    for _game_id, season_id in accepted:
+        season_bucket(season_id)["legacy_without_events"] += 1
+    for _game_id, season_id in shadow_only:
+        season_bucket(season_id)["shadow_only"] += 1
 
     return {
         "generated_at": generated_at,
@@ -91,8 +107,15 @@ def build_report(*, checks, legacy_games, generated_at, ref_sha, cand_sha) -> di
         "ok": sum(1 for check in checks if check.ok),
         "drift": drift,
         "flagged": flagged,
+        "v2_drift": sum(1 for entry in drift if entry["source"] == GameEvent.Source.V2),
+        "v2_flagged": sum(
+            1 for entry in flagged if entry["source"] == GameEvent.Source.V2
+        ),
         "by_source": by_source,
-        "legacy_without_events": len(legacy_games),
-        "legacy_without_events_digest": legacy_digest(legacy_games),
+        "legacy_without_events": len(accepted),
+        "accepted_legacy": len(accepted),
+        "shadow_only": len(shadow_only),
+        "legacy_cutoff": legacy_cutoff,
+        "legacy_without_events_digest": legacy_digest(accepted),
         "per_season": dict(sorted(per_season.items())),
     }

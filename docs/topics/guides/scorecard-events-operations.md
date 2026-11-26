@@ -137,9 +137,12 @@ games with rows but no events are the **accepted legacy set** and keep the
 row-based read path. There is no `Gameinfo.event_source` field, so no migration
 is involved.
 
-The accepted set is recorded by count, SHA-256 digest of its sorted ids and
-per-season counts — **not** by storing the raw ids in a public repository. The
-agent-stage measurement (6,369 games; zero drift; zero flagged v2 games) and the
+The accepted set is recorded by count, SHA-256 digest of its sorted ids, a
+`shadow_only` breakdown, per-season counts and an id cutoff (`--legacy-cutoff`)
+that makes the digest reproducible — **not** by storing the raw ids in a public
+repository. Every drift/flagged entry carries its `source`; the gate reads
+`v2_drift == 0` and `v2_flagged == 0`, not the exit code alone. The agent-stage
+measurement (6,369 games; zero drift; zero flagged v2 games) and the
 regeneration command are in
 [the Phase 2 acceptance record](../planning/current/2026-11-25-phase2-legacy-acceptance.md).
 **No backfill is performed**: those games are not rewritten or event-sourced.

@@ -17,6 +17,7 @@ import json
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db.models import Exists, OuterRef
 
 from gameevents.models import GameEvent
 from gameevents.service import report as report_service
@@ -55,6 +56,12 @@ class Command(BaseCommand):
         parser.add_argument(
             "--cand-sha", default="", help="candidate commit recorded in the report"
         )
+        parser.add_argument(
+            "--legacy-cutoff",
+            type=int,
+            default=None,
+            help="include only accepted legacy games with id <= CUTOFF (reproducible digest)",
+        )
 
     def handle(self, *args, **options):
         if options["game"] is not None:
@@ -62,14 +69,31 @@ class Command(BaseCommand):
             if not Gameinfo.objects.filter(pk=game_id).exists():
                 raise CommandError(f"No game found for gameId {game_id}")
             checks = check_games([game_id])
+            # A shadow-only game is part of the accepted legacy set even when
+            # it has events; only a v2 game has to reconcile.
+            shadow_only_games = [
+                (check.game_id, check.season_id)
+                for check in checks
+                if not check.legacy and check.source != GameEvent.Source.V2
+            ]
             legacy_games = [
                 (check.game_id, check.season_id) for check in checks if check.legacy
+            ] + shadow_only_games
+            event_game_ids = [
+                check.game_id
+                for check in checks
+                if not check.legacy and check.source == GameEvent.Source.V2
             ]
-            event_game_ids = [check.game_id for check in checks if not check.legacy]
         else:
             checks = check_games()
-            legacy_games = self._legacy_games()
+            legacy_games, shadow_only_games = self._legacy_games()
             event_game_ids = [check.game_id for check in checks]
+        cutoff = options["legacy_cutoff"]
+        if cutoff is not None:
+            legacy_games = [game for game in legacy_games if game[0] <= cutoff]
+            shadow_only_games = [
+                game for game in shadow_only_games if game[0] <= cutoff
+            ]
         legacy = len(legacy_games)
 
         failed = [check for check in checks if not check.ok]
@@ -93,6 +117,8 @@ class Command(BaseCommand):
                 legacy_games,
                 options["ref_sha"],
                 options["cand_sha"],
+                shadow_only_games,
+                cutoff,
             )
 
         if failed:
@@ -103,12 +129,16 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("projection matches the event log"))
 
     @staticmethod
-    def _write_report(path, checks, legacy_games, ref_sha, cand_sha):
+    def _write_report(
+        path, checks, legacy_games, ref_sha, cand_sha, shadow_only_games=(), cutoff=None
+    ):
         """Write the report JSON. Pure data assembly; no extra queries."""
 
         payload = report_service.build_report(
             checks=checks,
             legacy_games=legacy_games,
+            shadow_only_games=shadow_only_games,
+            legacy_cutoff=cutoff,
             generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             ref_sha=ref_sha,
             cand_sha=cand_sha,
@@ -118,17 +148,28 @@ class Command(BaseCommand):
         )
 
     @staticmethod
-    def _legacy_games() -> list:
-        """``(game id, season id)`` for games with rows but no events.
+    def _legacy_games() -> tuple[list, list]:
+        """``(whole accepted set, shadow-only breakdown)`` as ``(id, season)``.
 
-        One query, as before -- the season is read through the same join so
-        the report needs no extra query. The caller derives the skipped count
-        with ``len()``; stdout stays byte-identical.
+        One query, as before: two ``EXISTS`` subqueries distinguish a game
+        with no events from a shadow-only game without a second round trip.
+        Both cases are part of the accepted set; a v2 game never is.
         """
 
-        event_game_ids = GameEvent.objects.values_list("game_id", flat=True).distinct()
-        return list(
-            TeamLog.objects.exclude(gameinfo_id__in=event_game_ids)
-            .values_list("gameinfo_id", "gameinfo__gameday__season_id")
+        any_event = GameEvent.objects.filter(game_id=OuterRef("gameinfo_id"))
+        v2_event = any_event.filter(source=GameEvent.Source.V2)
+        rows = (
+            TeamLog.objects.values("gameinfo_id", "gameinfo__gameday__season_id")
+            .annotate(has_event=Exists(any_event), has_v2=Exists(v2_event))
             .distinct()
         )
+        accepted = []
+        shadow_only = []
+        for row in rows:
+            if row["has_v2"]:
+                continue
+            game = (row["gameinfo_id"], row["gameinfo__gameday__season_id"])
+            accepted.append(game)
+            if row["has_event"]:
+                shadow_only.append(game)
+        return accepted, shadow_only

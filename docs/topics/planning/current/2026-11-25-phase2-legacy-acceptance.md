@@ -1,4 +1,4 @@
-# Phase 2 — accepted legacy set (provisional, 2026-11-25)
+# Phase 2 — accepted legacy set (approved 2026-11-26)
 
 Part of [Phase 2](./2026-11-25-phase2-plan.md) / [#2538](https://github.com/dachrisch/leaguesphere/issues/2538).
 Records the exit condition of roadmap decision 5: **zero unreconciled v2 games;
@@ -17,36 +17,50 @@ A game is legacy when it has `TeamLog` rows but **no `GameEvent` with
 - **no events at all** — the game was written by the legacy scorecard and was
   never shadowed;
 - **shadow events only (`source=legacy`)** — the v1 gamelog write emitted an
-  event for audit purposes, but no canonical v2 event exists. Per PROVISIONAL
-  P7 these events stay audit-only and the game keeps the row-based read path.
+  event for audit purposes, but no canonical v2 event exists. Per P7 (approved
+  2026-11-26) these events stay audit-only and the game keeps the row-based read
+  path.
 
 The discriminator is the existing `GameEvent.source` column. There is no
-`Gameinfo.event_source` field and no schema migration (PROVISIONAL P2).
+`Gameinfo.event_source` field and no schema migration (P2, approved 2026-11-26).
 `needs_reconciliation` on `GameState` remains the escape hatch for a game whose
-projection cannot represent its log.
+projection cannot represent its log. The report's `legacy_without_events`
+count, per-season counts and SHA-256 digest cover **both** cases; `shadow_only`
+is a separate breakdown of the same accepted set. Gates are read from
+`v2_drift` and `v2_flagged`, with the source on every drift/flagged entry.
+
+**Cutoff.** The report records `legacy_cutoff` (a max game id). The digest is
+computed over accepted-set ids at or below it, so the published number can be
+reproduced after new v1 games have been written by passing
+`--legacy-cutoff <recorded value>`.
 
 ## Measured result
 
 | measure | value |
 |---|---:|
-| games with rows and no events | **6,369** |
+| accepted legacy games (no-event + shadow-only) | **6,369** |
 | games with a v2 event projection | 0 |
 | games with drift | 0 |
 | games flagged for reconciliation | 0 |
-| shadow-only (`source=legacy`) event games | 0 |
+| shadow-only (`source=legacy`) event games (subset of the accepted set) | 0 |
 
 The stage database is a prod clone, so it contains **no event-sourced games at
 all**: the flag-on comparison therefore exercises the event path only through
 games created by the harness's event-write scenario, not through restored rows.
+It happened to have **zero shadow-only games**, so including them in the
+accepted set does **not** change any recorded number: 6,369 games, the digest
+below and all per-season counts are identical to the earlier no-event-only
+measurement. The code and tests now measure the documented definition anyway.
 
-SHA-256 digest of the sorted ids of the 6,369 games (P3: store the digest and
-counts, **not** the raw ids, in the public repository):
+SHA-256 digest of the sorted ids of the 6,369 accepted games (P3, approved
+2026-11-26: store the digest and counts, **not** the raw ids, in the public
+repository):
 
 ```text
 3061721f5d9d7486fc2cd32b35fa0c384459b0b3521dd88c56ec5df1f8801ff6
 ```
 
-Per-season counts of games with rows and no events:
+Per-season counts of accepted legacy games (all no-event games on the stage):
 
 | season | legacy games |
 |---|---:|
@@ -60,7 +74,11 @@ Per-season counts of games with rows and no events:
 
 The report also recorded `generated_at = 2026-11-26T02:01:48.651647+00:00`,
 `ref_sha = 96ec02b175a62e0e264f51771355ebf806c21797` and
-`cand_sha = 3b9f4ecbf29735b301c819b56e06c74601913e7a` (the Layer 2 head). The
+`cand_sha = 3b9f4ecbf29735b301c819b56e06c74601913e7a` (the Layer 2 head).
+`legacy_cutoff` was not passed on that run, so it recorded the full set at that
+time; re-run with `--legacy-cutoff <recorded max id>` to reproduce the digest
+exactly. The gate is `v2_drift == 0` and `v2_flagged == 0`, not the command's
+exit code alone. The
 console output was:
 
 ```text
@@ -77,7 +95,8 @@ and the report is read-only):
 python manage.py check_game_projection --all \
   --report /tmp/phase2-legacy-report.json \
   --ref-sha 96ec02b175a62e0e264f51771355ebf806c21797 \
-  --cand-sha <layer-head-sha>
+  --cand-sha <layer-head-sha> \
+  --legacy-cutoff <recorded-max-game-id>
 ```
 
 The report builder performs no additional queries, so `--all` stays at six
