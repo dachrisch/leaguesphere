@@ -18,7 +18,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory
 
-from gamedays.api.game_views import (
+from gamedays.api.game_device_views import (
     ConfigPenalties,
     ConfigRules,
     GameDeviceLockAPIView,
@@ -59,7 +59,7 @@ class DeviceHelperCharacterization(TestCase):
     def test_device_lock_response_uses_stored_value(self):
         game = GameinfoFactory()
         with patch(
-            "gamedays.api.game_views.stored_device", return_value="stored"
+            "gamedays.api.game_device_views.stored_device", return_value="stored"
         ) as stored:
             request = APIRequestFactory().post("/", HTTP_X_SCORECARD_DEVICE="other")
             conflict = _device_lock_response(request, game.pk, {"device_id": "other"})
@@ -123,8 +123,8 @@ class DeviceViewCharacterization(TestCase):
 
     def test_halftime_rejects_illegal_transition(self):
         with (
-            patch("gamedays.api.game_views._device_lock_response", return_value=None),
-            patch("gamedays.api.game_views.GameService") as service,
+            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch("gamedays.api.game_device_views.GameService") as service,
         ):
             service.return_value.update_halftime.side_effect = IllegalGameTransition(
                 "Geplant", "beendet"
@@ -135,7 +135,7 @@ class DeviceViewCharacterization(TestCase):
     def test_device_conflict_short_circuits_both_views(self):
         conflict = Response({"detail": "locked"}, status=HTTPStatus.CONFLICT)
         with patch(
-            "gamedays.api.game_views._device_lock_response", return_value=conflict
+            "gamedays.api.game_device_views._device_lock_response", return_value=conflict
         ):
             halftime = GameHalftimeAPIView().put(self._request(), pk=self.game.pk)
             finalize = GameFinalizeUpdateView().update(
@@ -146,9 +146,9 @@ class DeviceViewCharacterization(TestCase):
 
     def test_finalize_creates_a_missing_setup_row(self):
         with (
-            patch("gamedays.api.game_views._device_lock_response", return_value=None),
-            patch("gamedays.api.game_views.GameService"),
-            patch("gamedays.api.game_views.GameFinalizer") as serializer,
+            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch("gamedays.api.game_device_views.GameService"),
+            patch("gamedays.api.game_device_views.GameFinalizer") as serializer,
         ):
             serializer.return_value.is_valid.return_value = True
             serializer.return_value.data = {"finished": True}
@@ -160,8 +160,8 @@ class DeviceViewCharacterization(TestCase):
 
     def test_finalize_not_found_and_serializer_errors(self):
         with (
-            patch("gamedays.api.game_views._device_lock_response", return_value=None),
-            patch("gamedays.api.game_views.GameService") as service,
+            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch("gamedays.api.game_device_views.GameService") as service,
         ):
             service.side_effect = Gameinfo.DoesNotExist
             with self.assertRaises(NotFound):
@@ -169,9 +169,9 @@ class DeviceViewCharacterization(TestCase):
 
         GameSetup.objects.create(gameinfo=self.game)
         with (
-            patch("gamedays.api.game_views._device_lock_response", return_value=None),
-            patch("gamedays.api.game_views.GameService"),
-            patch("gamedays.api.game_views.GameFinalizer") as serializer,
+            patch("gamedays.api.game_device_views._device_lock_response", return_value=None),
+            patch("gamedays.api.game_device_views.GameService"),
+            patch("gamedays.api.game_device_views.GameFinalizer") as serializer,
         ):
             serializer.return_value.is_valid.return_value = False
             serializer.return_value.errors = {"detail": "invalid"}
@@ -190,7 +190,7 @@ class DeviceViewCharacterization(TestCase):
         with self.assertRaises(NotFound):
             view.delete(self._request("delete"), pk=self.game.pk)
         GameSetup.objects.create(gameinfo=self.game)
-        with patch("gamedays.api.game_views.release_device_lock") as release:
+        with patch("gamedays.api.game_device_views.release_device_lock") as release:
             response = view.delete(self._request("delete"), pk=self.game.pk)
         assert response.status_code == HTTPStatus.NO_CONTENT
         release.assert_called_once_with(self.game.pk)

@@ -89,6 +89,8 @@
     {"name": "game-feed", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
     {"name": "feed-etag-revalidation", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:{source}"}},
     {"name": "officials-import-upload-staff", "path": "/officials/gameofficial/import/upload/", "kind": "html", "role": "staff"},
-    {"name": "officials-import-confirm-staff", "path": "/officials/gameofficial/import/confirm/", "kind": "html", "role": "staff"}
+    {"name": "officials-import-confirm-staff", "path": "/officials/gameofficial/import/confirm/", "kind": "html", "role": "staff"},
+    {"name": "config-penalties-api", "path": "/api/config/scorecard/penalties", "kind": "json", "role": "anonymous"},
+    {"name": "config-rules-api", "path": "/api/config/scorecard/rules", "kind": "json", "role": "anonymous"}
   ]
 }
