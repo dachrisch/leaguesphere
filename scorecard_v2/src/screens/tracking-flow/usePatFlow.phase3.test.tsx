@@ -636,7 +636,7 @@ describe("usePatFlow error and null-spot branches (Phase 3 characterization)", (
     // An older server payload can carry a null series start: drive.ballOn is
     // then null and the touchdown sheet must not prefill a yard number.
     const { result } = setup(
-      { geometry: { ...geometryOf(null), seriesStart: null } },
+      { geometry: { ...geometryOf(null), seriesStart: null } as unknown as Over["geometry"] },
       makeLog({ events: [] }),
     );
     expect(result.current.touchdownGain).toBeNull();
