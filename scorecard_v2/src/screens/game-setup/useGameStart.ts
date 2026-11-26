@@ -33,7 +33,7 @@ interface UseGameStartArgs {
   logPath: string;
   eventsPath: string;
   crewPath: string;
-  inFlight: MutableRefObject<boolean>;
+  inFlightRef: MutableRefObject<boolean>;
   loading: boolean;
   finished: boolean;
   offline: boolean;
@@ -72,7 +72,7 @@ export function useGameStart({
   logPath,
   eventsPath,
   crewPath,
-  inFlight,
+  inFlightRef,
   loading,
   finished,
   offline,
@@ -117,7 +117,7 @@ export function useGameStart({
     possession === null ? null : teamLabel(sideTeam(possession, home, away));
 
   const openConfirmation = (): void => {
-    if (inFlight.current || loading || finished || offline || readOnly) {
+    if (inFlightRef.current || loading || finished || offline || readOnly) {
       return;
     }
     setConfirmOpen(true);
@@ -154,7 +154,7 @@ export function useGameStart({
   };
 
   const runStart = async (force = false): Promise<void> => {
-    if (inFlight.current || loading || finished) {
+    if (inFlightRef.current || loading || finished) {
       return;
     }
     if (offline) {
@@ -177,7 +177,7 @@ export function useGameStart({
     ) {
       return;
     }
-    inFlight.current = true;
+    inFlightRef.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -232,11 +232,11 @@ export function useGameStart({
         }
         setPossessionSent(true);
       }
-      inFlight.current = false;
+      inFlightRef.current = false;
       setSaving(false);
       onStarted({ ...log, inPossession });
     } catch (startFailure) {
-      inFlight.current = false;
+      inFlightRef.current = false;
       setSaving(false);
       const described = describeStartError(startFailure);
       setError(described.message);
@@ -253,10 +253,10 @@ export function useGameStart({
    * stays a separate, confirmed step — this only makes it possible.
    */
   const runTakeOver = async (): Promise<void> => {
-    if (inFlight.current) {
+    if (inFlightRef.current) {
       return;
     }
-    inFlight.current = true;
+    inFlightRef.current = true;
     setTakingOver(true);
     setTakeOverError(null);
     try {
@@ -273,7 +273,7 @@ export function useGameStart({
         ),
       );
     } finally {
-      inFlight.current = false;
+      inFlightRef.current = false;
       setTakingOver(false);
       disarm();
     }

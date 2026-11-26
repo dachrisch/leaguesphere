@@ -7,7 +7,6 @@ import type { GameLog } from "../../api/types";
 import { rememberQuarterback } from "../../app/quarterback";
 import { getDeviceId } from "../../device";
 import { cachedGet } from "../../offline/snapshot";
-import { newOpId } from "../../session/ids";
 import { lockFrom, takeOver } from "../../session/lock";
 import { useGameStart } from "./useGameStart";
 import type { StartCrewLine } from "../../components/sheets/StartConfirmation";
@@ -41,11 +40,14 @@ const lockFromMock = lockFrom as unknown as Mock;
 const takeOverMock = takeOver as unknown as Mock;
 const rememberMock = rememberQuarterback as unknown as Mock;
 
+const team = (name: string | null): GameLog["home"] =>
+  ({ name }) as unknown as GameLog["home"];
+
 const log = (over: Partial<GameLog> = {}): GameLog => ({
   gameId: 42,
   isFirstHalf: true,
-  home: { name: "Ravens", points: 0 },
-  away: { name: "Wolves", points: 0 },
+  home: team("Ravens"),
+  away: team("Wolves"),
   ...over,
 });
 
@@ -64,16 +66,15 @@ function useHarness(overrides: Partial<Overrides>) {
   const [takeOverError, setTakeOverError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const inFlight = useRef(false);
-  const onStartedRef = useRef(vi.fn());
-  const onStarted = onStartedRef.current;
+  const inFlightRef = useRef(false);
+  const [onStarted] = useState(() => vi.fn());
   const args: Overrides = {
     id: 42,
     setupPath: "/api/game/42/setup",
     logPath: "/api/gamelog/42",
     eventsPath: "/api/game/42/events",
     crewPath: "/api/game/42/officials",
-    inFlight,
+    inFlightRef,
     loading: false,
     finished: false,
     offline: false,
@@ -110,7 +111,7 @@ function useHarness(overrides: Partial<Overrides>) {
     ...start,
     args,
     onStarted,
-    inFlight,
+    inFlightRef,
     state: {
       saving,
       error,
@@ -165,7 +166,7 @@ describe("useGameStart guards (Phase 3 characterization)", () => {
       expect(closed.result.current.state.confirmOpen).toBe(false);
     }
     const busy = setup({});
-    busy.result.current.inFlight.current = true;
+    busy.result.current.inFlightRef.current = true;
     act(() => busy.result.current.openConfirmation());
     expect(busy.result.current.state.confirmOpen).toBe(false);
 
@@ -246,7 +247,7 @@ describe("runStart (Phase 3 characterization)", () => {
 
     const unnamed = setup({ possessionSent: false });
     cachedGetMock.mockResolvedValueOnce(
-      log({ home: { name: "  ", points: 0 } }),
+      log({ home: team("  ") }),
     );
     await act(async () => unnamed.result.current.runStart());
     expect(apiPostMock).not.toHaveBeenCalled();
@@ -262,7 +263,7 @@ describe("runStart (Phase 3 characterization)", () => {
 
   it("stops before any write for every start guard", async () => {
     const busy = setup({});
-    busy.result.current.inFlight.current = true;
+    busy.result.current.inFlightRef.current = true;
     await act(async () => busy.result.current.runStart());
     expect(apiPutMock).not.toHaveBeenCalled();
 
@@ -318,7 +319,7 @@ describe("take-over and retry (Phase 3 characterization)", () => {
 
     const busy = setup({});
     takeOverMock.mockClear();
-    busy.result.current.inFlight.current = true;
+    busy.result.current.inFlightRef.current = true;
     await act(async () => busy.result.current.runTakeOver());
     expect(takeOverMock).not.toHaveBeenCalled();
 
