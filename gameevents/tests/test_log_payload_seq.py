@@ -60,38 +60,6 @@ def test_a_canonical_submission_publishes_the_seq_of_each_row(client):
 
 
 @pytest.mark.django_db
-def test_a_shadow_submission_publishes_the_event_seq_not_the_legacy_sequence(client):
-    login(client)
-    game, home, _away = make_game("seq")
-
-    # The legacy writer allocates TeamLog.sequence = max+1, so after one write
-    # the shadow's rows are sequence 1 while its events start at seq 1 as well.
-    post_legacy(
-        client,
-        game,
-        legacy_body(
-            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
-        ),
-    )
-    # A canonical submission afterwards takes seq 2 but is projected into the
-    # sequence the log allocated (min seq = 2) -- the two schemes still agree.
-    post_events(
-        client,
-        game,
-        {
-            "events": [
-                {"type": "score", "code": "touchdown", "side": "away", "player": 9}
-            ],
-            "client_id": sub_id(2),
-        },
-    )
-
-    payload = get_log(client, game).json()
-    rows = sorted(payload["events"], key=lambda event: event["id"])
-    assert [(row["sequence"], row["seq"]) for row in rows] == [(1, 1), (2, 2)]
-
-
-@pytest.mark.django_db
 def test_a_penalty_names_its_own_event_although_sequence_zero_is_shared(client):
     login(client)
     game, home, _away = make_game("seq")

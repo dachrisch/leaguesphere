@@ -1,14 +1,16 @@
 """Append events to the store and project them, all or nothing.
 
-Two callers, one service:
+One writer, one service:
 
-- ``append_legacy`` -- the shadow on ``POST /api/gamelog``. The legacy writer
-  already inserted the ``TeamLog`` rows, so ``write_rows=False``: the events
-  are recorded and ``GameState`` is moved, but no row is written twice.
 - ``append_submission`` -- the canonical endpoint. The rows come from the
   projector, so a canonical game's log is a projection and nothing else.
 
-Both run in one transaction (the caller's, when there is one): sequence
+The legacy shadow writer was removed in Phase 2 after the prod soak: v1
+gamelog writes no longer create events, and their existing shadow events stay
+an append-only audit record.
+
+``append_submission`` runs in one transaction (the caller's, when there is
+one): sequence
 allocation, the submission claim, the events, the rows, the sequence flags and
 ``GameState`` commit together. A replay of a known ``client_id`` writes
 nothing and succeeds.
@@ -47,8 +49,6 @@ raises :class:`MissingAuthor` (a 400), never a database error. The same rule
 is used by ``rebuild_game``; see ``AuthorResolver``.
 """
 
-import logging
-import uuid
 from dataclasses import dataclass, replace
 from typing import Iterable, Optional
 
@@ -58,9 +58,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from gameevents.models import GameEvent, GameState
-from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.projector import (
-    EXCLUDED_EVENTS,
     GameEventValue,
     GameStateValue,
     InvalidEnvelope,
@@ -68,14 +66,12 @@ from gameevents.service.projector import (
     project_submission,
 )
 from gameevents.service.replay import Replay, replay_events, resolve_correction
-from gamedays.models import Gameresult, Gameinfo, Team, TeamLog
+from gamedays.models import Gameresult, Gameinfo, TeamLog
 from gamedays.service.game_service import GameService
 from gamedays.service.wrapper.gameinfo_wrapper import (
     STATUS_FIRST_HALF,
     STATUS_HALFTIME,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class SequenceConflict(Exception):
@@ -589,90 +585,3 @@ def append_submission(
     return AppendOutcome(
         state=projection.state, applied=True, last_seq=projection.state.last_seq
     )
-
-
-def append_legacy(
-    game,
-    *,
-    team,
-    entries: list,
-    half: int,
-    client_id: Optional[str] = None,
-    source: str = GameEvent.Source.LEGACY,
-    write_rows: bool = False,
-    author=None,
-    rows=None,
-) -> AppendOutcome:
-    """Record one legacy POST's event list (the shadow path).
-
-    Must run after the legacy writer inserted its rows (the endpoint does it in
-    the same transaction): the row group the writer just created is read back
-    and stored as the submission's ``legacy_sequence``, so a later correction --
-    from either path -- deletes exactly that group.
-
-    ``rows`` are the ``TeamLog`` rows that write created, in entry order (the
-    endpoint passes them; the game row is locked for the whole request, so they
-    are exactly this submission's rows). They let each event carry its row
-    (``team_log``), which is what makes a *sequence-0* row addressable -- a
-    penalty, a clock, a timeout or a marker shares sequence 0 with every other
-    one, so a sequence cannot name it. Without them the events are recorded
-    unlinked, and only group corrections can name them.
-    """
-
-    client_id = normalise_client_id(client_id) or str(uuid.uuid4())
-    if not isinstance(team, Team):
-        team = GameService._resolve_team(team)
-    legacy_sequence = None
-    if any(entry.get("name") not in EXCLUDED_EVENTS for entry in entries):
-        legacy_sequence = TeamLog.objects.filter(
-            gameinfo=game, sequence__gt=0
-        ).aggregate(Max("sequence"))["sequence__max"]
-    values = from_legacy_entries(
-        entries,
-        side=side_for_team(game, team),
-        half=half,
-        client_id=client_id,
-        legacy_sequence=legacy_sequence,
-    )
-    outcome = append_submission(
-        game,
-        values,
-        client_id=client_id,
-        source=source,
-        write_rows=write_rows,
-        author=author,
-    )
-    if rows:
-        _link_shadow_rows(game, client_id, rows)
-    return outcome
-
-
-def _link_shadow_rows(game, client_id: str, rows) -> None:
-    """Give a shadow submission's events the rows the legacy writer created.
-
-    The writer inserts one row per entry, in order; the events are stored 1:1
-    in the same order. A replay of an applied submission writes no rows, so a
-    length mismatch means "nothing new to link" and the stored links stay.
-    """
-
-    rows = list(rows)
-    events = list(
-        GameEvent.objects.filter(game=game, client_id=client_id).order_by("seq")
-    )
-    if len(events) != len(rows):
-        # One row per entry is the writer's contract; a mismatch means the
-        # rows cannot be paired, so the events stay unlinked -- a later
-        # row-level correction of them would be refused (400). Say so instead
-        # of failing silently.
-        logger.warning(
-            "shadow append of game %s (%s): %d event(s) for %d row(s); "
-            "the events stay unlinked",
-            game.pk,
-            client_id,
-            len(events),
-            len(rows),
-        )
-        return
-    for event, row in zip(events, rows):
-        event.team_log_id = row.pk
-    GameEvent.objects.bulk_update(events, ["team_log"])

@@ -32,7 +32,7 @@ def test_v1_post_rows_events_response_and_query_count(client):
     with CaptureQueriesContext(connection) as captured:
         response = post_legacy(client, game, body)
 
-    assert len(captured) in (75, 77)
+    assert len(captured) in (54, 56)  # down from 75/77: no shadow queries
     assert response.status_code == 201
     payload = response.json()
     assert payload["gameId"] == game.pk
@@ -40,12 +40,8 @@ def test_v1_post_rows_events_response_and_query_count(client):
         "Touchdown"
     ]
     assert TeamLog.objects.filter(gameinfo=game).count() == 1
-    event = GameEvent.objects.get(game=game)
-    assert event.source == GameEvent.Source.LEGACY
-    assert event.client_id == SUB_ID
-    assert event.team_log_id is not None
-    state = GameState.objects.get(game=game)
-    assert (state.score_home, state.period, state.last_seq) == (6, 1, 1)
+    assert not GameEvent.objects.filter(game=game).exists()
+    assert not GameState.objects.filter(game=game).exists()
 
 
 @pytest.mark.django_db
@@ -62,4 +58,4 @@ def test_v1_post_replay_writes_nothing(client, django_assert_num_queries):
 
     assert response.status_code == 200
     assert TeamLog.objects.filter(gameinfo=game).count() == 1
-    assert GameEvent.objects.filter(game=game).count() == 1
+    assert not GameEvent.objects.filter(game=game).exists()

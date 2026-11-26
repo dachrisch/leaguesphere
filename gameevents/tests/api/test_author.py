@@ -83,44 +83,6 @@ def test_the_canonical_endpoint_records_the_request_user_as_the_author(client):
 
 
 @pytest.mark.django_db
-def test_the_legacy_shadow_records_the_request_user_as_the_author(client):
-    game, home, _away = make_game("author-shadow")
-    user = login(client)
-
-    response = post_legacy(
-        client,
-        game,
-        legacy_body(
-            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
-        ),
-    )
-
-    assert response.status_code == 201
-    # The legacy writer inserted the rows for the same request user; the event
-    # log records the same actor instead of guessing one.
-    assert event_authors(game) == {user.pk}
-    assert row_authors(game) == {user.pk}
-
-
-@pytest.mark.django_db
-def test_a_legacy_undo_records_its_actor(client):
-    game, home, _away = make_game("author-undo")
-    user = login(client)
-    post_legacy(
-        client,
-        game,
-        legacy_body(
-            game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
-        ),
-    )
-
-    assert delete_sequence(client, game, 1).status_code == 200
-
-    correction = GameEvent.objects.get(game=game, type=GameEvent.Type.CORRECTION)
-    assert correction.author_id == user.pk
-
-
-@pytest.mark.django_db
 def test_a_write_without_an_actor_uses_the_games_author():
     game, _home, _away = make_game("author-system")
 

@@ -593,94 +593,6 @@ def test_game_state_equals_a_replay_of_the_stored_log(client):
     assert stored.last_seq == 5
 
 
-@pytest.mark.django_db
-def test_a_correction_of_a_shadow_play_deletes_its_real_row_group(client):
-    game, home, _away = make_game("canonical-undo-shadow")
-    login(client)
-    entries = [
-        {"name": "Touchdown", "player": "7"},
-        {"name": "1-Extra-Punkt", "player": "7"},
-    ]
-
-    # Two legacy submissions write TeamLog sequences 1 and 2, while their
-    # events carry seqs 1,2 and 3,4 -- the two numbering schemes diverge, and
-    # a correction must still delete the group that really exists.
-    assert (
-        post_legacy(
-            client, game, legacy_body(game, home, entries, client_id=sub_id(1))
-        ).status_code
-        == 201
-    )
-    assert (
-        post_legacy(
-            client, game, legacy_body(game, home, entries, client_id=sub_id(2))
-        ).status_code
-        == 201
-    )
-    assert GameEvent.objects.get(game=game, seq=3).legacy_sequence == 2
-
-    response = post_events(
-        client,
-        game,
-        {
-            "events": [
-                {"type": "correction", "code": "undo", "payload": {"undo_of": 3}}
-            ],
-            "client_id": sub_id(3),
-        },
-    )
-
-    assert response.status_code == 201
-    assert response.json()["state"]["score_home"] == 7
-    assert not TeamLog.objects.filter(
-        gameinfo=game, sequence=2, isDeleted=False
-    ).exists()
-    assert (
-        TeamLog.objects.filter(gameinfo=game, sequence=1, isDeleted=False).count() == 2
-    )
-
-
-@pytest.mark.django_db
-def test_a_canonical_game_keeps_accepting_the_legacy_endpoint(client):
-    game, home, _away = make_game("canonical-then-legacy")
-    login(client)
-    assert (
-        post_events(
-            client,
-            game,
-            {"events": [envelope(code="touchdown")], "client_id": sub_id(1)},
-        ).status_code
-        == 201
-    )
-
-    response = post_legacy(
-        client,
-        game,
-        legacy_body(
-            game,
-            home,
-            [{"name": "Touchdown", "player": "9"}],
-            client_id=sub_id(2),
-        ),
-    )
-
-    assert response.status_code == 201
-    assert TeamLog.objects.filter(gameinfo=game).count() == 2
-    events = list(GameEvent.objects.filter(game=game).order_by("seq"))
-    assert [(event.seq, event.source) for event in events] == [
-        (1, GameEvent.Source.V2),
-        (2, GameEvent.Source.LEGACY),
-    ]
-    # The canonical path continues after the legacy shadow write.
-    response = post_events(
-        client,
-        game,
-        {"events": [envelope(code="pat1", player=9)], "client_id": sub_id(3)},
-    )
-    assert response.status_code == 201
-    assert response.json()["state"]["score_home"] == 13
-
-
 # --------------------------------------------------------------------------
 # device lock: the same helper as the gamelog view, not a second lock
 # --------------------------------------------------------------------------
@@ -767,40 +679,9 @@ def test_a_second_device_may_not_write_either_endpoint(client, post):
 
     assert accepted.status_code == 201
     assert TeamLog.objects.filter(gameinfo=game).count() == 1
-    assert GameEvent.objects.filter(game=game).count() == 1
-
-
-@pytest.mark.django_db
-def test_a_replay_after_a_staff_release_answers_with_the_log(client):
-    """Release + handover, then the original device replays: ``200``.
-
-    Staff releasing the lock (a lost phone) and another device claiming the
-    game must not turn an already-applied submission into a 409 -- the op
-    would stay in the sender's outbox forever and never be finalised. The
-    claim therefore wins over the lock, not the other way round.
-    """
-
-    game, home, _away = make_game("gamelog-replay-after-release")
-    user = login(client)
-    lock_device(game, "device-a")
-    body = legacy_body(
-        game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+    assert GameEvent.objects.filter(game=game).count() == (
+        0 if post.__name__ == "post_legacy" else 1
     )
-    first = post_legacy(client, game, body, device="device-a")
-    assert first.status_code == 201
-
-    user.is_staff = True
-    user.save(update_fields=["is_staff"])
-    released = client.delete(reverse(API_GAME_DEVICE, kwargs={"pk": game.pk}))
-    assert released.status_code == 204
-    GameSetup.objects.filter(gameinfo=game).update(device_id="device-b")
-
-    replay = post_legacy(client, game, body, device="device-a")
-
-    assert replay.status_code == 200
-    assert replay.json() == first.json()
-    assert TeamLog.objects.filter(gameinfo=game).count() == 1
-    assert GameEvent.objects.filter(game=game).count() == 1
 
 
 @pytest.mark.django_db
