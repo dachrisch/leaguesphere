@@ -157,7 +157,12 @@ class MatchreportGamedayDetailView(UserPassesTestMixin, DetailView):
                 passcheck_info_table = passcheck_info_table_df.to_html(**render_configs)
 
             passcheck_player_data = ms.get_passcheck_player_details(render_configs)
-            gameday_match_reports = ms.get_gameday_match_reports(render_configs)
+            # Only this staff-only detail view exposes the claim/unassign
+            # "Aktion" column. The wrapper defaults to omitting it so the same
+            # report reused on the public officials team list stays safe.
+            gameday_match_reports = ms.get_gameday_match_reports(
+                render_configs, include_official_actions=True
+            )
 
             officials_check_status = compute_gameday_officials_compliance([gameday.pk])[
                 gameday.pk

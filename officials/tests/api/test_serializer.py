@@ -5,6 +5,7 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 
+from gamedays.tests.setup_factories.factories import AssociationFactory, TeamFactory
 from officials.api.serializers import (
     GameOfficialAllInfoSerializer,
     OfficialSerializer,
@@ -14,7 +15,10 @@ from officials.api.serializers import (
 from officials.models import Official
 from officials.service.moodle.moodle_service import MoodleService
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
-from officials.tests.setup_factories.factories_officials import OfficialFactory
+from officials.tests.setup_factories.factories_officials import (
+    OfficialExternalGamesFactory,
+    OfficialFactory,
+)
 
 
 class TestGameOfficialAllInfoSerializer:
@@ -209,6 +213,60 @@ class TestOfficialGamelistSerializer(TestCase):
         assert serializer["external_games"]["number_games"] == 7
         assert len(serializer["external_games"]["all_games"]) == 1
         assert serializer["dffl_games"]["number_games"] == 8
+
+
+class TestOfficialGamelistExternalGamesQueryCount(TestCase):
+    """Serializing external games must not issue one query per game.
+
+    ``OfficialExternalGames.association`` used to be a local CharField (zero
+    extra queries). It is a FK now, and ``OfficialExternalGamesSerializer``
+    reads ``association.abbr``; without ``select_related("association")`` the
+    profile gamelist silently gained an N+1 that grows with every game.
+    """
+
+    SEASON = 2027
+
+    def setUp(self):
+        self.association = AssociationFactory(abbr="QRY-EXT")
+        self.official = OfficialFactory(team=TeamFactory(association=self.association))
+
+    def _add_external_game(self, index):
+        return OfficialExternalGamesFactory(
+            official=self.official,
+            association=self.association,
+            number_games=1,
+            date=date(self.SEASON, 5, 1 + index),
+            notification_date=date(self.SEASON, 5, 2 + index),
+            position="Referee",
+            reporter_name=f"Reporter {index}",
+            halftime_duration=15,
+            comment="",
+        )
+
+    def _serialize(self):
+        # DRF's .data fully evaluates the serializer (and the external-games
+        # queryset), so the query count below covers the whole payload.
+        return OfficialGamelistSerializer(
+            instance=self.official, season=self.SEASON, is_staff=False, is_self=False
+        ).data
+
+    def test_query_count_stays_flat_as_external_games_grow(self):
+        self._add_external_game(0)
+
+        with self.assertNumQueries(4):
+            one_game = self._serialize()
+
+        for index in range(1, 6):
+            self._add_external_game(index)
+
+        with self.assertNumQueries(4):
+            many_games = self._serialize()
+
+        assert len(one_game["external_games"]["all_games"]) == 1
+        assert len(many_games["external_games"]["all_games"]) == 6
+        assert {
+            game["association"] for game in many_games["external_games"]["all_games"]
+        } == {"QRY-EXT"}
 
 
 class TestOfficialGameCountSerializer(TestCase):

@@ -46,7 +46,7 @@ class TestGamedayActionLinks(TestCase):
         )
 
         table = MachtreportModelWrapper(gameday.pk)._get_game_officials_table(
-            gameinfo.pk
+            gameinfo.pk, include_official_actions=True
         )
         actions = table["Aktion"].iloc[0]
 
@@ -62,7 +62,7 @@ class TestGamedayActionLinks(TestCase):
         )
 
         table = MachtreportModelWrapper(gameday.pk)._get_game_officials_table(
-            gameinfo.pk
+            gameinfo.pk, include_official_actions=True
         )
         actions = table["Aktion"].iloc[0]
 

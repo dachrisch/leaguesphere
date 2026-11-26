@@ -210,15 +210,22 @@ class MachtreportModelWrapper:
 
         return teamlogs.rename(columns=column_mapping)
 
-    def _get_game_officials_table(self, gameinfo: str):
+    def _get_game_officials_table(
+        self, gameinfo: str, include_official_actions: bool = False
+    ):
         column_mapping = {
             "official__team__description": "Team",
             "name": "Name",
             "position": "Position",
             "license_cell": "Lizenz",
             "license_number_cell": "Lizenznummer",
-            "action_cell": "Aktion",
         }
+        if include_official_actions:
+            # The claim/unassign links lead to self-service views (and carry a
+            # ?next=/matchreport/... the viewer may not be allowed to follow),
+            # so they are only exposed when the caller opts in - the staff
+            # gameday detail view does; the officials team list never does.
+            column_mapping["action_cell"] = "Aktion"
         # Not part of column_mapping directly - fetched alongside it but
         # consumed by _license_number_cell()/_license_cell() and
         # _official_action_cell() to build the "Lizenznummer"/"Lizenz"/
@@ -310,13 +317,14 @@ class MachtreportModelWrapper:
                 ),
                 axis=1,
             )
-            officials_df["action_cell"] = officials_df.apply(
-                lambda row: self._official_action_cell(
-                    row["id"],
-                    row["official_id"],
-                ),
-                axis=1,
-            )
+            if include_official_actions:
+                officials_df["action_cell"] = officials_df.apply(
+                    lambda row: self._official_action_cell(
+                        row["id"],
+                        row["official_id"],
+                    ),
+                    axis=1,
+                )
             officials_df.drop(
                 columns=[*extra_fields, "latest_license", "last_started_license_date"],
                 inplace=True,
@@ -463,7 +471,9 @@ class MachtreportModelWrapper:
         # cell is handed to pandas' to_html(escape=False).
         return mark_safe(" ".join(str(link) for link in links))
 
-    def get_gameday_match_report(self, render_config: dict):
+    def get_gameday_match_report(
+        self, render_config: dict, include_official_actions: bool = False
+    ):
         games = []
 
         no_flags_text = """<p>In diesem Spiel gab es keine Strafen</p>"""
@@ -474,7 +484,9 @@ class MachtreportModelWrapper:
         for gameinfo in self._gameinfo.id:
             end_notes = self._get_staff_game_end_notes(gameinfo)
             game_result = self._get_game_result(gameinfo)
-            game_refs = self._get_game_officials_table(gameinfo)
+            game_refs = self._get_game_officials_table(
+                gameinfo, include_official_actions=include_official_actions
+            )
             game_flags = self._get_game_teamlogs(gameinfo)
 
             games.append(
