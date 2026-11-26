@@ -14,6 +14,3 @@
 # Kept by decision, not modelled here (string FK references, not imports):
 #   gamedays/models.py: Gameinfo.league_group -> "league_table.LeagueGroup"
 #   gamedays/models.py: GameOfficial.official -> "officials.Official"
-gamedays/service/wrapper/gameinfo_wrapper.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
-gamedays/wizard/gameday_format.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
-gamedays/wizard/gameinfo.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion

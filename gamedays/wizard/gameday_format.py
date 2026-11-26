@@ -13,7 +13,7 @@ from gamedays.management.schedule_manager import (
     GroupSchedule,
 )
 from gamedays.wizard import WizardStepHandler, FIELD_GROUP_STEP
-from league_table.models import LeagueGroup
+from gamedays.service import league_group_hooks
 
 GAMEDAY_FORMAT_STEP = "gameday-format"
 
@@ -40,16 +40,16 @@ class GamedayFormatStepHandler(WizardStepHandler):
             prefix=GAMEDAY_FORMAT_STEP,
         )
         if len(group_array):
-            league_groups = LeagueGroup.objects.filter(id__in=group_array)
+            league_groups = league_group_hooks.group_options(group_array)
         else:
             league_groups = [f"Gruppe {n}" for n in range(1, number_groups + 1)]
         for index, current_form in enumerate(formset):
             if len(group_array):
-                group_name = league_groups[index].name
+                group_name = league_groups[index][1]
                 current_form.fields[GamedayFormatForm.GROUP_C].label = group_name
                 current_form.fields[GamedayFormatForm.GROUP_NAME_C].initial = group_name
                 current_form.fields[GamedayFormatForm.LEAGUE_GROUP_C].initial = (
-                    league_groups[index].pk
+                    league_groups[index][0]
                 )
             else:
                 current_form.fields[GamedayFormatForm.GROUP_C].label = league_groups[
@@ -66,7 +66,7 @@ class GamedayFormatStepHandler(WizardStepHandler):
             cleaned_data = current_form.cleaned_data
             league_group = cleaned_data.get(GamedayFormatForm.LEAGUE_GROUP_C)
             if league_group:
-                league_group = LeagueGroup.objects.get(pk=league_group)
+                league_group = league_group_hooks.group_by_id(league_group)
 
             grouped_teams += [
                 GroupSchedule(

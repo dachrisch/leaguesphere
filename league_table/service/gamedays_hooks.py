@@ -16,7 +16,7 @@ from league_table.constants import (
 )
 from league_table.service.leaguetable_repository import LeagueTableRepository
 from league_table.api.standings import build_standings as _build_standings
-from league_table.models import LeagueRuleset, LeagueSeasonConfig
+from league_table.models import LeagueGroup, LeagueRuleset, LeagueSeasonConfig
 from league_table.service.datatypes import LeagueConfigRuleset
 from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER
 from league_table.service.ranking.engine import FinalRankingEngine, TieBreakerEngine
@@ -73,8 +73,21 @@ def top_n_player(settings):
     return settings.get(TOP_N_PLAYER, 10)
 
 
+def group_options(ids):
+    return list(LeagueGroup.objects.filter(id__in=ids).values_list("pk", "name"))
+
+
+def group_by_id(pk):
+    try:
+        return LeagueGroup.objects.get(pk=pk)
+    except LeagueGroup.DoesNotExist:
+        return None
+
+
 def register():
     detail_context.register_contributor("league_table", 10, detail_contributor)
+    registry.register("group_options", group_options, "league_table")
+    registry.register("group_by_id", group_by_id, "league_table")
     for name, implementation in (
         ("season_settings", season_settings),
         ("season_config", season_config),

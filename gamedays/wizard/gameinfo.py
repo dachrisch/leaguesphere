@@ -4,7 +4,7 @@ from gamedays.forms import get_gameinfo_formset, GamedayGaminfoFieldsAndGroupsFo
 from gamedays.models import Gameinfo
 from gamedays.service.gameday_form_service import GamedayFormService
 from gamedays.wizard import WizardStepHandler, FIELD_GROUP_STEP
-from league_table.models import LeagueGroup
+from gamedays.service import league_group_hooks
 
 GAMEINFO_STEP = "gameinfo-step"
 
@@ -27,10 +27,9 @@ class GameinfoStepHandler(WizardStepHandler):
                 (f"Gruppe {n}", f"Gruppe {n}") for n in range(1, number_groups + 1)
             ]
         else:
-            groups = LeagueGroup.objects.filter(id__in=group_names)
             group_choices = [
-                (f"{currentGroup.pk}", f"{currentGroup.name}")
-                for currentGroup in groups
+                (f"{pk}", f"{name}")
+                for pk, name in league_group_hooks.group_options(group_names)
             ]
 
         field_choices = [(f"{n}", f"Feld {n}") for n in range(1, number_fields + 1)]

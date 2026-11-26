@@ -17,9 +17,6 @@ from league_table.models import LeagueGroup
 
 
 def test_gameday_format_uses_selected_league_groups():
-    group = MagicMock(spec=LeagueGroup)
-    group.name = "Gruppe A"
-    group.pk = 7
     form = SimpleNamespace(
         fields={
             "group": SimpleNamespace(label=""),
@@ -35,12 +32,15 @@ def test_gameday_format_uses_selected_league_groups():
             }
         }
     )
-    with patch(
-        "gamedays.wizard.gameday_format.get_gameday_format_formset",
-        return_value=[form],
-    ), patch(
-        "gamedays.wizard.gameday_format.LeagueGroup.objects.filter",
-        return_value=[group],
+    with (
+        patch(
+            "gamedays.wizard.gameday_format.get_gameday_format_formset",
+            return_value=[form],
+        ),
+        patch(
+            "gamedays.service.league_group_hooks.group_options",
+            return_value=[(7, "Gruppe A")],
+        ),
     ):
         result = GamedayFormatStepHandler().handle_form(wizard, None, None)
     assert result == [form]
@@ -68,10 +68,12 @@ def test_gameinfo_step_uses_league_group_names_when_no_number_given():
         },
     )
     formset = MagicMock()
-    with patch(
-        "gamedays.wizard.gameinfo.get_gameinfo_formset", return_value=lambda *a, **k: formset
-    ), patch(
-        "gamedays.wizard.gameinfo.Gameinfo.objects.filter", return_value=[]
+    with (
+        patch(
+            "gamedays.wizard.gameinfo.get_gameinfo_formset",
+            return_value=lambda *a, **k: formset,
+        ),
+        patch("gamedays.wizard.gameinfo.Gameinfo.objects.filter", return_value=[]),
     ):
         result = GameinfoStepHandler().handle_form(wizard, None, None)
     assert result is formset

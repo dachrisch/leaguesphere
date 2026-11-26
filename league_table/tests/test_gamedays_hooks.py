@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from league_table.models import LeagueRuleset, LeagueSeasonConfig
+from league_table.models import LeagueGroup, LeagueRuleset, LeagueSeasonConfig
 from league_table.service import gamedays_hooks as hooks
 from gamedays.models import Gameday
 from gamedays.tests.setup_factories.db_setup import DBSetup
@@ -127,7 +127,7 @@ def test_settings_helpers():
 def test_register_registers_all_hooks():
     with patch("league_table.service.gamedays_hooks.registry.register") as register:
         hooks.register()
-    assert register.call_count == 11
+    assert register.call_count == 13
 
 
 @pytest.mark.django_db
@@ -161,3 +161,15 @@ def test_league_season_configs_for_pairs():
     assert [item.pk for item in result] == [config.pk]
     result = hooks.league_season_configs_for_pairs({(-1, -1)})
     assert result == []
+
+
+@pytest.mark.django_db
+def test_group_hooks():
+    DBSetup().g62_status_empty()
+    gameday = Gameday.objects.first()
+    group = LeagueGroup.objects.create(
+        league=gameday.league, season=gameday.season, name="Gruppe A"
+    )
+    assert hooks.group_options([group.pk]) == [(group.pk, "Gruppe A")]
+    assert hooks.group_by_id(group.pk).pk == group.pk
+    assert hooks.group_by_id(-1) is None

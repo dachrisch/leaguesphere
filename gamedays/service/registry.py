@@ -41,6 +41,8 @@ HOOK_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "league_season_configs_for_pairs",
         "standing_state_parts",
         "build_standings",
+        "group_options",
+        "group_by_id",
     ),
     "liveticker": ("live_feed", "today_statuses", "gameday_ticker_url"),
     "officials": ("detail_signups", "current_licenses"),
