@@ -1,7 +1,8 @@
 """Startup checks for Phase 1 hook registration (dachrisch/leaguesphere#2537).
 
 Registered in ``GamedaysConfig.ready()``. A deployment missing a consumer hook
-fails at startup instead of silently taking a fallback at request time.
+is caught by ``manage.py check`` in CI and by ``migrate`` on deploy — system
+checks do not run under gunicorn, so this is not a request-time guard.
 """
 
 from __future__ import annotations
