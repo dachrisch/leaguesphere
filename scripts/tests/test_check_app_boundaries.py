@@ -285,6 +285,7 @@ def test_dynamic_forms_ignore_other_calls_and_values(checker, tmp_path):
                 'apps.get_model(MODEL, "LeagueGroup")\n'
                 'apps.do_thing("league_table")\n'
                 'importlib.import_module("os.path")\n'
+                'get_factory()("league_table")\n'
             )
         },
     )
@@ -300,6 +301,50 @@ def test_gameevents_dynamic_is_reported_not_failed(checker, tmp_path, capsys):
             "gamedays/service/demo.py": (
                 'model = apps.get_model("gameevents", "TeamLog")\n'
                 'mod = importlib.import_module("gameevents.service.append")\n'
+            )
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 0
+    assert "gameevents" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("source", "app"),
+    [
+        (
+            "from importlib import import_module\n"
+            'mod = import_module("league_table.models")\n',
+            "league_table",
+        ),
+        ('mod = __import__("officials.models")\n', "officials"),
+        (
+            'model = apps.get_model(app_label="passcheck", model_name="Player")\n',
+            "passcheck",
+        ),
+        (
+            'mod = __import__("gameday_designer.models", fromlist=["X"])\n',
+            "gameday_designer",
+        ),
+    ],
+)
+def test_bare_dynamic_forms_fail(checker, tmp_path, capsys, source, app):
+    root = write_root(tmp_path, {"gamedays/service/demo.py": source})
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 1
+    assert app in capsys.readouterr().out
+
+
+def test_bare_dynamic_gameevents_is_reported_not_failed(checker, tmp_path, capsys):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/service/demo.py": (
+                "from importlib import import_module\n"
+                'mod = import_module("gameevents.service.append")\n'
+                'model = __import__("gameevents.models")\n'
             )
         },
     )

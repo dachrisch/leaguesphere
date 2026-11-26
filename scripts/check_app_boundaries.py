@@ -76,8 +76,9 @@ HEADER = """\
 #   gamedays/models.py: GameOfficial.official -> "officials.Official"
 #
 # Dynamic back-edges are normalised too: apps.get_model("app", "Model"),
-# apps.get_model("app.Model") and importlib.import_module("app.module")
-# cannot be hidden in a function body or a nested call.
+# apps.get_model("app.Model"), keyword get_model(app_label="app"), bare
+# import_module("app.module") and __import__("app.module") cannot be hidden
+# in a function body or a nested call.
 """
 
 
@@ -113,24 +114,48 @@ def boundary_modules(node):
 
 
 def dynamic_modules(node):
-    """Normalise dynamic back-edges (get_model / import_module calls)."""
-    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+    """Normalise dynamic back-edges (get_model / import_module calls).
+
+    Catches attribute calls, bare ``import_module``/``__import__`` names and
+    keyword arguments such as ``get_model(app_label="passcheck", ...)``.
+    """
+    if not isinstance(node, ast.Call):
         return []
-    args = [
-        arg.value
-        for arg in node.args
-        if isinstance(arg, ast.Constant) and isinstance(arg.value, str)
-    ]
-    if node.func.attr == "get_model" and args:
-        raw = ".".join(args[:2])
-    elif node.func.attr == "import_module" and args:
-        raw = args[0]
+    func = node.func
+    if isinstance(func, ast.Attribute):
+        name = func.attr
+    elif isinstance(func, ast.Name):
+        name = func.id
     else:
+        return []
+
+    values = {}
+    for index, arg in enumerate(node.args):
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            values[index] = arg.value
+    for keyword in node.keywords:
+        if (
+            keyword.arg
+            and isinstance(keyword.value, ast.Constant)
+            and isinstance(keyword.value.value, str)
+        ):
+            values[keyword.arg] = keyword.value.value
+
+    if name == "get_model":
+        raw = values.get("app_label", values.get(0, ""))
+        model = values.get("model_name", values.get(1, ""))
+        if model:
+            raw = f"{raw}.{model}" if raw else ""
+    elif name in ("import_module", "__import__"):
+        raw = values.get(0, "")
+    else:
+        return []
+    if not raw:
         return []
     top = raw.split(".")[0]
     if top not in BOUNDARY_MODULES:
         return []
-    return [(f'{node.func.attr}("{raw}")', [top])]
+    return [(f'{name}("{raw}")', [top])]
 
 
 def is_scanned(relative_path):
