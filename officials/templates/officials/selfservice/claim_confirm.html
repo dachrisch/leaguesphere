@@ -14,7 +14,7 @@
         </tr>
         <tr>
             <th scope="row">Spiel</th>
-            <td>{% if home and away %}{{ home }} vs {{ away }}{% else %}Spiel #{{ game.pk }}{% endif %} (#{{ game.pk }})</td>
+            <td>{% if home and away %}{{ home }} vs {{ away }} (#{{ game.pk }}){% else %}Spiel #{{ game.pk }}{% endif %}</td>
         </tr>
         <tr>
             <th scope="row">Position</th>
@@ -22,7 +22,7 @@
         </tr>
         <tr>
             <th scope="row">Eingetragener Name</th>
-            <td>{% if row.name %}{{ row.name }}{% else %}<em>kein Name eingetragen</em>{% endif %}</td>
+            <td>{% if row.name %}{% if reveal_name %}{{ row.name }}{% else %}{{ obfuscated_name }}{% endif %}{% else %}<em>kein Name eingetragen</em>{% endif %}</td>
         </tr>
         </tbody>
     </table>
