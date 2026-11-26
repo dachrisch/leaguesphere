@@ -244,11 +244,11 @@ def test_characterization_discovery_failure_and_missing_placeholders():
     with pytest.raises(RuntimeError, match="discovery failed"):
         probes.discover(session, MANIFEST)
 
-    # A gameday with no id leaves the placeholder unexpanded rather than
-    # failing; the caller still gets a probe path.
+    # A gameday with no id cannot resolve {gameday_id}; those category probes
+    # are skipped rather than run as 404-on-both-sides comparisons.
     manifest = dict(MANIFEST)
     expanded = probes.expand_probes(manifest, [{**GAMEDAYS[0], "id": None}])
-    assert "{gameday_id}" in expanded[0].path
+    assert all("{gameday_id}" not in probe.path for probe in expanded)
 
 
 def test_characterization_duplicate_probe_key_is_collapsed():
