@@ -1,0 +1,8 @@
+{
+  "v1-shadow-write:read-feed": ["$.events[]", "$.cursor", "$.state.last_seq"],
+  "reconciliation-flag:read-feed": ["$.events[]", "$.cursor", "$.state.last_seq"],
+  "v1-shadow-write:write-shadow-event": ["$.events[0].seq"],
+  "v1-shadow-write:read-gamelog": ["$.events[0].seq"],
+  "reconciliation-flag:write-shadow-event": ["$.events[0].seq"],
+  "reconciliation-flag:flag-projection": ["$.events[0].seq"]
+}
