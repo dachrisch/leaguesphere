@@ -21,7 +21,8 @@ from transport import Session  # noqa: E402
 
 def api_session(context, username, password):
     """An HTTP session against the same side as this browser context."""
-    return Session(context.base_url, username=username, password=password)
+    base_url = getattr(context, "ls_base_url", "") or getattr(context, "base_url", "")
+    return Session(base_url, username=username, password=password)
 
 
 def discover(context, username, password):

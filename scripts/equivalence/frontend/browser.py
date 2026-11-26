@@ -35,6 +35,9 @@ def build_context(url, username, password, credentials, errors, browser):
         ignore_https_errors=True,
         service_workers="block",
     )
+    # Playwright's BrowserContext has no public `base_url` attribute; the
+    # journeys need the side's URL for their API session.
+    context.ls_base_url = url
     context.role_pages = {}
     for role, (user, secret) in credentials.items():
         if not user or not secret:
