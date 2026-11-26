@@ -23,29 +23,53 @@ programme baseline and the flag off.
 | side | baked commit | flag |
 |---|---|---|
 | ref | `96ec02b175a62e0e264f51771355ebf806c21797` | off (baseline) |
-| cand | `ba40150b01fc9313db2ebf7a273c667a507adc3a` | on |
+| cand | `dbd055e6be01b5c543dc6eb4e5edb5d974187468` | on |
 
-Run id: `phase2-l3-final-on` (the extended harness, Layer 3 head baked into
-cand). The Layer 2 report was also run flag-ON at cand
-`3b9f4ecbf29735b301c819b56e06c74601913e7a` with zero diffs.
+Run id: **`phase2-l4-on`** — the extended harness with the **Layer 4** head
+baked into cand. This is the record of this layer's flag-ON comparison. Earlier
+runs are separate: Layer 3 at cand `ba40150b01fc9313db2ebf7a273c667a507adc3a`
+(`phase2-l3-final-on`) and Layer 2 at
+`3b9f4ecbf29735b301c819b56e06c74601913e7a`, both posted on their own PRs.
 
 - Probes compared: **31** — diffs: **0** — skipped: **0**
-- Write scenarios: **9**, all clean — `designer-publish`, `finalize-game`,
+- Write scenarios: **9** — `designer-publish`, `finalize-game`,
   `finalize-canvas`, `finalize-legacy`, `v2-events-write`, `v1-shadow-write`,
-  `reconciliation-flag`, `legacy-wizard-finalize`, `officials-signup`
+  `reconciliation-flag`, `legacy-wizard-finalize`, `officials-signup`. The
+  trustworthy signal is **Unexplained diffs: 0**; the per-scenario status line
+  in that earlier run always printed "clean" because it used an exact key
+  lookup on scenario diffs keyed `<scenario>:<step>` (fixed in #2567).
 - Unexplained diffs: **0**; intended diffs: **0**
-- Reconciliation (Layer 2's `--all --report` on cand, flag on): 6,369 legacy
-  games with rows and no events, zero drift, zero flagged v2 games, zero
-  event-sourced games in the prod-clone stage data.
+- Reconciliation (Layer 2's `--all --report` on cand, flag on): 6,369 accepted
+  legacy games (the stage had no shadow-only games), zero `v2_drift`, zero
+  `v2_flagged`, zero event-sourced games in the prod-clone stage data.
 
-The stage is a prod clone with **no event-sourced games**, so the flag-ON
-comparison exercises the event path through the games created by
-`v2-events-write`, `v1-shadow-write` and `reconciliation-flag` on both sides,
-not through restored rows. The 200↔304 revalidation contract was checked by
-the new feed/liveticker probes; literal validators remain normalised noise.
+**Flag-OFF rerun after the revert.** After emptying `ls_agent_stage_cand_env`
+the coordinator reran the same 31 probes and 9 scenarios: 0 diffs, 0 skipped,
+0 unexplained diffs, with ref and cand both reporting
+`dbd055e6be01b5c543dc6eb4e5edb5d974187468`. The redacted report is posted on
+PR #2568. This confirms the flag override was the only difference.
 
-The redacted reports are posted as comments on PRs #2566 and #2567. No diff
-was declared intended: every path matched on both sides.
+The stage is a prod clone with **no event-sourced games**, so this flag-ON
+comparison can only exercise the event path through games created by
+`v2-events-write`, `v1-shadow-write` and `reconciliation-flag`, not through
+restored rows. In the recorded L4 run the scenario liveticker reads were not
+scoped to the scenario gameday and the reconciliation delete named a sequence
+no row had, so this run alone does **not** prove that the flag-gated projection
+branch ran; #2567 fixes both and the gate for Layers 5/6 is the gameday
+rehearsal on the agent stage, not a prod soak.
+
+The harness compared the **statuses** of the feed/liveticker revalidation
+probes (200↔304) and normalised literal validators as noise; it did not assert
+a literal 304 for each sample in this run, and plan §6 step 2 (confirm cand's
+liveticker ETag includes the projection) and a separate ref-vs-ref noise floor
+are **not recorded here**. The #2567 harness changes now resolve each probe's
+own `#category:id` validator and report a revalidation that never gets a 304;
+those numbers must be captured in the rehearsal report, not inferred from this
+one.
+
+The earlier redacted reports are posted as comments on PRs #2566 and #2567;
+the L4 flag-ON and flag-OFF reports are posted on PR #2568. No diff was
+declared intended: every path matched on both sides.
 
 ## Revert
 
