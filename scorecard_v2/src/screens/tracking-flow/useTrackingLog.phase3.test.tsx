@@ -143,7 +143,7 @@ function makeSession(initial: GameLog = makeLog()) {
 function useHarness(over: Partial<Over>, initial: GameLog) {
   const [{ session, emit }] = useState(() => makeSession(initial));
   const [rules, setRules] = useState<GameRules | null>(null);
-  const [roster, setRoster] = useState<RosterPlayer[]>([]);
+  const [roster, setRoster] = useState<RosterPlayer[] | null>([]);
   const [setup, setSetup] = useState<GameSetup | null>(null);
   const [officials, setOfficials] = useState<Official[] | null>([]);
   const [officialsUnavailable, setOfficialsUnavailable] = useState(false);
@@ -156,7 +156,7 @@ function useHarness(over: Partial<Over>, initial: GameLog) {
   const [editing, setEditing] = useState<LogRow | null>(null);
   const [posting, setPosting] = useState(false);
   const [halftimePending] = useState(false);
-  const setupLoadRef = useRef<Promise<GameSetup | null>>(
+  const setupLoadRef = useRef<Promise<GameSetup | null | undefined> | null>(
     Promise.resolve(null),
   );
   const possessionInFlightRef = useRef(false);

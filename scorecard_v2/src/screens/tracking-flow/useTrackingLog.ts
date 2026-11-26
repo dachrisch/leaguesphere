@@ -52,9 +52,9 @@ interface UseTrackingLogArgs {
   session: GameSession;
   rules: GameRules | null;
   setRules: Dispatch<SetStateAction<GameRules | null>>;
-  setRoster: Dispatch<SetStateAction<RosterPlayer[]>>;
+  setRoster: Dispatch<SetStateAction<RosterPlayer[] | null>>;
   setSetup: Dispatch<SetStateAction<GameSetup | null>>;
-  setupLoadRef: MutableRefObject<Promise<GameSetup | null>>;
+  setupLoadRef: MutableRefObject<Promise<GameSetup | null | undefined> | null>;
   setOfficials: Dispatch<SetStateAction<Official[] | null>>;
   setOfficialsUnavailable: Dispatch<SetStateAction<boolean>>;
   setPeople: Dispatch<SetStateAction<TeamOfficial[]>>;
