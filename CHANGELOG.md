@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.28.2](https://github.com/dachrisch/leaguesphere/compare/v5.28.1...v5.28.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency vite to v8.4.0 ([#2574](https://github.com/dachrisch/leaguesphere/issues/2574)) ([2bbfff0](https://github.com/dachrisch/leaguesphere/commit/2bbfff00909332c2b6b778c15531334ce62ae0aa))
+
 ## [5.28.1](https://github.com/dachrisch/leaguesphere/compare/v5.28.0...v5.28.1) (2026-11-26)
 
 
