@@ -27,22 +27,30 @@ def make_args(**overrides):
         "comment_pr": [],
         "journeys": [],
         "intended": None,
+        "min_steps": 2,
     }
     values.update(overrides)
     return argparse.Namespace(**values)
 
 
-def make_deps(steps_ref=None, steps_cand=None, skipped=(), journeys=None):
-    steps_ref = steps_ref or {"open": {"requests": [], "dom": "same", "aria": "same"}}
-    steps_cand = steps_cand or {"open": {"requests": [], "dom": "same", "aria": "same"}}
+def make_deps(
+    steps_ref=None, steps_cand=None, skipped=(), journeys=None, errors=()
+):
+    default_steps = {
+        "open": {"requests": [], "dom": "same", "aria": "same"},
+        "action": {"requests": [], "dom": "same", "aria": "same"},
+    }
+    steps_ref = steps_ref or dict(default_steps)
+    steps_cand = steps_cand or dict(default_steps)
     calls = {"context": [], "sha": [], "comment": []}
 
     def journey(context, run_id, credentials):
         assert run_id.endswith(("-ref", "-cand"))
         return (steps_ref if run_id.endswith("-ref") else steps_cand, list(skipped))
 
-    def context(url, username, password, credentials, errors, browser):
+    def context(url, username, password, credentials, harness_errors, browser):
         calls["context"].append(url)
+        harness_errors.extend(errors)
         return types.SimpleNamespace(base_url=url)
 
     def sha(url, username, password):
@@ -156,11 +164,35 @@ def test_run_report_comment_and_generated_run_id(tmp_path, capsys):
         make_args(report=str(report), comment_pr=[42], intended=str(intended)), deps
     )
     text = report.read_text(encoding="utf-8")
-    assert code == 0  # declared, so not unexplained
+    # A declared diff is fine, but a skipped step is not evidence of behaviour.
+    assert code == 1
     assert "fe-generated" in text
     assert "selector-missing" in text
     assert calls["comment"] == [(42, text)]
     capsys.readouterr()
+
+
+def test_run_fails_on_skipped_steps_errors_and_too_few_steps(capsys):
+    skipped_only, _ = make_deps(skipped=("selector-missing",))
+    assert runner.run(make_args(), skipped_only) == 1
+    capsys.readouterr()
+
+    errored, _ = make_deps(errors=("role login failed",))
+    assert runner.run(make_args(), errored) == 1
+    capsys.readouterr()
+
+    one_step = {
+        "demo": lambda context, run_id, credentials: (
+            {"open": {"requests": [], "dom": "same", "aria": "same"}},
+            [],
+        )
+    }
+    too_short, _ = make_deps(
+        steps_ref={"open": {"requests": [], "dom": "same", "aria": "same"}},
+        journeys=one_step,
+    )
+    assert runner.run(make_args(min_steps=2), too_short) == 1
+    assert "too few captured steps" in capsys.readouterr().out
 
 
 def test_run_unexplained_diff_returns_one(capsys):
