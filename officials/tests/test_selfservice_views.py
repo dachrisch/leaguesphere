@@ -87,22 +87,59 @@ class TestClaimAssignment(SelfServiceTestBase):
         assert row.official == self.other
         assert any("anderen Person" in m for m in self.messages(response))
 
-    def test_claim_race_single_winner(self):
-        gameinfo, row = _game_with_row()
-        # The second official's name does not match the typed name, so once
-        # the first claim has mapped the row she cannot take it over.
-        client_two = self.login_moodle(official=self.other, client=Client())
-        self.login_moodle()
+    def test_claim_conditional_update_has_single_winner(self):
+        # Simulate another actor claiming the row after our SELECT but before
+        # our conditional UPDATE. Our stale snapshot still says "unmapped",
+        # so only the WHERE official IS NULL guard can prevent a double claim.
+        from unittest.mock import patch
 
-        self.client.post(reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}))
-        response = client_two.post(
-            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}), follow=True
-        )
+        from officials import selfservice
+
+        gameinfo, row = _game_with_row()
+        self.login_moodle()
+        real_get = selfservice.get_object_or_404
+
+        def claim_between_select_and_update(model, pk):
+            loaded = real_get(model, pk=pk)
+            GameOfficial.objects.filter(pk=loaded.pk, official__isnull=True).update(
+                official=self.other
+            )
+            return loaded  # deliberately stale: still unmapped
+
+        with patch(
+            "officials.selfservice.get_object_or_404",
+            side_effect=claim_between_select_and_update,
+        ):
+            response = self.client.post(
+                reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}), follow=True
+            )
 
         row.refresh_from_db()
         assert response.status_code == 200
-        assert row.official == self.official
-        assert any("anderen Person" in m for m in self.messages(response))
+        assert row.official == self.other
+        assert any("bereits zugeordnet" in m for m in self.messages(response))
+
+    def test_confirm_hides_another_officials_typed_name(self):
+        gameinfo, row = _game_with_row(official=self.other, name="Erika Musterfrau")
+        self.login_moodle()  # Max Mustermann, whose name does not match
+
+        content = self.client.get(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk})
+        ).content.decode()
+
+        assert ">E****M****<" in content
+        assert ">Erika Musterfrau<" not in content
+
+    def test_confirm_without_results_does_not_duplicate_game_id(self):
+        gameinfo, row = _game_with_row()
+        self.login_moodle()
+
+        content = self.client.get(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk})
+        ).content.decode()
+
+        assert f"Spiel #{gameinfo.pk}" in content
+        assert f"Spiel #{gameinfo.pk} (#{gameinfo.pk})" not in content
 
     def test_moodle_claim_other_row_allowed(self):
         # Decision 1: any unmapped row may be claimed, no name check.
@@ -203,6 +240,28 @@ class TestEinsaetzeHighlightAndFilter(SelfServiceTestBase):
 
         assert "Mir zuordnen" in content
         assert reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}) in content
+
+    def test_mine_filter_query_count_is_flat_as_rows_grow(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.login_moodle()
+        _game_with_row(official=self.official)
+        url = reverse(LIST_URL_NAME) + "?mine=1"
+
+        # Capture the baseline once, then assert it both before and after
+        # growing the result set - the count must not scale with row count.
+        with CaptureQueriesContext(connection) as baseline:
+            self.client.get(url)
+        expected = len(baseline.captured_queries)
+
+        with self.assertNumQueries(expected):
+            self.client.get(url)
+
+        for _ in range(5):
+            _game_with_row(official=self.official)
+        with self.assertNumQueries(expected):
+            self.client.get(url)
 
 
 class TestNameMatcher(TestCase):
@@ -323,6 +382,49 @@ class TestAddAssignment(SelfServiceTestBase):
         assert GameOfficial.objects.filter(gameinfo=self.gameinfo).count() == 0
         assert any("Position" in m for m in self.messages(response))
 
+    def test_add_locks_the_game_before_creating(self):
+        from unittest import mock
+
+        self.login_moodle()
+        real_select_for_update = Gameinfo.objects.select_for_update
+
+        with mock.patch.object(
+            Gameinfo.objects, "select_for_update", wraps=real_select_for_update
+        ) as select_for_update:
+            self._post()
+
+        assert select_for_update.called
+        assert GameOfficial.objects.filter(gameinfo=self.gameinfo).count() == 1
+
+    def test_cancel_link_forwards_validated_next(self):
+        from html import unescape
+
+        self.login_moodle()
+        target = reverse(LIST_URL_NAME) + "?mine=1&season=2026"
+
+        content = unescape(
+            self.client.get(
+                reverse(ASSIGNMENT_URL_NAME),
+                {"next": target, "gameday": str(self.gameday.pk)},
+            ).content.decode()
+        )
+
+        assert f'href="{target}"' in content
+
+    def test_cancel_link_keeps_season_when_no_next(self):
+        self.login_moodle()
+
+        content = self.client.get(
+            reverse(ASSIGNMENT_URL_NAME),
+            {"season": "2026", "gameday": str(self.gameday.pk)},
+        ).content.decode()
+
+        expected = reverse(
+            "view-officials-game-officials-appearance-for-year",
+            kwargs={"season": 2026},
+        )
+        assert f'href="{expected}"' in content
+
 
 class TestUnassign(SelfServiceTestBase):
     def test_unassign_staff_only(self):
@@ -355,6 +457,18 @@ class TestUnassign(SelfServiceTestBase):
 
         assert response.status_code == 302
         assert response.url.startswith(reverse("view-officials-moodle-login"))
+
+    def test_confirm_without_results_does_not_duplicate_game_id(self):
+        gameinfo, row = _game_with_row(official=self.other)
+        client = Client()
+        client.force_login(_staff_user())
+
+        content = client.get(
+            reverse(UNASSIGN_URL_NAME, kwargs={"pk": row.pk})
+        ).content.decode()
+
+        assert f"Spiel #{gameinfo.pk}" in content
+        assert f"Spiel #{gameinfo.pk} (#{gameinfo.pk})" not in content
 
 
 EXTERNAL_EDIT_URL_NAME = "view-officials-selfservice-external-edit"
@@ -620,6 +734,17 @@ class TestDfflGameDelete(SelfServiceTestBase):
         assert "Der Eintrag bleibt" in past_content
         assert "kann für diese Position wieder ein leerer Eintrag" not in future_content
 
+    def test_confirm_without_results_does_not_duplicate_game_id(self):
+        gameinfo, row = _game_with_row(official=self.official)
+        self.login_moodle()
+
+        content = self.client.get(
+            reverse(DFFL_DELETE_URL_NAME, kwargs={"pk": row.pk})
+        ).content.decode()
+
+        assert f"Spiel #{gameinfo.pk}" in content
+        assert f"Spiel #{gameinfo.pk} (#{gameinfo.pk})" not in content
+
 
 MULTI_ADD_URL_NAME = "view-officials-selfservice-external-multi-add"
 
@@ -760,6 +885,50 @@ class TestExternalGameMultiAdd(SelfServiceTestBase):
         assert content.count('name="form-0-association"') == 1
         assert "<select" in content
 
+    def test_atomic_block_rolls_back_all_rows_when_a_save_fails(self):
+        from unittest.mock import patch
+
+        from officials.models import OfficialExternalGames
+
+        real_save = OfficialExternalGames.save
+        calls = 0
+
+        def failing_save(instance, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise RuntimeError("Zweiter Speichervorgang fehlgeschlagen")
+            return real_save(instance, *args, **kwargs)
+
+        # The client swallows the view exception (500 response) so the
+        # surrounding TestCase transaction is not left rollback-only.
+        client = Client(raise_request_exception=False)
+        self.login_moodle(client=client)
+
+        with patch.object(OfficialExternalGames, "save", failing_save):
+            response = client.post(
+                reverse(MULTI_ADD_URL_NAME),
+                _formset_data([{"number_games": "2"}, {"number_games": "3"}]),
+            )
+
+        assert response.status_code == 500
+        assert calls == 2
+        assert OfficialExternalGames.objects.count() == 0
+
+    def test_cancel_link_forwards_validated_next(self):
+        from html import unescape
+
+        self.login_moodle()
+        target = reverse(LIST_URL_NAME) + "?mine=1&season=2026"
+
+        content = unescape(
+            self.client.get(
+                reverse(MULTI_ADD_URL_NAME), {"next": target}
+            ).content.decode()
+        )
+
+        assert f'href="{target}"' in content
+
 
 class TestStaffExternalFormValues(SelfServiceTestBase):
     def test_staff_form_shows_the_current_values(self):
@@ -898,6 +1067,33 @@ class TestReclaimMappedAssignment(SelfServiceTestBase):
         row.refresh_from_db()
         assert row.official == self.other
         assert any("anderen Person" in m for m in self.messages(response))
+
+    def test_partial_typed_name_cannot_reclaim_a_mapped_row(self):
+        # "Bastian" or "Danz" alone are not enough to take over a row typed
+        # with the full name; only the complete official name authorizes it.
+        for typed_name in ("Bastian", "Danz", "Bastian Dantzer"):
+            with self.subTest(typed_name=typed_name):
+                gameinfo, row = self._mapped_row_for(typed_name, self.other)
+                self.login_moodle()
+
+                response = self.client.post(
+                    reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}), follow=True
+                )
+
+                row.refresh_from_db()
+                assert row.official == self.other
+                assert any("anderen Person" in m for m in self.messages(response))
+
+    def test_partial_typed_name_is_not_revealed_on_confirm_page(self):
+        gameinfo, row = self._mapped_row_for("Danz", self.other)
+        self.login_moodle()
+
+        content = self.client.get(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk})
+        ).content.decode()
+
+        assert ">D****<" in content
+        assert ">Danz<" not in content
 
     def test_staff_can_reassign_a_mapped_row(self):
         gameinfo, row = self._mapped_row_for("Jemand Anders", self.other)

@@ -19,7 +19,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
 
-from gamedays.models import GameOfficial
+from gamedays.models import Gameinfo, GameOfficial
+from league_manager.utils.serializer_utils import Obfuscator
 from officials.constants import (
     MOODLE_LOGGED_IN_USER,
     MOODLE_REMEMBER_COOKIE,
@@ -77,8 +78,9 @@ def name_matches_official(name: str | None, official: Official) -> bool:
 
     Casefolded, punctuation-split token comparison in either direction, so
     "Mustermann, Max" as well as a bare "Mustermann" matches "Max Mustermann".
-    Used for highlighting and the "Nur meine Einträge" filter only - never for
-    authorization, because a typed name proves nothing.
+    Used for highlighting, the "Nur meine Einträge" filter and the list's
+    reveal flag - never for authorization: a typed name proves nothing, so
+    the write gate uses ``official_name_in_typed_name`` instead.
     """
     if not name:
         return False
@@ -87,6 +89,24 @@ def name_matches_official(name: str | None, official: Official) -> bool:
     if not official_tokens or not row_tokens:
         return False
     return official_tokens <= row_tokens or row_tokens <= official_tokens
+
+
+def official_name_in_typed_name(name: str | None, official: Official) -> bool:
+    """Authorization-grade check: all of the official's name tokens appear in
+    the typed scorecard name.
+
+    Unlike ``name_matches_official`` this never works in the reverse
+    direction: a row typed just "Max" or just "Mustermann" cannot be taken
+    over by every "Max Mustermann", and a near miss such as "Max Mustermann"
+    vs "Max Mustermannsen" is rejected too.
+    """
+    if not name:
+        return False
+    official_tokens = _tokens(f"{official.first_name} {official.last_name}")
+    row_tokens = _tokens(name)
+    if not official_tokens or not row_tokens:
+        return False
+    return official_tokens <= row_tokens
 
 
 def can_edit_official(request, official_id: int) -> bool:
@@ -235,13 +255,15 @@ def assignments_return_url(request) -> str:
 def can_reclaim_official(request, row: GameOfficial, target: Official) -> bool:
     """May ``target`` take over an already-mapped row?
 
-    For a Moodle official only when the typed scorecard name looks like them;
-    otherwise this would be an open IDOR on other people's assignments. Staff
-    may reassign anyone's row explicitly.
+    Staff may reassign any row explicitly. A Moodle official only when the
+    typed scorecard name contains their *full* name: accepting a partial
+    match would let anyone sharing a first or last name steal the row. The
+    typed name is only a weak hint, never proof of identity, so this gate is
+    complemented by the conditional UPDATE in the write itself.
     """
     if request.user.is_authenticated and request.user.is_staff:
         return True
-    return name_matches_official(row.name, target)
+    return official_name_in_typed_name(row.name, target)
 
 
 class ClaimGameOfficialView(SelfServiceWriteMixin, View):
@@ -279,6 +301,26 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
         except Official.DoesNotExist:
             return False
         return row.official_id is None or can_reclaim_official(request, row, target)
+
+    def _can_reveal_name(self, request, row) -> bool:
+        """Who may read the raw typed name on the confirm page?
+
+        The list obfuscates other people's names, and the confirm page must
+        not become a way to enumerate them by pk. Staff, the mapped official
+        themselves and whoever passes the reclaim gate get the raw name;
+        everybody else sees the obfuscated form.
+        """
+        if request.user.is_authenticated and request.user.is_staff:
+            return True
+        if row.official_id is not None and row.official_id == acting_official_id(
+            request
+        ):
+            return True
+        try:
+            target = self.target_official(request)
+        except Official.DoesNotExist:
+            return False
+        return can_reclaim_official(request, row, target)
 
     def post(self, request, pk):
         row = get_object_or_404(GameOfficial, pk=pk)
@@ -333,6 +375,12 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
             .first(),
             "is_mapped": row.official_id is not None,
             "can_reclaim": can_reclaim,
+            "reveal_name": self._can_reveal_name(request, row),
+            "obfuscated_name": (
+                Obfuscator.obfuscate(*(row.name or "").split(" ")[:2])
+                if row.name
+                else ""
+            ),
             # Validated target for the "Abbrechen" link; the hidden POST field
             # is revalidated by safe_next() when the form is submitted.
             "next_url": safe_next(request, default=reverse(ASSIGNMENTS_URL_NAME)),
@@ -413,30 +461,38 @@ class AddAssignmentView(SelfServiceWriteMixin, View):
                 self._context(request, form, gameday_id, season),
             )
 
-        if GameOfficial.objects.filter(gameinfo=gameinfo, official=target).exists():
-            messages.error(
-                request, "Für dieses Spiel ist bereits ein Einsatz eingetragen."
-            )
-            return render(
-                request,
-                self.template_name,
-                self._context(request, form, gameday_id, season),
-            )
-        if GameOfficial.objects.filter(gameinfo=gameinfo, position=position).exists():
-            messages.error(
-                request,
-                "Diese Position ist bereits besetzt. "
-                'Bitte übernimm den vorhandenen Eintrag über "Mir zuordnen".',
-            )
-            return render(
-                request,
-                self.template_name,
-                self._context(request, form, gameday_id, season),
-            )
+        # GameOfficial has only an index on (gameinfo, position), not a unique
+        # constraint: lock the game row so two concurrent adds for the same
+        # game serialize and the check-then-create below cannot both win.
+        with transaction.atomic():
+            Gameinfo.objects.select_for_update().get(pk=gameinfo.pk)
 
-        GameOfficial.objects.create(
-            gameinfo=gameinfo, official=target, position=position
-        )
+            if GameOfficial.objects.filter(gameinfo=gameinfo, official=target).exists():
+                messages.error(
+                    request, "Für dieses Spiel ist bereits ein Einsatz eingetragen."
+                )
+                return render(
+                    request,
+                    self.template_name,
+                    self._context(request, form, gameday_id, season),
+                )
+            if GameOfficial.objects.filter(
+                gameinfo=gameinfo, position=position
+            ).exists():
+                messages.error(
+                    request,
+                    "Diese Position ist bereits besetzt. "
+                    'Bitte übernimm den vorhandenen Eintrag über "Mir zuordnen".',
+                )
+                return render(
+                    request,
+                    self.template_name,
+                    self._context(request, form, gameday_id, season),
+                )
+
+            GameOfficial.objects.create(
+                gameinfo=gameinfo, official=target, position=position
+            )
         messages.success(
             request,
             f"Einsatz als {position} für {target.first_name} {target.last_name} nachgetragen.",
@@ -448,6 +504,16 @@ class AddAssignmentView(SelfServiceWriteMixin, View):
             "form": form,
             "gameday_id": gameday_id,
             "season": season,
+            # With no ``next`` the season we came in with is the only place
+            # context we have, so the cancel link returns to that season's
+            # list instead of silently jumping to the current one.
+            "next_url": safe_next(
+                request,
+                default=reverse(
+                    "view-officials-game-officials-appearance-for-year",
+                    kwargs={"season": season},
+                ),
+            ),
             **selfservice_banner_context(request),
         }
 
@@ -648,7 +714,6 @@ class DfflGameDeleteView(SelfServiceWriteMixin, View):
                 "away": game.gameresult_set.filter(isHome=False)
                 .values_list("team__description", flat=True)
                 .first(),
-                "future_warning": game.gameday.date > date.today(),
                 "next_url": dffl_return_url(
                     request, row.official, game.gameday.date.year
                 ),
@@ -745,6 +810,7 @@ class ExternalGameMultiAddView(SelfServiceWriteMixin, View):
             {
                 "formset": formset,
                 "adding_row": adding_row,
+                "next_url": safe_next(request, default=reverse(ASSIGNMENTS_URL_NAME)),
                 **selfservice_banner_context(request),
             },
         )

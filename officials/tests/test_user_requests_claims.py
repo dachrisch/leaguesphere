@@ -326,6 +326,7 @@ class TestNeutralGermanCopy(UserRequestTestBase):
         ), content
         assert re.search(
             r"<p>\s*Bitte melde dich über den AFVD Flag Academy Logindaten von der "
-            r'<a href="https://offd\.de/" target="_blank">offd\.de</a>-Seite an:\s*</p>',
+            r'<a href="https://offd\.de/" target="_blank"'
+            r' rel="noopener noreferrer">offd\.de</a>-Seite an:\s*</p>',
             content,
         ), content
