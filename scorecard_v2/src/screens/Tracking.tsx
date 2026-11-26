@@ -433,7 +433,6 @@ export default function TrackingScreen({
     submitSeries,
   } = useSeriesTiles({
     rows,
-    game,
     session,
     possessionName,
     opponentName,

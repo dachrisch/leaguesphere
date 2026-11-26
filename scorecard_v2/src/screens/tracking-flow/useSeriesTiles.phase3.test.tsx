@@ -2,9 +2,10 @@ import { act, renderHook } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Game, GameLogEvent } from "../../api/types";
+import type { GameLogEvent } from "../../api/types";
 import { driveAfter, geometryOf } from "../../app/drive";
 import { logRows, type LogRow } from "../../components/EventLog";
+import { seriesEvent } from "../../components/sheets/SeriesSheet";
 import type { SheetState } from "./logic";
 import { useSeriesTiles } from "./useSeriesTiles";
 
@@ -44,9 +45,6 @@ const log = (events: GameLogEvent[]) => ({
   away: team("Wolves"),
 });
 
-const game = (): Game =>
-  ({ id: 42, home: "Ravens", away: "Wolves", status: "2. Halbzeit" }) as Game;
-
 type Over = Parameters<typeof useSeriesTiles>[0];
 
 function useHarness(over: Partial<Over> = {}) {
@@ -70,7 +68,6 @@ function useHarness(over: Partial<Over> = {}) {
   const events = [logEvent({ id: 1, event: "First Down", player: 7 })];
   const args: Over = {
     rows: logRows(log(events)),
-    game: game(),
     session: session as unknown as Over["session"],
     possessionName: "Ravens",
     opponentName: "Wolves",
@@ -152,8 +149,9 @@ describe("useSeriesTiles sheets (Phase 3 characterization)", () => {
     const { result } = setup();
     expect(result.current.quickRow("first")?.event).toBe("First Down");
     expect(result.current.quickRow("turnover")).toBeNull();
+    const found = result.current.quickRow("first");
     act(() => result.current.undoQuick("first"));
-    expect(result.current.mocks.undo).toHaveBeenCalled();
+    expect(result.current.mocks.undo).toHaveBeenCalledWith(found);
     expect(result.current.state.quick).toBeNull();
     act(() => result.current.completeQuick("first"));
     expect(result.current.state.replacing).toBeTruthy();
@@ -165,7 +163,9 @@ describe("useSeriesTiles tiles (Phase 3 characterization)", () => {
   it("saves a one-tap entry and arms it when a jersey may follow", async () => {
     const { result } = setup();
     await act(async () => result.current.recordOneTap("first"));
-    expect(result.current.mocks.submit).toHaveBeenCalled();
+    expect(result.current.mocks.submit).toHaveBeenCalledWith([
+      seriesEvent("first", null),
+    ]);
     expect(result.current.state.quick).toBe("first");
     expect(result.current.mocks.arm).toHaveBeenCalledWith("first");
     const turnover = setup();
@@ -183,7 +183,9 @@ describe("useSeriesTiles tiles (Phase 3 characterization)", () => {
   it("routes a tile tap through arm, one-tap and sheet paths", () => {
     const { result } = setup();
     act(() => result.current.tapSeriesTile("first", true));
-    expect(result.current.mocks.submit).toHaveBeenCalled();
+    expect(result.current.mocks.submit).toHaveBeenCalledWith([
+      seriesEvent("first", null),
+    ]);
     const sheet = setup();
     act(() => sheet.result.current.tapSeriesTile("turnover", false));
     expect(sheet.result.current.state.sheet).toEqual({

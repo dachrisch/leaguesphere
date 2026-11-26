@@ -3,7 +3,7 @@ import {
   type SetStateAction,
 } from "react";
 
-import type { Game, GameLogEventInput } from "../../api/types";
+import type { GameLogEventInput } from "../../api/types";
 import {
   advance,
   driveSpotText,
@@ -21,7 +21,6 @@ import type { SheetState } from "./logic";
 
 interface UseSeriesTilesArgs {
   rows: LogRow[];
-  game: Game;
   session: GameSession;
   possessionName: string | null;
   opponentName: string | null;
@@ -63,7 +62,6 @@ interface UseSeriesTilesArgs {
 /** One-tap series tiles, sheet navigation and play submission. */
 export function useSeriesTiles({
   rows,
-  game,
   session,
   possessionName,
   opponentName,
@@ -89,7 +87,6 @@ export function useSeriesTiles({
   openSinglePat,
   startOvertime,
 }: UseSeriesTilesArgs) {
-  void game;
   const closeSheet = (): void => {
     setSheet(null);
     setSheetHistory([]);
