@@ -400,7 +400,7 @@ class SnapshotLiveTest(SnapshotPublicApiTestBase):
 
     def test_no_liveticker_work_when_nothing_is_today(self):
         with mock.patch(
-            "gamedays.api.snapshot.LivetickerService"
+            "liveticker.service.gamedays_hooks.LivetickerService"
         ) as liveticker_service:
             response = self.client.get(
                 SNAPSHOT_URL,

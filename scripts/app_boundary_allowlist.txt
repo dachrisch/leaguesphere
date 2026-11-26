@@ -15,10 +15,6 @@
 #   gamedays/models.py: Gameinfo.league_group -> "league_table.LeagueGroup"
 #   gamedays/models.py: GameOfficial.official -> "officials.Official"
 gamedays/api/game_views.py|from passcheck.models import PasscheckVerification, PlayerlistGameday  # Phase 1 — API context
-gamedays/api/snapshot.py|from league_table.api.etag import standing_state_parts  # Phase 1 — API context
-gamedays/api/snapshot.py|from league_table.api.standings import build_standings  # Phase 1 — API context
-gamedays/api/snapshot.py|from league_table.models import LeagueSeasonConfig  # Phase 1 — API context
-gamedays/api/snapshot.py|from liveticker.service.liveticker_service import LivetickerService  # Phase 1 — API context
 gamedays/api/views.py|from officials.service.game_official_licenses import resolve_current_licenses  # Phase 1 — API context
 gamedays/service/wrapper/gameinfo_wrapper.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
 gamedays/views.py|from league_table.constants import LEAGUE_TABLE_OVERALL_TABLE_BY_SLUG_AND_LEAGUE  # Phase 1 — detail context

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from django.db.models import Q
+
 import pandas as pd
 import pytest
 
@@ -127,4 +129,37 @@ def test_settings_helpers():
 def test_register_registers_all_hooks():
     with patch("league_table.service.gamedays_hooks.registry.register") as register:
         hooks.register()
-    assert register.call_count == 8
+    assert register.call_count == 11
+
+
+@pytest.mark.django_db
+def test_snapshot_hooks_delegate():
+    configs = [object()]
+    with (
+        patch(
+            "league_table.service.gamedays_hooks._standing_state_parts",
+            return_value={"1": 2},
+        ) as state,
+        patch(
+            "league_table.service.gamedays_hooks._build_standings", return_value=[]
+        ) as standings,
+    ):
+        assert hooks.standing_state_parts(configs) == {"1": 2}
+        assert hooks.build_standings(configs) == []
+        state.assert_called_once_with(configs)
+        standings.assert_called_once_with(configs)
+
+
+@pytest.mark.django_db
+def test_league_season_configs_for_pairs():
+    DBSetup().g62_status_empty()
+    gameday = Gameday.objects.first()
+    config = LeagueSeasonConfig.objects.create(
+        league=gameday.league, season=gameday.season
+    )
+    result = hooks.league_season_configs_for_pairs(
+        Q(league_id=gameday.league_id, season_id=gameday.season_id)
+    )
+    assert [item.pk for item in result] == [config.pk]
+    result = hooks.league_season_configs_for_pairs(Q(league_id=-1, season_id=-1))
+    assert result == []

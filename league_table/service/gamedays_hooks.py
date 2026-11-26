@@ -7,6 +7,8 @@ gamedays; ruleset/config/engine resolution lives here.
 from __future__ import annotations
 
 from gamedays.service import registry
+from league_table.api.etag import standing_state_parts as _standing_state_parts
+from league_table.api.standings import build_standings as _build_standings
 from league_table.models import LeagueRuleset, LeagueSeasonConfig
 from league_table.service.datatypes import LeagueConfigRuleset
 from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER
@@ -74,5 +76,24 @@ def register():
         ("season_statistic_settings", season_statistic_settings),
         ("show_player_names", show_player_names),
         ("top_n_player", top_n_player),
+        ("league_season_configs_for_pairs", league_season_configs_for_pairs),
+        ("standing_state_parts", standing_state_parts),
+        ("build_standings", build_standings),
     ):
         registry.register(name, implementation, "league_table")
+
+
+def league_season_configs_for_pairs(pair_filter):
+    return list(
+        LeagueSeasonConfig.objects.filter(pair_filter)
+        .select_related("league", "season")
+        .order_by("season__name", "league__name", "pk")
+    )
+
+
+def standing_state_parts(configs):
+    return _standing_state_parts(configs)
+
+
+def build_standings(configs):
+    return _build_standings(configs)

@@ -35,3 +35,15 @@ def show_player_names(settings):
 
 def top_n_player(settings):
     return get("top_n_player")(settings)
+
+
+def league_season_configs_for_pairs(pairs):
+    return get("league_season_configs_for_pairs")(pairs)
+
+
+def standing_state_parts(configs):
+    return get("standing_state_parts")(configs)
+
+
+def build_standings(configs):
+    return get("build_standings")(configs)

@@ -38,7 +38,11 @@ HOOK_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "season_statistic_settings",
         "show_player_names",
         "top_n_player",
+        "league_season_configs_for_pairs",
+        "standing_state_parts",
+        "build_standings",
     ),
+    "liveticker": ("live_feed",),
     "passcheck": (
         "player_jersey_names",
         "season_player_jersey_names",
