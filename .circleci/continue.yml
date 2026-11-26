@@ -392,10 +392,10 @@ jobs:
             - run:
                 name: Frontend journey harness branch gate (python-cross)
                 command: |
-                  python3 -m coverage run --rcfile=scripts/equivalence/frontend/.coveragerc \
+                  uv run coverage run --rcfile=scripts/equivalence/frontend/.coveragerc \
                     -m pytest --confcutdir=scripts/equivalence/frontend/tests \
                     scripts/equivalence/frontend/tests -q
-                  python3 -m coverage json -o coverage-frontend.json
+                  uv run coverage json -o coverage-frontend.json
                   python3 scripts/check_branch_coverage.py \
                     --coverage coverage-frontend.json --base origin/master \
                     --root . \
