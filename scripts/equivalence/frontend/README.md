@@ -23,9 +23,17 @@ The runner exits 1 on any unexplained diff. Phase 3 declares no intended
 diffs; `--intended` exists for later phases only.
 
 **Noise floor first:** run with `--ref <ref-route> --cand <ref-route>` (the same
-side twice) with all four role credentials present. Zero diffs is required
-before any ref-vs-cand report is trusted. The first noise floor also fixes the
-volatile-node allowlist below — it is reviewed, never widened silently.
+side twice) with all four role credentials present. Zero diffs **and no login
+errors or skipped steps** are required before any ref-vs-cand report is trusted.
+The first noise floor also fixes the volatile-node allowlist below — it is
+reviewed, never widened silently.
+
+Role logins go through the stdlib transport (which sends the `Referer:
+https://localhost/...` the proxied Django requires) and their cookies are
+injected into the browser context. Each step waits until no new API request
+has arrived for 600 ms, so parallel mount fetches are captured deterministically.
+SSE requests are aborted and every page/context is closed after a journey, so a
+stream can never pin a side's worker.
 
 ## What a step records
 
