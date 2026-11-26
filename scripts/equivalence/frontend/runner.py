@@ -166,6 +166,9 @@ def run(args, deps):
         combined = sorted(set(left_skipped) | set(right_skipped))
         if combined:
             skipped[f"{name}:steps"] = combined
+    # Each side's contexts (and their pages) are closed after the journeys so
+    # no SSE/fetch connection is left pinning a side's worker.
+    deps["close_contexts"](contexts)
 
     intended = _load_intended(args.intended)
     text = render_report(
@@ -209,7 +212,10 @@ def main(argv=None, deps=None):
         "--intended", default=None, help="JSON file declaring intended step diffs"
     )
     args = parser.parse_args(argv)
-    return run(args, deps)
+    try:
+        return run(args, deps)
+    finally:
+        deps["close_browser"](deps["browser"])
 
 
 if __name__ == "__main__":  # pragma: no cover -- CLI entrypoint, exercised via main()
