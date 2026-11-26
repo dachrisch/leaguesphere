@@ -182,7 +182,6 @@ export function useTrackingLog({
   const lockRightsKnown = useRef(false);
 
 
-  /* v8 ignore start -- mount effects, lock-rights reads and the drain timer are exercised by Tracking.test.tsx (5,580 lines), the live stage journeys and the offline e2e scenarios; they are not re-characterized by this extraction scope */
   /**
    * "Alles gesendet" for a moment after the queue drained: the pending count
    * is compared while rendering (React's "adjust state on a changed input"
@@ -354,7 +353,6 @@ export function useTrackingLog({
     };
   }, [game.id, game.officialsId]);
 
-  /* v8 ignore stop */
   /**
    * Ask the server which team holds the ball and take that answer.
    *

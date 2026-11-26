@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,6 +28,10 @@ const h = vi.hoisted(() => ({
     reason === null ? null : `Grund ${reason}`,
   ),
   stranded: vi.fn(() => false),
+  cachedGet: vi.fn(async () => []),
+  cachedGetMeta: vi.fn(async () => null),
+  readQuarterback: vi.fn(() => null),
+  rememberQuarterback: vi.fn(),
 }));
 
 vi.mock("../../session/useSyncStatus", () => ({
@@ -54,8 +58,8 @@ vi.mock("../../api/client", async (importOriginal) => {
   return { ...actual, apiGet: vi.fn() };
 });
 vi.mock("../../offline/snapshot", () => ({
-  cachedGet: vi.fn(async () => []),
-  cachedGetMeta: vi.fn(async () => null),
+  cachedGet: h.cachedGet,
+  cachedGetMeta: h.cachedGetMeta,
   snapshotKey: {
     penalties: () => "penalties",
     rules: () => "rules",
@@ -66,8 +70,8 @@ vi.mock("../../offline/snapshot", () => ({
 }));
 vi.mock("../../device", () => ({ getDeviceId: vi.fn(() => "dev-1") }));
 vi.mock("../../app/quarterback", () => ({
-  readQuarterback: vi.fn(() => null),
-  rememberQuarterback: vi.fn(),
+  readQuarterback: h.readQuarterback,
+  rememberQuarterback: h.rememberQuarterback,
 }));
 vi.mock("../../session/ids", () => ({ newOpId: vi.fn(() => "op-1") }));
 
@@ -240,6 +244,10 @@ beforeEach(() => {
   h.paused.mockImplementation((reason: string | null) =>
     reason === "device" ? "Grund device" : null,
   );
+  h.cachedGet.mockImplementation(async () => []);
+  h.cachedGetMeta.mockImplementation(async () => null);
+  h.readQuarterback.mockImplementation(() => null);
+  h.rememberQuarterback.mockClear();
   statusMock.mockReturnValue(h.status);
   apiGetMock.mockResolvedValue({ can_release_lock: true, locked_elsewhere: false });
   runtimeMock.mockReturnValue({ sync: { pause: vi.fn() } });
@@ -253,14 +261,16 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
         events: [
           logEvent({ id: 1, event: "Auszeit", team: "Ravens", input: "12:00" }),
           logEvent({ id: 2, event: "Auszeit", team: "Wolves", input: "11:50", isDeleted: true }),
-          logEvent({ id: 3, event: "Strafe", team: "Ravens", input: "UNV" }),
+          logEvent({ id: 3, event: "Strafe", team: "Ravens", input: "Unsportliches Verhalten" }),
         ],
       }),
     );
     await waitFor(() => expect(result.current.rows.length).toBe(3));
     expect(result.current.timeouts).toHaveLength(1);
     expect(result.current.timeouts[0]).toEqual({ team: "Ravens", half: 1, time: "12:00" });
-    expect(result.current.unsportsmanlike.length).toBeGreaterThanOrEqual(0);
+    expect(result.current.unsportsmanlike).toEqual([
+      { team: "Ravens", half: 1, text: "", numbers: [] },
+    ]);
     expect(result.current.finished).toBe(false);
     expect(result.current.readOnly).toBe(false);
     expect(result.current.stopReason).toBeNull();
@@ -280,10 +290,25 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
     expect(result.current.stranded).toBe(true);
     expect(result.current.readOnly).toBe(true);
     expect(result.current.stopReason).toBe("Grund device");
+    // The server log is the official score once this device is stranded.
+    expect(result.current.officialLog.home.name).toBe("Server");
+
+    cleanup();
+    h.stranded.mockReturnValue(false);
+    const local = setup({});
+    expect(local.result.current.officialLog.home.name).toBe("Ravens");
 
     Object.assign(h.status, { paused: "auth" });
     const auth = setup({});
     expect(auth.result.current.readOnly).toBe(true);
+    Object.assign(h.status, { paused: null });
+  });
+
+  it("keeps editing null while the queue is paused for a device", () => {
+    Object.assign(h.status, { paused: "device" });
+    const paused = setup({ editing: null });
+    expect(paused.result.current.editing ?? null).toBeNull();
+    expect(paused.result.current.readOnly).toBe(true);
     Object.assign(h.status, { paused: null });
   });
 
@@ -311,6 +336,194 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
     Object.assign(h.status, { pending: 0 });
     rerender({ o: {}, log: makeLog() });
     await waitFor(() => expect(result.current.drained).toBe(true));
+    // A new pending write hides the strip again; a paused queue never shows it.
+    Object.assign(h.status, { pending: 1 });
+    rerender({ o: {}, log: makeLog() });
+    await waitFor(() => expect(result.current.drained).toBe(false));
+    Object.assign(h.status, { pending: 0, paused: "device" });
+    rerender({ o: {}, log: makeLog() });
+    expect(result.current.drained).toBe(false);
+    Object.assign(h.status, { paused: null });
+  });
+
+  it("warms caches, seeds the quarterback, reads lock rights and crew", async () => {
+    const pause = vi.fn();
+    runtimeMock.mockReturnValue({ sync: { pause } });
+    h.cachedGet.mockImplementation(async (key: string) => {
+      if (key === "penalties") return ["Flag"];
+      if (key === "rules") throw new Error("offline");
+      if (key === "roster-42") return [{ id: 1, name: "Seven" }];
+      if (key === "officials:42") return [{ id: 3, name: "Ref" }];
+      return [{ id: 4, name: "Directory" }];
+    });
+    h.cachedGetMeta.mockImplementation(async () => ({
+      value: {
+        qbHome: 7,
+        qbAway: 9,
+        locked_elsewhere: true,
+        can_release_lock: true,
+      },
+      updatedAt: null,
+    }));
+    h.readQuarterback.mockImplementation(() => null);
+
+    const { result } = setup({ game: game("1. Halbzeit") });
+    await waitFor(() => expect(result.current.state.roster).toHaveLength(1));
+    expect(result.current.state.setup?.qbHome).toBe(7);
+    expect(h.rememberQuarterback).toHaveBeenCalledWith(42, "home", 7);
+    expect(h.rememberQuarterback).toHaveBeenCalledWith(42, "away", 9);
+    await waitFor(() => expect(pause).toHaveBeenCalledWith("device", 42));
+    expect(result.current.state.officials).toEqual([{ id: 3, name: "Ref" }]);
+    expect(result.current.state.officialsUnavailable).toBe(false);
+    expect(result.current.state.people).toEqual([{ id: 4, name: "Directory" }]);
+
+    cleanup();
+    // Failed reads stay empty instead of throwing on mount.
+    h.cachedGet.mockImplementation(async () => {
+      throw new Error("offline");
+    });
+    h.cachedGetMeta.mockImplementation(async () => ({
+      value: { locked_elsewhere: false, qbAway: 9 },
+      updatedAt: "2026-11-26T12:00:00Z",
+    }));
+    h.readQuarterback.mockImplementation(() => 5);
+    const offline = setup();
+    await waitFor(() =>
+      expect(offline.result.current.state.officialsUnavailable).toBe(true),
+    );
+    expect(offline.result.current.state.roster).toEqual([]);
+    expect(offline.result.current.state.officials).toBeNull();
+    expect(offline.result.current.state.people).toEqual([]);
+  });
+
+  it("runs the drain timer and hides the strip again", async () => {
+    Object.assign(h.status, { pending: 2, paused: null });
+    const { result, rerender } = setup();
+    Object.assign(h.status, { pending: 0 });
+    rerender({ o: {}, log: makeLog() });
+    await waitFor(() => expect(result.current.drained).toBe(true));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2600));
+    });
+    expect(result.current.drained).toBe(false);
+  });
+
+  it("uses a live lock answer and retries a 409 with no known lock rights", async () => {
+    const pause = vi.fn();
+    runtimeMock.mockReturnValue({ sync: { pause } });
+    h.cachedGetMeta.mockResolvedValue({
+      value: { locked_elsewhere: true, can_release_lock: false },
+      updatedAt: null,
+    });
+    const { result } = setup();
+    await waitFor(() => expect(pause).toHaveBeenCalledWith("device", 42));
+    expect(result.current.state.setup).toBeTruthy();
+
+    cleanup();
+    // A stored answer has no fresh lock: the 409 retry asks the server once.
+    h.cachedGetMeta.mockImplementation(() => new Promise(() => undefined));
+    Object.assign(h.status, { paused: "device", pending: 1 });
+    apiGetMock.mockResolvedValueOnce({ can_release_lock: true });
+    setup();
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalledTimes(1));
+    Object.assign(h.status, { paused: null });
+  });
+
+  it("ignores cache answers that arrive after unmount", async () => {
+    let resolveRoster: (value: unknown) => void = () => undefined;
+    let resolveSetup: (value: unknown) => void = () => undefined;
+    let resolveCrew: (value: unknown) => void = () => undefined;
+    h.cachedGet.mockImplementation((key: string) => {
+      if (key === "roster-42")
+        return new Promise((resolve) => {
+          resolveRoster = resolve;
+        });
+      if (key === "officials:42")
+        return new Promise((resolve) => {
+          resolveCrew = resolve;
+        });
+      return Promise.resolve([]);
+    });
+    h.cachedGetMeta.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSetup = resolve;
+        }),
+    );
+    const { unmount } = setup();
+    unmount();
+    await act(async () => {
+      resolveRoster(null);
+      resolveSetup({ value: { qbHome: 7 }, updatedAt: null });
+      resolveCrew([{ id: 3, name: "Late ref" }]);
+    });
+
+    // The same guard applies when a roster read fails after unmount.
+    let failRoster: (error: Error) => void = () => undefined;
+    h.cachedGet.mockImplementation((key: string) => {
+      if (key === "roster-42")
+        return new Promise((_resolve, reject) => {
+          failRoster = reject;
+        });
+      return Promise.resolve([]);
+    });
+    const second = setup();
+    second.unmount();
+    await act(async () => {
+      failRoster(new Error("offline"));
+    });
+  });
+
+  it("handles a null roster, an unlocked answer, a failed setup read and a late 409 reply", async () => {
+    h.cachedGet.mockImplementation((key: string) =>
+      key === "roster-42" ? Promise.resolve(null) : Promise.resolve([]),
+    );
+    h.cachedGetMeta.mockRejectedValueOnce(new Error("offline"));
+    const { result } = setup();
+    await waitFor(() => expect(result.current.state.roster).toEqual([]));
+    expect(result.current.state.setup).toBeNull();
+
+    cleanup();
+    h.cachedGetMeta.mockResolvedValue({
+      value: { locked_elsewhere: false, can_release_lock: true },
+      updatedAt: null,
+    });
+    const unlocked = setup();
+    await waitFor(() => expect(unlocked.result.current.state.setup).toBeTruthy());
+
+    cleanup();
+    h.cachedGetMeta.mockImplementation(() => new Promise(() => undefined));
+    Object.assign(h.status, { paused: "device" });
+    let resolveApi: (answer: unknown) => void = () => undefined;
+    apiGetMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveApi = resolve;
+        }),
+    );
+    const late = setup();
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled());
+    late.unmount();
+    await act(async () => {
+      resolveApi({ can_release_lock: true });
+    });
+    Object.assign(h.status, { paused: null });
+  });
+
+  it("asks the server for lock rights after a 409 the open read never saw", async () => {
+    Object.assign(h.status, { paused: "device", pending: 1 });
+    const { result } = setup();
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalledWith(
+      "/api/game/42/setup",
+      { deviceId: "dev-1" },
+    ));
+    expect(result.current.state.setup).toBeNull();
+
+    cleanup();
+    apiGetMock.mockRejectedValueOnce(new Error("offline"));
+    Object.assign(h.status, { paused: "device", pending: 1 });
+    setup();
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalledTimes(2));
   });
 });
 
@@ -504,7 +717,11 @@ describe("useTrackingLog handlers (Phase 3 characterization)", () => {
     await act(async () => {
       await filtered.result.current.submitEdit({ name: "First Down" });
     });
-    expect(filtered.result.current.session.writeEvent).toHaveBeenCalled();
+    expect(filtered.result.current.session.writeEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: [expect.objectContaining({ name: "First Down" })],
+      }),
+    );
 
     const empty = setup();
     await expect(
@@ -512,12 +729,14 @@ describe("useTrackingLog handlers (Phase 3 characterization)", () => {
         await empty.result.current.submitEdit({ name: "First Down" });
       }),
     ).resolves.toBeUndefined();
+    expect(empty.result.current.session.writeEvent).not.toHaveBeenCalled();
     const noTeam = setup({ editing: row({ team: null }) });
     await expect(
       act(async () => {
         await noTeam.result.current.submitEdit({ name: "First Down" });
       }),
     ).resolves.toBeUndefined();
+    expect(noTeam.result.current.session.writeEvent).not.toHaveBeenCalled();
 
     const busy = setup({ editing: row() });
     busy.result.current.refs.postInFlightRef.current = true;
