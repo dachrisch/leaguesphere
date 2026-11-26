@@ -107,9 +107,6 @@ class Session:
         if json_body is not None:
             data = jsonlib.dumps(json_body).encode("utf-8")
             request_headers["Content-Type"] = "application/json"
-        elif form is not None:
-            data = urllib.parse.urlencode(form, doseq=True).encode("utf-8")
-            request_headers["Content-Type"] = "application/x-www-form-urlencoded"
         elif files is not None:
             # A fixed boundary keeps the request deterministic on both sides;
             # the harness never sends personal data (the CSV is a throwaway
@@ -141,6 +138,9 @@ class Session:
             request_headers["Content-Type"] = (
                 f"multipart/form-data; boundary={boundary}"
             )
+        elif form is not None:
+            data = urllib.parse.urlencode(form, doseq=True).encode("utf-8")
+            request_headers["Content-Type"] = "application/x-www-form-urlencoded"
 
         request = urllib.request.Request(
             self._url(path), data=data, headers=request_headers, method=method

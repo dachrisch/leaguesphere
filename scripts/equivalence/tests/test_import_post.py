@@ -71,3 +71,36 @@ def test_import_post_scenario_is_stable_across_both_sides():
     right = scenarios.run_scenario("officials-import-post", sessions, {}, "import-cand")
     assert compare_scenario_runs(left, right) == {}
     assert left.skipped == right.skipped == []
+
+
+def test_string_file_contents_are_resolved_before_the_request():
+    step = scenarios.Step(
+        name="string-file",
+        method="POST",
+        path="/officials/gameofficial/import/upload/",
+        files={"file": ("import.csv", "value={run_id}", "text/csv")},
+    )
+    seen = {}
+
+    class Session:
+        def request(self, path, method="GET", json_body=None, form=None, files=None, headers=None):
+            seen["files"] = files
+            return type(
+                "R",
+                (),
+                {
+                    "status": 200,
+                    "body": "{}",
+                    "url": path,
+                    "method": method,
+                    "headers": {},
+                    "json": lambda self: {},
+                },
+            )()
+
+    scenarios.SCENARIOS["string-file"] = [step]
+    try:
+        scenarios.run_scenario("string-file", {"staff": Session()}, {}, "sf")
+    finally:
+        del scenarios.SCENARIOS["string-file"]
+    assert seen["files"]["file"][1] == "value=sf"
