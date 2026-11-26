@@ -48,9 +48,10 @@ def discover(context):
             games_payload = json.loads(games_response.body)
         except ValueError:
             continue
-        games = games_payload.get(
-            "results", games_payload if isinstance(games_payload, list) else []
-        )
+        if isinstance(games_payload, list):
+            games = games_payload
+        else:
+            games = games_payload.get("results", [])
         if games and games[0].get("id"):
             return {
                 "gameday_id": gameday_id,
