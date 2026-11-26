@@ -114,12 +114,13 @@ def test_verified_team_ids_pins_the_team_filter_with_real_rows():
     from passcheck.models import PasscheckVerification
 
     from gamedays.tests.setup_factories.db_setup import DBSetup
-    from gamedays.tests.setup_factories.factories import TeamFactory
+    from gamedays.tests.setup_factories.factories import TeamFactory, UserFactory
 
     gameday = DBSetup().create_empty_gameday()
     teams = [TeamFactory(), TeamFactory()]
+    user = UserFactory()
     for team in teams:
-        PasscheckVerification.objects.create(gameday=gameday, team=team)
+        PasscheckVerification.objects.create(gameday=gameday, team=team, user=user)
     assert hooks.verified_team_ids(gameday.pk, [teams[0].pk]) == {teams[0].pk}
     assert hooks.verified_team_ids(gameday.pk) == {team.pk for team in teams}
 
