@@ -5,9 +5,11 @@ Phase 1 (#2537) inverts imports behind registries. A test can still pass
 while a newly added branch in a changed function is untested, so each Python
 shard runs this gate against the coverage JSON produced by its own pytest run.
 
-Scope: changed/new Python files (minus .coveragerc omissions). A function is
-in scope when one of its lines (or branch endpoints) was added, or when its
-file is new. Ownership maps every app to the one shard that may judge it.
+Scope: changed/new Python files (minus every .coveragerc omission; repo-root
+and .claude/** files are ignored). A function is in scope when one of its
+lines — including its def/decorator head, which coverage.py's "" entry owns —
+was added, or when its file is new. Ownership maps every app to the one shard
+that may judge it.
 
 Stdlib only: the gate runs on cimg/python in CircleCI with no uv installed.
 
@@ -23,6 +25,9 @@ Stdlib only: the gate runs on cimg/python in CircleCI with no uv installed.
 from __future__ import annotations
 
 import argparse
+import ast
+import configparser
+import fnmatch
 import json
 import pathlib
 import re
@@ -71,13 +76,80 @@ def changed_files(root, base):
     return changed, new
 
 
-def is_omitted(path):
-    """Mirror the omissions in .coveragerc (tests, apps, urls, migrations)."""
-    pure = pathlib.PurePosixPath(path)
-    name = pure.name
-    if "__init__" in name or name in ("apps.py", "urls.py"):
+def omit_patterns(root):
+    """Read every omission pattern from .coveragerc, not a hand-picked subset."""
+    config = configparser.ConfigParser()
+    config.read(root / ".coveragerc")
+    patterns = []
+    for section in ("run", "report"):
+        if config.has_option(section, "omit"):
+            patterns.extend(
+                line.strip()
+                for line in config.get(section, "omit").splitlines()
+                if line.strip()
+            )
+    return patterns
+
+
+def is_omitted(root, path):
+    """Mirror all .coveragerc omissions; ignore root files and .claude/**.
+
+    Repo-root ``*.py`` and ``.claude/**.py`` have no shard owner — a PR
+    touching conftest.py or a skill script must not fail every shard's gate.
+    """
+    if path.startswith(".claude/") or "/" not in path:
         return True
-    return "tests" in pure.parts or "migrations" in pure.parts
+    return any(fnmatch.fnmatch(path, pattern) for pattern in omit_patterns(root))
+
+
+def function_spans(text, functions):
+    """Line spans that scope each coverage function.
+
+    coverage.py 7.17 puts module-level code *and every def/decorator line* in
+    the ``""`` function, so the function's own ``start_line`` (the def) and
+    its decorator lines are not in ``function_lines``. Parse the file's AST
+    to attach those head lines to the function below them; a def- or
+    decorator-only edit must scope that function, not be silently ignored.
+    """
+    spans = {}
+    for name, fn in functions.items():
+        if not name:
+            continue
+        lines = function_lines(fn)
+        if fn.get("start_line"):
+            lines.add(fn["start_line"])
+        spans[name] = lines
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return spans
+    by_start = {}
+    for name, fn in functions.items():
+        if name and fn.get("start_line"):
+            by_start.setdefault(fn["start_line"], []).append(name)
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        names = by_start.get(node.lineno, [])
+        if not names:
+            continue
+        head = min(
+            [decorator.lineno for decorator in node.decorator_list] or [node.lineno]
+        )
+        end = getattr(node, "end_lineno", None) or node.lineno
+        for name in names:
+            spans[name].update(range(head, end + 1))
+    return spans
+
+
+def scoped_functions(spans, added):
+    """Map each added line to the innermost function whose span contains it."""
+    scoped = set()
+    for line in added:
+        candidates = [name for name, lines in spans.items() if line in lines]
+        if candidates:
+            scoped.add(min(candidates, key=lambda name: len(spans[name])))
+    return scoped
 
 
 def owner_for(path):
@@ -170,7 +242,7 @@ def main(argv=None):
     scope = {}
     forced = set(args.require_file)
     for path in sorted(changed | new | forced):
-        if not path.endswith(".py") or is_omitted(path):
+        if not path.endswith(".py") or is_omitted(root, path):
             continue
         shard = owner_for(path)
         if shard is None:
@@ -188,16 +260,21 @@ def main(argv=None):
             print(f"{path}: no branch data (import it from a test to scope it)")
             failed = True
             continue
-        if not check_pragmas(path, source.read_text(encoding="utf-8")):
+        source_text = source.read_text(encoding="utf-8")
+        if not check_pragmas(path, source_text):
             failed = True
 
         functions = coverage[path].get("functions", {})
         all_functions = path in new or path in forced
         added = set() if all_functions else added_lines(root, base, path)
+        spans = function_spans(source_text, functions)
+        in_scope = scoped_functions(spans, added)
         for name, fn in functions.items():
+            if not name:  # the "" entry owns module-level code and def heads
+                continue
             if args.require_function and name not in args.require_function:
                 continue
-            if not all_functions and not (function_lines(fn) & added):
+            if not all_functions and name not in in_scope:
                 continue
             scope.setdefault(path, []).append((name, fn))
 
