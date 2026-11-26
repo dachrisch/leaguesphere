@@ -193,7 +193,6 @@ export function usePatFlow({
    * goal line. The touchdown sheet pre-fills its yards field with it, so the
    * row shows the Raumgewinn even when the official just confirms.
    */
-  /* v8 ignore next -- a null drive spot only comes from an older server payload */
   const touchdownGain =
     drive.ballOn === null
       ? null
@@ -454,7 +453,6 @@ export function usePatFlow({
     // flip will name so undoing the touchdown takes the flip with it.
     const originId = session.lastOpId() ?? undefined;
     const jersey = events[0]?.player;
-    /* v8 ignore next -- submit() already refuses a write without a possession team */
     if (team !== null) {
       openPat(
         team,

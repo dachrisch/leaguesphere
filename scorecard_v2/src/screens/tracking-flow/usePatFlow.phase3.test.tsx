@@ -633,8 +633,13 @@ describe("usePatFlow remaining branches (Phase 3 characterization)", () => {
 
 describe("usePatFlow error and null-spot branches (Phase 3 characterization)", () => {
   it("leaves the touchdown gain empty without a drive spot", () => {
-    const { result } = setup({ possessionName: null }, makeLog({ events: [] }));
-    expect(result.current.touchdownGain).toBeGreaterThanOrEqual(0);
+    // An older server payload can carry a null series start: drive.ballOn is
+    // then null and the touchdown sheet must not prefill a yard number.
+    const { result } = setup(
+      { geometry: { ...geometryOf(null), seriesStart: null } },
+      makeLog({ events: [] }),
+    );
+    expect(result.current.touchdownGain).toBeNull();
   });
 
   it("falls back when the last op is unknown and when a remembered try belongs elsewhere", async () => {
