@@ -255,6 +255,136 @@ def test_runner_reports_harness_errors_without_values(server_factory, tmp_path):
     assert "Harness errors" in report.read_text()
 
 
+def test_runner_reports_a_probe_missing_on_one_side(
+    server_factory, tmp_path, monkeypatch
+):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+    real = runner.probe_mod.run_probes
+    calls = []
+
+    def fake(sessions, manifest_def, probes):
+        results, skipped = real(sessions, manifest_def, probes)
+        calls.append(results)
+        if len(calls) == 2:
+            results = dict(results)
+            results.pop(sorted(results)[0])
+        return results, skipped
+
+    monkeypatch.setattr(runner.probe_mod, "run_probes", fake)
+    assert (
+        runner.main(
+            [
+                "--ref",
+                ref_url,
+                "--cand",
+                cand_url,
+                "--manifest",
+                str(manifest),
+                "--report",
+                str(report),
+                "--skip-scenarios",
+            ]
+        )
+        == 1
+    )
+    assert "missing" in report.read_text().lower()
+
+
+def test_runner_honours_the_scenarios_filter(server_factory, tmp_path):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+
+    assert (
+        runner.main(
+            [
+                "--ref",
+                ref_url,
+                "--cand",
+                cand_url,
+                "--manifest",
+                str(manifest),
+                "--report",
+                str(report),
+                "--scenarios",
+                "designer-publish",
+            ]
+        )
+        == 0
+    )
+    text = report.read_text()
+    assert "designer-publish" in text
+    assert "finalize-game" not in text
+
+
+def test_runner_reports_scenario_diffs(server_factory, tmp_path, monkeypatch):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+
+    def fake_run(name, sessions, context, run_id):
+        body = {"value": "ref" if run_id.endswith("ref") else "cand"}
+        return runner.scenario_mod.ScenarioRun(
+            name=name,
+            run_id=run_id,
+            steps=[runner.scenario_mod.StepResult(name="x", status=200, body=body)],
+        )
+
+    monkeypatch.setattr(runner.scenario_mod, "run_scenario", fake_run)
+    assert (
+        runner.main(
+            [
+                "--ref",
+                ref_url,
+                "--cand",
+                cand_url,
+                "--manifest",
+                str(manifest),
+                "--report",
+                str(report),
+            ]
+        )
+        == 1
+    )
+    assert "scenario" in report.read_text().lower()
+
+
+def test_runner_posts_the_report_to_requested_prs(
+    server_factory, tmp_path, monkeypatch
+):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+    posted = []
+
+    def fake_run(args, **kwargs):
+        posted.append(args)
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    runner.main(
+        [
+            "--ref",
+            ref_url,
+            "--cand",
+            cand_url,
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(report),
+            "--skip-scenarios",
+            "--comment-pr",
+            "4242",
+        ]
+    )
+    assert any("4242" in args for args in posted)
+
+
 def test_basic_auth_is_required_by_the_transport(server_factory):
     server, url = server_factory(
         {("GET", "/"): (200, "ok", "text/plain")}, require_auth=True

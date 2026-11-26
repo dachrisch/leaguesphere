@@ -104,6 +104,23 @@ def test_expand_probes_resolves_placeholders_and_dedupes():
     assert paths.count("/staff/") == 1
 
 
+def test_expand_probes_dedupes_category_expanded_probes():
+    manifest = {
+        **MANIFEST,
+        "probes": [
+            {
+                "name": "duplicate",
+                "path": "/same/",
+                "kind": "html",
+                "role": "anonymous",
+                "categories": ["designer-template", "canvas-published"],
+            }
+        ],
+    }
+    expanded = probes.expand_probes(manifest, GAMEDAYS)
+    assert len(expanded) == 1
+
+
 def test_run_probes_skips_roles_without_credentials():
     session = discovery_session()
     expanded = probes.expand_probes(MANIFEST, GAMEDAYS)
