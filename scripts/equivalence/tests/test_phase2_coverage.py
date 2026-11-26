@@ -121,7 +121,9 @@ def test_etag_revalidation_resolves_exact_prefix_and_missing_sources():
 def test_discover_team_id_handles_valid_empty_and_bad_responses():
     assert (
         scenarios.discover_team_id(
-            RecordedSession({("GET", "/api/teams/"): (200, {"results": [{"id": 9}]})})
+            RecordedSession(
+                {("GET", "/api/teams/"): (200, {"results": [{"id": 9}, {"id": 10}]})}
+            )
         )
         == 9
     )
@@ -301,3 +303,65 @@ def test_selftest_reports_login_failures(monkeypatch, server_factory, tmp_path):
     manifest = write_manifest(tmp_path, with_staff=True)
 
     assert selftest.main(["--url", url, "--manifest", str(manifest)]) == 1
+
+
+def test_capture_regex_without_a_match_is_tolerated(monkeypatch):
+    from scenarios import Step
+    from transport import Response
+
+    class NoDigits:
+        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+            return Response(200, {}, "<p>no digits</p>", path, method=method)
+
+    monkeypatch.setattr(
+        scenarios,
+        "SCENARIOS",
+        {
+            **scenarios.SCENARIOS,
+            "capture-regex-probe": [
+                Step(
+                    name="read",
+                    method="GET",
+                    path="/x/",
+                    role="anonymous",
+                    expect=200,
+                    capture_regex=r"<td>(\d+)</td>",
+                )
+            ],
+        },
+    )
+    run = scenarios.run_scenario(
+        "capture-regex-probe", {"anonymous": NoDigits()}, CONTEXT, "eq-nomatch"
+    )
+    assert [step.name for step in run.steps] == ["read"]
+
+
+def test_capture_regex_with_a_match_is_normalised(monkeypatch):
+    from scenarios import Step
+    from transport import Response
+
+    class WithDigits:
+        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+            return Response(200, {}, "<td>42</td>", path, method=method)
+
+    monkeypatch.setattr(
+        scenarios,
+        "SCENARIOS",
+        {
+            **scenarios.SCENARIOS,
+            "capture-regex-hit": [
+                Step(
+                    name="read",
+                    method="GET",
+                    path="/x/",
+                    role="anonymous",
+                    expect=200,
+                    capture_regex=r"<td>(\d+)</td>",
+                )
+            ],
+        },
+    )
+    run = scenarios.run_scenario(
+        "capture-regex-hit", {"anonymous": WithDigits()}, CONTEXT, "eq-match"
+    )
+    assert 42 in run.id_tokens

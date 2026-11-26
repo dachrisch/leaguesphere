@@ -20,6 +20,7 @@ if the coordinator supplies a harness Moodle session.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import copy
 import re
 import uuid
 
@@ -41,6 +42,9 @@ class Step:
     no_redirect: bool = False
     # "url" captures the gameday id from a wizard redirect (Phase 2).
     capture_from: str | None = None
+    # Capture a numeric id from the response body before normalisation (the
+    # legacy wizard renders the gameinfo id in its table).
+    capture_regex: str | None = None
 
 
 @dataclass
@@ -241,6 +245,19 @@ MINIMAL_CANVAS = {
     "globalTeams": [],
 }
 
+# The write scenarios need games whose two sides are real teams: the event
+# projector and the shadow writer both resolve a side to a Team row. The
+# canvas publish path creates them from ``globalTeams`` labels.
+CANVAS_WITH_TEAMS = copy.deepcopy(MINIMAL_CANVAS)
+CANVAS_WITH_TEAMS["globalTeams"] = [
+    {"id": "eq-home", "label": "Equivalence Home"},
+    {"id": "eq-away", "label": "Equivalence Away"},
+]
+for _node in CANVAS_WITH_TEAMS["nodes"]:
+    if _node["type"] == "game":
+        _node["data"]["homeTeamId"] = "eq-home"
+        _node["data"]["awayTeamId"] = "eq-away"
+
 
 def _gameday_create_step():
     return Step(
@@ -325,6 +342,22 @@ def _wizard_steps():
     ]
 
 
+def _publish_steps_with_teams():
+    return [
+        Step(
+            name="save-designer-canvas",
+            method="PUT",
+            path="/api/gamedays/{gameday_id}/designer-state/",
+            json={"state_data": CANVAS_WITH_TEAMS},
+        ),
+        Step(
+            name="publish-gameday",
+            method="POST",
+            path="/api/gamedays/{gameday_id}/publish/",
+        ),
+    ]
+
+
 def _read_game_id_steps(required=False):
     """Capture all per-run ids the later read-backs can echo back."""
     return [
@@ -364,16 +397,16 @@ def _shadow_steps():
 
     return [
         _gameday_create_step(),
-        *_publish_steps(),
+        *_publish_steps_with_teams(),
         *_read_game_id_steps(),
         Step(
-            name="read-home-team",
+            name="read-home-team-name",
             method="GET",
             path="/api/gamedays/{gameday_id}/games/",
             role="anonymous",
             expect=200,
-            capture="team_id",
-            capture_path="0.results.0.team_id",
+            capture="team_name",
+            capture_path="0.results.0.team_name",
         ),
         Step(
             name="write-shadow-event",
@@ -381,7 +414,7 @@ def _shadow_steps():
             path="/api/gamelog/{game_id}",
             json={
                 "gameId": "{game_id}",
-                "team": "{team_id}",
+                "team": "{team_name}",
                 "event": [{"name": "Touchdown", "player": 7}],
                 "half": 1,
                 "client_id": "{client_id}",
@@ -420,7 +453,9 @@ def _legacy_schedule_form():
         for key, value in game.items():
             form[f"gameinfo-step-{index}-{key}"] = str(value)
         form[f"gameinfo-step-{index}-home"] = "{team_id}"
-        form[f"gameinfo-step-{index}-away"] = "{team_id}"
+        form[f"gameinfo-step-{index}-away"] = "{team_id_away}"
+        form[f"gameinfo-step-{index}-status"] = "Geplant"
+        form[f"gameinfo-step-{index}-officials"] = "{team_id}"
         form[f"gameinfo-step-{index}-id"] = ""
     return form
 
@@ -604,7 +639,7 @@ SCENARIOS = {
     ],
     "v2-events-write": [
         _gameday_create_step(),
-        *_publish_steps(),
+        *_publish_steps_with_teams(),
         *_read_game_id_steps(),
         Step(
             name="write-events",
@@ -618,9 +653,9 @@ SCENARIOS = {
                         "side": "home",
                         "player": 7,
                         "period": 1,
-                        "client_id": "{client_id}",
                     }
-                ]
+                ],
+                "client_id": "{client_id}",
             },
             expect=(200, 201),
         ),
@@ -731,7 +766,9 @@ SCENARIOS = {
             method="POST",
             path="/gamedays/gameday/{gameday_id}/gameinfos/wizard/",
             form=_legacy_schedule_form(),
+            capture_regex=r"<td>(\d+)</td>",
         ),
+        *_read_game_id_steps(),
         Step(
             name="read-games",
             method="GET",
@@ -804,8 +841,8 @@ def _pluck(payload, path):
     return current
 
 
-def discover_team_id(session):
-    """One throwaway team id for the legacy-wizard schedule form."""
+def discover_team_ids(session):
+    """Two throwaway team ids for the legacy-wizard schedule form."""
 
     response = session.request("/api/teams/")
     if response.status == 200:
@@ -813,9 +850,16 @@ def discover_team_id(session):
             teams = response.json().get("results", [])
         except ValueError:
             teams = []
-        if teams:
-            return teams[0].get("id")
-    return None
+        if len(teams) >= 2:
+            return [teams[0].get("id"), teams[1].get("id")]
+    return []
+
+
+def discover_team_id(session):
+    """Backward-compatible single-id helper used by the scenario context."""
+
+    ids = discover_team_ids(session)
+    return ids[0] if ids else None
 
 
 def run_scenario(name, sessions, context, run_id):
@@ -861,6 +905,11 @@ def run_scenario(name, sessions, context, run_id):
             if value is not None:
                 context[step.capture] = value
                 run.captured[step.capture] = value
+                run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
+        if step.capture_regex:
+            match = re.search(step.capture_regex, response.body)
+            if match:
+                value = int(match.group(1))
                 run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
         if step.capture and step.capture_from == "url":
             match = re.search(r"/gamedays/gameday/(\d+)/", response.url)
