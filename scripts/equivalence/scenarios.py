@@ -49,6 +49,8 @@ class Step:
     # Capture a numeric id from the response body before normalisation (the
     # legacy wizard renders the gameinfo id in its table).
     capture_regex: str | None = None
+    # Multipart file upload (officials import); name -> (filename, bytes, type).
+    files: dict | None = None
 
 
 @dataclass
@@ -468,6 +470,45 @@ def _legacy_schedule_form():
     return form
 
 
+# Phase 3 Layer 3: the same 18-column sheet the officials import form accepts.
+# The row targets a *nonexistent* game so the confirm POST exercises the
+# `_commit` error path without writing to the shared stage database.
+OFFICIALS_IMPORT_HEADERS = [
+    "Zeitstempel",
+    "E-Mail für Rückfragen",
+    "Für welchen Bereich möchtest du einen Einsatz melden?",
+    "Wie ist die ID des fehlerhaften Spiels?",
+    "Wie ist deine Lizenznummer?",
+    "Welche Position?",
+    "Sonstiges",
+    "Lizenznummer",
+    "Anzahl Spiele",
+    "Wann hat der Einsatz stattgefunden?",
+    "Welche Position?",
+    "Unter welchem Verband hat der Einsatz stattgefunden?",
+    "Internationales Turnier",
+    "Dauer einer Halbzeit?",
+    "Mit Clock Control?",
+    "Anmerkung - Turniername",
+    "Name",
+    "E-Mail-Adresse",
+]
+
+
+def _officials_import_csv(official_id):
+    row = [""] * len(OFFICIALS_IMPORT_HEADERS)
+    row[2] = "DFFL"
+    row[3] = "999999999"  # a game that cannot exist: error branch, no write
+    row[4] = str(official_id)
+    row[7] = str(official_id)
+    row[9] = "01.05.2024"
+    row[10] = "Referee"
+    row[13] = "20"
+    lines = [",".join(f'"{value}"' for value in OFFICIALS_IMPORT_HEADERS)]
+    lines.append(",".join(f'"{value}"' for value in row))
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
 SCENARIOS = {
     "designer-publish": [
         _gameday_create_step(),
@@ -848,6 +889,57 @@ SCENARIOS = {
             expect=200,
         ),
     ],
+    "officials-import-post": [
+        Step(
+            name="discover-team",
+            method="GET",
+            path="/api/teams/",
+            role="staff",
+            expect=200,
+            capture="team_id",
+            capture_path="results.0.id",
+        ),
+        Step(
+            name="discover-official",
+            method="GET",
+            path="/api/officials/team/{team_id}/list",
+            role="staff",
+            expect=200,
+            capture="official_id",
+            capture_path="0.id",
+        ),
+        Step(
+            name="upload-get",
+            method="GET",
+            path="/officials/gameofficial/import/upload/",
+            role="staff",
+            expect=200,
+        ),
+        Step(
+            name="upload-post",
+            method="POST",
+            path="/officials/gameofficial/import/upload/",
+            role="staff",
+            expect=200,
+            files={
+                "file": (
+                    "import.csv",
+                    _officials_import_csv("{official_id}"),
+                    "text/csv",
+                )
+            },
+            capture="import_row",
+            capture_path="internal_fix.new.0.row_number",
+        ),
+        Step(
+            name="confirm-post",
+            method="POST",
+            path="/officials/gameofficial/import/confirm/",
+            role="staff",
+            expect=(200, 302),
+            form={"internal_rows": "{import_row}"},
+        ),
+    ],
     "officials-signup": [
         _gameday_create_step(),
         Step(
@@ -940,12 +1032,20 @@ def run_scenario(name, sessions, context, run_id):
         path = _resolve(step.path, context)
         body = _resolve(step.json, context) if step.json is not None else None
         form = _resolve(step.form, context) if step.form is not None else None
+        files = None
+        if step.files is not None:
+            files = {}
+            for field, (filename, content, content_type) in step.files.items():
+                if isinstance(content, bytes):
+                    content = content.decode("utf-8")
+                files[field] = (filename, _resolve(content, context), content_type)
         response = role_session.request(
             path,
             method=step.method,
             json_body=body,
             form=form,
             follow_redirects=not step.no_redirect,
+            files=files,
         )
         expected = step.expect if isinstance(step.expect, tuple) else (step.expect,)
         if response.status not in expected:

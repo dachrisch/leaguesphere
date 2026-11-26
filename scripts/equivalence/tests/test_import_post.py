@@ -33,7 +33,15 @@ def test_import_post_scenario_is_stable_across_both_sides():
         def __init__(self, side):
             self.side = side
 
-        def request(self, path, method="GET", json_body=None, form=None, files=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            files=None,
+            headers=None,
+        ):
             if method == "GET" and path == "/api/teams/":
                 return Response(200, {}, '{"results":[{"id":1}]}', path, method)
             if method == "GET" and path == "/api/officials/team/1/list":
@@ -53,7 +61,9 @@ def test_import_post_scenario_is_stable_across_both_sides():
                 )
             if method == "POST" and path.endswith("/confirm/"):
                 assert form == {"internal_rows": "7"}
-                return Response(302, {}, "", "/officials/gameofficial/import/upload/", method)
+                return Response(
+                    302, {}, "", "/officials/gameofficial/import/upload/", method
+                )
             raise AssertionError(f"unexpected {method} {path}")
 
     sessions = {"staff": Session("side")}

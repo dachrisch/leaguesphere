@@ -38,6 +38,7 @@ class FakeApi:
         form=None,
         headers=None,
         follow_redirects=True,
+        files=None,
     ):
         self.calls.append(
             {

@@ -214,7 +214,15 @@ def test_etag_probe_expands_and_revalidates():
         def __init__(self):
             self.headers_seen = []
 
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            files=None,
+        ):
             self.headers_seen.append(dict(headers or {}))
             if any(
                 key.lower() == "if-none-match" and value

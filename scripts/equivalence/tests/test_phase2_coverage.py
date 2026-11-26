@@ -519,6 +519,7 @@ def test_wizard_capture_from_url_is_normalised():
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             if method == "POST" and path == "/gamedays/gameday/new/":
                 return Response(200, {}, "{}", self.url, method=method)
@@ -568,6 +569,7 @@ def test_capture_regex_without_a_match_is_tolerated(monkeypatch):
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             return Response(200, {}, "<p>no digits</p>", path, method=method)
 
@@ -607,6 +609,7 @@ def test_capture_regex_with_a_match_is_normalised(monkeypatch):
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             return Response(200, {}, "<td>42</td>", path, method=method)
 

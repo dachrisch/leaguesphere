@@ -1,7 +1,6 @@
 import json
 import logging
-from datetime import date, datetime, timedelta
-from functools import partial
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from urllib.parse import urlencode
 
@@ -10,9 +9,8 @@ from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
 from django.core.cache import cache
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.db import Error as DatabaseError
 from django.db.models import Subquery, OuterRef, Q
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
@@ -38,21 +36,11 @@ from officials.constants import (
 from officials.forms import (
     AddExternalGameOfficialEntryForm,
     AddInternalGameOfficialEntryForm,
-    GameOfficialImportUploadForm,
     MoodleLoginForm,
 )
 from officials.models import Official, OfficialLicenseHistory
-from officials.service.association_resolution import (
-    UnknownAssociationError,
-    resolve_association,
-)
+from officials.service.association_resolution import UnknownAssociationError
 from officials.service.boff_license_calculation import LicenseStrategy
-from officials.service.game_official_entries import AmbiguousGameOfficialError
-from officials.service.game_official_import import (
-    ImportColumnError,
-    build_import_result,
-    parse_uploaded_file,
-)
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
 from requests import RequestException
