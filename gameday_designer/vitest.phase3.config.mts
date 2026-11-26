@@ -13,7 +13,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text'],
-      include: ['src/components/list/GameTable.tsx'],
+      include: ['src/components/list/game-table/teamOptions.tsx'],
       thresholds: { branches: 100, perFile: true },
     },
   },

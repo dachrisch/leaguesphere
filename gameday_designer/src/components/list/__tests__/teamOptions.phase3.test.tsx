@@ -19,8 +19,8 @@ import {
   CustomSingleValue,
   buildGroupedTeamOptions,
   customSelectStyles,
-} from '../GameTable';
-import type { TeamOption } from '../GameTable';
+} from '../game-table/teamOptions';
+import type { TeamOption } from '../game-table/teamOptions';
 import type { GlobalTeam, GlobalTeamGroup } from '../../../types/flowchart';
 
 const t = (key: string) => (key === 'ui:message.ungrouped' ? 'Ohne Gruppe' : key);
