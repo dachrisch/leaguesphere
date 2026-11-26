@@ -89,6 +89,7 @@ def annotate_passcheck(games, gameday_id):
 
 
 def verified_team_ids(gameday_id, team_ids=None):
+    """Verified teams for a gameday; ``team_ids=None`` means no team filter."""
     queryset = PasscheckVerification.objects.filter(gameday_id=gameday_id)
     if team_ids is not None:
         queryset = queryset.filter(team_id__in=team_ids)

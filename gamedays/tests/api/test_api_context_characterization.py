@@ -33,9 +33,17 @@ class ApiContextCharacterization(WebTest):
             created_at=created_at,
         )
         DBSetup().create_game_officials(game, official=official)
+        second = OfficialFactory(team=TeamFactory())
+        OfficialLicenseHistoryFactory(
+            official=second,
+            license=OfficialLicenseFactory(name="F2"),
+            created_at=created_at,
+        )
+        DBSetup().create_game_officials(game, official=second)
 
         with CaptureQueriesContext(connection) as queries:
             response = self.app.get(reverse(API_GAME_OFFICIALS, kwargs={"pk": game.pk}))
         assert response.status_code == 200
-        assert response.json[0]["license"] == "F1"
-        assert len(queries.captured_queries) >= 1
+        assert {row["license"] for row in response.json} == {"F1", "F2"}
+        # Two officials still cost one bulk licence query, not one each.
+        assert len(queries.captured_queries) == 4

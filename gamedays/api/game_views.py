@@ -5,7 +5,7 @@ from collections import OrderedDict
 from http import HTTPStatus
 
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import F, Max
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated

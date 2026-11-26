@@ -22,6 +22,7 @@ def annotate_passcheck(games, gameday_id):
 
 
 def verified_team_ids(gameday_id, team_ids=None):
+    """``team_ids=None`` asks for every verified team in the gameday."""
     return get("verified_team_ids")(gameday_id, team_ids)
 
 
