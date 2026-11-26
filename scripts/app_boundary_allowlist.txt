@@ -14,8 +14,6 @@
 # Kept by decision, not modelled here (string FK references, not imports):
 #   gamedays/models.py: Gameinfo.league_group -> "league_table.LeagueGroup"
 #   gamedays/models.py: GameOfficial.official -> "officials.Official"
-gamedays/api/game_views.py|from passcheck.models import PasscheckVerification, PlayerlistGameday  # Phase 1 — API context
-gamedays/api/views.py|from officials.service.game_official_licenses import resolve_current_licenses  # Phase 1 — API context
 gamedays/service/wrapper/gameinfo_wrapper.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
 gamedays/wizard/gameday_format.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion
 gamedays/wizard/gameinfo.py|from league_table.models import LeagueGroup  # Phase 1 — service inversion

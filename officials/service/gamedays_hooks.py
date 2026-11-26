@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from gamedays.service import detail_context, registry
-from league_manager.utils.url_service import UrlService
+from gamedays.service import registry, detail_context
+from officials.service.game_official_licenses import resolve_current_licenses
 from officials.service.signup_service import OfficialSignupService
 from officials.urls import OFFICIALS_PROFILE_LICENSE, OFFICIALS_SIGN_UP_LIST
+from league_manager.utils.url_service import UrlService
+
+
+def current_licenses(official_ids):
+    return resolve_current_licenses(official_ids)
 
 
 def detail_contributor(draft):
@@ -36,3 +41,4 @@ def detail_contributor(draft):
 def register():
     detail_context.register_contributor("officials", 20, detail_contributor)
     registry.register("detail_signups", detail_contributor, "officials")
+    registry.register("current_licenses", current_licenses, "officials")

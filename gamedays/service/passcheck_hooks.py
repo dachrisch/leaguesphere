@@ -15,3 +15,15 @@ def season_player_jersey_names(season_name):
 
 def staff_passcheck_details(gameday_id):
     return get("staff_passcheck_details")(gameday_id)
+
+
+def annotate_passcheck(games, gameday_id):
+    return get("annotate_passcheck")(games, gameday_id)
+
+
+def verified_team_ids(gameday_id, team_ids=None):
+    return get("verified_team_ids")(gameday_id, team_ids)
+
+
+def roster_rows(gameday_id, team_ids, joined_before):
+    return get("roster_rows")(gameday_id, team_ids, joined_before)

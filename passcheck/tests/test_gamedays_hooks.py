@@ -70,4 +70,45 @@ def test_staff_passcheck_details_empty_and_populated():
 def test_register_registers_all_hooks():
     with patch("passcheck.service.gamedays_hooks.registry.register") as register:
         hooks.register()
-    assert register.call_count == 3
+    assert register.call_count == 6
+
+
+def test_annotate_passcheck_uses_result_ids():
+    from unittest.mock import patch
+
+    games = [
+        {
+            "id": 1,
+            "id_home": "10",
+            "id_away": "11",
+        }
+    ]
+    with (
+        patch("passcheck.service.gamedays_hooks.Gameresult.objects") as results,
+        patch(
+            "passcheck.service.gamedays_hooks.PasscheckVerification.objects"
+        ) as verifications,
+    ):
+        results.filter.return_value.values_list.return_value = [(10, 2), (11, 3)]
+        verifications.filter.return_value.values_list.return_value = [2, 3]
+        hooks.annotate_passcheck(games, 9)
+        assert games[0]["passcheck"] is True
+
+
+def test_verified_team_ids_with_and_without_a_filter():
+    with patch(
+        "passcheck.service.gamedays_hooks.PasscheckVerification.objects"
+    ) as verifications:
+        verifications.filter.return_value.values_list.return_value = [2, 3]
+        verifications.filter.return_value.filter.return_value.values_list.return_value = [
+            2
+        ]
+        assert hooks.verified_team_ids(9) == {2, 3}
+        assert hooks.verified_team_ids(9, [2]) == {2}
+
+
+def test_roster_rows_filters_by_join_and_leave_dates():
+    with patch("passcheck.service.gamedays_hooks.PlayerlistGameday.objects") as objects:
+        chain = objects.filter.return_value.filter.return_value.filter.return_value
+        chain.select_related.return_value = ["row"]
+        assert hooks.roster_rows(9, [2], "2030-01-01") == ["row"]

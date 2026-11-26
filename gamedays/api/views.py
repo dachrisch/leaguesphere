@@ -68,7 +68,7 @@ from gamedays.service.gameday_settings import (
     STANDING,
     WIN_POINTS,
 )
-from officials.service.game_official_licenses import resolve_current_licenses
+from gamedays.service import officials_hooks
 
 logger = logging.getLogger(__name__)
 
@@ -460,7 +460,7 @@ class GameOfficialCreateOrUpdateView(RetrieveUpdateAPIView):
             # directory alone: a guest belongs to another team, and a directory
             # loaded before the person was created is stale. Answer the licence
             # with the crew itself - one bulk query for all rows.
-            licenses = resolve_current_licenses(
+            licenses = officials_hooks.current_licenses(
                 row.official_id for row in officials if row.official_id is not None
             )
             data = []

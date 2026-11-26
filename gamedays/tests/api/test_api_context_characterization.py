@@ -35,9 +35,7 @@ class ApiContextCharacterization(WebTest):
         DBSetup().create_game_officials(game, official=official)
 
         with CaptureQueriesContext(connection) as queries:
-            response = self.app.get(
-                reverse(API_GAME_OFFICIALS, kwargs={"pk": game.pk})
-            )
+            response = self.app.get(reverse(API_GAME_OFFICIALS, kwargs={"pk": game.pk}))
         assert response.status_code == 200
         assert response.json[0]["license"] == "F1"
         assert len(queries.captured_queries) >= 1

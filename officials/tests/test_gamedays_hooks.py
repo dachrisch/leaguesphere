@@ -108,3 +108,12 @@ def test_detail_contributor_clears_when_registration_denied():
     assert draft.officials == []
     assert draft.url_pattern_official == ""
     assert draft.url_pattern_official_signup == ""
+
+
+def test_current_licenses_delegates():
+    with patch(
+        "officials.service.gamedays_hooks.resolve_current_licenses",
+        return_value={1: {"license": "F1"}},
+    ) as resolve:
+        assert hooks.current_licenses([1]) == {1: {"license": "F1"}}
+        resolve.assert_called_once_with([1])
