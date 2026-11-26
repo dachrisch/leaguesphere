@@ -46,4 +46,13 @@ class ApiContextCharacterization(WebTest):
         assert response.status_code == 200
         assert {row["license"] for row in response.json} == {"F1", "F2"}
         # Two officials still cost one bulk licence query, not one each.
-        assert len(queries.captured_queries) == 4
+        # Other tests may leave a LeagueSeasonConfig behind, which removes two
+        # unrelated config queries, so pin the licence query count exactly and
+        # bound the total rather than depending on test order.
+        licence_queries = [
+            query
+            for query in queries.captured_queries
+            if "officials_officiallicensehistory" in query["sql"]
+        ]
+        assert len(licence_queries) == 1
+        assert len(queries.captured_queries) <= 4
