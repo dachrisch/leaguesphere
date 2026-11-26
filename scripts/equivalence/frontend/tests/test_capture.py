@@ -161,7 +161,7 @@ def test_compare_steps_covers_missing_extra_changed_and_equal():
         "missing": {"requests": [], "dom": "a", "aria": "a"},
     }
     diffs = capture.compare_steps(left, right, "tracking")
-    assert diffs["tracking:changed"] == [Diff("$.dom:line 1", "replace")]
+    assert diffs["tracking:changed"] == [Diff("$.dom:line 1", "line")]
     assert diffs["tracking:extra"] == [Diff("$", "missing")]
     assert diffs["tracking:missing"] == [Diff("$", "extra")]
     assert "tracking:open" not in diffs
@@ -185,8 +185,8 @@ def test_compare_steps_reports_line_numbers_and_optional_state():
         }
     }
     diffs = capture.compare_steps(left, right, "tracking")
-    assert Diff("$.dom:line 2", "replace") in diffs["tracking:step"]
-    assert Diff("$.aria:line 1", "replace") in diffs["tracking:step"]
+    assert Diff("$.dom:line 2", "line") in diffs["tracking:step"]
+    assert Diff("$.aria:line 1", "line") in diffs["tracking:step"]
     assert Diff("$.absent[]", "length") in diffs["tracking:step"]
     # Requests are structural; only DOM/ARIA text is diffed by line.
     assert not any(item.path.startswith("$.requests") for item in diffs["tracking:step"])

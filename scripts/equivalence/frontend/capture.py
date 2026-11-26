@@ -23,16 +23,17 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import normalise  # noqa: E402
-from diff import Diff, diff_json  # noqa: E402
+from diff import Diff, diff_json, diff_text  # noqa: E402
 
-# Volatile ARIA/DOM lines excluded from a journey diff. This allowlist is
+# Volatile tokens in ARIA/DOM text, replaced in place (never used to drop a
+# whole line — that could hide a real element disappearing). This allowlist is
 # documented and reviewed at the first ref-vs-ref noise floor; it is never
-# widened silently. Each entry is (pattern, reason).
+# widened silently. Each entry is (pattern, replacement, reason).
 VOLATILE_NODES = (
-    (r"^vor \d+\s*(?:s|sek|min|h)\b$", "relative clock label"),
-    (r"^gerade eben$", "relative clock label"),
-    (r"\[(?:focused|active)\]", "focus state of the last clicked control"),
-    (r"\b(?:fade|slide|transition)-(?:in|out)\b", "CSS transition state"),
+    (r"^vor \d+\s*(?:s|sek|min|h)\b$", "<time>", "relative clock label"),
+    (r"^gerade eben$", "<time>", "relative clock label"),
+    (r"\[(?:focused|active)\]", "", "focus state of the last clicked control"),
+    (r"\b(?:fade|slide|transition)-(?:in|out)\b", "", "CSS transition state"),
 )
 
 
@@ -41,7 +42,9 @@ def body_shape(value):
     if isinstance(value, dict):
         return {key: body_shape(item) for key, item in sorted(value.items())}
     if isinstance(value, list):
-        return [body_shape(item) for item in value[:1]]
+        # Keep the length and the shape of *every* element: an extra event in a
+        # write body is exactly the difference this harness must witness.
+        return {"len": len(value), "items": [body_shape(item) for item in value]}
     if isinstance(value, bool):
         return "bool"
     if isinstance(value, (int, float)):
@@ -85,17 +88,19 @@ def normalise_request(request, tokens=None):
 
 
 def normalise_dom(text, tokens=None, volatile=None):
-    """Normalise visible text / an ARIA snapshot and drop volatile nodes.
+    """Normalise visible text / an ARIA snapshot and scrub volatile tokens.
 
     ``volatile`` defaults to the documented allowlist; pass ``()`` to disable
     it (used by the tests that prove the allowlist itself is the only filter).
+    Only the volatile token is replaced — the surrounding line stays so a
+    removed control or renamed button is still a real diff.
     """
     patterns = VOLATILE_NODES if volatile is None else volatile
     cleaned = normalise.normalise_html(text, tokens or {})
     kept = []
     for line in cleaned.splitlines():
-        if any(re.search(pattern, line) for pattern, _ in patterns):
-            continue
+        for pattern, replacement, _ in patterns:
+            line = re.sub(pattern, replacement, line)
         kept.append(line)
     return "\n".join(kept)
 
@@ -139,7 +144,22 @@ def compare_steps(left, right, journey):
         elif step not in right:
             diffs[key] = [Diff("$", "missing")]
         else:
-            found = diff_json(left[step], right[step])
+            before, after = left[step], right[step]
+            found = diff_json(
+                before.get("requests", []), after.get("requests", []), "$.requests"
+            )
+            # Plan §3.3: DOM/ARIA text is compared line by line so the report
+            # carries line numbers, not an opaque "$.dom (value)".
+            for field in ("dom", "aria"):
+                found.extend(
+                    Diff(f"$.{field}:{item.path}", item.kind)
+                    for item in diff_text(before.get(field, ""), after.get(field, ""))
+                )
+            # An optional click records its absence on both sides; compare it
+            # so a selector present on one side is a real diff.
+            found.extend(
+                diff_json(before.get("absent", []), after.get("absent", []), "$.absent")
+            )
             if found:
                 diffs[key] = found
     return diffs

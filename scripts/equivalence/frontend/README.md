@@ -19,7 +19,9 @@ python3 scripts/equivalence/frontend/runner.py \
 The four role credentials use the same environment names as the backend
 manifest (`LS_AGENT_{STAFF,TEAM_MANAGER,OFFICIAL}_{USER,PASSWORD}`). A role that
 is absent or cannot log in makes that journey's steps **skipped**, never faked.
-The runner exits 1 on any unexplained diff. Phase 3 declares no intended
+The runner exits 1 on any unexplained diff, skipped step, harness error or
+journey with fewer than `--min-steps` (default 2) captured steps — a run that
+clicked nothing is never reported as "0 diffs". Phase 3 declares no intended
 diffs; `--intended` exists for later phases only.
 
 **Noise floor first:** run with `--ref <ref-route> --cand <ref-route>` (the same
@@ -57,8 +59,10 @@ stream can never pin a side's worker.
 | Pattern | Reason |
 |---|---|
 | `^vor \d+\s*(s\|sek\|min\|h)$`, `^gerade eben$` | Relative clock labels change while a step runs. |
-| `\[(focused\|active)\]` | Focus state depends on the last clicked control. |
-| `\b(fade\|slide\|transition)-(in\|out)\b` | CSS transition state is timing-dependent. |
+| `\[(focused\|active)\]` → removed token | Focus state depends on the last clicked control; the rest of the line is kept. |
+| `\b(fade\|slide\|transition)-(in\|out)\b` → removed token | CSS transition state is timing-dependent; the rest of the line is kept. |
+
+Relative clock labels become `<time>` rather than dropping the line.
 
 ## Journeys
 
