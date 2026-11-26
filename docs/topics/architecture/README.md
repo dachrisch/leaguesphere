@@ -48,3 +48,7 @@ What are the impacts (positive and negative)?
 
 3. Update this README.md to link the new ADR
 4. Reference the ADR in the appropriate docs
+
+### Current ADRs
+
+- [0026 — Event store ownership and the v2/legacy boundary](./adr/0026-event-store-ownership.md) — Proposed; supersedes Q1 of the scorecard event architecture doc (owner: the user)

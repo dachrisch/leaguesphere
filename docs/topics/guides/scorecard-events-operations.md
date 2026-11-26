@@ -136,8 +136,11 @@ effect: the container's environment comes from the host, not the build.
 - **Local dev**: `.env_template` / your shell.
 - **Staging/demo**: the env file Ansible renders from
   `deployed/ls.env.staging.template` (and the demo equivalent). That template
-  does **not** carry the variable yet, so flipping the flag on stage needs a
-  change there on `master` plus the Ansible sync — the same gate as
+  already carries `SCORECARD_EVENT_FEED=false` (see
+  `deployed/ls.env.staging.template:33`), so the default is off without any
+  extra edit. Flipping the flag on stage is a host-environment change applied
+  through Ansible in `dachrisch/servyy-container` — not something an image or
+  a repo-only change can do — the same gate as
   `container/nginx.staging.conf`, which staging mounts from the host jail.
 
 Consequence: a release candidate can be *validated* against the event path
