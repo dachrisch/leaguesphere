@@ -24,6 +24,9 @@ export default defineConfig({
         // Layer 7
         "src/screens/game-setup/start.ts",
         "src/screens/game-setup/useGameStart.ts",
+        // Layer 8
+        "src/screens/tracking-flow/logic.ts",
+        "src/screens/tracking-flow/SyncStrip.tsx",
       ],
       thresholds: { branches: 100, perFile: true },
     },
