@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -62,6 +63,24 @@ def discover(context):
     return {}
 
 
+def wait_for_quiet(page, capture, timeout_ms=4000, quiet_ms=600):
+    """Wait until no new API request has arrived for ``quiet_ms``.
+
+    The screens fire several fetches in parallel on mount; a fixed short sleep
+    captured a different subset on the two sides and produced false diffs.
+    """
+    deadline = time.monotonic() + timeout_ms / 1000
+    last = len(capture.requests)
+    stable = 0
+    while time.monotonic() < deadline:
+        page.wait_for_timeout(100)
+        current = len(capture.requests)
+        stable = stable + 100 if current == last else 0
+        if stable >= quiet_ms:
+            break
+        last = current
+
+
 def run_steps(
     context,
     path,
@@ -90,11 +109,11 @@ def run_steps(
     )
     try:
         page.goto(path, wait_until=wait)
-        page.wait_for_timeout(250)
+        wait_for_quiet(page, capture)
         steps[f"{prefix}open"] = capture_step(page, capture=capture, tokens=tokens)
         for name, action in actions:
             action(page)
-            page.wait_for_timeout(250)
+            wait_for_quiet(page, capture)
             steps[f"{prefix}{name}"] = capture_step(
                 page, capture=capture, tokens=tokens
             )
