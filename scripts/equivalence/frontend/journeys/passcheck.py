@@ -1,16 +1,19 @@
 """Passcheck journey: the eligibility list for a run-id gameday."""
 
-from .common import click_if_present, discover, run_steps
+from .common import click_if_present, discover, role_view, run_steps
 
 
 def run(context, run_id, credentials):
-    ids = discover(context)
+    view = role_view(context, "staff")
+    if view is None:
+        return {}, ["passcheck:staff-login-unavailable"]
+    ids = discover(view)
     if not ids.get("gameday_id"):
         return {}, ["passcheck:no-gameday-on-stage"]
     tokens = {ids["gameday_id"]: "<entity-1>", ids["game_id"]: "<entity-2>"}
     steps, skipped = {}, []
     run_steps(
-        context,
+        view,
         f"/passcheck/?gameday={ids['gameday_id']}",
         steps,
         skipped,

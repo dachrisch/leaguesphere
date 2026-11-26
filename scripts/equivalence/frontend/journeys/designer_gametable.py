@@ -1,10 +1,13 @@
 """Designer journey: open a gameday's team table and inspect a row."""
 
-from .common import click_if_present, discover, run_steps
+from .common import click_if_present, discover, role_view, run_steps
 
 
 def run(context, run_id, credentials):
-    ids = discover(context)
+    view = role_view(context, "staff")
+    if view is None:
+        return {}, ["designer:staff-login-unavailable"]
+    ids = discover(view)
     if not ids.get("gameday_id"):
         return {}, ["designer:no-gameday-on-stage"]
     tokens = {ids["gameday_id"]: "<entity-1>"}
@@ -20,7 +23,7 @@ def run(context, run_id, credentials):
         ),
     ]
     run_steps(
-        context,
+        view,
         f"/gamedays/gameday/design/?season={ids['season_id']}&league={ids['league_id']}",
         steps,
         skipped,
