@@ -319,7 +319,6 @@ export function TrackingPanels({
   setHalftimeError,
   setHalftimeOpen,
 }: TrackingPanelsProps) {
-  /* v8 ignore start -- presentational markup exercised by Tracking.test.tsx (5580 lines), Playwright e2e and the stage journeys */
   return (
     <div className="app-shell tracking">
       <AppHeader
@@ -1010,5 +1009,4 @@ export function TrackingPanels({
       ) : null}
     </div>
   );
-  /* v8 ignore stop */
 }
