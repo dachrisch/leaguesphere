@@ -28,9 +28,18 @@ const h = vi.hoisted(() => ({
     reason === null ? null : `Grund ${reason}`,
   ),
   stranded: vi.fn(() => false),
-  cachedGet: vi.fn(async () => []),
-  cachedGetMeta: vi.fn(async () => null),
-  readQuarterback: vi.fn(() => null),
+  cachedGet: vi.fn((...args: unknown[]) => {
+    void args;
+    return Promise.resolve([] as unknown);
+  }),
+  cachedGetMeta: vi.fn((...args: unknown[]) => {
+    void args;
+    return Promise.resolve(null as unknown);
+  }),
+  readQuarterback: vi.fn((...args: unknown[]) => {
+    void args;
+    return null as unknown;
+  }),
   rememberQuarterback: vi.fn(),
 }));
 
@@ -244,9 +253,19 @@ beforeEach(() => {
   h.paused.mockImplementation((reason: string | null) =>
     reason === "device" ? "Grund device" : null,
   );
-  h.cachedGet.mockImplementation(async () => []);
-  h.cachedGetMeta.mockImplementation(async () => null);
-  h.readQuarterback.mockImplementation(() => null);
+  h.cachedGet.mockImplementation(async (key?: unknown) => {
+    void key;
+    return [];
+  });
+  h.cachedGetMeta.mockImplementation(async (key?: unknown) => {
+    void key;
+    return null;
+  });
+  h.readQuarterback.mockImplementation((id?: unknown, side?: unknown) => {
+    void id;
+    void side;
+    return null;
+  });
   h.rememberQuarterback.mockClear();
   statusMock.mockReturnValue(h.status);
   apiGetMock.mockResolvedValue({ can_release_lock: true, locked_elsewhere: false });
@@ -307,7 +326,7 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
   it("keeps editing null while the queue is paused for a device", () => {
     Object.assign(h.status, { paused: "device" });
     const paused = setup({ editing: null });
-    expect(paused.result.current.editing ?? null).toBeNull();
+    expect(paused.result.current.state.editing ?? null).toBeNull();
     expect(paused.result.current.readOnly).toBe(true);
     Object.assign(h.status, { paused: null });
   });
@@ -349,8 +368,8 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
   it("warms caches, seeds the quarterback, reads lock rights and crew", async () => {
     const pause = vi.fn();
     runtimeMock.mockReturnValue({ sync: { pause } });
-    h.cachedGet.mockImplementation(async (key: string) => {
-      if (key === "penalties") return ["Flag"];
+    h.cachedGet.mockImplementation(async (key: unknown) => {
+      if (key === "penalties") return ["Flag"] as unknown;
       if (key === "rules") throw new Error("offline");
       if (key === "roster-42") return [{ id: 1, name: "Seven" }];
       if (key === "officials:42") return [{ id: 3, name: "Ref" }];
@@ -365,7 +384,11 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
       },
       updatedAt: null,
     }));
-    h.readQuarterback.mockImplementation(() => null);
+    h.readQuarterback.mockImplementation((id?: unknown, side?: unknown) => {
+      void id;
+      void side;
+      return null;
+    });
 
     const { result } = setup({ game: game("1. Halbzeit") });
     await waitFor(() => expect(result.current.state.roster).toHaveLength(1));
@@ -386,7 +409,11 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
       value: { locked_elsewhere: false, qbAway: 9 },
       updatedAt: "2026-11-26T12:00:00Z",
     }));
-    h.readQuarterback.mockImplementation(() => 5);
+    h.readQuarterback.mockImplementation((id?: unknown, side?: unknown) => {
+      void id;
+      void side;
+      return 5 as unknown;
+    });
     const offline = setup();
     await waitFor(() =>
       expect(offline.result.current.state.officialsUnavailable).toBe(true),
@@ -421,7 +448,7 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
 
     cleanup();
     // A stored answer has no fresh lock: the 409 retry asks the server once.
-    h.cachedGetMeta.mockImplementation(() => new Promise(() => undefined));
+    h.cachedGetMeta.mockImplementation(() => new Promise<unknown>(() => undefined));
     Object.assign(h.status, { paused: "device", pending: 1 });
     apiGetMock.mockResolvedValueOnce({ can_release_lock: true });
     setup();
@@ -433,13 +460,13 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
     let resolveRoster: (value: unknown) => void = () => undefined;
     let resolveSetup: (value: unknown) => void = () => undefined;
     let resolveCrew: (value: unknown) => void = () => undefined;
-    h.cachedGet.mockImplementation((key: string) => {
+    h.cachedGet.mockImplementation((key: unknown) => {
       if (key === "roster-42")
-        return new Promise((resolve) => {
+        return new Promise<unknown>((resolve) => {
           resolveRoster = resolve;
         });
       if (key === "officials:42")
-        return new Promise((resolve) => {
+        return new Promise<unknown>((resolve) => {
           resolveCrew = resolve;
         });
       return Promise.resolve([]);
@@ -460,9 +487,9 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
 
     // The same guard applies when a roster read fails after unmount.
     let failRoster: (error: Error) => void = () => undefined;
-    h.cachedGet.mockImplementation((key: string) => {
+    h.cachedGet.mockImplementation((key: unknown) => {
       if (key === "roster-42")
-        return new Promise((_resolve, reject) => {
+        return new Promise<unknown>((_resolve, reject) => {
           failRoster = reject;
         });
       return Promise.resolve([]);
@@ -475,7 +502,7 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
   });
 
   it("handles a null roster, an unlocked answer, a failed setup read and a late 409 reply", async () => {
-    h.cachedGet.mockImplementation((key: string) =>
+    h.cachedGet.mockImplementation((key: unknown) =>
       key === "roster-42" ? Promise.resolve(null) : Promise.resolve([]),
     );
     h.cachedGetMeta.mockRejectedValueOnce(new Error("offline"));
@@ -492,12 +519,12 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
     await waitFor(() => expect(unlocked.result.current.state.setup).toBeTruthy());
 
     cleanup();
-    h.cachedGetMeta.mockImplementation(() => new Promise(() => undefined));
+    h.cachedGetMeta.mockImplementation(() => new Promise<unknown>(() => undefined));
     Object.assign(h.status, { paused: "device" });
     let resolveApi: (answer: unknown) => void = () => undefined;
     apiGetMock.mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise<unknown>((resolve) => {
           resolveApi = resolve;
         }),
     );
