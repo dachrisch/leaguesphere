@@ -18,17 +18,22 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text"],
       include: [
-        // Layer 6
+        // crew.tsx
         "src/screens/game-setup/crew.tsx",
+        // useCrewSetup.ts
         "src/screens/game-setup/useCrewSetup.ts",
-        // Layer 7
+        // start.ts
         "src/screens/game-setup/start.ts",
+        // useGameStart.ts
         "src/screens/game-setup/useGameStart.ts",
-        // Layer 8
+        // logic.ts
         "src/screens/tracking-flow/logic.ts",
+        // SyncStrip.tsx
         "src/screens/tracking-flow/SyncStrip.tsx",
-        // Layer 9
+        // useTrackingLog.ts
         "src/screens/tracking-flow/useTrackingLog.ts",
+        // usePatFlow.ts
+        "src/screens/tracking-flow/usePatFlow.ts",
       ],
       thresholds: { branches: 100, perFile: true },
     },
