@@ -176,6 +176,16 @@ class DeviceViewCharacterization(TestCase):
         with self.assertRaises(NotFound):
             GameFinalizeUpdateView().update(self._request(), pk=999999)
 
+    def test_finalize_reports_serializer_errors_without_a_write(self):
+        self.game.status = STATUS_FIRST_HALF
+        self.game.save(update_fields=["status"])
+        request = self._request()
+        request._full_data = {"hasFinalScoreChanged": [1, 2]}
+        response = GameFinalizeUpdateView().update(request, pk=self.game.pk)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert "hasFinalScoreChanged" in response.data
+        assert GameSetup.objects.get(gameinfo=self.game).homeCaptain == ""
+
     def test_device_lock_delete_permissions_and_not_found(self):
         view = GameDeviceLockAPIView()
         plain = UserFactory(username="device_plain", is_staff=False)
