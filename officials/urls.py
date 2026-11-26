@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from officials.constants import OFFICIALS_STATISTICS, OFFICIALS_STATISTICS_FOR_SEASON
 from officials.views import (
@@ -217,8 +218,16 @@ urlpatterns = [
         OfficialAssociationListView.as_view(),
         name=OFFICIALS_ASSOCIATION_LIST,
     ),
+    path("login/", MoodleLoginView.as_view(), name=OFFICIALS_MOODLE_LOGIN),
+    # Old links/bookmarks keep working: redirect to the canonical path while
+    # carrying the ``?next=`` query string over (RedirectView appends it raw).
     path(
-        "gameday/sign-up/login/", MoodleLoginView.as_view(), name=OFFICIALS_MOODLE_LOGIN
+        "gameday/sign-up/login/",
+        RedirectView.as_view(
+            pattern_name=OFFICIALS_MOODLE_LOGIN,
+            permanent=False,
+            query_string=True,
+        ),
     ),
     path(
         "gameday/sign-up/",

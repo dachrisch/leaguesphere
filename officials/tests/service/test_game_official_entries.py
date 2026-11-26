@@ -122,6 +122,23 @@ class TestExternalGameOfficialEntry(TestCase):
         # so an omitted comment is normalized to "" rather than None.
         assert saved.comment == ""
 
+    def test_success_message_uses_an_zahl_spiele_not_hash_spiele(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        entry = ExternalGameOfficialEntry(
+            official_id=official.pk,
+            number_games=2,
+            date="2024-05-01",
+            position="Referee",
+            association="Hamburg",
+            halftime_duration=20,
+        )
+
+        message = entry.save()
+
+        assert "Anzahl Spiele 2" in message
+        assert "#Spiele" not in message
+
     def test_official_not_found_raises_does_not_exist(self):
         entry = ExternalGameOfficialEntry(
             official_id=99999,

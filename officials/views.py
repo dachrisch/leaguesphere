@@ -188,8 +188,15 @@ class OfficialsTeamListView(View):
                 get_team_officiated_games,
             )
 
+            # Only staff get the renderer's claim/unassign "Aktion" column,
+            # and its ?next= points back at this exact team-list URL (which
+            # may or may not carry a season) so confirm/cancel return here.
             context["officiated_games"] = get_team_officiated_games(
-                team_id, year, REPORT_TABLE_RENDER_CONFIG
+                team_id,
+                year,
+                REPORT_TABLE_RENDER_CONFIG,
+                include_official_actions=request.user.is_staff,
+                next_path=request.path,
             )
 
         return render(

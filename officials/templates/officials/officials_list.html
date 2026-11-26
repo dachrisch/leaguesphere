@@ -23,6 +23,7 @@
         <h3>
             {{ officials_list|length }} - Offizielle
         </h3>
+        <div class="table-responsive">
         <table class="table table-hover">
             <thead>
             <tr>
@@ -35,7 +36,7 @@
                 </th>
                 <th scope="col">
                     <div data-bs-title="Summe aller Spiele (DFFL Spiele / Spiele außerhalb der DFFL)"
-                         data-bs-toggle="tooltip">#Spiele
+                         data-bs-toggle="tooltip">Anzahl Spiele
                     </div>
                 </th>
                 <th scope="col">
@@ -93,9 +94,11 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
 
         {% if show_officiated_games %}
         <h3 class="mt-4">Geleitete Spiele ({{ officiated_games|length }})</h3>
+        <div class="table-responsive">
         <table class="table table-hover align-middle">
             <thead>
             <tr>
@@ -157,6 +160,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
         {% endif %}
     </div>
 </article>

@@ -179,6 +179,6 @@ class ExternalGameOfficialEntry:
         )
         return (
             f"ID: {external_official_game_entry.pk} "
-            f"-> #Spiele {external_official_game_entry.number_games}:"
+            f"-> Anzahl Spiele {external_official_game_entry.number_games}:"
             f" {official.first_name} {official.last_name} als {external_official_game_entry.position}"
         )

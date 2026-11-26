@@ -42,11 +42,22 @@ def get_officiated_gameinfo_ids(team_id: int, season: int) -> list:
     )
 
 
-def get_team_officiated_games(team_id: int, season: int, render_config: dict) -> list:
+def get_team_officiated_games(
+    team_id: int,
+    season: int,
+    render_config: dict,
+    include_official_actions: bool = False,
+    next_path=None,
+) -> list:
     """One dict per game team_id officiated in `season`, ordered by date
     ascending:
     {gameinfo_id, gameday_id, gameday_name, date, home, away, game_status,
      is_checked, officials_violations: list[str], refs: <rendered HTML table>}
+
+    The renderer's claim/unassign "Aktion" column is opt-in: only the staff
+    team-list view passes include_official_actions=True, and it passes its own
+    next_path so the self-service confirm/cancel pages return to that page.
+    Every other caller keeps the report action-free.
     """
     gameinfo_ids = get_officiated_gameinfo_ids(team_id, season)
     if not gameinfo_ids:
@@ -73,7 +84,9 @@ def get_team_officiated_games(team_id: int, season: int, render_config: dict) ->
     for gameday_id, team_gameinfo_ids in gameinfo_ids_by_gameday.items():
         compliance = compliance_by_gameday[gameday_id]
         for game in MachtreportModelWrapper(gameday_id).get_gameday_match_report(
-            render_config
+            render_config,
+            include_official_actions=include_official_actions,
+            next_path=next_path,
         ):
             if game["gameinfo_id"] not in team_gameinfo_ids:
                 continue

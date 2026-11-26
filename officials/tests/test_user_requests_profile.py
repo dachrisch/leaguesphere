@@ -236,7 +236,7 @@ class TestProfileNameReveal(ProfileUiTestBase):
 class TestMultiAddMobileSpacing(ProfileUiTestBase):
     LABELS = (
         "Datum:",
-        "#Spiele:",
+        "Anzahl Spiele:",
         "Position:",
         "Verband:",
         "Halbzeitdauer:",

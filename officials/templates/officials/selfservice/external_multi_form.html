@@ -36,7 +36,7 @@
                 <thead>
                 <tr>
                     <th scope="col">Datum</th>
-                    <th scope="col">#Spiele</th>
+                    <th scope="col">Anzahl Spiele</th>
                     <th scope="col">Position</th>
                     <th scope="col">Verband</th>
                     <th scope="col">Halbzeitdauer</th>
@@ -57,7 +57,7 @@
                     </td>
                     <td>
                         <div class="mb-2">
-                            <span class="d-md-none fw-bold d-block">#Spiele:</span>
+                            <span class="d-md-none fw-bold d-block">Anzahl Spiele:</span>
                             {{ form.number_games }}
                         </div>
                         {% if not adding_row %}{% for error in form.number_games.errors %}<span class="text-danger d-block">{{ error }}</span>{% endfor %}{% endif %}

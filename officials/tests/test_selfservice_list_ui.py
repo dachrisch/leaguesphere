@@ -127,7 +127,8 @@ class TestEinsaetzeListUi(SelfServiceUiTestBase):
         content = self.page()
 
         assert reverse(DELETE_URL_NAME, kwargs={"pk": own.pk}) in content
-        assert ">Löschen<" in content
+        assert ">Entfernen<" in content
+        assert ">Löschen<" not in content
         assert "Das war ich" not in content
 
     def test_foreign_mapped_row_with_match_keeps_reclaim(self):

@@ -211,7 +211,10 @@ class MachtreportModelWrapper:
         return teamlogs.rename(columns=column_mapping)
 
     def _get_game_officials_table(
-        self, gameinfo: str, include_official_actions: bool = False
+        self,
+        gameinfo: str,
+        include_official_actions: bool = False,
+        next_path=None,
     ):
         column_mapping = {
             "official__team__description": "Team",
@@ -222,9 +225,10 @@ class MachtreportModelWrapper:
         }
         if include_official_actions:
             # The claim/unassign links lead to self-service views (and carry a
-            # ?next=/matchreport/... the viewer may not be allowed to follow),
-            # so they are only exposed when the caller opts in - the staff
-            # gameday detail view does; the officials team list never does.
+            # ?next= back to the calling page the viewer may not be allowed to
+            # follow), so they are only exposed when the caller opts in - the
+            # staff gameday detail view and the staff officials team list do;
+            # the report reused on the non-staff team list does not.
             column_mapping["action_cell"] = "Aktion"
         # Not part of column_mapping directly - fetched alongside it but
         # consumed by _license_number_cell()/_license_cell() and
@@ -322,6 +326,7 @@ class MachtreportModelWrapper:
                     lambda row: self._official_action_cell(
                         row["id"],
                         row["official_id"],
+                        next_path=next_path,
                     ),
                     axis=1,
                 )
@@ -424,25 +429,24 @@ class MachtreportModelWrapper:
             official_id,
         )
 
-    def _official_action_cell(self, game_official_id, official_id):
+    def _official_action_cell(self, game_official_id, official_id, next_path=None):
         # "Aktion" column of the officials table, which reaches the template
         # via |safe. Both URLs are resolved with reverse() from the GameOfficial
         # row's own pk - the write logic stays in the self-service views. The
         # free-text GameOfficial.name never enters this cell, so there is no
         # injection path from it; format_html() still escapes the URLs.
         #
-        # Both links carry the gameday detail page as a urlencoded ?next= so
-        # the self-service confirm page - and the redirect after the write or
-        # "Abbrechen" - returns here instead of to the Einsätze list.
+        # Both links carry a urlencoded ?next= so the self-service confirm page
+        # - and the redirect after the write or "Abbrechen" - returns to the
+        # calling page instead of to the Einsätze list. The gameday detail view
+        # uses the default; the staff officials team list passes its own path.
         game_official_id = int(game_official_id)
-        next_query = urlencode(
-            {
-                "next": reverse(
-                    "matchreport-gameday-detail",
-                    kwargs={"pk": int(self.gameday_pk)},
-                )
-            }
-        )
+        if next_path is None:
+            next_path = reverse(
+                "matchreport-gameday-detail",
+                kwargs={"pk": int(self.gameday_pk)},
+            )
+        next_query = urlencode({"next": next_path})
         claim_url = (
             f"{reverse(SELF_SERVICE_CLAIM_URL_NAME, kwargs={'pk': game_official_id})}"
             f"?{next_query}"
@@ -472,7 +476,10 @@ class MachtreportModelWrapper:
         return mark_safe(" ".join(str(link) for link in links))
 
     def get_gameday_match_report(
-        self, render_config: dict, include_official_actions: bool = False
+        self,
+        render_config: dict,
+        include_official_actions: bool = False,
+        next_path=None,
     ):
         games = []
 
@@ -485,7 +492,9 @@ class MachtreportModelWrapper:
             end_notes = self._get_staff_game_end_notes(gameinfo)
             game_result = self._get_game_result(gameinfo)
             game_refs = self._get_game_officials_table(
-                gameinfo, include_official_actions=include_official_actions
+                gameinfo,
+                include_official_actions=include_official_actions,
+                next_path=next_path,
             )
             game_flags = self._get_game_teamlogs(gameinfo)
 

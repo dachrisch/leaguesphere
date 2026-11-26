@@ -10,10 +10,17 @@
             {{ form | crispy }}
         </fieldset>
         <div class="form-group">
-            <button class="btn btn-outline-info" type="submit">
+            <button class="btn btn-primary w-100" type="submit">
                 Anmelden
             </button>
         </div>
     </form>
+    <p class="mt-2">
+        <a href="https://offd.de/login/forgot_password.php" target="_blank" rel="noopener noreferrer">Passwort vergessen?</a>
+        <small class="text-muted d-block">Du verlässt LeagueSphere und landest bei der Flag Academy.</small>
+    </p>
+    <div class="alert alert-warning mt-3">
+        Zur Anmeldung für Scorecard / Passcheck gehe hier: <a href="{% url 'scorecard-v2-home' %}">Scorecard v2</a>.
+    </div>
 </div>
 {% endblock content %}

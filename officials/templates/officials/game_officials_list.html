@@ -12,6 +12,11 @@
         {% else %}
         {% include 'team/team_navigation.html' %}
         <h1>{{ season }} - {% if team %} {{ team }} alle Einsätze {% else %} Alle Einsätze {% endif %}</h1>
+        <div class="alert alert-info">
+            <i class="bi bi-question-circle me-1" aria-hidden="true"></i>
+            Wie funktioniert die Selbstbedienung? In der
+            <a href="{% url 'help-topic' 'offizielle-einsaetze' %}">Hilfe</a> ist alles erklärt.
+        </div>
         <p>
             Personen die ein <b>Fragezeichen</b> (<b>?</b>) hinter dem Namen haben, deren Spiele werden nicht gezählt,
             da für diese kein Eintrag gefunden wurde. Entweder haben diese keine Lizenz oder
@@ -35,6 +40,7 @@
         {% endif %}
         {% include 'utils/year_filter.html' %}
         {% include 'officials/_pagination_game_officials_list.html' %}
+        <div class="table-responsive">
         <table class="table table-hover">
             <thead>
             <tr>
@@ -60,7 +66,11 @@
                     <a href="/gamedays/gameday/{{ official.gameday_id }}/">{{official.gameday_name}}</a>
                 </td>
                 <td>
+                    {% if team_id %}
+                    <a href="{% url 'view-officials-list-for-team' pk=team_id %}">{{official.team_name}}</a>
+                    {% else %}
                     <a href="{% url 'view-officials-game-officials-appearance-for-team-and-year' pk=official.team_official_id season=season %}">{{official.team_name}}</a>
+                    {% endif %}
                 </td>
                 <td>
                     {% if official.official_id %}
@@ -83,7 +93,7 @@
                     {% endif %}
                     {% elif official.is_own_row %}
                     <a class="btn btn-sm btn-outline-danger"
-                       href="{% url 'view-officials-selfservice-dffl-delete' pk=official.id %}">Löschen</a>
+                       href="{% url 'view-officials-selfservice-dffl-delete' pk=official.id %}"><i class="bi bi-person-dash me-1" aria-hidden="true"></i>Entfernen</a>
                     {% elif official.can_reclaim %}
                     <a class="btn btn-sm btn-outline-primary"
                        href="{% url claim_url_name pk=official.id %}?next={{ request.get_full_path|urlencode }}">
@@ -102,6 +112,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
         {% include 'officials/_pagination_game_officials_list.html' %}
         {% endif %}
     </div>

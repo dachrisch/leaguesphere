@@ -6,6 +6,7 @@
         Die Zuordnung dieses Eintrags wird entfernt. Der eingetragene Name bleibt erhalten,
         der Eintrag kann danach neu zugeordnet werden.
     </p>
+    <div class="table-responsive">
     <table class="table table-sm">
         <tbody>
         <tr>
@@ -30,6 +31,7 @@
         </tr>
         </tbody>
     </table>
+    </div>
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">

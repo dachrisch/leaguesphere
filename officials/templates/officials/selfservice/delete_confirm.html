@@ -7,6 +7,7 @@
         Dieser Einsatz außerhalb der DFFL wird gelöscht. Das kann nicht rückgängig
         gemacht werden.
     </p>
+    <div class="table-responsive">
     <table class="table table-sm">
         <tbody>
         <tr>
@@ -31,6 +32,7 @@
         </tr>
         </tbody>
     </table>
+    </div>
     <form method="post">
         {% csrf_token %}
         <button class="btn btn-danger" type="submit">Endgültig löschen</button>
@@ -46,6 +48,7 @@
     <div class="alert alert-info">
         Der Eintrag bleibt mit Name und Position bestehen und ist danach keiner Offiziellen mehr zugeordnet.
     </div>
+    <div class="table-responsive">
     <table class="table table-sm">
         <tbody>
         <tr>
@@ -62,6 +65,7 @@
         </tr>
         </tbody>
     </table>
+    </div>
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next_url }}">
