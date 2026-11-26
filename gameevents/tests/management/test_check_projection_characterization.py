@@ -23,9 +23,7 @@ PAT = {"type": "score", "code": "pat1", "side": "home", "player": 7, "period": 1
 def event_game(client, label):
     game, home, away = make_game(label)
     login(client)
-    response = post_events(
-        client, game, {"events": [TD, PAT], "client_id": sub_id(1)}
-    )
+    response = post_events(client, game, {"events": [TD, PAT], "client_id": sub_id(1)})
     assert response.status_code == 201, response.content
     return game, home, away
 
@@ -62,7 +60,9 @@ def test_characterization_all_stdout_and_query_count(client, django_assert_num_q
 
 
 @pytest.mark.django_db
-def test_characterization_all_with_no_games_has_an_empty_report_line(django_assert_num_queries):
+def test_characterization_all_with_no_games_has_an_empty_report_line(
+    django_assert_num_queries,
+):
     out = StringIO()
     with django_assert_num_queries(2):
         call_command("check_game_projection", "--all", stdout=out)
@@ -81,8 +81,7 @@ def test_characterization_single_game_stdout(client):
     call_command("check_game_projection", "--game", str(game.pk), stdout=out)
 
     assert out.getvalue() == (
-        f"game {game.pk}: ok (2 events, seq 2)\n"
-        "projection matches the event log\n"
+        f"game {game.pk}: ok (2 events, seq 2)\n" "projection matches the event log\n"
     )
 
 

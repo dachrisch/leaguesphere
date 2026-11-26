@@ -12,9 +12,14 @@ five per game and nothing per event -- so it is cheap enough to run after every
 gameday.
 """
 
+import datetime
+import json
+from pathlib import Path
+
 from django.core.management.base import BaseCommand, CommandError
 
 from gameevents.models import GameEvent
+from gameevents.service import report as report_service
 from gameevents.service.reconcile import check_games
 from gamedays.models import Gameinfo, TeamLog
 
@@ -38,6 +43,18 @@ class Command(BaseCommand):
             action="store_true",
             help="check every game that has events (legacy games are skipped)",
         )
+        # Additive: none of these change stdout, exit status or query count.
+        parser.add_argument(
+            "--report",
+            metavar="PATH",
+            help="also write a JSON reconciliation report to PATH",
+        )
+        parser.add_argument(
+            "--ref-sha", default="", help="baseline commit recorded in the report"
+        )
+        parser.add_argument(
+            "--cand-sha", default="", help="candidate commit recorded in the report"
+        )
 
     def handle(self, *args, **options):
         if options["game"] is not None:
@@ -45,12 +62,15 @@ class Command(BaseCommand):
             if not Gameinfo.objects.filter(pk=game_id).exists():
                 raise CommandError(f"No game found for gameId {game_id}")
             checks = check_games([game_id])
-            legacy = sum(1 for check in checks if check.legacy)
+            legacy_games = [
+                (check.game_id, check.season_id) for check in checks if check.legacy
+            ]
             event_game_ids = [check.game_id for check in checks if not check.legacy]
         else:
             checks = check_games()
-            legacy = self._legacy_games()
+            legacy_games = self._legacy_games()
             event_game_ids = [check.game_id for check in checks]
+        legacy = len(legacy_games)
 
         failed = [check for check in checks if not check.ok]
         for check in checks:
@@ -66,6 +86,15 @@ class Command(BaseCommand):
                 f"game {checks[0].game_id} has no events; nothing to compare"
             )
 
+        if options["report"]:
+            self._write_report(
+                options["report"],
+                checks,
+                legacy_games,
+                options["ref_sha"],
+                options["cand_sha"],
+            )
+
         if failed:
             raise CommandError(
                 f"{len(failed)} game(s) with drift; "
@@ -74,13 +103,32 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("projection matches the event log"))
 
     @staticmethod
-    def _legacy_games() -> int:
-        """How many games with rows have no events at all (skipped, not failed)."""
+    def _write_report(path, checks, legacy_games, ref_sha, cand_sha):
+        """Write the report JSON. Pure data assembly; no extra queries."""
+
+        payload = report_service.build_report(
+            checks=checks,
+            legacy_games=legacy_games,
+            generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            ref_sha=ref_sha,
+            cand_sha=cand_sha,
+        )
+        Path(path).write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+    @staticmethod
+    def _legacy_games() -> list:
+        """``(game id, season id)`` for games with rows but no events.
+
+        One query, as before -- the season is read through the same join so
+        the report needs no extra query. The caller derives the skipped count
+        with ``len()``; stdout stays byte-identical.
+        """
 
         event_game_ids = GameEvent.objects.values_list("game_id", flat=True).distinct()
-        return (
+        return list(
             TeamLog.objects.exclude(gameinfo_id__in=event_game_ids)
-            .values("gameinfo_id")
+            .values_list("gameinfo_id", "gameinfo__gameday__season_id")
             .distinct()
-            .count()
         )
