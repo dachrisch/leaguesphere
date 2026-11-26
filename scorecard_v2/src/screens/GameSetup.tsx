@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-import { ApiError, apiGet, apiPost, apiPut, setDeviceId } from "../api/client";
+import { ApiError, apiGet } from "../api/client";
 import type {
   CrewPosition,
   Game,
@@ -23,27 +23,28 @@ import DirectionText, {
 import Screen from "../components/Screen";
 import PersonPicker from "../components/PersonPicker";
 import JerseyPicker from "../components/JerseyPicker";
-import { errorMessage } from "../components/sheets/errors";
 import StartConfirmation, { startBlockers } from "../components/sheets/StartConfirmation";
 import TeamLogo from "../components/TeamLogo";
 import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
 import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
-import { rememberQuarterback } from "../app/quarterback";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
-import { newOpId } from "../session/ids";
-import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
+import { lockFrom } from "../session/lock";
 import { formatGameTime } from "./GameList";
-import { useArmed } from "./useArmed";
+import {
+  crewProgress,
+  startLabel as computeStartLabel,
+  startReady,
+  startState,
+} from "./game-setup/start";
+import { useGameStart } from "./game-setup/useGameStart";
 import {
   LICENCE_TONE,
   Segmented,
-  describeStartError,
   hasSavedSetup,
   normaliseSide,
   normaliseToss,
   rowDisplayName,
-  sideTeam,
   slotHasValue,
   slotsFromCrew,
   teamLabel,
@@ -116,9 +117,6 @@ export default function GameSetupScreen({
   const [canRelease, setCanRelease] = useState(false);
   const [takingOver, setTakingOver] = useState(false);
   const [takeOverError, setTakeOverError] = useState<string | null>(null);
-  // Taking a game over locks the other device out: the button asks once more.
-  const { armed, arm, disarm } = useArmed<"takeover">();
-  const confirming = armed === "takeover";
 
   const [toss, setToss] = useState<Side | null>(null);
   const [possession, setPossession] = useState<Side | null>(null);
@@ -259,268 +257,80 @@ export default function GameSetupScreen({
     takenByOthers,
   } = useCrewSetup({ slots, setSlots, teamOfficials, setDirty });
 
-  /** Change a start field after the setup was accepted → send it again. */
-  const resetStartPhases = (): void => {
-    setSetupAccepted(false);
-    setPossessionSent(false);
-  };
+  const {
+    confirming,
+    arm,
+    resetStartPhases,
+    tossTeam,
+    possessionTeam,
+    openConfirmation,
+    confirmStart,
+    runTakeOver,
+    retryStart,
+  } = useGameStart({
+    id,
+    setupPath,
+    logPath,
+    eventsPath,
+    crewPath,
+    inFlightRef: inFlight,
+    loading,
+    finished,
+    offline,
+    readOnly,
+    dirty,
+    setupAccepted,
+    possessionSent,
+    toss,
+    possession,
+    direction,
+    qbHome,
+    qbAway,
+    home,
+    away,
+    crewLines,
+    crewPayload,
+    setSaving,
+    setError,
+    setHasSetup,
+    setSetupAccepted,
+    setDirty,
+    setPossessionSent,
+    setLockedElsewhere,
+    setCanRelease,
+    setReadOnly,
+    setTakingOver,
+    setTakeOverError,
+    setConfirmOpen,
+    onStarted,
+  });
 
-  const tossTeam = toss === null ? null : teamLabel(sideTeam(toss, home, away));
-  const possessionTeam =
-    possession === null ? null : teamLabel(sideTeam(possession, home, away));
-
-  const openConfirmation = (): void => {
-    if (inFlight.current || loading || finished || offline || readOnly) {
-      return;
-    }
-    setConfirmOpen(true);
-  };
-
-  /**
-   * Second tap: the sheet closes first, so a rejected write behaves exactly as
-   * it did without a sheet — the failure and the read-only switch are the
-   * screen's, not a modal's.
-   */
-  const confirmStart = (): void => {
-    setConfirmOpen(false);
-    void runStart();
-  };
-
-  /**
-   * Re-read the live lock after a start was refused for it. The read at load
-   * can predate the other device's start, and only a fresh answer carries
-   * `can_release_lock` — without it the warning shows no take-over.
-   */
-  const refreshLock = async (): Promise<void> => {
-    try {
-      const answer = await apiGet<GameSetupPayload & LockAnswer>(setupPath, {
-        deviceId: getDeviceId(),
-      });
-      const lock = lockFrom(answer);
-      if (lock !== null) {
-        setLockedElsewhere(lock.lockedElsewhere);
-        setCanRelease(lock.canRelease);
-      }
-    } catch {
-      // Offline: the plain "läuft auf einem anderen Gerät" message stands.
-    }
-  };
-
-  const runStart = async (force = false): Promise<void> => {
-    if (inFlight.current || loading || finished) {
-      return;
-    }
-    if (offline) {
-      setError(
-        "Das Spiel kann nur mit Verbindung gestartet werden. Bitte Netz suchen und erneut versuchen.",
-      );
-      return;
-    }
-    if (!force && readOnly) {
-      return;
-    }
-    // Belt and braces: the sheet disables its button while a reason is listed,
-    // and the retry after a released device lock re-enters here without it.
-    if (
-      startBlockers({ crew: crewLines, tossTeam, possessionTeam, direction })
-        .length > 0 ||
-      toss === null ||
-      possession === null ||
-      direction === null
-    ) {
-      return;
-    }
-    inFlight.current = true;
-    setSaving(true);
-    setError(null);
-    try {
-      if (dirty) {
-        await apiPut<Official[]>(crewPath, crewPayload);
-        setDirty(false);
-      }
-      if (!setupAccepted) {
-        const deviceId = getDeviceId();
-        await apiPut<GameSetupPayload>(setupPath, {
-          ctResult: toss,
-          direction,
-          fhPossession: possession,
-          // Always sent (null clears a stored number): the setup row is the
-          // one place every device reads the pre-game quarterback from.
-          qbHome,
-          qbAway,
-          device_id: deviceId,
-        });
-        setHasSetup(true);
-        setSetupAccepted(true);
-        // The device that starts the game remembers the pre-game quarterbacks
-        // at once: its own setup read may still answer the pre-start snapshot.
-        if (qbHome !== null) {
-          rememberQuarterback(id, "home", qbHome);
-        }
-        if (qbAway !== null) {
-          rememberQuarterback(id, "away", qbAway);
-        }
-        // Only claim the session once the server accepted the start: a device
-        // that lost the lock must not start stamping its id on later requests.
-        setDeviceId(deviceId);
-      }
-      // The log is read before the opening possession is written, not after:
-      // the possession event names a *side*, but the screen shows the team
-      // *name* (`Team.name`), and the log is the payload that carries it.
-      const log = await cachedGet<GameLog>(snapshotKey.log(id), logPath);
-      let inPossession = log.inPossession ?? null;
-      if (!possessionSent) {
-        const team = possession === "home" ? log.home?.name : log.away?.name;
-        if (team !== null && team !== undefined && team.trim() !== "") {
-          // The opening possession is an event like every other in-game write;
-          // `PUT /setup` only stores the toss/direction and the device lock.
-          await apiPost(eventsPath, {
-            events: [{ type: "possession", code: possession, side: possession }],
-            client_id: newOpId(),
-          });
-          // The log above predates the write and cannot carry the marker yet.
-          // The server accepted exactly this side; the next payload replaces
-          // it anyway.
-          inPossession = team;
-        }
-        setPossessionSent(true);
-      }
-      inFlight.current = false;
-      setSaving(false);
-      onStarted({ ...log, inPossession });
-    } catch (startFailure) {
-      inFlight.current = false;
-      setSaving(false);
-      const described = describeStartError(startFailure);
-      setError(described.message);
-      if (described.readOnly) {
-        setReadOnly(true);
-        void refreshLock();
-      }
-    }
-  };
-
-  /**
-   * Staff take-over before kickoff: lift the lock, then claim the game for
-   * this device (the first id written after a release wins). The start itself
-   * stays a separate, confirmed step — this only makes it possible.
-   */
-  const runTakeOver = async (): Promise<void> => {
-    if (inFlight.current) {
-      return;
-    }
-    inFlight.current = true;
-    setTakingOver(true);
-    setTakeOverError(null);
-    try {
-      await takeOver(id);
-      setLockedElsewhere(false);
-      setCanRelease(false);
-      setReadOnly(false);
-      setError(null);
-    } catch (takeOverFailure) {
-      setTakeOverError(
-        errorMessage(
-          takeOverFailure,
-          "Übernehmen hat nicht geklappt. Bitte erneut versuchen.",
-        ),
-      );
-    } finally {
-      inFlight.current = false;
-      setTakingOver(false);
-      disarm();
-    }
-  };
-
-  /** A staff release of the device lock may make the same start work again. */
-  const retryStart = (): void => {
-    setReadOnly(false);
-    setError(null);
-    void runStart(true);
-  };
-
-  let startLabel: string;
-  if (readOnly) {
-    startLabel = "Nur lesen";
-  } else if (offline) {
-    startLabel = "Start nur online";
-  } else if (saving) {
-    startLabel = "Startet …";
-  } else if (hasSetup) {
-    startLabel = "Fortsetzen";
-  } else {
-    startLabel = `Spiel starten · ${formatGameTime(scheduled)}`;
-  }
-
-  // One source of truth for "may this start?": the banner and the confirmation
-  // sheet both read `startBlockers`, so they cannot drift apart.
+  const startLabel = computeStartLabel(readOnly, offline, saving, hasSetup, scheduled);
   const blockers = startBlockers({
     crew: crewLines,
     tossTeam,
     possessionTeam,
     direction,
   });
-  const ready = blockers.length === 0;
-  /**
-   * A crew with every required slot staffed, every licence valid and nothing
-   * to clean up needs no attention: it folds into one row. Anything off keeps
-   * the rows open, so the problem is never hidden behind "ändern".
-   */
-  const crewComplete =
-    requiredSlots.length > 0 &&
-    requiredFilled === requiredSlots.length &&
-    licenceIssues.length === 0 &&
-    !slots.some((slot) => slot.duplicate || !slot.known) &&
-    !crewLines.some((line) => line.freetext);
-  const crewFolded = crewComplete && !crewOpen;
-  const crewNames = requiredSlots
-    .map((slot) => displayName(slot))
-    .filter((value): value is string => value !== null && value.trim() !== "");
+  const ready = startReady(blockers);
+  const { crewFolded, crewNames, counter } = crewProgress({
+    requiredSlots,
+    requiredFilled,
+    licenceIssues,
+    slots,
+    crewLines,
+    crewOpen,
+    displayName,
+  });
   const officialsSectionId = "prep-officials";
   const configSectionId = "prep-config";
-  const counter =
-    requiredSlots.length === 0
-      ? "keine Pflichtposition"
-      : `${requiredFilled}/${requiredSlots.length} besetzt`;
-
-  // The banner and the start bar must say the same thing: a complete setup is
-  // only "ready" when the bar is not disabled by the device lock or the
-  // missing connection. Otherwise the banner names that reason instead of
-  // claiming green. Missing input still comes from the same blockers array the
-  // confirmation sheet uses.
-  const banner = readOnly
-    ? {
-        tone: "miss" as const,
-        title: "Nur lesen",
-        lines: [error ?? "Dieses Spiel läuft auf einem anderen Gerät."],
-      }
-    : offline
-      ? {
-          tone: "miss" as const,
-          title: "Start nur online",
-          lines: ["Das Spiel kann nur mit Verbindung gestartet werden."],
-        }
-      : ready
-        ? {
-            tone: "ok" as const,
-            title: "Bereit zum Starten",
-            lines: ["Alle Pflichtangaben sind gesetzt."],
-          }
-        : {
-            tone: "miss" as const,
-            title: "Angaben fehlen",
-            lines: blockers,
-          };
-
-  // The banner can scroll under the sticky start bar, so the bar repeats the
-  // first open item: the reason the start is refused is never out of view.
-  const openItems = !readOnly && !offline ? blockers : [];
-  const startWhy =
-    openItems.length === 0
-      ? null
-      : `Noch offen: ${openItems[0]}${
-          openItems.length > 1 ? ` (+${openItems.length - 1} weitere)` : ""
-        }`;
+  const { banner, startWhy } = startState({
+    readOnly,
+    error,
+    offline,
+    ready,
+    blockers,
+  });
 
   return (
     <Screen
