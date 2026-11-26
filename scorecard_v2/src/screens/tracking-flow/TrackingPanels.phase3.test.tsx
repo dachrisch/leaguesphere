@@ -193,7 +193,7 @@ describe("TrackingPanels (Phase 3 characterization)", () => {
     expect(screen.getByRole("button", { name: /Touchdown Ravens/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Spielzug/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Spiel beenden/ })).toBeTruthy();
-    expect(screen.getByText(/Einträge/)).toBeTruthy();
+    expect(screen.getAllByText(/Einträge/).length).toBeGreaterThan(0);
   });
 
   it("shows the finished note instead of the finish button", () => {
