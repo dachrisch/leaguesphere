@@ -117,5 +117,5 @@ def build_report(
         "shadow_only": len(shadow_only),
         "legacy_cutoff": legacy_cutoff,
         "legacy_without_events_digest": legacy_digest(accepted),
-        "per_season": dict(sorted(per_season.items())),
+        "per_season": dict(sorted(per_season.items(), key=lambda item: int(item[0]))),
     }

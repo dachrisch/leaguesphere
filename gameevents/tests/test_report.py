@@ -144,6 +144,18 @@ def test_cutoff_limits_the_digest_and_counts_to_a_reproducible_set():
     assert payload["legacy_without_events_digest"] == legacy_digest([(1, 10), (5, 10)])
 
 
+def test_per_season_keys_sort_numerically():
+    payload = build_report(
+        checks=[check(1, source="v2", season=2), check(2, source="v2", season=10)],
+        legacy_games=[(3, 1)],
+        generated_at="t",
+        ref_sha="",
+        cand_sha="",
+    )
+
+    assert list(payload["per_season"]) == ["1", "2", "10"]
+
+
 def test_report_carries_source_on_drift_and_flagged_entries():
     payload = build_report(
         checks=[

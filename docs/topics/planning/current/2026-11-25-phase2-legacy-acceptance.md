@@ -86,6 +86,15 @@ checked 0 event-sourced game(s); skipped 6369 legacy game(s) without events
 projection matches the event log
 ```
 
+## Per-game mode
+
+`--game <id> --report` is a debugging aid, not the acceptance measurement.
+There `check_games([id])` reports a legacy game without loading its gameday, so
+its season is recorded as `null` in the report's `per_season` map; the `ok`
+field counts that skipped legacy check as well. In `--all` mode the season is
+joined in the same query and only reconciled games are in `ok`. Both modes are
+intended; the recorded acceptance numbers above come from `--all`.
+
 ## Regenerate
 
 Run this inside the `cand` container on servyy-test (the role is test-host only
