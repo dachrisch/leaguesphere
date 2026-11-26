@@ -13,7 +13,8 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 from gameevents.models import GameEvent, GameState
-from gameevents.service.append import project_game
+from gameevents.service.append import append_submission, project_game
+from gameevents.service.projector import GameEventValue, InvalidEnvelope
 from gameevents.tests.api.support import (
     db_row_signatures,
     legacy_body,
@@ -129,6 +130,39 @@ def test_the_response_carries_the_projected_state(client):
 # --------------------------------------------------------------------------
 # idempotency and sequencing
 # --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_append_submission_validates_its_arguments(client):
+    game, _home, _away = make_game("append-arguments")
+    value = GameEventValue(
+        type="score", code="touchdown", side="home", player=7, period=1
+    )
+
+    with pytest.raises(InvalidEnvelope):
+        append_submission(game, [], client_id=sub_id(20), source="v2", write_rows=False)
+    with pytest.raises(InvalidEnvelope):
+        append_submission(game, [value], client_id="", source="v2", write_rows=False)
+
+
+@pytest.mark.django_db
+def test_append_submission_direct_replay_is_a_no_op(client):
+    game, _home, _away = make_game("append-direct-replay")
+    value = GameEventValue(
+        type="score", code="touchdown", side="home", player=7, period=1
+    )
+
+    first = append_submission(
+        game, [value], client_id=sub_id(21), source="v2", write_rows=False
+    )
+    second = append_submission(
+        game, [value], client_id=sub_id(21), source="v2", write_rows=False
+    )
+
+    assert first.applied is True
+    assert second.applied is False
+    assert second.last_seq == first.last_seq
+    assert GameEvent.objects.filter(game=game).count() == 1
 
 
 @pytest.mark.django_db
@@ -682,6 +716,40 @@ def test_a_second_device_may_not_write_either_endpoint(client, post):
     assert GameEvent.objects.filter(game=game).count() == (
         0 if post.__name__ == "post_legacy" else 1
     )
+
+
+@pytest.mark.django_db
+def test_a_replay_after_a_staff_release_answers_with_the_log(client):
+    """Release + handover, then the original device replays: ``200``.
+
+    Staff releasing the lock (a lost phone) and another device claiming the
+    game must not turn an already-applied submission into a 409 -- the op
+    would stay in the sender's outbox forever and never be finalised. The
+    claim therefore wins over the lock, not the other way round. The v1 path
+    keeps this rule after the shadow removal; it writes no events now.
+    """
+
+    game, home, _away = make_game("gamelog-replay-after-release")
+    user = login(client)
+    lock_device(game, "device-a")
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=sub_id(1)
+    )
+    first = post_legacy(client, game, body, device="device-a")
+    assert first.status_code == 201
+
+    user.is_staff = True
+    user.save(update_fields=["is_staff"])
+    released = client.delete(reverse(API_GAME_DEVICE, kwargs={"pk": game.pk}))
+    assert released.status_code == 204
+    GameSetup.objects.filter(gameinfo=game).update(device_id="device-b")
+
+    replay = post_legacy(client, game, body, device="device-a")
+
+    assert replay.status_code == 200
+    assert replay.json() == first.json()
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert not GameEvent.objects.filter(game=game).exists()
 
 
 @pytest.mark.django_db

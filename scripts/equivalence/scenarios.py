@@ -726,6 +726,26 @@ SCENARIOS = {
             },
             expect=(200, 201),
         ),
+        # Once v1 writes stop creating events, a canonical event is needed
+        # before the delete: a game with no events has no GameState to flag.
+        Step(
+            name="write-v2-events",
+            method="POST",
+            path="/api/game/{game_id}/events",
+            json={
+                "events": [
+                    {
+                        "type": "score",
+                        "code": "touchdown",
+                        "side": "home",
+                        "player": 7,
+                        "period": 1,
+                    }
+                ],
+                "client_id": "{client_id_v2}",
+            },
+            expect=(200, 201),
+        ),
         Step(
             name="flag-projection",
             method="DELETE",
@@ -894,7 +914,14 @@ def run_scenario(name, sessions, context, run_id):
     # normaliser collapse the two sides' different ids.
     client_id = str(uuid.uuid5(uuid.NAMESPACE_URL, run_id))
     run.id_tokens[client_id] = "<client-id>"
-    context = {**context, "run_id": run_id, "client_id": client_id}
+    client_id_v2 = str(uuid.uuid5(uuid.NAMESPACE_URL, run_id + "-v2"))
+    run.id_tokens[client_id_v2] = "<client-id>"
+    context = {
+        **context,
+        "run_id": run_id,
+        "client_id": client_id,
+        "client_id_v2": client_id_v2,
+    }
 
     for step in SCENARIOS[name]:
         role_session = sessions.get(step.role)

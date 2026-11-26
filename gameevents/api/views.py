@@ -43,6 +43,7 @@ tab is refused the same way whichever endpoint it hits.
 
 from dataclasses import replace
 from http import HTTPStatus
+import uuid
 
 from django.http import HttpResponseNotModified
 from rest_framework.exceptions import NotFound
@@ -61,11 +62,12 @@ from gameevents.service.feed import (
     ProjectionUnavailable,
     etag_matches,
     get_feed,
+    legacy_state,
     state_body,
 )
 from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.projector import GameEventValue, GameStateValue, InvalidEnvelope
-from gamedays.models import Gameinfo, Team
+from gamedays.models import GameLogSubmission, Gameinfo, Team
 from gamedays.service.game_service import GameService
 
 
@@ -219,6 +221,21 @@ class GameFeedAPIView(APIView):
         return after if after >= 0 else None
 
 
+def _v1_submission_applied(game, client_id) -> bool:
+    """A v1 submission id claimed on this game, if the id is a UUID.
+
+    ``GameLogSubmission.client_id`` is a UUID column while an envelope's
+    ``client_id`` is freer text; a non-UUID cannot possibly match a v1 row
+    and must not turn into a database error on the canonical path.
+    """
+
+    try:
+        uuid.UUID(client_id)
+    except (AttributeError, TypeError, ValueError):
+        return False
+    return GameLogSubmission.objects.filter(gameinfo=game, client_id=client_id).exists()
+
+
 class GameEventsAPIView(APIView):
     def post(self, request, game_id):
         try:
@@ -238,6 +255,12 @@ class GameEventsAPIView(APIView):
 
         if GameEvent.objects.filter(game=game, client_id=parsed.client_id).exists():
             return _response(project_game(game).state, HTTPStatus.OK)
+        # The v1 endpoint claims the same outbox id in GameLogSubmission.
+        # After the shadow removal there is no event to find, so without this
+        # check a retry that switches endpoints writes the play a second time.
+        # Answer with the row-derived state the v1 log would show.
+        if _v1_submission_applied(game, parsed.client_id):
+            return _response(legacy_state(game), HTTPStatus.OK)
 
         # The same two refusals as ``POST /api/gamelog/``, in the same order:
         # a finished game is the final word (replays are answered above), and

@@ -1,13 +1,12 @@
-"""Characterization of ``POST /api/gamelog/<id>`` before the shadow removal.
+"""Post-removal characterization of ``POST /api/gamelog/<id>``.
 
-Pins the response, the rows/events it writes and its query count so the
-removal of the shadow append can be proved behaviour-preserving for the v1
-client (every change is confined to the declared feed/liveticker diffs).
+Pins the response, the rows it writes and its **exact** query count after the
+shadow removal. The pre-removal pin lives next to this file in
+``test_v1_post_pre_removal_characterization.py``; together they show the
+query reduction and the event/GameState change in the final diff.
 """
 
 import pytest
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
 
 from gameevents.models import GameEvent, GameState
 from gameevents.tests.api.support import (
@@ -18,13 +17,16 @@ from gameevents.tests.api.support import (
     sub_id,
 )
 from gamedays.models import TeamLog
+from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 
 SUB_ID = sub_id(1)
 
 
 @pytest.mark.django_db
-def test_v1_post_rows_events_response_and_query_count(client):
-    game, home, _away = make_game("char-v1-post")
+def test_after_removal_v1_post_rows_no_events_and_exact_query_count(
+    client, django_assert_num_queries
+):
+    game, home, _away = make_game("char-after-removal")
     login(client)
     body = legacy_body(
         game,
@@ -33,12 +35,13 @@ def test_v1_post_rows_events_response_and_query_count(client):
         client_id=SUB_ID,
     )
 
-    # 77 cold / 75 warm (the rules catalogue is cached across tests); both
-    # are pinned so the removal must show a lower, stable count.
-    with CaptureQueriesContext(connection) as captured:
+    # Cache warm-up (site config / rules catalogue) makes the count exact:
+    # 55 = the pre-removal 77/75 minus the shadow append, plus the v2-owned
+    # guard. Process-level request-path caches must be pinned for stability.
+    pin_request_path_caches()
+    with django_assert_num_queries(55):
         response = post_legacy(client, game, body)
 
-    assert len(captured) in (54, 56)  # down from 75/77: no shadow queries
     assert response.status_code == 201
     payload = response.json()
     assert payload["gameId"] == game.pk
@@ -51,8 +54,8 @@ def test_v1_post_rows_events_response_and_query_count(client):
 
 
 @pytest.mark.django_db
-def test_v1_post_replay_writes_nothing(client, django_assert_num_queries):
-    game, home, _away = make_game("char-v1-replay")
+def test_after_removal_v1_post_replay_writes_nothing(client, django_assert_num_queries):
+    game, home, _away = make_game("char-after-removal-replay")
     login(client)
     body = legacy_body(
         game, home, [{"name": "Touchdown", "player": "7"}], client_id=SUB_ID

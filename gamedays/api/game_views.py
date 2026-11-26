@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from gameevents.models import GameEvent
+from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.log_payload import (
     event_payloads_for_rows,
     event_seqs_for_rows,
@@ -121,9 +122,9 @@ def _submission_already_applied(game, client_id) -> bool:
     ``/api/game/<id>/events`` between releases). The claim therefore has two
     homes: ``GameLogSubmission`` for the writes this endpoint took, and the
     event store's unique ``(game, client_id)`` for the ones the canonical
-    endpoint took (which the shadow also records here). Checking only the
-    former would write a canonical submission's ``TeamLog`` rows a second time
-    on a replay; checking only the latter would do the same for a legacy one.
+    endpoint took. The canonical endpoint checks this claim too: without the
+    shadow there is no event to find for a v1 submission that is retried on
+    the other endpoint. Checking only one home would write the rows twice.
     """
     if client_id is None:
         return False
@@ -275,12 +276,34 @@ class GameLogAPIView(APIView):
                         ),
                         status=HTTPStatus.OK,
                     )
+                # Without the shadow, a v2-owned game's GameState would not
+                # see a v1 play. Refuse it instead of silently diverging;
+                # replays were answered above, so this only affects new writes.
+                if GameEvent.objects.filter(
+                    game=game, source=GameEvent.Source.V2
+                ).exists():
+                    return Response(
+                        {
+                            "detail": "this game is event-sourced; use "
+                            "/api/game/<id>/events"
+                        },
+                        status=HTTPStatus.CONFLICT,
+                    )
                 finished = _finished_game_response(game)
                 if finished is not None:
                     return finished
                 conflict = _device_lock_response(request, game.pk, data)
                 if conflict is not None:
                     return conflict
+                # The v1 name table is still a client contract: an unknown
+                # name used to fail in the shadow's translation (400, no
+                # rows). Reuse that table instead of copying it here so the
+                # projector and this endpoint cannot drift apart.
+                from_legacy_entries(
+                    data.get("event", []),
+                    side="home",
+                    half=data.get("half") or 1,
+                )
                 # A repeated submission (same client id) writes nothing; the
                 # legacy writer remains the only writer of TeamLog rows.
                 gamelog, applied = game_service.create_gamelog_once(

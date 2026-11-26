@@ -5,9 +5,10 @@ One writer, one service:
 - ``append_submission`` -- the canonical endpoint. The rows come from the
   projector, so a canonical game's log is a projection and nothing else.
 
-The legacy shadow writer was removed in Phase 2 after the prod soak: v1
-gamelog writes no longer create events, and their existing shadow events stay
-an append-only audit record.
+The legacy shadow writer was removed in Phase 2 after the gameday rehearsal
+on the agent stage (there was no prod soak): v1 gamelog writes no longer
+create events, and their existing shadow events stay an append-only audit
+record.
 
 ``append_submission`` runs in one transaction (the caller's, when there is
 one): sequence
@@ -510,6 +511,17 @@ def append_submission(
     last_seq = (
         GameEvent.objects.filter(game=game).aggregate(Max("seq"))["seq__max"] or 0
     )
+    # Row sequence and event sequence are the same number for a projected
+    # play. A game that started on v1 has rows no event covers, so starting at
+    # the event max would overwrite them (and a later undo could delete rows
+    # the other writer owns). Take the larger of the two watermarks.
+    max_row_sequence = (
+        TeamLog.objects.filter(gameinfo=game).aggregate(Max("sequence"))[
+            "sequence__max"
+        ]
+        or 0
+    )
+    last_seq = max(last_seq, max_row_sequence)
     expected_next = last_seq + 1
     provided = [value.seq for value in values]
     if any(seq is not None for seq in provided):

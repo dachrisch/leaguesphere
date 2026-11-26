@@ -19,6 +19,7 @@ from rest_framework.reverse import reverse
 
 from gameevents.models import GameEvent, GameState
 from gameevents.service.append import project_game
+from gameevents.service.undo import record_legacy_undo
 from gameevents.tests.api.support import (
     legacy_body,
     login,
@@ -91,7 +92,7 @@ def test_a_legacy_undo_finds_a_play_the_canonical_path_wrote(client):
 
 
 @pytest.mark.django_db
-def test_an_undo_of_a_row_without_an_event_flags_reconciliation(client):
+def test_an_undo_of_a_row_without_an_event_does_not_flag_a_missing_projection(client):
     # A row written before the store existed (old scorecard, pre-deploy game).
     game, home, _away = make_game("undo-unlogged")
     login(client)
@@ -111,12 +112,11 @@ def test_an_undo_of_a_row_without_an_event_flags_reconciliation(client):
 
     assert response.status_code == 200
     assert TeamLog.objects.get(gameinfo=game, sequence=1).isDeleted is True
-    # No history is invented: nothing was appended.
+    # No history is invented, and a game without a projection is not flagged:
+    # rebuild_game_projection refuses no-event games, so a flag here could
+    # never be cleared.
     assert GameEvent.objects.filter(game=game).count() == 0
-    state = GameState.objects.get(game=game)
-    assert state.needs_reconciliation is True
-    assert "sequence 1" in state.reconciliation_note
-    assert state.reconciliation_note
+    assert not GameState.objects.filter(game=game).exists()
 
 
 @pytest.mark.django_db
@@ -152,6 +152,22 @@ def test_a_sequence_zero_undo_of_the_harness_setup_flags_the_projection(client):
         == 201
     )
     assert TeamLog.objects.filter(gameinfo=game, sequence=0).exists()
+    # After the shadow removal the v1 writes above have no events, so the
+    # scenario writes one canonical event before the delete. Otherwise the
+    # no-events branch returns without flagging on this layer.
+    assert (
+        post_events(
+            client,
+            game,
+            legacy_body(
+                game,
+                home,
+                [{"name": "Touchdown", "player": 7}],
+                client_id=sub_id(2),
+            ),
+        ).status_code
+        == 201
+    )
 
     response = delete_sequence(client, game, 0)
 
@@ -166,3 +182,126 @@ def test_a_sequence_zero_undo_of_the_harness_setup_flags_the_projection(client):
     assert feed.status_code == 409
     assert feed.json()["needs_reconciliation"] is True
 
+
+@pytest.mark.django_db
+def test_record_legacy_undo_without_a_target_is_a_no_op(client):
+    game, _home, _away = make_game("undo-no-target")
+    login(client)
+
+    assert record_legacy_undo(game) is None
+    assert record_legacy_undo(game, sequence=99) is None
+    assert record_legacy_undo(game, team_log_id=999999) is None
+    assert not GameState.objects.filter(game=game).exists()
+
+
+@pytest.mark.django_db
+def test_a_row_level_undo_of_an_unlinked_row_on_a_v2_game_flags_it(client):
+    game, home, _away = make_game("undo-unlinked-row")
+    login(client)
+    post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+        ),
+    )
+    row = TeamLog.objects.create(
+        gameinfo=game,
+        team=home,
+        sequence=0,
+        event="Strafe",
+        input="Holding",
+        player=7,
+        value=0,
+        half=1,
+        author=game.gameday.author,
+    )
+
+    response = client.delete(
+        reverse(API_GAMELOG, kwargs={"id": game.pk}),
+        data=json.dumps({"team_log_id": row.pk}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert GameState.objects.get(game=game).needs_reconciliation is True
+
+
+@pytest.mark.django_db
+def test_a_sequence_with_no_matching_submission_flags_a_v2_game(client):
+    game, home, _away = make_game("undo-unmapped-sequence")
+    login(client)
+    post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+        ),
+    )
+    TeamLog.objects.create(
+        gameinfo=game,
+        team=home,
+        sequence=2,
+        event="Touchdown",
+        player=9,
+        value=6,
+        half=2,
+        author=game.gameday.author,
+    )
+
+    result = record_legacy_undo(game, sequence=2, author=game.gameday.author)
+
+    assert result is None
+    state = GameState.objects.get(game=game)
+    assert state.needs_reconciliation is True
+    assert "sequence 2" in state.reconciliation_note
+
+
+@pytest.mark.django_db
+def test_a_repeated_undo_of_a_correction_is_a_no_op(client):
+    game, home, _away = make_game("undo-repeat-correction")
+    login(client)
+    post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+        ),
+    )
+    assert delete_sequence(client, game, 1).status_code == 200
+
+    before = GameEvent.objects.count()
+    assert delete_sequence(client, game, 1).status_code == 200
+    assert GameEvent.objects.count() == before
+
+
+@pytest.mark.django_db
+def test_an_undo_of_a_v1_only_game_does_not_flag_a_projection_that_does_not_exist(
+    client,
+):
+    """A pure v1 game has no GameState; an undo must not create a sticky flag.
+
+    ``rebuild_game_projection`` refuses no-event games, so a flag raised here
+    could never be cleared. The row undo still happens; the log simply stays
+    empty for a game the event store does not own.
+    """
+
+    game, home, _away = make_game("undo-v1-only")
+    login(client)
+    assert (
+        post_legacy(
+            client,
+            game,
+            legacy_body(
+                game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+            ),
+        ).status_code
+        == 201
+    )
+
+    response = delete_sequence(client, game, 1)
+
+    assert response.status_code == 200
+    assert TeamLog.objects.filter(gameinfo=game, sequence=1, isDeleted=True).exists()
+    assert not GameEvent.objects.filter(game=game).exists()
+    assert not GameState.objects.filter(game=game).exists()

@@ -13,6 +13,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
+from gameevents.models import GameEvent
 from gameevents.service.reconcile import Drift, GameCheck, check_games
 from gameevents.service.report import build_report, legacy_digest
 from gameevents.tests.api.support import (
@@ -223,19 +224,24 @@ def test_report_carries_source_on_drift_and_flagged_entries():
 def test_source_derivation_and_accepted_set_are_db_backed(
     client, tmp_path, django_assert_num_queries
 ):
-    shadow_game, home, _away = make_game("shadow-source")
+    shadow_game, _home, _away = make_game("shadow-source")
     login(client)
-    posted = post_legacy(
+    # After the shadow removal no new legacy-sourced event is written. An
+    # audit-only event left by an earlier deploy still has to classify as
+    # shadow-only, so create one through the canonical path and give it the
+    # legacy source the shadow used to use.
+    posted = post_events(
         client,
         shadow_game,
         legacy_body(
             shadow_game,
-            home,
+            _home,
             [{"name": "Touchdown", "player": 7}],
             client_id=sub_id(11),
         ),
     )
     assert posted.status_code == 201
+    GameEvent.objects.filter(game=shadow_game).update(source=GameEvent.Source.LEGACY)
     v2_game, _home, _away = event_game(client, "v2-source")
     checks = {item.game_id: item for item in check_games([shadow_game.pk, v2_game.pk])}
 
