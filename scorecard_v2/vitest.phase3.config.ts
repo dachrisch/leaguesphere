@@ -13,7 +13,10 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text"],
-      include: ["src/screens/GameSetup.tsx"],
+      include: [
+        "src/screens/game-setup/crew.tsx",
+        "src/screens/game-setup/useCrewSetup.ts",
+      ],
       thresholds: { branches: 100, perFile: true },
     },
   },

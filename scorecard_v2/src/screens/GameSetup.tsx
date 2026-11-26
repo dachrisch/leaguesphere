@@ -2,10 +2,8 @@ import {
   Fragment,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 
 import { ApiError, apiGet, apiPost, apiPut, setDeviceId } from "../api/client";
@@ -26,10 +24,7 @@ import Screen from "../components/Screen";
 import PersonPicker from "../components/PersonPicker";
 import JerseyPicker from "../components/JerseyPicker";
 import { errorMessage } from "../components/sheets/errors";
-import StartConfirmation, {
-  startBlockers,
-  type StartCrewLine,
-} from "../components/sheets/StartConfirmation";
+import StartConfirmation, { startBlockers } from "../components/sheets/StartConfirmation";
 import TeamLogo from "../components/TeamLogo";
 import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
 import { initials } from "../components/initials";
@@ -40,6 +35,22 @@ import { newOpId } from "../session/ids";
 import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
 import { formatGameTime } from "./GameList";
 import { useArmed } from "./useArmed";
+import {
+  LICENCE_TONE,
+  Segmented,
+  describeStartError,
+  hasSavedSetup,
+  normaliseSide,
+  normaliseToss,
+  rowDisplayName,
+  sideTeam,
+  slotHasValue,
+  slotsFromCrew,
+  teamLabel,
+  type CrewSlot,
+  type Side,
+} from "./game-setup/crew";
+import { useCrewSetup } from "./game-setup/useCrewSetup";
 
 interface GameSetupScreenProps {
   game: Game;
@@ -50,330 +61,6 @@ interface GameSetupScreenProps {
   onLogout?: () => void;
 }
 
-type Side = "home" | "away";
-
-export interface CrewSlot {
-  /** Exact stored position; sent back verbatim when the slot is saved. */
-  position: string;
-  /** The league's display name for the position, or the raw position. */
-  label: string;
-  /** Whether an empty slot counts against the completeness counter. */
-  required: boolean;
-  /** All stored rows for this position; more than one is a data problem. */
-  rows: Official[];
-  /** First row, editable in place. Unknown and duplicate slots stay read-only. */
-  official: number | null;
-  name: string | null;
-  known: boolean;
-  duplicate: boolean;
-  /**
-   * Licence facts from the crew read, or from the person the picker took.
-   * `null` means the screen has no data and must say "unbekannt" instead of
-   * claiming a licence problem.
-   */
-  licence: CrewLicence | null;
-}
-
-/** The licence facts a crew row, a search result or a picked person carries. */
-export interface CrewLicence {
-  license: string | null;
-  validUntil: string | null;
-  isValid: boolean;
-}
-
-export function licenceOfRow(row: Official | undefined): CrewLicence | null {
-  if (row === undefined) {
-    return null;
-  }
-  if (
-    row.license === undefined &&
-    row.valid_until === undefined &&
-    row.is_valid === undefined
-  ) {
-    return null;
-  }
-  return {
-    license: row.license ?? null,
-    validUntil: row.valid_until ?? null,
-    isValid: row.is_valid === true,
-  };
-}
-
-export function licenceOfPerson(
-  person: TeamOfficial | undefined,
-): CrewLicence | null {
-  if (person === undefined) {
-    return null;
-  }
-  return {
-    license: person.license,
-    validUntil: person.valid_until,
-    isValid: person.is_valid,
-  };
-}
-
-/** Body of `PUT /api/game/<pk>/officials` (`GameOfficialSerializer`). */
-export interface CrewWrite {
-  position: string;
-  official: number | null;
-  name: string | null;
-}
-
-export type LicenceState = "valid" | "expired" | "missing" | "unknown" | "empty";
-
-export const LICENCE_TONE: Record<LicenceState, string> = {
-  valid: "ok",
-  expired: "warn",
-  missing: "missing",
-  unknown: "unknown",
-  empty: "empty",
-};
-
-export interface Licence {
-  state: LicenceState;
-  label: string;
-}
-
-export const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** `2026-03-04` → `04.03.2026`; anything else is shown as-is. */
-export function formatLicenceDate(value: string): string {
-  const match = DATE.exec(value);
-  if (match === null) {
-    return value;
-  }
-  return `${match[3]}.${match[2]}.${match[1]}`;
-}
-
-export function teamLabel(name: string | null): string {
-  return name !== null && name.trim() !== "" ? name : "–";
-}
-
-export function personName(person: TeamOfficial): string {
-  return `${person.first_name} ${person.last_name}`.trim();
-}
-
-export function rowDisplayName(
-  row: Pick<Official, "official" | "name">,
-  team: Map<number, TeamOfficial>,
-): string | null {
-  if (row.official !== null) {
-    const person = team.get(row.official);
-    if (person !== undefined) {
-      return personName(person);
-    }
-  }
-  return row.name?.trim() || null;
-}
-
-/**
- * One slot per configured position plus one read-only slot per unknown one.
- *
- * The slots come from the league's configuration merged onto the server's
- * defaults (`GET /api/officials/crew-positions/game/<id>`), already in display
- * order:
- * associations name and order their crew differently, and only the league
- * knows which slots make a crew complete. `position` stays the exact wire
- * value — the API upserts by that string, so a "clever" alias would leave the
- * stored row untouched and create a second one. Unknown positions are kept and
- * shown; duplicate positions are marked so the screen can refuse to write them
- * (the backend's `get_or_create` would raise `MultipleObjectsReturned`).
- */
-export function slotsFromCrew(
-  crew: Official[],
-  positions: CrewPosition[],
-): CrewSlot[] {
-  const byPosition = new Map<string, Official[]>();
-  for (const row of crew) {
-    const rows = byPosition.get(row.position);
-    if (rows === undefined) {
-      byPosition.set(row.position, [row]);
-    } else {
-      rows.push(row);
-    }
-  }
-
-  const slots: CrewSlot[] = positions.map((slot) => {
-    const rows = byPosition.get(slot.position) ?? [];
-    byPosition.delete(slot.position);
-    return {
-      position: slot.position,
-      label: slot.label,
-      required: slot.required,
-      rows,
-      official: rows[0]?.official ?? null,
-      name: rows[0]?.name ?? null,
-      known: true,
-      duplicate: rows.length > 1,
-      licence: licenceOfRow(rows[0]),
-    };
-  });
-
-  for (const [position, rows] of byPosition) {
-    slots.push({
-      position,
-      label: position.trim() === "" ? "Ohne Position" : position,
-      // A position the league does not configure is a data problem, not a
-      // slot: it is shown read-only and never counts as required.
-      required: false,
-      rows,
-      official: rows[0]?.official ?? null,
-      name: rows[0]?.name ?? null,
-      known: false,
-      duplicate: rows.length > 1,
-      licence: licenceOfRow(rows[0]),
-    });
-  }
-
-  return slots;
-}
-
-/** `{}` means "not prepared yet"; a single filled field makes it a resume. */
-export function hasSavedSetup(setup: GameSetupPayload): boolean {
-  return [setup.ctResult, setup.direction, setup.fhPossession].some(
-    (value) => typeof value === "string" && value.trim() !== "",
-  );
-}
-
-/** A slot counts as staffed when it links somebody or stores a free-text name. */
-export function slotHasValue(slot: CrewSlot): boolean {
-  return (
-    slot.official !== null ||
-    (slot.name ?? "").trim() !== "" ||
-    slot.rows.length > 0
-  );
-}
-
-/**
- * Read a saved side back into v2's `home`/`away`. Older games stored the team
- * *name*; anything unrecognised falls back to the home side.
- */
-export function normaliseSide(
-  value: string | undefined,
-  home: string | null,
-  away: string | null,
-): Side {
-  const token = (value ?? "").trim().toLowerCase();
-  if (token === "away") {
-    return "away";
-  }
-  if (token === "home") {
-    return "home";
-  }
-  if (home !== null && token === home.trim().toLowerCase()) {
-    return "home";
-  }
-  if (away !== null && token === away.trim().toLowerCase()) {
-    return "away";
-  }
-  return "home";
-}
-
-/**
- * The old app's coin toss was recorded relative to the *away* side ("Münzwahl
- * hat: away" plus Gewonnen/Verloren), so `gewonnen` means the away team won.
- */
-export function normaliseToss(
-  value: string | undefined,
-  home: string | null,
-  away: string | null,
-): Side {
-  const token = (value ?? "").trim().toLowerCase();
-  if (token === "gewonnen" || token === "won") {
-    return "away";
-  }
-  if (token === "verloren" || token === "lost") {
-    return "home";
-  }
-  return normaliseSide(value, home, away);
-}
-
-/** The server sends `device_id` alongside the detail when it holds the lock. */
-export function carriesDeviceId(body: unknown): boolean {
-  if (typeof body !== "object" || body === null) {
-    return false;
-  }
-  const value = (body as { device_id?: unknown }).device_id;
-  return typeof value === "string" ? value.trim() !== "" : value != null;
-}
-
-export function describeStartError(error: unknown): {
-  message: string;
-  readOnly: boolean;
-} {
-  const detail =
-    error instanceof ApiError && typeof error.detail === "string"
-      ? error.detail.trim()
-      : "";
-  if (error instanceof ApiError && error.status === 409) {
-    const deviceLock =
-      carriesDeviceId(error.body) || detail.includes("anderen Gerät");
-    if (deviceLock) {
-      return {
-        message: detail || "Dieses Spiel läuft auf einem anderen Gerät.",
-        readOnly: true,
-      };
-    }
-    return {
-      message: detail || "Dieser Spielstatus erlaubt keinen Spielstart.",
-      readOnly: false,
-    };
-  }
-  return {
-    message: detail || "Der Start ist fehlgeschlagen. Bitte erneut versuchen.",
-    readOnly: false,
-  };
-}
-
-export interface SegmentedProps {
-  label: string;
-  /** `null` while nothing was chosen: an unset field is refused, not defaulted. */
-  value: string | null;
-  options: { value: string; label: ReactNode; tone?: Side }[];
-  disabled: boolean;
-  onChange: (value: string) => void;
-  /** One line under the switch, e.g. who calls the coin toss. */
-  hint?: ReactNode;
-}
-
-/** Two-option switch in the mock's `.seg` language. */
-export function Segmented({
-  label,
-  value,
-  options,
-  disabled,
-  onChange,
-  hint,
-}: SegmentedProps) {
-  return (
-    <section className="segfield">
-      <h3 className="segtitle">{label}</h3>
-      <div aria-label={label} className="seg" role="group">
-        {options.map((option) => {
-          const classes = [
-            option.value === value ? "sel" : null,
-            option.tone === undefined ? null : `seg-${option.tone}`,
-          ].filter((name): name is string => name !== null);
-          return (
-            <button
-              aria-pressed={option.value === value}
-              className={classes.length === 0 ? undefined : classes.join(" ")}
-              disabled={disabled}
-              key={option.value}
-              onClick={() => onChange(option.value)}
-              type="button"
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-      {hint === undefined ? null : <p className="setupnote">{hint}</p>}
-    </section>
-  );
-}
-
-/* v8 ignore start -- GameSetup screen and crew state are exercised by GameSetup.test.tsx (2,760 lines) and the scorecard e2e journeys; the phase3 scope characterizes the pure helpers below */
 /**
  * Preparation screen: the crew with licence state, coin toss, first
  * possession, direction and the start sequence.
@@ -555,181 +242,22 @@ export default function GameSetupScreen({
     void load();
   };
 
-  const teamByOfficial = useMemo(
-    () => new Map(teamOfficials.map((person) => [person.id, person])),
-    [teamOfficials],
-  );
-
-  const displayName = useCallback(
-    (slot: CrewSlot): string | null =>
-      rowDisplayName(
-        { official: slot.official, name: slot.name },
-        teamByOfficial,
-      ),
-    [teamByOfficial],
-  );
-
-  /**
-   * Licence validity is the server's verdict for **today** (`is_valid` on the
-   * team list), not a forecast for the gameday date. A game weeks ahead can
-   * therefore show a licence as valid now even though it may lapse before
-   * kickoff, and the other way round.
-   */
-  const licenceOf = useCallback(
-    (slot: CrewSlot): Licence => {
-      if (slot.official === null) {
-        // An empty slot has no licence to judge: "fehlt" says what it is, a
-        // missing-licence claim would be about nobody.
-        return (slot.name ?? "").trim() === ""
-          ? { state: "empty", label: "fehlt" }
-          : { state: "missing", label: "keine Lizenz" };
-      }
-      // The crew read answers the licence itself (it travels with the person
-      // from the picker too), so a guest official from another team and a
-      // freshly created person do not fall back to "unknown". The team
-      // directory stays as the fallback for an older server.
-      const licence =
-        slot.licence ?? licenceOfPerson(teamByOfficial.get(slot.official));
-      if (licence === null) {
-        return { state: "unknown", label: "Lizenz unbekannt" };
-      }
-      if (licence.license === null) {
-        return { state: "missing", label: "keine Lizenz" };
-      }
-      if (licence.isValid) {
-        return { state: "valid", label: `${licence.license} gültig` };
-      }
-      return {
-        state: "expired",
-        label:
-          licence.validUntil === null
-            ? `${licence.license} abgelaufen`
-            : `${licence.license} abgelaufen seit ${formatLicenceDate(
-                licence.validUntil,
-              )}`,
-      };
-    },
-    [teamByOfficial],
-  );
-
-  /**
-   * One warning for the whole crew. Free-text crew rows, officials from
-   * another team and unknown positions cannot be judged here, so only linked
-   * team licences count.
-   */
-  const licenceIssues = useMemo(
-    () =>
-      slots
-        .filter((slot) => {
-          if (slot.official === null) {
-            return false;
-          }
-          const state = licenceOf(slot).state;
-          return state === "expired" || state === "missing";
-        })
-        .map((slot) => ({
-          name: displayName(slot) ?? "Unbekannt",
-          role: slot.label,
-        })),
-    [slots, licenceOf, displayName],
-  );
-
-  /**
-   * Whether this row carries an invalid licence that the sheet will warn about.
-   * The row says so inline ("Start trotzdem möglich") instead of the screen
-   * printing a second, global paragraph.
-   */
-  const licenceWarns = useCallback(
-    (slot: CrewSlot): boolean => {
-      if (slot.official === null) {
-        return false;
-      }
-      const state = licenceOf(slot).state;
-      return state === "expired" || state === "missing";
-    },
-    [licenceOf],
-  );
-
-  /**
-   * Completeness is the league's decision (`required` per slot), not a fixed
-   * set of positions. Duplicate rows never count: they cannot be written.
-   */
-  const requiredSlots = slots.filter((slot) => slot.required);
-  const requiredFilled = requiredSlots.filter(
-    (slot) =>
-      !slot.duplicate &&
-      (slot.official !== null || (slot.name ?? "").trim() !== ""),
-  ).length;
-
-  /**
-   * Presentation order, not wire order: the league's required positions first,
-   * an optional slot with somebody in it next, then the optional slots still
-   * waiting for a name (rendered as one compact "hinzufügen" row each). A
-   * stored position the league does not configure is a data problem and stays
-   * at the bottom, read-only. Each entry keeps its index into `slots` so the
-   * picker edits the right row and the save keeps the server's order.
-   */
-  const orderedSlots = useMemo(
-    () =>
-      [
-        ...slots.filter((slot) => slot.required),
-        ...slots.filter(
-          (slot) => !slot.required && slot.known && slotHasValue(slot),
-        ),
-        ...slots.filter(
-          (slot) => !slot.required && slot.known && !slotHasValue(slot),
-        ),
-        ...slots.filter((slot) => !slot.known),
-      ].map((slot) => ({ slot, index: slots.indexOf(slot) })),
-    [slots],
-  );
-
-  const pickPerson = (index: number, person: TeamOfficial): void => {
-    setSlots((current) =>
-      current.map((slot, position) =>
-        position === index
-          ? {
-              ...slot,
-              official: person.id,
-              name: personName(person),
-              // The search result already carries the licence. Keeping it means
-              // a freshly created or guest official shows the right badge even
-              // though the team directory loaded before they existed (and even
-              // though they belong to another team).
-              licence: licenceOfPerson(person),
-            }
-          : slot,
-      ),
-    );
-    setDirty(true);
-  };
-
-  /**
-   * A guest official who is not in the directory: stored as a name, never as a
-   * link. `PersonPicker` only offers this when nothing matched and both names
-   * are present, so a resolvable person is not replaced by free text.
-   */
-  const enterFreeText = (index: number, name: string): void => {
-    setSlots((current) =>
-      current.map((slot, position) =>
-        position === index
-          ? { ...slot, official: null, name, licence: null }
-          : slot,
-      ),
-    );
-    setDirty(true);
-  };
-
-  const clearSlot = (index: number): void => {
-    setSlots((current) =>
-      current.map((slot, position) =>
-        position === index
-          ? { ...slot, official: null, name: null, licence: null }
-          : slot,
-      ),
-    );
-    setDirty(true);
-  };
+  const {
+    teamByOfficial,
+    displayName,
+    licenceOf,
+    licenceIssues,
+    licenceWarns,
+    requiredSlots,
+    requiredFilled,
+    orderedSlots,
+    pickPerson,
+    enterFreeText,
+    clearSlot,
+    crewPayload,
+    crewLines,
+    takenByOthers,
+  } = useCrewSetup({ slots, setSlots, teamOfficials, setDirty });
 
   /** Change a start field after the setup was accepted → send it again. */
   const resetStartPhases = (): void => {
@@ -737,48 +265,9 @@ export default function GameSetupScreen({
     setPossessionSent(false);
   };
 
-  // Duplicate rows are never written: the backend upserts by position and its
-  // `get_or_create` raises when two rows share one. Unknown positions are kept
-  // verbatim so they survive the save untouched.
-  const crewPayload: CrewWrite[] = slots
-    .filter((slot) => !slot.duplicate)
-    .map((slot) => ({
-      position: slot.position,
-      official: slot.official,
-      name:
-        slot.official === null
-          ? slot.name?.trim() || null
-          : (displayName(slot) ?? slot.name),
-    }));
-
-  const sideTeam = (side: Side): string | null => (side === "home" ? home : away);
-
-  /**
-   * What the confirmation restates, in the sheet's own shape.
-   *
-   * `filled` is the slot's own state, not the resolved display name: the team
-   * list can fail, or a stored row can carry no name, and a linked official then
-   * has no name while the slot is clearly staffed (the picker says "Offizieller
-   * 99" and the completeness chip counts it). `editable` mirrors the picker: a
-   * duplicate row or a position the league does not configure is shown but
-   * cannot be fixed here, so it never becomes the reason a start is refused.
-   */
-  const crewLines: StartCrewLine[] = slots.map((slot) => {
-    const name = displayName(slot);
-    return {
-      label: slot.label,
-      name,
-      filled: slot.official !== null || (slot.name ?? "").trim() !== "",
-      freetext: slot.official === null && name !== null,
-      required: slot.required,
-      editable: slot.known && !slot.duplicate,
-      duplicate: slot.duplicate,
-    };
-  });
-
-  const tossTeam = toss === null ? null : teamLabel(sideTeam(toss));
+  const tossTeam = toss === null ? null : teamLabel(sideTeam(toss, home, away));
   const possessionTeam =
-    possession === null ? null : teamLabel(sideTeam(possession));
+    possession === null ? null : teamLabel(sideTeam(possession, home, away));
 
   const openConfirmation = (): void => {
     if (inFlight.current || loading || finished || offline || readOnly) {
@@ -795,25 +284,6 @@ export default function GameSetupScreen({
   const confirmStart = (): void => {
     setConfirmOpen(false);
     void runStart();
-  };
-
-  /** Officials used by another row, so one person cannot fill two slots. */
-  const takenByOthers = (index: number): Set<number> => {
-    const taken = new Set<number>();
-    slots.forEach((slot, otherIndex) => {
-      if (otherIndex === index) {
-        return;
-      }
-      for (const row of slot.rows) {
-        if (row.official !== null) {
-          taken.add(row.official);
-        }
-      }
-      if (slot.official !== null) {
-        taken.add(slot.official);
-      }
-    });
-    return taken;
   };
 
   /**
@@ -1553,4 +1023,3 @@ export default function GameSetupScreen({
     </Screen>
   );
 }
-/* v8 ignore stop */

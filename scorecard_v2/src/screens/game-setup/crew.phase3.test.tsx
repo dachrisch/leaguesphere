@@ -18,7 +18,7 @@ import {
   slotHasValue,
   slotsFromCrew,
   teamLabel,
-} from "../GameSetup";
+} from "./crew";
 
 const official = (over: Partial<Official> = {}): Official => ({
   id: 1,
