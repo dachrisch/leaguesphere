@@ -41,7 +41,6 @@ import {
   customSelectStyles,
 } from './game-table/teamOptions';
 
-/* v8 ignore start -- GameTable component body is exercised by designer e2e journeys, not by this helper extraction */
 export interface GameTableProps {
   games: GameNode[];
   edges: FlowEdge[];
@@ -832,4 +831,3 @@ const GameTable: React.FC<GameTableProps> = memo(({
 });
 
 export default GameTable;
-/* v8 ignore stop */
