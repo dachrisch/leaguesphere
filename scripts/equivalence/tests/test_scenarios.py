@@ -36,6 +36,15 @@ class FakeApi:
             return self._json(201, {"id": self.id_base, "name": json_body["name"]})
         if method == "PUT" and path.endswith("/designer-state/"):
             return self._json(200, {"state_data": json_body["state_data"]})
+        if method == "POST" and path.endswith("/apply/"):
+            return self._json(
+                200,
+                {
+                    "success": True,
+                    "gameinfos_created": 2,
+                    "message": "template applied",
+                },
+            )
         if method == "POST" and path.endswith("/publish/"):
             return self._json(200, {"id": self.id_base, "status": "PUBLISHED"})
         if method == "GET" and path == f"/api/gameday/{self.id_base}/":
@@ -158,3 +167,177 @@ def test_missing_capture_does_not_abort_the_scenario():
     )
 
     assert "game_id" not in run.id_tokens
+
+
+def _step_names(name):
+    return [step.name for step in scenarios.SCENARIOS[name]]
+
+
+def test_finalize_legacy_has_no_designer_state_step():
+    names = _step_names("finalize-legacy")
+    assert "save-designer-canvas" not in names
+    assert "publish-gameday" in names and "finalize-game" in names
+
+
+def test_finalize_canvas_has_a_downstream_reference():
+    canvas = scenarios.CANVAS_WITH_REFERENCE
+    games = [node for node in canvas["nodes"] if node["type"] == "game"]
+    assert len(games) == 2
+    assert games[1]["data"]["homeTeamDynamic"]["type"] == "winner"
+    assert (
+        games[1]["data"]["homeTeamDynamic"]["matchName"] == games[0]["data"]["standing"]
+    )
+    assert any(
+        edge.get("type") == "gameToGame"
+        and edge["source"] == games[0]["id"]
+        and edge["target"] == games[1]["id"]
+        for edge in canvas["edges"]
+    )
+    step = next(
+        step
+        for step in scenarios.SCENARIOS["finalize-canvas"]
+        if step.name == "save-designer-canvas"
+    )
+    assert step.json["state_data"] is canvas
+
+
+def test_finalize_template_applies_a_template():
+    names = _step_names("finalize-template")
+    assert "apply-template" in names
+    assert "save-designer-canvas" not in names
+    assert "read-gamelog" in names
+
+
+def test_whole_token_resolution_keeps_dict_and_int_payloads():
+    context = {
+        "gameday_id": 900,
+        "team_mapping": {"0_0": 11, "0_1": 12},
+        "num_fields": 2,
+    }
+    resolved = scenarios._resolve(
+        {
+            "gameday_id": "{gameday_id}",
+            "team_mapping": "{team_mapping}",
+            "num_fields": "{num_fields}",
+        },
+        context,
+    )
+    assert resolved == context
+
+
+def test_finalize_template_sends_apply_payload_and_compares():
+    ref = FakeApi(id_base=900)
+    cand = FakeApi(id_base=1500)
+    context = {
+        **CONTEXT,
+        "template_id": 42,
+        "team_mapping": {"0_0": 11, "0_1": 12},
+        "num_fields": 2,
+    }
+    ref_run = scenarios.run_scenario(
+        "finalize-template", {"staff": ref, "anonymous": ref}, context, "eq-t-ref"
+    )
+    cand_run = scenarios.run_scenario(
+        "finalize-template", {"staff": cand, "anonymous": cand}, context, "eq-t-cand"
+    )
+    apply_call = ref.calls[1]
+    assert apply_call["path"] == "/api/designer/templates/42/apply/"
+    assert apply_call["json"] == {
+        "gameday_id": 900,
+        "team_mapping": {"0_0": 11, "0_1": 12},
+        "num_fields": 2,
+    }
+    assert compare_scenario_runs(ref_run, cand_run) == {}
+
+
+class FakeSession:
+    def __init__(self, responses):
+        self.responses = responses
+
+    def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        return self.responses.get(path, Response(404, {}, "", "", method))
+
+
+def _json_response(payload, status=200):
+    return Response(status, {}, json.dumps(payload), "", "GET")
+
+
+TEMPLATE_DETAIL = {
+    "id": 42,
+    "num_fields": 2,
+    "slots": [
+        {"home_group": 0, "home_team": 0, "away_group": 0, "away_team": 1},
+    ],
+}
+
+
+def _template_sessions(detail=None, teams=None, listing_status=200):
+    responses = {
+        "/api/designer/templates/": _json_response(
+            {"results": [{"id": 42}]}, listing_status
+        ),
+        "/api/designer/templates/42/": _json_response(
+            TEMPLATE_DETAIL if detail is None else detail
+        ),
+        "/api/teams/": _json_response(
+            {"results": teams if teams is not None else [{"id": 11}, {"id": 12}]}
+        ),
+    }
+    return {"staff": FakeSession(responses), "anonymous": FakeSession(responses)}
+
+
+def test_discover_template_context_builds_the_mapping():
+    context = scenarios.discover_template_context(_template_sessions())
+    assert context == {
+        "template_id": 42,
+        "team_mapping": {"0_0": 11, "0_1": 12},
+        "num_fields": 2,
+    }
+
+
+def test_discover_template_context_returns_empty_without_staff():
+    assert scenarios.discover_template_context({}) == {}
+
+
+def test_discover_template_context_returns_empty_on_bad_listing():
+    assert (
+        scenarios.discover_template_context(_template_sessions(listing_status=500))
+        == {}
+    )
+    empty = _template_sessions()
+    empty["staff"].responses["/api/designer/templates/"] = _json_response(
+        {"results": []}
+    )
+    assert scenarios.discover_template_context(empty) == {}
+
+
+def test_discover_template_context_returns_empty_on_bad_detail():
+    sessions = _template_sessions()
+    sessions["staff"].responses["/api/designer/templates/42/"] = _json_response(
+        {}, status=404
+    )
+    assert scenarios.discover_template_context(sessions) == {}
+
+
+def test_discover_template_context_returns_empty_without_placeholders():
+    sessions = _template_sessions(detail={"id": 42, "slots": [{"id": 1}]})
+    assert scenarios.discover_template_context(sessions) == {}
+
+
+def test_discover_template_context_returns_empty_on_bad_teams_response():
+    sessions = _template_sessions()
+    sessions["anonymous"].responses["/api/teams/"] = Response(500, {}, "", "", "GET")
+    assert scenarios.discover_template_context(sessions) == {}
+
+
+def test_discover_template_context_returns_empty_without_enough_teams():
+    sessions = _template_sessions(teams=[{"id": 11}])
+    assert scenarios.discover_template_context(sessions) == {}
+
+
+def test_discover_template_context_tolerates_bad_json():
+    sessions = _template_sessions()
+    sessions["staff"].responses["/api/designer/templates/"] = Response(
+        200, {}, "not json", "", "GET"
+    )
+    assert scenarios.discover_template_context(sessions) == {}

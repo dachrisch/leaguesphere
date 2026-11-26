@@ -111,6 +111,10 @@ def run(args):
     scenario_diffs = {}
     context = scenario_context(gamedays)
     if not args.skip_scenarios and context:
+        # Same stage database on both sides: discovering the template once is
+        # deterministic and adds no probe noise. Unavailable data stays
+        # unresolved and is reported as a harness error, never fabricated.
+        context.update(scenario_mod.discover_template_context(ref_sessions))
         for name in scenario_mod.SCENARIOS:
             if args.scenarios and name not in args.scenarios:
                 continue

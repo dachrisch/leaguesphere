@@ -55,6 +55,134 @@ class ScenarioRun:
         return {f"{self.name}:{step.name}": step for step in self.steps}
 
 
+# A canvas with a real downstream reference: game-2 takes game-1's winner.
+# Without a reference, CanvasBracketProgressionService has nothing to resolve
+# and the canvas branch of schedule resolution is only nominally exercised.
+CANVAS_WITH_REFERENCE = {
+    "nodes": [
+        {
+            "id": "field-1",
+            "type": "field",
+            "data": {"type": "field", "name": "Feld 1", "order": 0},
+        },
+        {
+            "id": "stage-1",
+            "type": "stage",
+            "parentId": "field-1",
+            "data": {
+                "type": "stage",
+                "name": "Liga",
+                "category": "preliminary",
+                "stageType": "STANDARD",
+            },
+        },
+        {
+            "id": "game-1",
+            "type": "game",
+            "parentId": "stage-1",
+            "data": {
+                "type": "game",
+                "standing": "Spiel 1",
+                "startTime": "10:00",
+                "homeTeamId": None,
+                "awayTeamId": None,
+                "official": None,
+            },
+        },
+        {
+            "id": "game-2",
+            "type": "game",
+            "parentId": "stage-1",
+            "data": {
+                "type": "game",
+                "standing": "Spiel 2",
+                "startTime": "11:00",
+                "homeTeamId": None,
+                "awayTeamId": None,
+                "homeTeamDynamic": {"type": "winner", "matchName": "Spiel 1"},
+                "official": None,
+            },
+        },
+    ],
+    "edges": [
+        {
+            "id": "winner-to-game-2",
+            "type": "gameToGame",
+            "source": "game-1",
+            "sourceHandle": "winner",
+            "target": "game-2",
+            "targetHandle": "home",
+        }
+    ],
+    "globalTeams": [],
+}
+
+# (group key, team key) pairs that TemplateApplicationService maps to teams.
+_PLACEHOLDER_KEYS = (
+    ("home_group", "home_team"),
+    ("away_group", "away_team"),
+    ("official_group", "official_team"),
+)
+
+
+def discover_template_context(sessions):
+    """Discover a stage template and teams for the designer-template scenario.
+
+    The harness has no seeded template id: find one through the staff API and
+    map every team placeholder in its slots to a real team id. Returns an
+    empty dict when the data is unavailable (the scenario's steps then stay
+    unresolved and are reported as harness errors, never fabricated).
+    """
+    staff = sessions.get("staff")
+    if staff is None:
+        return {}
+    listing = staff.request("/api/designer/templates/")
+    if listing.status != 200:
+        return {}
+    try:
+        payload = listing.json()
+        templates = payload.get("results", []) if isinstance(payload, dict) else []
+        template_id = templates[0]["id"] if templates else None
+    except (ValueError, KeyError, IndexError, TypeError):
+        return {}
+    if template_id is None:
+        return {}
+
+    detail = staff.request(f"/api/designer/templates/{template_id}/")
+    if detail.status != 200:
+        return {}
+    try:
+        template = detail.json()
+        placeholders = set()
+        for slot in template.get("slots", []):
+            for group_key, team_key in _PLACEHOLDER_KEYS:
+                if slot.get(group_key) is not None and slot.get(team_key) is not None:
+                    placeholders.add(f"{slot[group_key]}_{slot[team_key]}")
+    except (ValueError, AttributeError, TypeError):
+        return {}
+    if not placeholders:
+        return {}
+
+    teams_session = sessions.get("anonymous") or staff
+    teams_response = teams_session.request("/api/teams/")
+    if teams_response.status != 200:
+        return {}
+    try:
+        teams_payload = teams_response.json()
+        team_ids = [team["id"] for team in teams_payload.get("results", [])]
+    except (ValueError, KeyError, TypeError):
+        return {}
+    if len(team_ids) < len(placeholders):
+        return {}
+    return {
+        "template_id": template_id,
+        "team_mapping": {
+            key: team_ids[index] for index, key in enumerate(sorted(placeholders))
+        },
+        "num_fields": template.get("num_fields"),
+    }
+
+
 MINIMAL_CANVAS = {
     "nodes": [
         {
@@ -110,13 +238,13 @@ def _gameday_create_step():
     )
 
 
-def _publish_steps():
+def _publish_steps(canvas=None):
     return [
         Step(
             name="save-designer-canvas",
             method="PUT",
             path="/api/gamedays/{gameday_id}/designer-state/",
-            json={"state_data": MINIMAL_CANVAS},
+            json={"state_data": MINIMAL_CANVAS if canvas is None else canvas},
         ),
         Step(
             name="publish-gameday",
@@ -219,7 +347,7 @@ SCENARIOS = {
     ],
     "finalize-canvas": [
         _gameday_create_step(),
-        *_publish_steps(),
+        *_publish_steps(CANVAS_WITH_REFERENCE),
         *_read_game_id_steps(),
         Step(
             name="finalize-game",
@@ -259,12 +387,8 @@ SCENARIOS = {
             capture="gameday_id",
             capture_path="id",
         ),
-        Step(
-            name="save-designer-canvas",
-            method="PUT",
-            path="/api/gamedays/{gameday_id}/designer-state/",
-            json={"state_data": MINIMAL_CANVAS},
-        ),
+        # No designer-state step: this gameday must take the legacy
+        # ScheduleUpdate branch in signals.py, not the canvas branch.
         Step(
             name="publish-gameday",
             method="POST",
@@ -292,6 +416,52 @@ SCENARIOS = {
             expect=200,
         ),
     ],
+    "finalize-template": [
+        _gameday_create_step(),
+        Step(
+            name="apply-template",
+            method="POST",
+            path="/api/designer/templates/{template_id}/apply/",
+            json={
+                "gameday_id": "{gameday_id}",
+                "team_mapping": "{team_mapping}",
+                "num_fields": "{num_fields}",
+            },
+        ),
+        Step(
+            name="publish-gameday",
+            method="POST",
+            path="/api/gamedays/{gameday_id}/publish/",
+        ),
+        *_read_game_id_steps(),
+        Step(
+            name="finalize-game",
+            method="PUT",
+            path="/api/game/{game_id}/finalize",
+            json={},
+            expect=(200, 409),
+        ),
+        Step(
+            name="read-game-officials",
+            method="GET",
+            path="/api/game/{game_id}/officials",
+            role="anonymous",
+            expect=200,
+        ),
+        Step(
+            name="read-game-summary",
+            method="GET",
+            path="/api/game/{game_id}/summary",
+            expect=200,
+        ),
+        Step(
+            name="read-gamelog",
+            method="GET",
+            path="/api/gamelog/{game_id}",
+            role="anonymous",
+            expect=200,
+        ),
+    ],
     "officials-signup": [
         _gameday_create_step(),
         Step(
@@ -315,7 +485,10 @@ SCENARIOS = {
 def _resolve(value, context):
     if isinstance(value, str):
         for key, replacement in context.items():
-            value = value.replace("{" + key + "}", str(replacement))
+            token = "{" + key + "}"
+            if value == token:
+                return replacement  # keep dict/int payload values intact
+            value = value.replace(token, str(replacement))
         return value
     if isinstance(value, dict):
         return {key: _resolve(item, context) for key, item in value.items()}
