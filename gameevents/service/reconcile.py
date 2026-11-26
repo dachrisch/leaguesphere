@@ -309,6 +309,13 @@ def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
         if not game_events:
             checks.append(GameCheck(game_id, 0, 0, legacy=True))
             continue
+        if game_ids is not None and not any(
+            event.source == GameEvent.Source.V2 for event in game_events
+        ):
+            # An explicitly named shadow-only game is accepted legacy, not
+            # reconciled -- the same discriminator as --all.
+            checks.append(GameCheck(game_id, 0, 0, legacy=True))
+            continue
         source = max(
             (event.source for event in game_events),
             key=lambda value: _SOURCE_RANK.get(value, -1),

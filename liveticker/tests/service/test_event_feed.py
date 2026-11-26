@@ -7,6 +7,7 @@ the widget already reads; a flagged projection falls back to those rows so the
 public widget never shows a 409 or a blank game.
 """
 
+import copy
 import json
 from datetime import UTC, datetime, time
 from unittest.mock import patch
@@ -15,7 +16,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from gameevents.models import GameState
-from gamedays.models import Gameresult, Gameinfo
+from gamedays.models import Gameresult, Gameinfo, TeamLog
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameresultFactory,
@@ -170,6 +171,60 @@ class CharacterisationTest(TestCase):
 class EventProjectionTest(TestCase):
     """Flag on: score/period from ``GameState``, ticks from projected rows."""
 
+    def _row_derived_twin(self, game):
+        """A second game in the same gameday that owns the same rows, no events.
+
+        Copying the rows the events wrote gives the expected payload a
+        *row-derived* source: it is not hard-coded and it is not produced by
+        the projection being asserted.
+        """
+
+        home_result = Gameresult.objects.get(gameinfo=game, isHome=True)
+        away_result = Gameresult.objects.get(gameinfo=game, isHome=False)
+        home = home_result.team
+        away = away_result.team
+        twin = GameinfoFactory(
+            gameday=game.gameday,
+            status=game.status,
+            standing=game.standing,
+            field=game.field,
+            scheduled=game.scheduled,
+            gameStarted=game.gameStarted,
+            in_possession=game.in_possession,
+        )
+        GameresultFactory(
+            gameinfo=twin,
+            team=home,
+            isHome=True,
+            fh=home_result.fh,
+            sh=home_result.sh,
+            pa=home_result.pa,
+        )
+        GameresultFactory(
+            gameinfo=twin,
+            team=away,
+            isHome=False,
+            fh=away_result.fh,
+            sh=away_result.sh,
+            pa=away_result.pa,
+        )
+        for row in TeamLog.objects.filter(gameinfo=game).order_by("pk"):
+            TeamLogFactory(
+                gameinfo=twin,
+                created_time=row.created_time,
+                event=row.event,
+                team=row.team,
+                player=row.player,
+                input=row.input,
+                value=row.value,
+                half=row.half,
+                sequence=row.sequence,
+                cop=row.cop,
+                author=row.author,
+                isDeleted=row.isDeleted,
+            )
+        return twin
+
     def test_same_game_scores_period_and_last_five_ticks_match_the_row_path(self):
         game, _home, _away = make_live_game("parity")
         submit(
@@ -185,8 +240,17 @@ class EventProjectionTest(TestCase):
             client_id="s1",
         )
 
-        assert len(payload_for(game.gameday_id)[0]["ticks"]) == 5
         projected = payload_for(game.gameday_id)
+        assert len(projected[0]["ticks"]) == 5
+
+        twin = self._row_derived_twin(game)
+        both = {item["gameId"]: item for item in payload_for(game.gameday_id)}
+        expected = copy.deepcopy(both[twin.pk])
+        expected["gameId"] = game.pk
+        # Byte-for-byte parity against the row-derived payload: same totals,
+        # period, standing, and five ticks in the same order with the same
+        # text and timestamps. The only difference is the id of the twin.
+        assert json.dumps(projected[0]) == json.dumps(expected)
 
         # The permanent event path produces the same totals, period and five
         # ticks in the same order with the same text and timestamps.

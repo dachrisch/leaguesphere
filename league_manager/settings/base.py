@@ -266,12 +266,6 @@ EQUIPMENT_APPROVAL_TOKEN = os.environ.get("EQUIPMENT_APPROVAL_TOKEN")
 
 JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30))
 
-# --- scorecard event store (slice 1) ---------------------------------------
-# Read live scores from the GameState projection instead of the Gameresult
-# table. Off by default: with the flag off the liveticker runs exactly the
-# query it ran before the event store existed, so merging the slice changes
-# nothing user-visible until stage has proven the projection.
-
 # --- liveticker -------------------------------------------------------------
 # The feed is polled by every open ticker. Keep the page cache at 60 s until a
 # measured k6 run on stage justifies a lower TTL; the setting lets that change

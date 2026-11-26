@@ -37,7 +37,8 @@ Read-only and public, like the other game read endpoints.
 ## The event read path (formerly `SCORECARD_EVENT_FEED`)
 
 The event path is now permanent: the flag and its environment variable were
-removed in Phase 2 after the prod soak. A live game takes its total score from
+removed in Phase 2 after the gameday rehearsal on the agent stage (there was
+no prod soak). A live game takes its total score from
 `GameState` and, while `Gameinfo.status` is in progress, the half it displays
 from `GameState.period` (`1. Halbzeit`/`2. Halbzeit`). Which games are live,
 upcoming or the previous slot is still selected from `Gameinfo.status` — the

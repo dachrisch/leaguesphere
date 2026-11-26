@@ -245,7 +245,9 @@ def test_source_derivation_and_accepted_set_are_db_backed(
     v2_game, _home, _away = event_game(client, "v2-source")
     checks = {item.game_id: item for item in check_games([shadow_game.pk, v2_game.pk])}
 
-    assert checks[shadow_game.pk].source == "legacy"
+    # The explicit-id path applies the same v2 discriminator as --all: a
+    # shadow-only game is accepted legacy and skipped, not reconciled.
+    assert checks[shadow_game.pk].legacy is True
     assert checks[v2_game.pk].source == "v2"
 
     destination = tmp_path / "report.json"
@@ -256,12 +258,11 @@ def test_source_derivation_and_accepted_set_are_db_backed(
         )
     payload = json.loads(destination.read_text())
 
-    # stdout keeps its pre-report meaning: the shadow-only game is checked
-    # (it has events) and is not also counted as a skipped legacy game.
+    # --all only reconciles v2 games; the shadow-only game is accepted (in the
+    # report), neither checked nor counted as a game without events.
     assert out.getvalue() == (
-        f"game {shadow_game.pk}: ok (1 events, seq 1)\n"
         f"game {v2_game.pk}: ok (2 events, seq 2)\n"
-        "checked 2 event-sourced game(s); skipped 0 legacy game(s) without events\n"
+        "checked 1 event-sourced game(s); skipped 0 legacy game(s) without events\n"
         "projection matches the event log\n"
     )
     assert payload["legacy_without_events"] == 1
@@ -300,7 +301,7 @@ def test_report_option_writes_json_without_changing_stdout_or_queries(
     destination = tmp_path / "report.json"
 
     out = StringIO()
-    with django_assert_num_queries(7):
+    with django_assert_num_queries(6):
         call_command(
             "check_game_projection",
             "--all",
@@ -395,6 +396,28 @@ def test_game_mode_on_a_shadow_only_game_prints_no_legacy_line(client, tmp_path)
     payload = json.loads(destination.read_text())
     assert payload["shadow_only"] == 1
     assert payload["legacy_without_events"] == 1
+
+
+@pytest.mark.django_db
+def test_shadow_only_game_is_skipped_by_explicit_check_and_counted(client, tmp_path):
+    game, home, _away = make_game("explicit-shadow-only")
+    login(client)
+    post_legacy(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(31)
+        ),
+    )
+    GameEvent.objects.filter(game=game).update(source=GameEvent.Source.LEGACY)
+
+    checks = check_games([game.pk])
+    assert checks[0].legacy is True
+    assert checks[0].ok is True
+
+    out = StringIO()
+    call_command("check_game_projection", "--game", str(game.pk), stdout=out)
+    assert "nothing to compare" in out.getvalue()
 
 
 @pytest.mark.django_db

@@ -92,13 +92,13 @@ def get_feed(game, after: int = 0) -> Feed:
     projection may not be served (flagged, or missing altogether).
     """
 
-    # A game is event-sourced only when it has a v2 event; shadow-only games
-    # keep the row-based legacy read path after the cutover.
-    events = GameEvent.objects.filter(
-        game=game, source=GameEvent.Source.V2
-    ).select_related("undo_of")
-    if not events.exists():
+    # The source decides *ownership*, not which events are served: a v2-owned
+    # game still shows its pre-cutover shadow events and legacy-sourced undo
+    # corrections, so the event list adds up to GameState.
+    all_events = GameEvent.objects.filter(game=game).select_related("undo_of")
+    if not all_events.filter(source=GameEvent.Source.V2).exists():
         return legacy_feed(game)
+    events = all_events
 
     state = GameState.objects.filter(game=game).first()
     if state is None:

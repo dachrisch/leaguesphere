@@ -306,6 +306,48 @@ def test_an_unknown_game_is_a_404(client):
 
 
 @pytest.mark.django_db
+def test_a_shadow_only_game_is_served_from_rows_by_the_feed(client):
+    game, home, _away = make_game("feed-shadow-only")
+    login(client)
+    assert (
+        post_legacy(
+            client,
+            game,
+            legacy_body(
+                game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+            ),
+        ).status_code
+        == 201
+    )
+    GameEvent.objects.filter(game=game).update(source=GameEvent.Source.LEGACY)
+
+    body = get_feed(client, game).json()
+
+    assert body["events"] == []
+    assert body["cursor"] == 0
+    assert body["state"]["score_home"] == 6
+
+
+@pytest.mark.django_db
+def test_a_v2_owned_game_still_serves_its_legacy_sourced_events(client):
+    """Ownership is the discriminator; it does not filter the event list."""
+
+    game, home, _away = make_game("feed-mixed-sources")
+    login(client)
+    submit(client, game, [TD])
+    GameEvent.objects.filter(game=game).update(
+        seq=2, legacy_sequence=2, source=GameEvent.Source.LEGACY
+    )
+    submit(client, game, [PAT], client_id=sub_id(2))
+    GameState.objects.filter(game=game).update(last_seq=3, score_home=7)
+
+    body = get_feed(client, game).json()
+
+    assert [event["source"] for event in body["events"]] == ["legacy", "v2"]
+    assert body["state"]["last_seq"] == 3
+
+
+@pytest.mark.django_db
 def test_a_flagged_game_is_not_served_as_state(client):
     game, _home, _away = make_game("feed-flagged")
     login(client)

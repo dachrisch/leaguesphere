@@ -155,4 +155,4 @@ Sport definitions (`I4.x`), the template-driven UI, async workers, statistics, q
 
 1. Merged with `SCORECARD_EVENT_FEED=off` — the append path stored events and kept writing identical rows; nothing user-visible changed.
 2. On stage, run `check_game_projection --all` after a gameday: expect zero drift.
-3. Phase 2 soaked the flag on, then made the event path permanent and removed the flag (this plan's historical rollout step is complete).
+3. Phase 2 ran the full flag-ON validation on the agent stage, then made the event path permanent and removed the flag after a gameday rehearsal on ref vs cand (no prod soak; this plan's historical rollout step is complete).
