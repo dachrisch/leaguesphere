@@ -99,6 +99,14 @@ def is_omitted(root, path):
     """
     if path.startswith(".claude/") or "/" not in path:
         return True
+    # The Phase 3 frontend journey harness is judged by its own pytest run and
+    # branch gate (scripts/equivalence/frontend/README.md), not by a Python shard.
+    if pathlib.PurePosixPath(path).parts[:3] == (
+        "scripts",
+        "equivalence",
+        "frontend",
+    ):
+        return True
     return any(fnmatch.fnmatch(path, pattern) for pattern in omit_patterns(root))
 
 
