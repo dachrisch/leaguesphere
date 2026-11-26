@@ -250,7 +250,7 @@ npm run test:run
   - ❌ No unused imports or variables
 
 ### Verification Checklist
-Before marking a task complete:
+Before marking a task complete (reviewers: see [.claude/skills/reviewing-prs/SKILL.md](.claude/skills/reviewing-prs/SKILL.md)):
 1. ✅ Write tests first (TDD: RED → GREEN → REFACTOR)
 2. ✅ All backend tests pass: `pytest`
 3. ✅ All frontend tests pass: `npm run test:run` (in each app)
