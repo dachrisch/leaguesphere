@@ -17,6 +17,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
 from gamedays.models import Gameinfo, GameOfficial
@@ -134,6 +135,9 @@ def restore_moodle_session(request) -> RestoreResult:
         )
     result = RememberMeService.restore(request.COOKIES.get(MOODLE_REMEMBER_COOKIE))
     if result.official_id is not None:
+        # The cookie elevates an anonymous visitor to a logged-in official,
+        # so rotate the key here as well as after a Moodle password login.
+        request.session.cycle_key()
         request.session[MOODLE_LOGGED_IN_USER] = result.official_id
     return result
 
@@ -155,6 +159,11 @@ def safe_next(request, default: str | None = None) -> str:
         return fallback
     parsed = urlsplit(target)
     if parsed.scheme or parsed.netloc:
+        return fallback
+    # Django's own guard covers the absolute/backslash variants as well;
+    # CodeQL recognises it as the sanitizer for a redirect target derived
+    # from ``next`` (the py/url-redirection alerts on these views).
+    if not url_has_allowed_host_and_scheme(target, allowed_hosts=None):
         return fallback
     return target
 
@@ -253,13 +262,15 @@ def assignments_return_url(request) -> str:
 
 
 def can_reclaim_official(request, row: GameOfficial, target: Official) -> bool:
-    """May ``target`` take over an already-mapped row?
+    """May ``target`` claim this row, mapped or not?
 
     Staff may reassign any row explicitly. A Moodle official only when the
     typed scorecard name contains their *full* name: accepting a partial
-    match would let anyone sharing a first or last name steal the row. The
-    typed name is only a weak hint, never proof of identity, so this gate is
-    complemented by the conditional UPDATE in the write itself.
+    match would let anyone sharing a first or last name take a row that
+    belongs to somebody else. That applies to unassigned ``?`` rows too -
+    an empty ``official`` column is not proof that the typed name is free to
+    claim. The typed name is only a weak hint, never proof of identity, so
+    this gate is complemented by the conditional UPDATE in the write.
     """
     if request.user.is_authenticated and request.user.is_staff:
         return True
@@ -292,7 +303,8 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
 
         Staff may overwrite any row, so they get the picker without having
         posted an ``official_id`` yet. A Moodle official needs a resolved
-        target and - for a mapped row - a typed name that proves it is theirs.
+        target and a typed name that proves the row is theirs, whether it is
+        mapped to somebody already or still an unassigned ``?`` row.
         """
         if request.user.is_authenticated and request.user.is_staff:
             return True
@@ -300,7 +312,7 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
             target = self.target_official(request)
         except Official.DoesNotExist:
             return False
-        return row.official_id is None or can_reclaim_official(request, row, target)
+        return can_reclaim_official(request, row, target)
 
     def _can_reveal_name(self, request, row) -> bool:
         """Who may read the raw typed name on the confirm page?
@@ -326,13 +338,18 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
         row = get_object_or_404(GameOfficial, pk=pk)
         target = self._target_or_error(request)
         if target is None:
-            return redirect(request.get_full_path())
+            return redirect(reverse(CLAIM_URL_NAME, kwargs={"pk": pk}))
         is_mapped = row.official_id is not None
-        if is_mapped and not can_reclaim_official(request, row, target):
+        if not can_reclaim_official(request, row, target):
             messages.error(
                 request,
-                "Dieser Eintrag ist einer anderen Person zugeordnet. "
-                "Bitte wende dich an Staff.",
+                (
+                    "Dieser Eintrag ist einer anderen Person zugeordnet. "
+                    "Bitte wende dich an Staff."
+                    if is_mapped
+                    else "Der eingetragene Name passt nicht zu dir. "
+                    "Bitte wende dich an Staff."
+                ),
             )
             return redirect(assignments_return_url(request))
 

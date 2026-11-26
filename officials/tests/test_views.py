@@ -23,6 +23,9 @@ from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )
 from officials.models import Official, OfficialExternalGames, OfficialGamedaySignup
+from officials.service.association_resolution import (
+    resolve_association as real_resolve_association,
+)
 from officials.service.moodle.moodle_api import MoodleApiException
 from officials.service.moodle.moodle_service import MoodleService
 from gamedays.tests.setup_factories.factories import (
@@ -752,6 +755,29 @@ class TestMoodleLogin(WebTest):
         assert response.client.session.get(MOODLE_LOGGED_IN_USER) == official_id
         assert response.url == reverse(OFFICIALS_SIGN_UP_LIST)
 
+    @patch.object(MoodleService, "login")
+    def test_login_rotates_the_session_key(self, moodle_login_mock: MagicMock):
+        # Session fixation: the anonymous session key that existed before the
+        # Moodle credentials were checked must not become the privileged one.
+        from django.contrib.sessions.backends.db import SessionStore
+
+        moodle_login_mock.return_value = 7
+        session = SessionStore()
+        session["pre_auth"] = "kept"
+        session.save()
+        old_key = session.session_key
+        self.app.set_cookie(settings.SESSION_COOKIE_NAME, old_key)
+
+        response: DjangoWebtestResponse = self.app.get(reverse(OFFICIALS_MOODLE_LOGIN))
+        response.form["username"] = "valid username"
+        response.form["password"] = "secret password"
+        response = response.form.submit()
+
+        new_session = response.client.session
+        assert new_session.session_key != old_key
+        assert new_session["pre_auth"] == "kept"
+        assert new_session.get(MOODLE_LOGGED_IN_USER) == 7
+
     @patch.object(RememberMeService, "issue")
     @patch.object(MoodleService, "login")
     def test_login_with_remember_me_sets_cookie(
@@ -1344,6 +1370,34 @@ class TestGameOfficialImportConfirmView(WebTest):
         assert f"{row_count} externe Einsätze erstellt" in content
         # Counts, not one line per created row.
         assert content.count("ID: ") == 0
+
+    @patch("officials.views.resolve_association")
+    def test_confirm_resolves_each_distinct_association_once(self, resolve_mock):
+        """A confirm with thousands of rows must not re-resolve the same
+        sheet value once per row (1-3 SELECTs per entry). The upload step
+        already resolves distinct values; confirm caches them per request."""
+        resolve_mock.side_effect = real_resolve_association
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        data = self._upload(
+            [
+                _external_import_row(
+                    official.pk, number_games, "01.05.2024", "Referee", "Hamburg", 20
+                )
+                for number_games in range(1, 6)
+            ]
+        )
+        row_numbers = [str(row["row_number"]) for row in data["external"]["new"]]
+        assert len(row_numbers) == 5
+        resolve_mock.reset_mock()
+
+        response = self._confirm(external_rows=row_numbers)
+
+        assert response.status_code == HTTPStatus.FOUND
+        assert resolve_mock.call_count == 1
+        entries = OfficialExternalGames.objects.filter(official=official)
+        assert entries.count() == 5
+        assert {entry.association.abbr for entry in entries} == {"AFCVHH"}
 
     def test_database_error_detail_is_logged_not_returned(self):
         """A per-row DatabaseError names schema internals ("Data too long for

@@ -141,15 +141,45 @@ class TestClaimAssignment(SelfServiceTestBase):
         assert f"Spiel #{gameinfo.pk}" in content
         assert f"Spiel #{gameinfo.pk} (#{gameinfo.pk})" not in content
 
-    def test_moodle_claim_other_row_allowed(self):
-        # Decision 1: any unmapped row may be claimed, no name check.
+    def test_moodle_cannot_claim_a_foreign_unmapped_row(self):
+        # An unassigned row is not a free-for-all: the typed scorecard name
+        # must contain the Moodle official's full name, just like a takeover
+        # of a mapped row. A typed name proves nothing, but it is the only
+        # check we have, so POST must enforce it too.
         gameinfo, row = _game_with_row(name="Someone Else")
         self.login_moodle()
 
-        self.client.post(reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}))
+        response = self.client.post(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}), follow=True
+        )
 
         row.refresh_from_db()
-        assert row.official == self.official
+        assert row.official is None
+        assert any("passt nicht" in m for m in self.messages(response))
+
+    def test_moodle_cannot_claim_unmapped_row_with_partial_name(self):
+        for typed_name in ("Max", "Mustermann"):
+            with self.subTest(typed_name=typed_name):
+                gameinfo, row = _game_with_row(name=typed_name)
+                self.login_moodle()
+
+                self.client.post(reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}))
+
+                row.refresh_from_db()
+                assert row.official is None
+
+    def test_confirm_hides_form_for_a_foreign_unmapped_row(self):
+        gameinfo, row = _game_with_row(name="Someone Else")
+        self.login_moodle()
+
+        content = self.client.get(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk})
+        ).content.decode()
+
+        assert "Einsatz übernehmen" not in content
+        assert "passt nicht" in content
+        # No name enumeration through the confirm page either.
+        assert ">Someone Else<" not in content
 
     def test_anonymous_claim_redirects(self):
         gameinfo, row = _game_with_row()
@@ -240,6 +270,17 @@ class TestEinsaetzeHighlightAndFilter(SelfServiceTestBase):
 
         assert "Mir zuordnen" in content
         assert reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}) in content
+
+    def test_list_offers_claim_only_on_matching_unmapped_rows(self):
+        gameinfo, own = _game_with_row(name="Max Mustermann")
+        gameinfo, foreign = _game_with_row(name="Someone Else")
+        self.login_moodle()
+
+        content = self.client.get(reverse(LIST_URL_NAME)).content.decode()
+
+        assert reverse(CLAIM_URL_NAME, kwargs={"pk": own.pk}) in content
+        assert reverse(CLAIM_URL_NAME, kwargs={"pk": foreign.pk}) not in content
+        assert content.count("Mir zuordnen") == 1
 
     def test_mine_filter_query_count_is_flat_as_rows_grow(self):
         from django.db import connection
@@ -998,6 +1039,25 @@ class TestRememberCookieRotationOnWriteViews(SelfServiceTestBase):
         rotated = response.cookies[MOODLE_REMEMBER_COOKIE]
         assert rotated.value
         assert rotated["path"] == "/officials/"
+
+    def test_remember_me_restore_rotates_the_session_key(self):
+        from officials.service.remember_me import RememberMeService
+
+        client = Client()
+        client.cookies[MOODLE_REMEMBER_COOKIE] = RememberMeService.issue(
+            self.official.pk
+        )
+        session = client.session
+        session["pre_auth"] = "kept"
+        session.save()
+        old_key = session.session_key
+        assert old_key is not None
+
+        client.get(reverse(ASSIGNMENT_URL_NAME))
+
+        assert client.session.session_key != old_key
+        assert client.session["pre_auth"] == "kept"
+        assert client.session.get(MOODLE_LOGGED_IN_USER) == self.official.pk
 
 
 class TestAddAssignmentInputRobustness(SelfServiceTestBase):

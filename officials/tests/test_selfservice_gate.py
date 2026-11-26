@@ -150,6 +150,14 @@ class TestSafeNext:
 
         assert safe_next(request) == reverse("view-officials-sign-up-list")
 
+    @pytest.mark.parametrize(
+        "target", [r"///evil.example.com/", r"/\evil.example.com/"]
+    )
+    def test_next_with_protocol_relative_variants_falls_back(self, target):
+        request = _request("get", data={"next": target})
+
+        assert safe_next(request) == reverse("view-officials-sign-up-list")
+
 
 class TestLoginWiring(WebTest):
     def setUp(self):

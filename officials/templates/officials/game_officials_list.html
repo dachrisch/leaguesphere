@@ -75,10 +75,12 @@
                 {% if moodle_official_id or is_staff %}
                 <td>
                     {% if not official.official_id %}
+                    {% if official.can_reclaim %}
                     <a class="btn btn-sm btn-outline-primary"
                        href="{% url claim_url_name pk=official.id %}?next={{ request.get_full_path|urlencode }}">
                         {% if is_staff %}Zuordnen{% else %}Mir zuordnen{% endif %}
                     </a>
+                    {% endif %}
                     {% elif official.is_own_row %}
                     <a class="btn btn-sm btn-outline-danger"
                        href="{% url 'view-officials-selfservice-dffl-delete' pk=official.id %}">Löschen</a>

@@ -9,9 +9,10 @@ meldest du dich mit deinem offd.de-Konto an – Staff kann dasselbe für alle tu
 1. **Anmelden**: Auf [Alle Einsätze](/officials/einsaetze/) auf **Über offd.de
    anmelden** klicken und die Moodle-Zugangsdaten eingeben. Deine eigenen Zeilen
    sind danach farbig markiert.
-2. **Einsatz übernehmen**: Bei einer Zeile mit **?** auf **Mir zuordnen** klicken.
-   Steht dein Name in einer bereits zugeordneten Zeile, kannst du sie über
-   **Das war ich** ebenfalls übernehmen.
+2. **Einsatz übernehmen**: Bei einer Zeile mit **?**, in der dein vollständiger
+   Name eingetragen ist, auf **Mir zuordnen** klicken. Steht dein vollständiger
+   Name in einer bereits zugeordneten Zeile, kannst du sie über **Das war ich**
+   ebenfalls übernehmen. Bei einem anderen Namen wende dich an Staff.
 3. **Fehlenden Einsatz nachtragen**: Auf **Einsatz nachtragen** klicken, Spieltag
    wählen, dann Spiel und Position. Ist die Position schon besetzt, übernimm
    stattdessen den vorhandenen Eintrag über **Mir zuordnen**.
@@ -29,14 +30,15 @@ Liste auf deine Zeilen. Wer welche Spiele geleitet hat, steht unter
 
 **Warum sehe ich ein Fragezeichen hinter einem Namen?**
 Der Eintrag wurde ohne Zuordnung zu einer Person erfasst. Solange das so ist,
-zählt das Spiel nicht. Wenn es dein Einsatz war, übernimm die Zeile mit
-**Mir zuordnen**.
+zählt das Spiel nicht. Wenn es dein Einsatz war und dein vollständiger Name
+eingetragen ist, übernimm die Zeile mit **Mir zuordnen**.
 
 **Wer darf was bearbeiten?**
 Deine eigenen Einsätze und gemeldeten Spiele bearbeitest du selbst; fremde
 Einträge kann nur Staff ändern.
 
-**Was passiert, wenn ich einen Einsatz zu einem zukünftigen Spiel lösche?**
-Der Eintrag ist danach weg. Wird die Scorecard für dieses Spiel später
-gespeichert, kann für die Position wieder ein leerer Eintrag entstehen – die
-Löschseite weist dich darauf hin.
+**Was passiert, wenn ich einen Einsatz lösche?**
+Der Eintrag bleibt erhalten – aufgehoben wird nur die Zuordnung zu einer Person.
+Der eingegebene Name, die Position und das Spiel bleiben bestehen. Wird die
+Scorecard für dieses Spiel später gespeichert, füllt sie genau diesen Eintrag
+wieder; ein zusätzlicher leerer Eintrag entsteht dadurch nicht.

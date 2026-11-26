@@ -99,11 +99,21 @@ def backwards(apps, schema_editor):
     are not stored anywhere and cannot be reconstructed from the FK alone.
     """
     OfficialExternalGames = apps.get_model("officials", "OfficialExternalGames")
-    for row in OfficialExternalGames.objects.select_related(
-        "association_new"
-    ).iterator():
+    batch = []
+    for row in (
+        OfficialExternalGames.objects.select_related("association_new")
+        .only("pk", "association", "association_new", "association_new__abbr")
+        .iterator()
+    ):
+        if row.association_new_id is None:
+            continue
         row.association = row.association_new.abbr
-        row.save(update_fields=["association"])
+        batch.append(row)
+        if len(batch) >= _BATCH_SIZE:
+            OfficialExternalGames.objects.bulk_update(batch, ["association"])
+            batch = []
+    if batch:
+        OfficialExternalGames.objects.bulk_update(batch, ["association"])
 
 
 class Migration(migrations.Migration):

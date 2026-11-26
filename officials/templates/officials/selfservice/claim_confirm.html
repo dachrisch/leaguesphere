@@ -27,9 +27,14 @@
         </tbody>
     </table>
 
-    {% if is_mapped and not can_reclaim %}
+    {% if not can_reclaim %}
     <div class="alert alert-warning">
-        Dieser Einsatz ist einer anderen Person zugeordnet. Bitte wende dich an Staff.
+        {% if is_mapped %}
+        Dieser Einsatz ist einer anderen Person zugeordnet.
+        {% else %}
+        Der eingetragene Name passt nicht zu dir.
+        {% endif %}
+        Bitte wende dich an Staff.
     </div>
     {% else %}
     {% if is_mapped %}

@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import date, datetime, timedelta
+from functools import partial
 
 from django.conf import settings
 from django.contrib import messages
@@ -39,7 +40,10 @@ from officials.forms import (
     MoodleLoginForm,
 )
 from officials.models import Official, OfficialLicenseHistory
-from officials.service.association_resolution import UnknownAssociationError
+from officials.service.association_resolution import (
+    UnknownAssociationError,
+    resolve_association,
+)
 from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.game_official_entries import AmbiguousGameOfficialError
 from officials.service.game_official_import import (
@@ -66,6 +70,7 @@ from officials.selfservice import (
     can_edit_official,
     delete_remember_cookie,
     name_matches_official,
+    official_name_in_typed_name,
     restore_moodle_session,
     safe_next,
     selfservice_banner_context,
@@ -365,12 +370,13 @@ class GameOfficialListView(View):
                 and row_official_id is None
                 and name_matches_official(raw["name"], acting_official)
             )
-            # A mapped row whose typed name looks like this official can be
-            # taken over ("Das war ich"); staff can reassign any mapped row.
+            # Claim/takeover links must match the write gate: a Moodle
+            # official needs the full typed name on the row, mapped or not.
+            # Using the tolerant name_matches_official here would offer a
+            # button the confirm page then refuses to honour.
             row["can_reclaim"] = is_staff or (
                 acting_official is not None
-                and row_official_id is not None
-                and name_matches_official(raw["name"], acting_official)
+                and official_name_in_typed_name(raw["name"], acting_official)
             )
             if row["is_own_row"]:
                 # The visitor's own row shows the name; every other row keeps
@@ -667,16 +673,46 @@ def _group_by_status(items: list) -> dict:
     return groups
 
 
-def _external_row_data(item: dict) -> dict:
+def _association_resolver():
+    """Resolve each distinct sheet value at most once per confirm request.
+
+    A real import has thousands of rows but only a handful of distinct
+    association strings. Letting ExternalGameOfficialEntry.save() resolve the
+    raw value per row would add 1-3 SELECTs to every entry. Failures are
+    cached as errors too and re-raised per row, so _commit still reports an
+    unknown association as a per-row failure instead of a 500.
+    """
+    cache = {}
+
+    def resolve(value):
+        if value not in cache:
+            try:
+                cache[value] = resolve_association(value)
+            except UnknownAssociationError as error:
+                cache[value] = error
+        result = cache[value]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    return resolve
+
+
+def _external_row_data(item: dict, resolve=None) -> dict:
     """Rebuilds the ExternalGameOfficialEntry kwargs from a stored
     suggestion dict (whose date/notification_date are ISO strings, see
-    _external_suggestion_to_initial)."""
+    _external_suggestion_to_initial). ``resolve`` turns the sheet's free-text
+    association into an Association instance once per distinct value; without
+    it the entry falls back to its own per-value resolver (manual entry)."""
+    association = item.get("association") or ""
+    if resolve is not None:
+        association = resolve(association)
     return {
         "official_id": item.get("official_id"),
         "number_games": item.get("number_games"),
         "date": _parse_iso_date(item.get("date")),
         "position": item.get("position"),
-        "association": item.get("association") or "",
+        "association": association,
         "halftime_duration": item.get("halftime_duration"),
         "has_clockcontrol": bool(item.get("has_clockcontrol")),
         "is_international": bool(item.get("is_international")),
@@ -736,6 +772,7 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
         selected_internal = _selected_ids(request, "internal_rows")
 
         official_service = OfficialService()
+        resolve = _association_resolver()
         external_created, external_errors = self._commit(
             [
                 item
@@ -743,7 +780,7 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
                 if item.get("row_number") in selected_external
             ],
             official_service.create_external_official_entry,
-            _external_row_data,
+            partial(_external_row_data, resolve=resolve),
         )
         internal_created, internal_errors = self._commit(
             [
@@ -1033,6 +1070,9 @@ class MoodleLoginView(View):
                 password = form.cleaned_data["password"]
                 moodle_service = MoodleService()
                 official_id = moodle_service.login(username, password)
+                # Privilege boundary: drop the pre-auth session key so a
+                # fixated anonymous session cannot become this logged-in one.
+                request.session.cycle_key()
                 request.session[MOODLE_LOGGED_IN_USER] = official_id
 
                 response = redirect(safe_next(request))

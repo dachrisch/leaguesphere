@@ -22,6 +22,11 @@ one row can never delete a slot — hiding a default is not expressible yet (the
 crew-template/count layer). The table therefore only holds overrides; a league
 without rows behaves like today.
 
+`OfficialExternalGames.association` is a non-nullable FK to
+[gamedays](../gamedays/AGENTS.md)'s `Association` (`on_delete=PROTECT`), migrated
+from free text in `0017_officialexternalgames_association_fk.py`; unknown values
+are rejected by the shared resolver instead of being stored blank.
+
 ## Service layer (`service/`)
 - `official_service.py`, `officials_repository_service.py` — core logic + data access.
   `official_service.py` also holds `LICENSE_LEVELS` (`["F1","F2","F3","F4"]`, best-to-worst) and
@@ -54,6 +59,30 @@ without rows behaves like today.
 - `official_profile.py` — shared official-profile-URL helper, used by both `moodle/moodle_service.py`
   and matchreport's `model_wrapper.py`.
 - `moodle/` — external Moodle license-report integration.
+- `association_resolution.py` — shared resolver for the free-text association
+  values of external games (exact abbreviation → alias map → case-insensitive
+  name). Used by the migration, the import and the self-service forms; five
+  production values have no association of their own and alias to an existing
+  one.
+
+## Self-service (`selfservice.py`, `forms_selfservice.py`)
+Officials manage their own duties after a Moodle (offd.de) login; staff can do
+the same for anyone. `can_edit_official()` is the permission gate — a Moodle user
+is bound to their own `Official` (a posted `official_id` is ignored unless staff)
+and every write view, all behind `SelfServiceWriteMixin`, rechecks the target
+row's owner server-side.
+- `selfservice.py` — claim/take over a `GameOfficial` row, add an assignment,
+  clear an official (`unassign`), edit/delete external games, clear a DFFL
+  assignment (`DfflGameDeleteView` keeps the row with its typed name and
+  position and only sets `official=None`), and add several external games at
+  once. `meine-einsaetze/` is the filtered "my duties" view.
+- `forms_selfservice.py` — `ExternalGameForm`/`ExternalGameFormSet` (association
+  dropdown, multi-row add) and `AddAssignmentForm` (gameday → game → position).
+- Routes in `urls.py`, all named `view-officials-selfservice-*`:
+  `gameofficial/<pk>/claim/`, `gameofficial/add-assignment/`,
+  `gameofficial/<pk>/unassign/`, `gameofficial/<pk>/delete/` (clear a DFFL
+  assignment), `external/<pk>/edit/`, `external/<pk>/delete/`,
+  `external/multi-add/`.
 
 ## API & routes
 - `api/` (`views.py`, `serializers.py`, `urls.py`) — official data endpoints,

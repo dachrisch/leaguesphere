@@ -115,7 +115,10 @@ class TestConfirmCancelHonoursNext(TestCase):
         session.save()
 
     def test_claim_confirm_cancel_links_back_to_gameday(self):
-        row = GameOfficialFactory(gameinfo=self.gameinfo, official=None)
+        # A Moodle official may only take a ? row whose typed name is theirs.
+        row = GameOfficialFactory(
+            gameinfo=self.gameinfo, official=None, name="Max Mustermann"
+        )
 
         response = self.client.get(
             reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}), {"next": self.next_url}
@@ -127,7 +130,9 @@ class TestConfirmCancelHonoursNext(TestCase):
         assert "Abbrechen" in content
 
     def test_claim_confirm_cancel_without_next_keeps_einsaetze_default(self):
-        row = GameOfficialFactory(gameinfo=self.gameinfo, official=None)
+        row = GameOfficialFactory(
+            gameinfo=self.gameinfo, official=None, name="Max Mustermann"
+        )
 
         content = self.client.get(
             reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk})
