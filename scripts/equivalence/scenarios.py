@@ -49,6 +49,8 @@ class Step:
     # Capture a numeric id from the response body before normalisation (the
     # legacy wizard renders the gameinfo id in its table).
     capture_regex: str | None = None
+    # Capture several ids from one response before it is normalised.
+    capture_many: dict | None = None
     # Multipart file upload (officials import); name -> (filename, bytes, type).
     files: dict | None = None
     # Extra request headers (e.g. the scorecard device id).
@@ -936,6 +938,16 @@ SCENARIOS = {
             expect=409,
         ),
         Step(
+            name="read-summary-team-ids",
+            method="GET",
+            path="/api/game/{game_id}/summary",
+            expect=200,
+            capture_many={
+                "team_home_id": "game.id_home",
+                "team_away_id": "game.id_away",
+            },
+        ),
+        Step(
             name="halftime-put",
             method="PUT",
             path="/api/game/{game_id}/halftime",
@@ -1165,6 +1177,15 @@ def run_scenario(name, sessions, context, run_id):
                 context[step.capture] = value
                 run.captured[step.capture] = value
                 run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
+        if step.capture_many and isinstance(payload, (dict, list)):
+            for field, path in step.capture_many.items():
+                try:
+                    value = _pluck(payload, path)
+                except (IndexError, KeyError, TypeError):
+                    value = None
+                if value is not None:
+                    context[field] = value
+                    run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
         if step.capture_regex:
             match = re.search(step.capture_regex, response.body)
             if match:

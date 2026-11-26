@@ -125,3 +125,47 @@ def test_string_file_contents_are_resolved_before_the_request():
     finally:
         del scenarios.SCENARIOS["string-file"]
     assert seen["files"]["file"][1] == "value=sf"
+
+
+def test_capture_many_extracts_several_ids_and_tolerates_missing_paths():
+    step = scenarios.Step(
+        name="many",
+        method="GET",
+        path="/api/game/{game_id}/summary",
+        capture_many={
+            "home": "game.id_home",
+            "away": "game.id_away",
+            "missing": "game.no_such_field",
+        },
+    )
+    seen = {}
+
+    class Session:
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            files=None,
+            headers=None,
+        ):
+            return type(
+                "R",
+                (),
+                {
+                    "status": 200,
+                    "body": '{"game":{"id_home":"11","id_away":"12"}}',
+                    "url": path,
+                    "method": method,
+                    "headers": {},
+                    "json": lambda self: {"game": {"id_home": "11", "id_away": "12"}},
+                },
+            )()
+
+    scenarios.SCENARIOS["capture-many"] = [step]
+    try:
+        run = scenarios.run_scenario("capture-many", {"staff": Session()}, {}, "cm")
+    finally:
+        del scenarios.SCENARIOS["capture-many"]
+    assert run.steps
