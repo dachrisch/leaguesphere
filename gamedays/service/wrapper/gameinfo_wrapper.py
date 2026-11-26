@@ -90,13 +90,15 @@ class GameinfoWrapper(object):
 
     def update_standing(self, standing: str):
         try:
-            group_id = int(standing)
-            group = league_group_hooks.group_by_id(group_id)
-            if group is None:
-                raise ObjectDoesNotExist
-            self.gameinfo.standing = group.name
-            self.gameinfo.league_group = group
+            group = league_group_hooks.group_by_id(int(standing))
         except (TypeError, ValueError, ObjectDoesNotExist):
+            group = None
+        if group is None:
+            # Explicit fallback: a non-numeric standing or a missing group
+            # stays a free-text standing with no league group.
             self.gameinfo.standing = standing
             self.gameinfo.league_group = None
+        else:
+            self.gameinfo.standing = group.name
+            self.gameinfo.league_group = group
         self.gameinfo.save()

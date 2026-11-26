@@ -1,3 +1,5 @@
+from django.core.exceptions import ObjectDoesNotExist
+
 from gamedays.forms import (
     GamedayFormatBaseFormSet,
     SCHEDULE_MAP,
@@ -66,7 +68,12 @@ class GamedayFormatStepHandler(WizardStepHandler):
             cleaned_data = current_form.cleaned_data
             league_group = cleaned_data.get(GamedayFormatForm.LEAGUE_GROUP_C)
             if league_group:
-                league_group = league_group_hooks.group_by_id(league_group)
+                group_id = league_group
+                league_group = league_group_hooks.group_by_id(group_id)
+                if league_group is None:
+                    # The hidden field pointed at a deleted group: fail like
+                    # LeagueGroup.DoesNotExist did before the inversion.
+                    raise ObjectDoesNotExist(f"Unknown league group id: {group_id}")
 
             grouped_teams += [
                 GroupSchedule(
