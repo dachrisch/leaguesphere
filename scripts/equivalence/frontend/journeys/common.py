@@ -19,15 +19,16 @@ from capture import StepCapture, capture_step  # noqa: E402
 from transport import Session  # noqa: E402
 
 
-def api_session(context, username, password):
+def api_session(context):
     """An HTTP session against the same side as this browser context."""
     base_url = getattr(context, "ls_base_url", "") or getattr(context, "base_url", "")
-    return Session(base_url, username=username, password=password)
+    basic = getattr(context, "ls_basic_auth", ("", ""))
+    return Session(base_url, username=basic[0], password=basic[1])
 
 
-def discover(context, username, password):
+def discover(context):
     """Pick one gameday/game pair that exists on the shared stage DB."""
-    session = api_session(context, username, password)
+    session = api_session(context)
     response = session.request("/api/gamedays/")
     if response.status != 200:
         return {}
@@ -72,6 +73,9 @@ def run_steps(
 ):
     """Open ``path``, apply each ``(name, action)`` and capture the state."""
     page = context.new_page()
+    # Never hold a liveticker SSE connection: it would pin the side's worker
+    # and stall unrelated requests (the reason the ref route went unhealthy).
+    page.route("**/api/liveticker/stream/**", lambda route: route.abort())
     capture = StepCapture(tokens)
     page.on(
         "request",

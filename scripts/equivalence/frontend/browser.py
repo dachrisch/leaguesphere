@@ -36,23 +36,31 @@ def build_context(url, username, password, credentials, errors, browser):
         service_workers="block",
     )
     # Playwright's BrowserContext has no public `base_url` attribute; the
-    # journeys need the side's URL for their API session.
+    # journeys need the side's URL and the proxy credential for API sessions.
     context.ls_base_url = url
+    context.ls_basic_auth = (username, password)
     context.role_pages = {}
     for role, (user, secret) in credentials.items():
         if not user or not secret:
             context.role_pages[role] = None
             continue
-        page = context.new_page()
-        page.goto("/login/")
-        page.locator('input[name="username"]').fill(user)
-        page.locator('input[name="password"]').fill(secret)
-        page.locator('button[type="submit"], input[type="submit"]').first.click()
-        if "/login/" in page.url:
+        # Log in through the stdlib transport, which sends the `Referer:
+        # https://localhost/...` the proxied Django expects, then hand the
+        # resulting cookies to the browser. A browser form POST sends the
+        # tunnel hostname as Referer and fails CSRF verification.
+        session = Session(url, username=username, password=password)
+        response = session.login(user, secret)
+        if response.status >= 400 or "/login/" in response.url:
             errors.append(f"login failed for role `{role}`")
             context.role_pages[role] = None
-        else:
-            context.role_pages[role] = page
+            continue
+        context.add_cookies(
+            [
+                {"name": cookie.name, "value": cookie.value, "url": url}
+                for cookie in session._cookies
+            ]
+        )
+        context.role_pages[role] = True
     return context
 
 
@@ -82,6 +90,10 @@ def real_deps():
         "context": build_context,
         "sha": sha_probe,
         "journeys": journeys.JOURNEYS,
+        "close_contexts": lambda contexts: [
+            context.close() for context in contexts.values()
+        ],
+        "close_browser": lambda browser: (browser.close(), playwright.stop()),
         "comment": lambda pr, text: subprocess.run(
             ["gh", "pr", "comment", str(pr), "--body", text], check=False
         ),

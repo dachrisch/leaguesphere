@@ -59,6 +59,8 @@ def make_deps(steps_ref=None, steps_cand=None, skipped=(), journeys=None):
         "sha": sha,
         "journeys": journeys or {"demo": journey},
         "browser": object(),
+        "close_contexts": lambda contexts: calls.update(closed=len(contexts)),
+        "close_browser": lambda browser: None,
         "comment": lambda pr, text: calls["comment"].append((pr, text)),
     }
     return deps, calls

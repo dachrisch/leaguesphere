@@ -4,8 +4,7 @@ from .common import click_if_present, discover, run_steps
 
 
 def run(context, run_id, credentials):
-    user, password = credentials.get("staff", ("", ""))
-    ids = discover(context, user, password)
+    ids = discover(context)
     if not ids.get("game_id"):
         return {}, ["tracking:no-game-on-stage"]
     tokens = {
