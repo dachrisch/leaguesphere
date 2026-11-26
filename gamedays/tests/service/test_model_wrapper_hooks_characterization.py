@@ -32,6 +32,29 @@ class ModelWrapperCharacterization(TestCase):
             "gamedays.models", fromlist=["Gameday"]
         ).Gameday.objects.first()
 
+    def test_no_gameinfo_raises(self):
+        with patch("gamedays.service.model_wrapper.Gameinfo.objects") as objects:
+            objects.select_related.return_value.filter.return_value.exists.return_value = (
+                False
+            )
+            with pytest.raises(
+                __import__(
+                    "gamedays.models", fromlist=["Gameinfo"]
+                ).Gameinfo.DoesNotExist
+            ):
+                GamedayModelWrapper(self.gameday.pk)
+
+    def test_construction_uses_the_registered_season_settings_hook(self):
+        config, ruleset = object(), object()
+        with patch(
+            "gamedays.service.model_wrapper.league_table_hooks.season_settings",
+            return_value=(config, ruleset),
+        ) as settings:
+            wrapper = GamedayModelWrapper(self.gameday.pk)
+        settings.assert_called_once()
+        assert wrapper.league_season_config is config
+        assert wrapper.league_season_ruleset is ruleset
+
     def test_empty_values_dataframe_raises(self):
         with patch("gamedays.service.model_wrapper.Gameinfo.objects") as objects:
             objects.select_related.return_value.filter.return_value.exists.return_value = (
@@ -69,13 +92,12 @@ class ModelWrapperCharacterization(TestCase):
         assert wrapper._games_with_result.empty
 
     def test_staff_passcheck_details_empty_and_populated(self):
+        """Pin the queryset shape at the hook boundary, not a mock's return."""
         wrapper = _wrapper()
         with patch(
-            "gamedays.service.passcheck_hooks.staff_passcheck_details"
-        ) as details:
-            details.return_value = pd.DataFrame(
-                [], columns=["Zeitpunkt", "Schiedsrichter", "Account", "Team", "Notiz"]
-            )
+            "passcheck.service.gamedays_hooks.PasscheckVerification.objects"
+        ) as objects:
+            objects.filter.return_value.values.return_value = []
             empty = wrapper.get_staff_passcheck_details(1)
             assert list(empty.columns) == [
                 "Zeitpunkt",
@@ -84,18 +106,7 @@ class ModelWrapperCharacterization(TestCase):
                 "Team",
                 "Notiz",
             ]
-            details.return_value = pd.DataFrame(
-                [
-                    {
-                        "Zeitpunkt": "2026-01-01",
-                        "Schiedsrichter": "A",
-                        "Account": "u",
-                        "Team": "T",
-                        "Notiz": "a</br>b",
-                    }
-                ]
-            )
-            unused = [
+            objects.filter.return_value.values.return_value = [
                 {
                     "created_at": pd.Timestamp("2026-01-01"),
                     "official_name": "A",
@@ -105,7 +116,21 @@ class ModelWrapperCharacterization(TestCase):
                 }
             ]
             populated = wrapper.get_staff_passcheck_details(1)
-            assert "</br>" in populated["Notiz"].iloc[0]
+        assert populated["Notiz"].iloc[0] == "a</br>b"
+        assert populated["Schiedsrichter"].iloc[0] == "A"
+        assert populated["Zeitpunkt"].iloc[0] == "2026-01-01 00:00:00"
+
+    def test_construction_without_season_settings_hook_keeps_the_fallback(self):
+        with patch(
+            "gamedays.service.model_wrapper.registry.is_registered",
+            return_value=False,
+        ):
+            wrapper = GamedayModelWrapper(self.gameday.pk)
+        assert wrapper.league_season_ruleset is None
+        assert wrapper.league_season_config is None
+        table = wrapper._get_table()
+        with patch.object(GamedayModelWrapper, "_get_table", return_value=table):
+            assert wrapper.get_qualify_table() is table
 
     def test_qualify_table_fallbacks(self):
         table = pd.DataFrame([{gs.STANDING: "Gruppe 1"}])
@@ -299,7 +324,8 @@ class ModelWrapperCharacterization(TestCase):
             objects.filter.return_value.exclude.return_value.exclude.return_value.values.return_value = [
                 event
             ]
-            wrapper._get_player_events_table("X", "xs")
+            jersey_only = wrapper._get_player_events_table("X", "xs")
+        assert list(jersey_only["Spieler"]) == ["A #7"]
 
         class Config:
             def get_gameday_statistic_settings(self):
@@ -328,7 +354,8 @@ class ModelWrapperCharacterization(TestCase):
             objects.filter.return_value.exclude.return_value.exclude.return_value.values.return_value = [
                 event
             ]
-            wrapper._get_player_events_table("X", "xs")
+            named = wrapper._get_player_events_table("X", "xs")
+        assert list(named["Spieler"]) == ["A #7 - First Last"]
         with (
             patch("gamedays.service.model_wrapper.TeamLog.objects") as objects,
             patch.object(
@@ -341,7 +368,8 @@ class ModelWrapperCharacterization(TestCase):
                 event
             ]
             names.loc[0, "first_name"] = None
-            wrapper._get_player_events_table("X", "xs")
+            unknown = wrapper._get_player_events_table("X", "xs")
+        assert list(unknown["Spieler"]) == ["A #7 Unbekannt"]
 
 
 class StatisticsWrapperCharacterization(TestCase):

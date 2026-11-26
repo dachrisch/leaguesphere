@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from django.apps import apps
 from django.core.exceptions import ObjectDoesNotExist
 from pandas import DataFrame
 
@@ -120,10 +119,18 @@ class GamedayModelWrapper:
         self._games_with_result: DataFrame = games_with_result
         self._resolve_placeholders()
 
-        (
-            self.league_season_config,
-            self.league_season_ruleset,
-        ) = league_table_hooks.season_settings(self.gameday.league, self.gameday.season)
+        if registry.is_registered("season_settings"):
+            (
+                self.league_season_config,
+                self.league_season_ruleset,
+            ) = league_table_hooks.season_settings(
+                self.gameday.league, self.gameday.season
+            )
+        else:
+            # Match the original apps.is_installed("league_table") fallback:
+            # the wrapper still builds and the qualify table stays unchanged.
+            self.league_season_config = None
+            self.league_season_ruleset = None
 
     def _resolve_placeholders(self):
         if (

@@ -6,8 +6,6 @@ gamedays; ruleset/config/engine resolution lives here.
 
 from __future__ import annotations
 
-import pandas as pd
-
 from gamedays.service import registry
 from league_table.models import LeagueRuleset, LeagueSeasonConfig
 from league_table.service.datatypes import LeagueConfigRuleset
