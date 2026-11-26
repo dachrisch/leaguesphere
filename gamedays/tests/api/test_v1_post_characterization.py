@@ -10,7 +10,13 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from gameevents.models import GameEvent, GameState
-from gameevents.tests.api.support import legacy_body, login, make_game, post_legacy, sub_id
+from gameevents.tests.api.support import (
+    legacy_body,
+    login,
+    make_game,
+    post_legacy,
+    sub_id,
+)
 from gamedays.models import TeamLog
 
 SUB_ID = sub_id(1)
