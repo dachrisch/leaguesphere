@@ -53,6 +53,32 @@ python3 scripts/equivalence/runner.py \
 - The officials sign-up flow is Moodle-gated (`MOODLE_LOGGED_IN_USER`), so
   with harness accounts the scenario only exercises the guard redirect.
 
+## Flag-ON comparison (Phase 2)
+
+On servyy-test the flag is turned on for `cand` only through the
+`ls_agent_stage` role's `ls_agent_stage_cand_env` (a Compose `environment`
+entry overrides the `false` inherited from the stage env file). `ref` is never
+touched. The infra branch is `dachrisch/servyy-container`
+`agent-stage-phase2-cand-env` and is applied by the coordinator, not the agent:
+
+```bash
+./servyy-test.sh --tags ls.agent.stage \
+  -e '{"ls_agent_stage_cand_env": {"SCORECARD_EVENT_FEED": "true"}}'
+```
+
+After confirming both baked SHAs via `/health/version/`, run the same
+`runner.py` command as the flag-OFF report with the two tunnel URLs. The stage
+is a prod clone with no event-sourced games, so the event path is exercised by
+the `v2-events-write`, `v1-shadow-write` and `reconciliation-flag` scenarios.
+Restore the flag-off baseline before any later flag-OFF run:
+
+```bash
+./servyy-test.sh --tags ls.agent.stage -e '{"ls_agent_stage_cand_env": {}}'
+```
+
+See [the Phase 2 flag-on report](../../../docs/topics/planning/current/2026-11-25-phase2-flag-on-report.md)
+for the recorded result.
+
 ## Redaction
 
 The report is posted to public pull requests. It contains probe names, field
