@@ -27,6 +27,8 @@ export default defineConfig({
         // Layer 8
         "src/screens/tracking-flow/logic.ts",
         "src/screens/tracking-flow/SyncStrip.tsx",
+        // Layer 9
+        "src/screens/tracking-flow/useTrackingLog.ts",
       ],
       thresholds: { branches: 100, perFile: true },
     },
