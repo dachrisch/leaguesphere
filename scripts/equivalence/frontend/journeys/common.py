@@ -21,16 +21,39 @@ from transport import Session  # noqa: E402
 
 
 def api_session(context):
-    """An HTTP session against the same side as this browser context."""
+    """An HTTP session against the same side as this browser context.
+
+    A role view carries the transport session that performed the login, so
+    discovery sees the same games the signed-in user does. The anonymous base
+    context falls back to a basic-auth-only session.
+    """
+    role_session = getattr(context, "ls_role_session", None)
+    if role_session is not None:
+        return role_session
     base_url = getattr(context, "ls_base_url", "") or getattr(context, "base_url", "")
     basic = getattr(context, "ls_basic_auth", ("", ""))
     return Session(base_url, username=basic[0], password=basic[1])
 
 
-def discover(context):
-    """Pick one gameday/game pair that exists on the shared stage DB."""
+def role_view(context, role):
+    """The isolated browser context logged in as ``role`` (or ``None``)."""
+    return getattr(context, "role_views", {}).get(role)
+
+
+def discover(context, game_status=None, prefer_last=False):
+    """Pick one gameday/game pair that exists on the shared stage DB.
+
+    ``game_status`` selects a game by its wire status; the scorecard setup
+    journey needs a planned game, while the tracking journey needs a live one.
+    ``prefer_last`` picks the most recently dated live game: older games on
+    this stage have no staff crew assignment and render read-only tiles. The
+    default keeps the other journeys' original first-game behaviour.
+    """
     session = api_session(context)
-    response = session.request("/api/gamedays/")
+    try:
+        response = session.request("/api/gamedays/?page_size=100")
+    except OSError:  # a transient proxy disconnect is a discovery miss
+        return {}
     if response.status != 200:
         return {}
     try:
@@ -38,11 +61,19 @@ def discover(context):
     except ValueError:
         return {}
     items = payload.get("results", payload if isinstance(payload, list) else [])
+    # Scanning from the newest gameday first finds a live game with a staff
+    # crew in a handful of requests; older live games on this stage render
+    # read-only tiles. The default keeps the original first-game behaviour.
+    if prefer_last:
+        items = list(reversed(items))
     for gameday in items:
         gameday_id = gameday.get("id")
         if not gameday_id:
             continue
-        games_response = session.request(f"/api/gamedays/{gameday_id}/games/")
+        try:
+            games_response = session.request(f"/api/gamedays/{gameday_id}/games/")
+        except OSError:  # a transient proxy disconnect is a discovery miss
+            continue
         if games_response.status != 200:
             continue
         try:
@@ -53,10 +84,18 @@ def discover(context):
             games = games_payload
         else:
             games = games_payload.get("results", [])
-        if games and games[0].get("id"):
+        candidates = [
+            game
+            for game in games
+            if game.get("id")
+            and (game_status is None or game.get("status") == game_status)
+        ]
+        if candidates:
+            chosen = candidates[-1] if prefer_last else candidates[0]
             return {
                 "gameday_id": gameday_id,
-                "game_id": games[0]["id"],
+                "game_id": chosen["id"],
+                "game_status": chosen.get("status") or "",
                 "season_id": gameday.get("season") or "",
                 "league_id": gameday.get("league") or "",
             }
@@ -107,18 +146,22 @@ def run_steps(
             }
         ),
     )
+    step_name = "open"
     try:
         page.goto(path, wait_until=wait)
         wait_for_quiet(page, capture)
-        steps[f"{prefix}open"] = capture_step(page, capture=capture, tokens=tokens)
+        steps[f"{prefix}{step_name}"] = capture_step(
+            page, capture=capture, tokens=tokens
+        )
         for name, action in actions:
+            step_name = name
             action(page)
             wait_for_quiet(page, capture)
-            steps[f"{prefix}{name}"] = capture_step(
+            steps[f"{prefix}{step_name}"] = capture_step(
                 page, capture=capture, tokens=tokens
             )
     except Exception as error:  # a missing selector is a skip, never a fake diff
-        skipped.append(f"{path}: {type(error).__name__}")
+        skipped.append(f"{path}:{step_name}: {type(error).__name__}")
     finally:
         page.close()
 

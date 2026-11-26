@@ -29,9 +29,13 @@ The first noise floor also fixes the volatile-node allowlist below — it is
 reviewed, never widened silently.
 
 Role logins go through the stdlib transport (which sends the `Referer:
-https://localhost/...` the proxied Django requires) and their cookies are
-injected into the browser context. Each step waits until no new API request
-has arrived for 600 ms, so parallel mount fetches are captured deterministically.
+https://localhost/...` the proxied Django requires). Each role gets its **own**
+browser context: Django's `sessionid` cookie is identical for every account,
+so one shared jar would silently leave the last role logged in (and the
+scorecard journeys on the login page). A missing or failed role login skips
+the affected journey, never fakes a step. Each step waits until no new API
+request has arrived for 600 ms, so parallel mount fetches are captured
+deterministically.
 SSE requests are aborted and every page/context is closed after a journey, so a
 stream can never pin a side's worker.
 
@@ -58,11 +62,15 @@ stream can never pin a side's worker.
 
 ## Journeys
 
-`scorecard_v2_tracking` (record + undo), `scorecard_v2_gamesetup` (crew),
-`designer_gametable` (team cell), `officials_pages` (signup guard + licence
-view), `passcheck` (eligibility list), `liveticker` (public page and its XHR
-sequence). All six run on **every** layer (PROVISIONAL P10); a failure is
-attributed by journey and step in the report.
+`scorecard_v2_tracking` (log filter, Spielzug sheet, extra-point sheet and
+panels of a live game; no writes to the shared prod-clone stage),
+`scorecard_v2_gamesetup` (crew picker and start confirmation of a planned
+game; the first tap only opens the confirmation), `designer_gametable` (team
+cell), `officials_pages` (signup guard + licence view), `passcheck`
+(eligibility list), `liveticker` (public page and its XHR sequence). All six
+run on **every** layer (PROVISIONAL P10); a failure is attributed by journey
+and step in the report. The first two journeys exercise every screen split by
+Phase 3 Layers 6–12, so the DOM/ARIA diff is a real behaviour witness.
 
 Writes use run-id-tagged entities discovered through the API; ids are
 normalised to `<entity-N>`. Stage rows are never deleted — both sides share one

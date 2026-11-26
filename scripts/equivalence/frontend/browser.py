@@ -25,8 +25,8 @@ import normalise  # noqa: E402
 from transport import Session  # noqa: E402
 
 
-def build_context(url, username, password, credentials, errors, browser):
-    """One browser context per side: basic auth plus the four role logins."""
+def _new_context(browser, url, username, password):
+    """Create one isolated browser context with the side's basic auth."""
     context = browser.new_context(
         base_url=url,
         http_credentials=(
@@ -39,7 +39,21 @@ def build_context(url, username, password, credentials, errors, browser):
     # journeys need the side's URL and the proxy credential for API sessions.
     context.ls_base_url = url
     context.ls_basic_auth = (username, password)
+    return context
+
+
+def build_context(url, username, password, credentials, errors, browser):
+    """One browser context per side, plus one isolated context per role.
+
+    All four role sessions cannot share a single cookie jar: Django names the
+    session cookie ``sessionid`` regardless of the account, so the last login
+    silently replaced the others and the scorecard journeys landed on the
+    login page. Each role now has its own context. Role absence or a failed
+    login is recorded, never faked.
+    """
+    context = _new_context(browser, url, username, password)
     context.role_pages = {}
+    context.role_views = {}
     for role, (user, secret) in credentials.items():
         if not user or not secret:
             context.role_pages[role] = None
@@ -54,14 +68,27 @@ def build_context(url, username, password, credentials, errors, browser):
             errors.append(f"login failed for role `{role}`")
             context.role_pages[role] = None
             continue
-        context.add_cookies(
+        view = _new_context(browser, url, username, password)
+        # The journey's API discovery uses the same logged-in session: the
+        # anonymous gameday list hides several live games from the harness.
+        view.ls_role_session = session
+        view.add_cookies(
             [
                 {"name": cookie.name, "value": cookie.value, "url": url}
                 for cookie in session._cookies
             ]
         )
+        context.role_views[role] = view
         context.role_pages[role] = True
     return context
+
+
+def close_contexts(contexts):
+    """Close a side's base context and every role context it owns."""
+    for context in contexts.values():
+        for view in getattr(context, "role_views", {}).values():
+            view.close()
+        context.close()
 
 
 def sha_probe(url, username, password):
@@ -90,9 +117,7 @@ def real_deps():
         "context": build_context,
         "sha": sha_probe,
         "journeys": journeys.JOURNEYS,
-        "close_contexts": lambda contexts: [
-            context.close() for context in contexts.values()
-        ],
+        "close_contexts": close_contexts,
         "close_browser": lambda browser: (browser.close(), playwright.stop()),
         "comment": lambda pr, text: subprocess.run(
             ["gh", "pr", "comment", str(pr), "--body", text], check=False
