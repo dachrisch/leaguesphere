@@ -27,7 +27,7 @@ class FakeLocator:
     def count(self):
         return self._count
 
-    def click(self):
+    def click(self, **kwargs):
         self.clicked += 1
 
     @property

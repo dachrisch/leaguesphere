@@ -187,7 +187,12 @@ def optional_click(page, selector, absent):
     if not locator.count():
         absent.append(selector)
         return
-    locator.first.click()
+    try:
+        locator.first.click(timeout=2000)
+    except Exception:
+        # An element that exists but cannot be clicked is the same observable
+        # state as an absent one for an optional control.
+        absent.append(selector)
 
 
 def no_op(page, absent):
@@ -208,3 +213,14 @@ def optional(selector):
 def press(key):
     """Build a keyboard action for ``run_steps``."""
     return lambda page, absent: page.keyboard.press(key)
+
+
+def id_tokens(ids, run_id):
+    """Tokens for discovered ids plus the two sides' run-id suffixes."""
+    tokens = dict(ids)
+    # The runner already suffixes the run id with -ref / -cand before calling
+    # the journey, so tokenise the whole suffix exactly as the backend does.
+    tokens[run_id] = "<run-id>"
+    tokens[f"{run_id}-ref"] = "<run-id>"
+    tokens[f"{run_id}-cand"] = "<run-id>"
+    return tokens

@@ -68,7 +68,7 @@ def create(context, run_id, *, started=False, finished=False, locked=False):
 
     games = session.request(f"/api/gamedays/{gameday_id}/games/")
     payload = games.json()
-    rows = payload.get("results", payload if isinstance(payload, list) else [])
+    rows = payload if isinstance(payload, list) else payload.get("results", [])
     if not rows:
         raise LookupError(f"fixture game for {run_id} was not published")
     game = rows[0]
