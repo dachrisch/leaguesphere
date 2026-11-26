@@ -108,6 +108,10 @@ def run(args):
     for name in probe_mod.only_left(ref_results, cand_results):
         diffs.setdefault(name, []).append(Diff("$", "missing"))
 
+    etag_revalidation_misses = sorted(
+        set(probe_mod.revalidation_misses(ref_results, probes))
+        | set(probe_mod.revalidation_misses(cand_results, probes))
+    )
     scenario_runs = {}
     scenario_diffs = {}
     context = scenario_context(gamedays)
@@ -142,6 +146,13 @@ def run(args):
             # a single deliberate step diff (Phase 2, PROVISIONAL P4).
             scenario_diffs.update(found)
 
+    verified_contracts = sorted(
+        f"{name}:{step.name}"
+        for name, steps in scenario_mod.SCENARIOS.items()
+        if name in scenario_runs
+        for step in steps
+        if step.expect_body
+    )
     text = report_mod.render_report(
         run_id=run_id,
         ref_sha=ref_sha,
@@ -153,6 +164,8 @@ def run(args):
         scenario_runs=scenario_runs,
         scenario_diffs=scenario_diffs,
         errors=errors,
+        verified_contracts=verified_contracts,
+        etag_revalidation_misses=etag_revalidation_misses,
     )
 
     if args.report:

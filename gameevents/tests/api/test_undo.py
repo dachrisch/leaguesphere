@@ -207,6 +207,54 @@ def test_an_undo_of_a_row_without_an_event_flags_reconciliation(client):
 
 
 @pytest.mark.django_db
+def test_a_sequence_zero_undo_of_the_harness_setup_flags_the_projection(client):
+    """The reconciliation-flag scenario must reach the flag branch.
+
+    A touchdown writes sequence 1; deleting sequence 0 before a sequence-0 row
+    exists returns early in ``record_legacy_undo`` and flags nothing. The
+    harness writes a penalty (sequence 0) as well, so this test pins the real
+    409 / needs_reconciliation contract on both the undo and the feed.
+    """
+
+    game, home, _away = make_game("undo-shared-sequence")
+    login(client)
+    assert (
+        post_legacy(
+            client,
+            game,
+            legacy_body(
+                game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
+            ),
+        ).status_code
+        == 201
+    )
+    assert (
+        post_legacy(
+            client,
+            game,
+            legacy_body(
+                game, home, [{"name": "Strafe", "player": 7, "input": "Holding"}]
+            ),
+        ).status_code
+        == 201
+    )
+    assert TeamLog.objects.filter(gameinfo=game, sequence=0).exists()
+
+    response = delete_sequence(client, game, 0)
+
+    assert response.status_code == 200
+    state = GameState.objects.get(game=game)
+    assert state.needs_reconciliation is True
+    assert "sequence 0" in state.reconciliation_note
+
+    feed = client.get(
+        reverse("api-game-feed", kwargs={"game_id": game.pk}), {"after": 0}
+    )
+    assert feed.status_code == 409
+    assert feed.json()["needs_reconciliation"] is True
+
+
+@pytest.mark.django_db
 def test_an_unlogged_row_is_flagged_even_when_the_game_has_events(client):
     game, home, _away = make_game("undo-unlogged-mixed")
     login(client)

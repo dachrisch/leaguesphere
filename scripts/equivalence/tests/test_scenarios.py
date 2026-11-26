@@ -28,6 +28,7 @@ class FakeApi:
         self.id_base = id_base
         self.calls = []
         self.empty_games = False
+        self.flagged = False
 
     def request(
         self,
@@ -91,10 +92,19 @@ class FakeApi:
         if method == "POST" and "/gamelog/" in path:
             return self._json(201, {"events": [{"game": self.id_base + 50}]})
         if method == "DELETE" and "/gamelog/" in path:
-            return self._json(204, {})
+            self.flagged = True
+            return self._json(200, {"events": []})
         if method == "POST" and path.endswith("/events"):
             return self._json(201, {"events": []})
         if method == "GET" and "/feed" in path:
+            if self.flagged:
+                return self._json(
+                    409,
+                    {
+                        "detail": "the projection needs reconciliation",
+                        "needs_reconciliation": True,
+                    },
+                )
             return self._json(200, {"events": [], "cursor": 0})
         if method == "GET" and "/liveticker/" in path:
             return self._json(200, [])

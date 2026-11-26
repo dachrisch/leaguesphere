@@ -73,7 +73,13 @@ Scenario diffs use the same file with `<scenario>:<step>` keys, e.g.
 `{"v1-shadow-write:read-feed": ["$.events[]"]}`. Matching diffs are reported
 separately as intended; anything else is unexplained and fails the run. The
 revalidation probes assert the 200↔304 contract; literal ETag values stay
-normalised noise.
+normalised noise. Each revalidation probe resolves its **own** expanded source
+(`base#category:id`), and a probe that never receives a 304 is listed in the
+report instead of silently passing. Liveticker reads are scoped with
+`?gameday={gameday_id}` so scenario-created games reach the projection path.
+The `reconciliation-flag` scenario writes a real sequence-0 penalty before its
+delete, and the harness asserts `409 {"needs_reconciliation": true}` on both
+sides — a delete that names no row is a no-op, not evidence of the flag path.
 
 ## Files
 

@@ -36,6 +36,10 @@ class Step:
     json: dict | None = None
     form: dict | None = None
     expect: tuple = (200, 201)
+    # A per-side contract the response body must satisfy (e.g. the 409
+    # needs_reconciliation flag check); checked before the two sides are
+    # compared to each other.
+    expect_body: dict | None = None
     capture: str | None = None
     capture_path: str | None = None
     required_capture: bool = False
@@ -676,7 +680,7 @@ SCENARIOS = {
         Step(
             name="read-liveticker",
             method="GET",
-            path="/api/liveticker/",
+            path="/api/liveticker/?gameday={gameday_id}",
             role="anonymous",
             expect=200,
         ),
@@ -700,13 +704,28 @@ SCENARIOS = {
         Step(
             name="read-liveticker",
             method="GET",
-            path="/api/liveticker/",
+            path="/api/liveticker/?gameday={gameday_id}",
             role="anonymous",
             expect=200,
         ),
     ],
     "reconciliation-flag": [
         *_shadow_steps(),
+        # A touchdown writes sequence 1. Deleting sequence 0 before a row
+        # exists there returns early in record_legacy_undo and flags nothing;
+        # a penalty row (EXCLUDED_EVENTS) really creates sequence 0.
+        Step(
+            name="write-sequence-zero",
+            method="POST",
+            path="/api/gamelog/{game_id}",
+            json={
+                "gameId": "{game_id}",
+                "team": "{team_name}",
+                "event": [{"name": "Strafe", "player": 7, "input": "Holding"}],
+                "half": 1,
+            },
+            expect=(200, 201),
+        ),
         Step(
             name="flag-projection",
             method="DELETE",
@@ -719,12 +738,13 @@ SCENARIOS = {
             method="GET",
             path="/api/game/{game_id}/feed",
             role="anonymous",
-            expect=(409, 200),
+            expect=409,
+            expect_body={"needs_reconciliation": True},
         ),
         Step(
             name="read-liveticker",
             method="GET",
-            path="/api/liveticker/",
+            path="/api/liveticker/?gameday={gameday_id}",
             role="anonymous",
             expect=200,
         ),
@@ -770,7 +790,7 @@ SCENARIOS = {
         ),
         *_read_game_id_steps(),
         Step(
-            name="read-games",
+            name="read-games-wizard",
             method="GET",
             path="/api/gamedays/{gameday_id}/games/",
             role="anonymous",
@@ -897,6 +917,14 @@ def run_scenario(name, sessions, context, run_id):
             payload = response.json()
         except ValueError:
             payload = response.body
+        if step.expect_body:
+            if not isinstance(payload, dict) or any(
+                payload.get(key) != value for key, value in step.expect_body.items()
+            ):
+                raise RuntimeError(
+                    f"{name}:{step.name} -> body {payload!r} "
+                    f"(expected {step.expect_body})"
+                )
         if step.capture and step.capture_path and isinstance(payload, (dict, list)):
             try:
                 value = _pluck(payload, step.capture_path)

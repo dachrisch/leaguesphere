@@ -59,6 +59,8 @@ def render_report(
     scenario_runs,
     scenario_diffs,
     errors,
+    verified_contracts=(),
+    etag_revalidation_misses=(),
 ):
     intended_diffs, unexplained = split_intended(diffs, intended)
     # Phase 2: scenario diffs are keyed ``<scenario>:<step>`` and may be
@@ -103,7 +105,12 @@ def render_report(
     lines += ["### Write scenarios", ""]
     if scenario_runs:
         for run in scenario_runs:
-            status = "diff" if run in scenario_diffs else "clean"
+            # Scenario diffs are keyed ``<scenario>:<step>`` since Layer 3.
+            status = (
+                "diff"
+                if any(key.startswith(run + ":") for key in scenario_diffs)
+                else "clean"
+            )
             lines.append(
                 f"- `{run}`: {status}"
                 + (
@@ -119,6 +126,19 @@ def render_report(
     if scenario_diffs:
         lines += ["### Scenario diffs", ""]
         lines += _format_diffs(scenario_diffs)
+        lines.append("")
+
+    if verified_contracts:
+        lines += ["### Verified per-side contracts", ""]
+        lines += [
+            f"- `{name}`: needs_reconciliation on both sides"
+            for name in verified_contracts
+        ]
+        lines.append("")
+
+    if etag_revalidation_misses:
+        lines += ["### ETag revalidation without a 304", ""]
+        lines += [f"- `{name}`" for name in etag_revalidation_misses]
         lines.append("")
 
     if skipped_probes:

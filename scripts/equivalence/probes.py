@@ -121,6 +121,37 @@ def _fill(path, gameday):
     return filled
 
 
+def _validator_source(probe_name):
+    """Name of the probe whose ETag a revalidation probe must reuse.
+
+    ``feed-etag-revalidation#completed:13`` revalidates
+    ``game-feed#completed:13``; the ``#category:id`` sample suffix must be
+    preserved so two samples never share a validator.
+    """
+
+    base, separator, sample = probe_name.partition("#")
+    source_bases = {
+        "feed-etag-revalidation": "game-feed",
+        "liveticker-etag-revalidation": "liveticker-api",
+        "snapshot-etag-revalidation": "snapshot-api",
+    }
+    if base in source_bases:
+        base = source_bases[base]
+    elif base.endswith("-etag-revalidation"):
+        base = base[: -len("-etag-revalidation")]
+    return base + separator + sample
+
+
+def _headers(definition, probe_name):
+    """Resolve a header's ``{source}`` placeholder to the sampled source probe."""
+
+    source_name = _validator_source(probe_name)
+    return {
+        key: value.replace("{source}", source_name)
+        for key, value in definition.get("headers", {}).items()
+    }
+
+
 def expand_probes(manifest, gamedays):
     """Turn manifest entries into concrete probes for this sample."""
     sample = select_sample(manifest, gamedays)
@@ -136,7 +167,7 @@ def expand_probes(manifest, gamedays):
                     path=definition["path"],
                     kind=definition["kind"],
                     role=definition["role"],
-                    headers=definition.get("headers", {}),
+                    headers=_headers(definition, definition["name"]),
                 )
             )
             continue
@@ -147,13 +178,14 @@ def expand_probes(manifest, gamedays):
                 if key in seen:
                     continue
                 seen.add(key)
+                name = f"{definition['name']}#{category}:{gameday.get('id')}"
                 probes.append(
                     Probe(
-                        name=f"{definition['name']}#{category}:{gameday.get('id')}",
+                        name=name,
                         path=path,
                         kind=definition["kind"],
                         role=definition["role"],
-                        headers=definition.get("headers", {}),
+                        headers=_headers(definition, name),
                     )
                 )
     return probes
@@ -182,8 +214,10 @@ def run_probes(sessions, manifest, probes=None):
                 source_name = value[len("@etag:") :]
                 source = results.get(source_name)
                 if source is None:
-                    # Category-expanded probes are named ``base#category:id``;
-                    # a revalidation probe references the base name.
+                    # Older manifests reference a bare base name; resolve it
+                    # to the first category-expanded sample for compatibility.
+                    # New manifests pass the exact ``base#category:id`` name
+                    # from ``{source}`` so the validator is sample-specific.
                     source = next(
                         (
                             result
@@ -204,6 +238,23 @@ def run_probes(sessions, manifest, probes=None):
             etag=_header(response.headers, "ETag"),
         )
     return results, skipped
+
+
+def revalidation_misses(results, probes):
+    """Revalidation probes whose own sample never answered 304.
+
+    A 200 on a conditional request means the validator was wrong or missing,
+    so the 200↔304 contract was not demonstrated for that probe.
+    """
+
+    conditional = {
+        probe.name
+        for probe in probes
+        if any(value.startswith("@etag:") for value in probe.headers.values())
+    }
+    return sorted(
+        name for name in conditional if name in results and results[name].status != 304
+    )
 
 
 def compare_probe_results(left, right):
@@ -251,6 +302,7 @@ __all__ = [
     "expand_probes",
     "load_manifest",
     "only_left",
+    "revalidation_misses",
     "run_probes",
     "select_sample",
 ]

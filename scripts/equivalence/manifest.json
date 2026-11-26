@@ -54,7 +54,7 @@
     {"name": "snapshot-api", "path": "/api/snapshot/", "kind": "json", "role": "anonymous"},
     {"name": "snapshot-standings", "path": "/api/snapshot/?include=standings", "kind": "json", "role": "anonymous"},
     {"name": "snapshot-live", "path": "/api/snapshot/?include=live", "kind": "json", "role": "anonymous"},
-    {"name": "snapshot-etag-revalidation", "path": "/api/snapshot/", "kind": "json", "role": "anonymous", "headers": {"If-None-Match": "@etag:snapshot-api"}},
+    {"name": "snapshot-etag-revalidation", "path": "/api/snapshot/", "kind": "json", "role": "anonymous", "headers": {"If-None-Match": "@etag:{source}"}},
     {"name": "snapshot-invalid", "path": "/api/snapshot/?include=bogus", "kind": "json", "role": "anonymous"},
     {"name": "health", "path": "/health/", "kind": "json", "role": "anonymous"},
     {"name": "season-page", "path": "/gamedays/{season_id}/", "kind": "html", "role": "anonymous", "categories": ["upcoming"]},
@@ -70,10 +70,10 @@
     {"name": "gameday-update-page", "path": "/gamedays/gameday/{gameday_id}/update/", "kind": "html", "role": "staff", "categories": ["designer-template"]},
     {"name": "teammanager-page", "path": "/teammanager/", "kind": "html", "role": "team_manager"},
     {"name": "officials-page", "path": "/officials/", "kind": "html", "role": "official"},
-    {"name": "liveticker-api", "path": "/api/liveticker/", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
-    {"name": "liveticker-page", "path": "/liveticker/", "kind": "html", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
-    {"name": "liveticker-etag-revalidation", "path": "/api/liveticker/", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:liveticker-api"}},
+    {"name": "liveticker-api", "path": "/api/liveticker/?gameday={gameday_id}", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
+    {"name": "liveticker-page", "path": "/liveticker/?gameday={gameday_id}", "kind": "html", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
+    {"name": "liveticker-etag-revalidation", "path": "/api/liveticker/?gameday={gameday_id}", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:{source}"}},
     {"name": "game-feed", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
-    {"name": "feed-etag-revalidation", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:game-feed"}}
+    {"name": "feed-etag-revalidation", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:{source}"}}
   ]
 }

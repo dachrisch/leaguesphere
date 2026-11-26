@@ -90,7 +90,7 @@ def test_characterization_report_errors_and_scenario_diffs():
     text = rendered(
         errors=["harness broke"],
         scenario_runs={"finalize-game": []},
-        scenario_diffs={"finalize-game": [Diff("$.x", VALUE)]},
+        scenario_diffs={"finalize-game:read-gamelog": [Diff("$.x", VALUE)]},
     )
     assert "### Harness errors" in text
     assert "harness broke" in text
