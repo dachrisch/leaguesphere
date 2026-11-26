@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from django.db.models import Q
-
 import pandas as pd
 import pytest
 
@@ -158,8 +156,8 @@ def test_league_season_configs_for_pairs():
         league=gameday.league, season=gameday.season
     )
     result = hooks.league_season_configs_for_pairs(
-        Q(league_id=gameday.league_id, season_id=gameday.season_id)
+        {(gameday.league_id, gameday.season_id)}
     )
     assert [item.pk for item in result] == [config.pk]
-    result = hooks.league_season_configs_for_pairs(Q(league_id=-1, season_id=-1))
+    result = hooks.league_season_configs_for_pairs({(-1, -1)})
     assert result == []

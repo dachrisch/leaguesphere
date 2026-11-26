@@ -268,10 +268,7 @@ def scope_league_season_configs(filters):
     )
     if not pairs:
         return []
-    pair_filter = Q()
-    for league_id, season_id in pairs:
-        pair_filter |= Q(league_id=league_id, season_id=season_id)
-    return league_table_hooks.league_season_configs_for_pairs(pair_filter)
+    return league_table_hooks.league_season_configs_for_pairs(pairs)
 
 
 def _extra_etag_parts(filters, include):

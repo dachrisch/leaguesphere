@@ -6,6 +6,8 @@ gamedays; ruleset/config/engine resolution lives here.
 
 from __future__ import annotations
 
+from django.db.models import Q
+
 from gamedays.service import registry
 from league_table.api.etag import standing_state_parts as _standing_state_parts
 from league_table.api.standings import build_standings as _build_standings
@@ -83,7 +85,11 @@ def register():
         registry.register(name, implementation, "league_table")
 
 
-def league_season_configs_for_pairs(pair_filter):
+def league_season_configs_for_pairs(pairs):
+    """Build the Q here so gamedays never learns league_table's FK names."""
+    pair_filter = Q()
+    for league_id, season_id in pairs:
+        pair_filter |= Q(league_id=league_id, season_id=season_id)
     return list(
         LeagueSeasonConfig.objects.filter(pair_filter)
         .select_related("league", "season")
