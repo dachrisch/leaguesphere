@@ -66,6 +66,18 @@ def test_discover_games_tolerates_bad_and_empty_responses():
     assert "game_id" not in probes.discover_games(no_rows, MANIFEST, GAMEDAYS)[0]
 
 
+def test_probes_with_unresolved_placeholders_are_skipped():
+    empty = probes.discover_games(
+        RecordedSession({("GET", "/api/gamedays/11/games/"): (200, [])}),
+        MANIFEST,
+        GAMEDAYS,
+    )
+    expanded = probes.expand_probes(MANIFEST, empty)
+
+    assert not any("{game_id}" in probe.path for probe in expanded)
+    assert not any(probe.name.startswith("game-feed#") for probe in expanded)
+
+
 def test_manifest_expands_feed_probe_with_the_sampled_game():
     expanded = probes.expand_probes(
         MANIFEST,
@@ -396,7 +408,9 @@ def test_runner_accepts_intended_scenario_diff_and_rejects_unexplained(
         )
 
     monkeypatch.setattr(runner.scenario_mod, "run_scenario", fake_run)
-    monkeypatch.setattr(runner.scenario_mod, "discover_team_id", lambda session: 1)
+    monkeypatch.setattr(
+        runner.scenario_mod, "discover_team_ids", lambda session: [1, 2]
+    )
     monkeypatch.setattr(
         runner,
         "compare_scenario_runs",

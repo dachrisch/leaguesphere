@@ -174,6 +174,10 @@ def expand_probes(manifest, gamedays):
         for category in categories:
             for gameday in sample.get(category, []):
                 path = _fill(definition["path"], gameday)
+                # A gameday with no games leaves {game_id} literal; a probe
+                # against it is a 404 on both sides, not a comparison.
+                if any("{" + name + "}" in path for name in PLACEHOLDERS):
+                    continue
                 key = (path, definition["role"], definition["kind"])
                 if key in seen:
                     continue
