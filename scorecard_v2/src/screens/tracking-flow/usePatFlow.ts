@@ -53,7 +53,7 @@ interface UsePatFlowArgs {
   setupLoadRef: MutableRefObject<Promise<GameSetup | null | undefined> | null>;
   logTeamName: (team: GameLog["home"]) => string | null;
   possessionName: string | null;
-  opponentName: string;
+  opponentName: string | null;
   possessionSide: Side | null;
   takePossession: (teamName: string, originId?: string) => Promise<void>;
   possessionInFlightRef: MutableRefObject<boolean>;
@@ -90,7 +90,7 @@ interface UsePatFlowArgs {
   setBreakStartedAt: Dispatcher<number | null>;
   setPosting: Dispatcher<boolean>;
   setConfirmation: Dispatcher<string | null>;
-  setQuick: Dispatcher<unknown>;
+  setQuick: (value: null) => void;
   setQuickError: Dispatcher<string | null>;
   readOnly: boolean;
   finished: boolean;
