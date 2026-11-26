@@ -1371,7 +1371,7 @@ class TestGameOfficialImportConfirmView(WebTest):
         # Counts, not one line per created row.
         assert content.count("ID: ") == 0
 
-    @patch("officials.views.resolve_association")
+    @patch("officials.import_views.resolve_association")
     def test_confirm_resolves_each_distinct_association_once(self, resolve_mock):
         """A confirm with thousands of rows must not re-resolve the same
         sheet value once per row (1-3 SELECTs per entry). The upload step
