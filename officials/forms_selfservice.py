@@ -88,12 +88,16 @@ class AddAssignmentForm(forms.Form):
     gameinfo = forms.ModelChoiceField(queryset=Gameinfo.objects.none(), label="Spiel")
     position = forms.ChoiceField(choices=(), label="Position")
 
-    def __init__(self, *args, season=None, gameday_id=None, **kwargs):
+    def __init__(self, *args, season=None, gameday_id=None, staff=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.staff = staff
         season = season or date.today().year
-        self.fields["gameday"].queryset = Gameday.objects.filter(
-            date__year=season
-        ).order_by("-date", "name")
+        gamedays = Gameday.objects.filter(date__year=season)
+        if not staff:
+            # Officials may only report duties that already happened; an
+            # early claim would occupy a slot the scorecard will fill later.
+            gamedays = gamedays.filter(date__lte=date.today())
+        self.fields["gameday"].queryset = gamedays.order_by("-date", "name")
         self.fields["gameday"].label_from_instance = _gameday_label
         self.fields["gameinfo"].widget.attrs["class"] = "form-select"
         self.fields["position"].widget.attrs["class"] = "form-select"
@@ -105,11 +109,13 @@ class AddAssignmentForm(forms.Form):
             gameday = Gameday.objects.filter(pk=gameday_id).first()
         except (TypeError, ValueError):
             gameday = None
-        if gameday is None:
+        if gameday is None or (not self.staff and gameday.date > date.today()):
             return
-        self.fields["gameinfo"].queryset = Gameinfo.objects.filter(
-            gameday_id=gameday_id
-        ).prefetch_related("gameresult_set__team")
+        self.fields["gameinfo"].queryset = (
+            Gameinfo.objects.filter(gameday_id=gameday_id)
+            .select_related("gameday")
+            .prefetch_related("gameresult_set__team")
+        )
         self.fields["gameinfo"].label_from_instance = _game_label
         self.fields["position"].choices = allowed_position_choices(gameday)
 
@@ -130,6 +136,35 @@ EXTERNAL_FORM_FIELDS = [
 
 def _association_label(association: Association) -> str:
     return f"{association.name} ({association.abbr})"
+
+
+def load_association_choices() -> list[Association]:
+    """Fetch the association dropdown once, to share across formset rows."""
+    return list(Association.objects.order_by("name"))
+
+
+class AssociationChoiceField(forms.ChoiceField):
+    """A ChoiceField backed by an already-fetched list of associations.
+
+    A plain ModelChoiceField re-queries on every row at render *and* at
+    validation time (Django 6's ModelChoiceIterator always calls
+    ``queryset.iterator()``). Sharing this field's backing list keeps both
+    paths flat as the number of rows grows.
+    """
+
+    def __init__(self, associations, **kwargs):
+        self._by_pk = {association.pk: association for association in associations}
+        choices = [("", "Bitte auswählen")] + [
+            (association.pk, _association_label(association))
+            for association in associations
+        ]
+        super().__init__(choices=choices, **kwargs)
+
+    def clean(self, value):
+        cleaned = super().clean(value)
+        if cleaned in self.empty_values:
+            return None
+        return self._by_pk.get(int(cleaned))
 
 
 class ExternalGameForm(forms.ModelForm):
@@ -169,11 +204,21 @@ class ExternalGameForm(forms.ModelForm):
             "comment": BootstrapTextInput(),
         }
 
-    def __init__(self, *args, staff=False, **kwargs):
+    def __init__(self, *args, staff=False, associations=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.staff = staff
         self.fields["date"].input_formats = ["%Y-%m-%d"]
-        self.fields["association"].label_from_instance = _association_label
+        if associations is not None:
+            # Shared by the formset: one fetch for every row's dropdown and
+            # no lookup query when a posted association id is validated.
+            self.fields["association"] = AssociationChoiceField(
+                associations,
+                label="Verband",
+                help_text="Der Verband, unter dem das Spiel stattgefunden hat.",
+                widget=BootstrapSelect,
+            )
+        else:
+            self.fields["association"].label_from_instance = _association_label
         # Bootstrap classes, so the formset rows (rendered by hand) match the
         # crispy-rendered single form.
         for name, css in (
@@ -246,4 +291,49 @@ class ExternalGameForm(forms.ModelForm):
         return entry
 
 
-ExternalGameFormSet = forms.formset_factory(ExternalGameForm, extra=1)
+def _external_identity(data: dict) -> tuple:
+    """The same identity key the staff import uses for duplicate detection."""
+    association = data.get("association")
+    return (
+        data.get("date"),
+        data.get("position"),
+        association.pk if association else None,
+        data.get("number_games"),
+    )
+
+
+class ExternalGameFormSetBase(forms.BaseFormSet):
+    """Reject repeated external games within one submission and against the
+    target official's existing entries, the same way the staff import does."""
+
+    def __init__(self, *args, official_id=None, **kwargs):
+        self.official_id = official_id
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        keys = [
+            _external_identity(form.cleaned_data)
+            for form in self.forms
+            if form.has_changed() and not form.errors and form.cleaned_data
+        ]
+        if len(keys) != len(set(keys)):
+            raise forms.ValidationError(
+                "Zwei Zeilen sind identisch. Bitte entferne eine davon."
+            )
+        if self.official_id and keys:
+            existing = set(
+                OfficialExternalGames.objects.filter(
+                    official_id=self.official_id,
+                    date__in=[key[0] for key in keys if key[0]],
+                ).values_list("date", "position", "association_id", "number_games")
+            )
+            if existing.intersection(keys):
+                raise forms.ValidationError(
+                    "Ein identischer Eintrag existiert bereits für diese Offizielle."
+                )
+
+
+ExternalGameFormSet = forms.formset_factory(
+    ExternalGameForm, formset=ExternalGameFormSetBase, extra=1
+)

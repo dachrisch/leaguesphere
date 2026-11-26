@@ -148,13 +148,13 @@ class OpenFilterTest(TestCase):
     def test_open_toggle_activates_and_restores_the_normal_list(self):
         normal = self._page().content.decode()
         activate = _toggle_href(normal)
-        assert activate == "/officials/einsaetze/offen/"
+        assert activate == f"/officials/einsaetze/{SEASON}/?open=1"
 
         active_response = self.client.get(activate)
         active = active_response.content.decode()
         assert self._row_ids(active_response) == {self.open_row.pk}
         restore = _toggle_href(active)
-        assert restore == "/officials/einsaetze/"
+        assert restore == f"/officials/einsaetze/{SEASON}/"
 
         restored = self.client.get(restore)
         assert restored.context["open_filter"] is False

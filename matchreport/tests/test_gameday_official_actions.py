@@ -33,9 +33,9 @@ class TestGamedayOfficialActionColumn(TestCase):
 
     def _render_officials_table(self, gameday, gameinfo):
         wrapper = MachtreportModelWrapper(gameday.pk)
-        return wrapper._get_game_officials_table(gameinfo.id).to_html(
-            **REPORT_TABLE_RENDER_CONFIG
-        )
+        return wrapper._get_game_officials_table(
+            gameinfo.id, include_official_actions=True
+        ).to_html(**REPORT_TABLE_RENDER_CONFIG)
 
     def test_assigned_official_row_has_claim_and_unassign_links(self):
         gameday, gameinfo = self._gameday_with_game()
@@ -85,7 +85,9 @@ class TestGamedayOfficialActionColumn(TestCase):
             )
 
         wrapper = MachtreportModelWrapper(gameday.pk)
-        table = wrapper._get_game_officials_table(gameinfo.id)
+        table = wrapper._get_game_officials_table(
+            gameinfo.id, include_official_actions=True
+        )
         html = table.to_html(**REPORT_TABLE_RENDER_CONFIG)
 
         self.assertEqual(

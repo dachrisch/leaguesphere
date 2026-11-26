@@ -56,6 +56,23 @@ def _resolve_distinct(values, Association):
     return resolved
 
 
+def validate_before_ddl(apps, schema_editor):
+    """Resolve every stored value *before* the first DDL statement.
+
+    MariaDB does not roll back DDL, so a failing RunPython after AddField
+    would leave ``association_new_id`` committed with the migration unrecorded
+    - the next ``migrate`` then dies with "Duplicate column name". Validating
+    up front keeps that recovery (a manual DROP COLUMN) from being necessary
+    when the data is simply unmapped.
+    """
+    OfficialExternalGames = apps.get_model("officials", "OfficialExternalGames")
+    Association = apps.get_model("gamedays", "Association")
+    distinct_values = set(
+        OfficialExternalGames.objects.values_list("association", flat=True)
+    )
+    _resolve_distinct(distinct_values, Association)
+
+
 def forwards(apps, schema_editor):
     """Map every stored free-text value onto the existing association rows.
 
@@ -99,11 +116,21 @@ def backwards(apps, schema_editor):
     are not stored anywhere and cannot be reconstructed from the FK alone.
     """
     OfficialExternalGames = apps.get_model("officials", "OfficialExternalGames")
-    for row in OfficialExternalGames.objects.select_related(
-        "association_new"
-    ).iterator():
+    batch = []
+    for row in (
+        OfficialExternalGames.objects.select_related("association_new")
+        .only("pk", "association", "association_new", "association_new__abbr")
+        .iterator()
+    ):
+        if row.association_new_id is None:
+            continue
         row.association = row.association_new.abbr
-        row.save(update_fields=["association"])
+        batch.append(row)
+        if len(batch) >= _BATCH_SIZE:
+            OfficialExternalGames.objects.bulk_update(batch, ["association"])
+            batch = []
+    if batch:
+        OfficialExternalGames.objects.bulk_update(batch, ["association"])
 
 
 class Migration(migrations.Migration):
@@ -114,6 +141,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(validate_before_ddl, migrations.RunPython.noop),
         migrations.AddField(
             model_name="officialexternalgames",
             name="association_new",

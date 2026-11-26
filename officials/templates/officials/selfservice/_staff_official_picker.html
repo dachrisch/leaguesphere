@@ -8,7 +8,8 @@ is progressive enhancement against the staff search API.
            placeholder="Vor- oder Nachname">
     <ul class="list-group mt-2" id="official-results"></ul>
     <label class="form-label mt-3" for="official-id">Offizielle-ID</label>
-    <input class="form-control" id="official-id" name="official_id" type="number" required>
+    <input class="form-control" id="official-id" name="official_id" type="number" required
+           value="{{ request.POST.official_id|default:'' }}">
     <div class="form-text">
         Für Staff: der Einsatz wird der hier eingetragenen Person zugeordnet.
     </div>

@@ -102,6 +102,10 @@ class TestCanonicalFilterBehaviour(TestCase):
         self.all_url = reverse(ALL_URL_NAME)
         self.mine_url = reverse(MINE_URL_NAME)
         self.open_url = reverse(OPEN_URL_NAME)
+        self.all_season_url = reverse(
+            "view-officials-game-officials-appearance-for-year",
+            kwargs={"season": SEASON},
+        )
 
     def tearDown(self):
         cache.clear()
@@ -172,6 +176,10 @@ class TestCanonicalFilterButtons(TestCase):
         self.all_url = reverse(ALL_URL_NAME)
         self.mine_url = reverse(MINE_URL_NAME)
         self.open_url = reverse(OPEN_URL_NAME)
+        self.all_season_url = reverse(
+            "view-officials-game-officials-appearance-for-year",
+            kwargs={"season": SEASON},
+        )
 
     def tearDown(self):
         cache.clear()
@@ -181,37 +189,51 @@ class TestCanonicalFilterButtons(TestCase):
         assert response.status_code == HTTPStatus.OK
         return response.content.decode()
 
-    def test_inactive_buttons_link_to_canonical_routes(self):
+    def test_inactive_buttons_keep_the_season_and_add_their_filter(self):
         content = self._content(self.all_url)
 
         mine_href, mine_classes = _filter_link(content, MINE_LABEL)
         open_href, open_classes = _filter_link(content, OPEN_LABEL)
 
-        assert mine_href == self.mine_url
-        assert open_href == self.open_url
+        assert mine_href == f"{self.all_season_url}?mine=1"
+        assert open_href == f"{self.all_season_url}?open=1"
         assert mine_classes == "btn btn-sm btn-outline-secondary"
         assert open_classes == "btn btn-sm btn-outline-secondary"
 
-    def test_active_mine_button_is_primary_and_returns_to_unfiltered_list(self):
+    def test_active_mine_button_is_primary_and_returns_to_unfiltered_season(self):
         content = self._content(self.mine_url)
 
         href, classes = _filter_link(content, SHOW_ALL_LABEL)
         assert classes == "btn btn-sm btn-primary"
-        assert href == self.all_url
+        assert href == self.all_season_url
 
         restored = self.client.get(href)
         assert restored.context["mine_filter"] is False
         assert restored.context["open_filter"] is False
 
-    def test_active_open_button_is_primary_and_returns_to_unfiltered_list(self):
+    def test_active_open_button_is_primary_and_returns_to_unfiltered_season(self):
         content = self._content(self.open_url)
 
         href, classes = _filter_link(content, OPEN_LABEL)
         assert classes == "btn btn-sm btn-primary"
-        assert href == self.all_url
+        assert href == self.all_season_url
 
         restored = self.client.get(href)
         assert restored.context["open_filter"] is False
+
+    def test_toggles_compose_instead_of_dropping_the_other_filter(self):
+        content = self._content(self.all_url, {"mine": "1", "open": "1"})
+
+        mine_href, _ = _filter_link(content, SHOW_ALL_LABEL)
+        open_href, _ = _filter_link(content, OPEN_LABEL)
+        assert mine_href == f"{self.all_season_url}?open=1"
+        assert open_href == f"{self.all_season_url}?mine=1"
+
+    def test_year_pills_keep_an_active_filter(self):
+        _row(self.acting, "Chris Kämpfe")
+        content = self._content(self.all_url, {"mine": "1"})
+
+        assert f'href="{self.all_season_url}?mine=1"' in content
 
     def test_both_filters_active_via_query_params_show_primary_buttons(self):
         content = self._content(self.all_url, {"mine": "1", "open": "1"})

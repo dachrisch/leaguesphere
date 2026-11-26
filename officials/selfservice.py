@@ -9,6 +9,7 @@ that rule instead of repeating it.
 
 import re
 from datetime import date, datetime
+from http.cookies import SimpleCookie
 from urllib.parse import urlencode, urlsplit
 
 from django.conf import settings
@@ -17,11 +18,13 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
 from gamedays.models import Gameinfo, GameOfficial
 from league_manager.utils.serializer_utils import Obfuscator
 from officials.constants import (
+    LEGACY_REMEMBER_COOKIE_PATH,
     MOODLE_LOGGED_IN_USER,
     MOODLE_REMEMBER_COOKIE,
     REMEMBER_COOKIE_PATH,
@@ -30,6 +33,7 @@ from officials.forms_selfservice import (
     AddAssignmentForm,
     ExternalGameForm,
     ExternalGameFormSet,
+    load_association_choices,
 )
 from officials.models import Official, OfficialExternalGames
 from officials.service.remember_me import (
@@ -54,7 +58,19 @@ def set_remember_cookie(response, value) -> None:
 
 
 def delete_remember_cookie(response) -> None:
+    # Two same-named cookies at different paths coexist in the browser until
+    # both are explicitly deleted. Django's cookie jar is keyed by name, so a
+    # second delete_cookie() would replace the first: store the legacy morsel
+    # under a separate jar key while keeping its real cookie name, and both
+    # Set-Cookie headers reach the browser.
     response.delete_cookie(MOODLE_REMEMBER_COOKIE, path=REMEMBER_COOKIE_PATH)
+    legacy = SimpleCookie()
+    legacy[MOODLE_REMEMBER_COOKIE] = ""
+    morsel = legacy[MOODLE_REMEMBER_COOKIE]
+    morsel["path"] = LEGACY_REMEMBER_COOKIE_PATH
+    morsel["max-age"] = 0
+    morsel["expires"] = "Thu, 01 Jan 1970 00:00:00 GMT"
+    response.cookies[f"{MOODLE_REMEMBER_COOKIE}_legacy"] = morsel
 
 
 RECLAIM_ERROR = "Dieser Eintrag wurde bereits zugeordnet."
@@ -134,6 +150,9 @@ def restore_moodle_session(request) -> RestoreResult:
         )
     result = RememberMeService.restore(request.COOKIES.get(MOODLE_REMEMBER_COOKIE))
     if result.official_id is not None:
+        # The cookie elevates an anonymous visitor to a logged-in official,
+        # so rotate the key here as well as after a Moodle password login.
+        request.session.cycle_key()
         request.session[MOODLE_LOGGED_IN_USER] = result.official_id
     return result
 
@@ -155,6 +174,15 @@ def safe_next(request, default: str | None = None) -> str:
         return fallback
     parsed = urlsplit(target)
     if parsed.scheme or parsed.netloc:
+        return fallback
+    # The sign-up add/cancel views act on GET. A crafted login link must not
+    # be able to ride the remembered ``next`` into one of those writes.
+    if re.match(r"^/officials/gameday/sign-up/\d+/(add|cancel)/$", parsed.path):
+        return fallback
+    # Django's own guard covers the absolute/backslash variants as well;
+    # CodeQL recognises it as the sanitizer for a redirect target derived
+    # from ``next`` (the py/url-redirection alerts on these views).
+    if not url_has_allowed_host_and_scheme(target, allowed_hosts=None):
         return fallback
     return target
 
@@ -252,18 +280,38 @@ def assignments_return_url(request) -> str:
     return safe_next(request, default=reverse(ASSIGNMENTS_URL_NAME))
 
 
-def can_reclaim_official(request, row: GameOfficial, target: Official) -> bool:
-    """May ``target`` take over an already-mapped row?
+def can_take_over_typed_name(
+    name: str | None, target: Official, current_owner: Official | None = None
+) -> bool:
+    """May ``target`` take a row typed ``name`` away from ``current_owner``?
 
-    Staff may reassign any row explicitly. A Moodle official only when the
-    typed scorecard name contains their *full* name: accepting a partial
-    match would let anyone sharing a first or last name steal the row. The
-    typed name is only a weak hint, never proof of identity, so this gate is
-    complemented by the conditional UPDATE in the write itself.
+    The acting official's *full* name must appear in the typed name, and a
+    mapped row whose typed name already fits its current owner is not up for
+    grabs: "Max Mustermann" must not take "Max Mustermann-Schmidt" from
+    "Max Schmidt" just because both names are subsets of the typed string.
+    Homonyms likewise keep their row.
+    """
+    if not official_name_in_typed_name(name, target):
+        return False
+    if current_owner is not None and official_name_in_typed_name(name, current_owner):
+        return False
+    return True
+
+
+def can_reclaim_official(request, row: GameOfficial, target: Official) -> bool:
+    """May ``target`` claim this row, mapped or not?
+
+    Staff may reassign any row explicitly. For a Moodle official the typed
+    scorecard name must prove the row is theirs (see
+    ``can_take_over_typed_name``). That applies to unassigned ``?`` rows too -
+    an empty ``official`` column is not proof that the typed name is free to
+    claim. The typed name is only a weak hint, never proof of identity, so
+    this gate is complemented by the conditional UPDATE in the write.
     """
     if request.user.is_authenticated and request.user.is_staff:
         return True
-    return official_name_in_typed_name(row.name, target)
+    current_owner = row.official if row.official_id is not None else None
+    return can_take_over_typed_name(row.name, target, current_owner)
 
 
 class ClaimGameOfficialView(SelfServiceWriteMixin, View):
@@ -292,7 +340,8 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
 
         Staff may overwrite any row, so they get the picker without having
         posted an ``official_id`` yet. A Moodle official needs a resolved
-        target and - for a mapped row - a typed name that proves it is theirs.
+        target and a typed name that proves the row is theirs, whether it is
+        mapped to somebody already or still an unassigned ``?`` row.
         """
         if request.user.is_authenticated and request.user.is_staff:
             return True
@@ -300,7 +349,7 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
             target = self.target_official(request)
         except Official.DoesNotExist:
             return False
-        return row.official_id is None or can_reclaim_official(request, row, target)
+        return can_reclaim_official(request, row, target)
 
     def _can_reveal_name(self, request, row) -> bool:
         """Who may read the raw typed name on the confirm page?
@@ -326,13 +375,18 @@ class ClaimGameOfficialView(SelfServiceWriteMixin, View):
         row = get_object_or_404(GameOfficial, pk=pk)
         target = self._target_or_error(request)
         if target is None:
-            return redirect(request.get_full_path())
+            return redirect(reverse(CLAIM_URL_NAME, kwargs={"pk": pk}))
         is_mapped = row.official_id is not None
-        if is_mapped and not can_reclaim_official(request, row, target):
+        if not can_reclaim_official(request, row, target):
             messages.error(
                 request,
-                "Dieser Eintrag ist einer anderen Person zugeordnet. "
-                "Bitte wende dich an Staff.",
+                (
+                    "Dieser Eintrag ist einer anderen Person zugeordnet. "
+                    "Bitte wende dich an Staff."
+                    if is_mapped
+                    else "Der eingetragene Name passt nicht zu dir. "
+                    "Bitte wende dich an Staff."
+                ),
             )
             return redirect(assignments_return_url(request))
 
@@ -426,7 +480,11 @@ class AddAssignmentView(SelfServiceWriteMixin, View):
     def get(self, request):
         season = season_from_request(request)
         gameday_id = request.GET.get("gameday") or None
-        form = AddAssignmentForm(season=season, gameday_id=gameday_id)
+        form = AddAssignmentForm(
+            season=season,
+            gameday_id=gameday_id,
+            staff=request.user.is_staff,
+        )
         return render(
             request,
             self.template_name,
@@ -436,10 +494,12 @@ class AddAssignmentView(SelfServiceWriteMixin, View):
     def post(self, request):
         season = season_from_request(request)
         gameday_id = request.POST.get("gameday") or None
+        staff = request.user.is_staff
         form = AddAssignmentForm(
             request.POST,
             season=season,
             gameday_id=gameday_id,
+            staff=staff,
         )
         if not form.is_valid():
             messages.error(request, _form_error_message(form))
@@ -451,6 +511,19 @@ class AddAssignmentView(SelfServiceWriteMixin, View):
 
         gameinfo = form.cleaned_data["gameinfo"]
         position = form.cleaned_data["position"]
+        # The form narrows the queryset, but a crafted POST can still name
+        # any game - re-check the date server-side for non-staff.
+        if not staff and gameinfo.gameday.date > date.today():
+            form.add_error(
+                "gameinfo",
+                "Für einen zukünftigen Spieltag kann kein Einsatz nachgetragen werden.",
+            )
+            messages.error(request, _form_error_message(form))
+            return render(
+                request,
+                self.template_name,
+                self._context(request, form, gameday_id, season),
+            )
         try:
             target = self.target_official(request)
         except Official.DoesNotExist:
@@ -726,9 +799,18 @@ class DfflGameDeleteView(SelfServiceWriteMixin, View):
         official = row.official
         season = row.gameinfo.gameday.date.year
         # The scorecard entry stays authoritative: clear only the assignment,
-        # keeping name, position, game and every other value 1:1.
-        GameOfficial.objects.filter(pk=row.pk).update(official=None)
-        messages.success(request, "Zuordnung aufgehoben - der Einsatz bleibt erhalten.")
+        # keeping name, position, game and every other value 1:1. The owner
+        # check and this write are separate statements, so guard against a
+        # reassignment landing in between (same pattern as the claim view).
+        cleared = GameOfficial.objects.filter(
+            pk=row.pk, official_id=row.official_id
+        ).update(official=None)
+        if cleared:
+            messages.success(
+                request, "Zuordnung aufgehoben - der Einsatz bleibt erhalten."
+            )
+        else:
+            messages.error(request, RECLAIM_ERROR)
         return redirect(dffl_return_url(request, official, season))
 
     @staticmethod
@@ -754,10 +836,28 @@ class ExternalGameMultiAddView(SelfServiceWriteMixin, View):
 
     template_name = "officials/selfservice/external_multi_form.html"
 
-    def get(self, request):
-        return self._render(
-            request, ExternalGameFormSet(form_kwargs={"staff": request.user.is_staff})
+    @staticmethod
+    def _formset_official_id(request):
+        """Target official for duplicate checks, before the final write."""
+        if request.user.is_authenticated and request.user.is_staff:
+            try:
+                return int((request.POST.get("official_id") or "").strip())
+            except (TypeError, ValueError):
+                return None
+        return acting_official_id(request)
+
+    def _formset(self, request, data=None):
+        return ExternalGameFormSet(
+            data,
+            form_kwargs={
+                "staff": request.user.is_staff,
+                "associations": load_association_choices(),
+            },
+            official_id=self._formset_official_id(request),
         )
+
+    def get(self, request):
+        return self._render(request, self._formset(request))
 
     def post(self, request):
         data = request.POST
@@ -768,15 +868,9 @@ class ExternalGameMultiAddView(SelfServiceWriteMixin, View):
             except (TypeError, ValueError):
                 total = 1
             data["form-TOTAL_FORMS"] = str(total + 1)
-            return self._render(
-                request,
-                ExternalGameFormSet(data, form_kwargs={"staff": request.user.is_staff}),
-                adding_row=True,
-            )
+            return self._render(request, self._formset(request, data), adding_row=True)
 
-        formset = ExternalGameFormSet(
-            data, form_kwargs={"staff": request.user.is_staff}
-        )
+        formset = self._formset(request, data)
         if not formset.is_valid():
             messages.error(request, "Bitte die markierten Zeilen prüfen.")
             return self._render(request, formset)

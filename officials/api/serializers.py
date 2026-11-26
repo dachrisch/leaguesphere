@@ -6,7 +6,6 @@ from rest_framework.fields import (
     SerializerMethodField,
     BooleanField,
     DateField,
-    FloatField,
     IntegerField,
 )
 from rest_framework.serializers import ModelSerializer, Serializer
@@ -23,6 +22,10 @@ from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.moodle.moodle_service import MoodleService
 
 PREFETCHED_LICENSE_HISTORY = "prefetched_license_history"
+# The gamelist queryset computes the adjusted game count in SQL once per row;
+# the alias keeps it distinct from OfficialExternalGames.calculated_number_games
+# (a property that would otherwise issue one aggregate query per row).
+ANNOTATED_CALCULATED_GAMES = "annotated_calculated_number_games"
 
 
 def prefetch_official_license_history():
@@ -44,7 +47,7 @@ def prefetch_official_license_history():
 class OfficialExternalGamesSerializer(ModelSerializer):
     date = DateField(format="%d.%m.%Y")
     notification_date = DateField(format="%d.%m.%Y")
-    calculated_number_games = FloatField(read_only=True)
+    calculated_number_games = SerializerMethodField("get_calculated_number_games")
     reporter_name = SerializerMethodField("get_reporter_name")
     association = CharField(source="association.abbr", read_only=True)
 
@@ -61,6 +64,15 @@ class OfficialExternalGamesSerializer(ModelSerializer):
         if self.is_staff or self.is_self:
             return obj.reporter_name
         return Obfuscator.obfuscate(*obj.reporter_name.split(" ")[:2])
+
+    def get_calculated_number_games(self, obj: OfficialExternalGames):
+        # The gamelist queryset annotates this once for all rows; a serializer
+        # built from a single instance (no annotation) still works via the
+        # model property.
+        annotated = getattr(obj, ANNOTATED_CALCULATED_GAMES, None)
+        if annotated is not None:
+            return annotated
+        return obj.calculated_number_games
 
 
 class OfficialTeamListScorecardSerializer(Serializer):
@@ -279,6 +291,14 @@ class OfficialGamelistSerializer(OfficialSerializer):
     def get_external_games(self, obj: Official):
         all_official_entries: QuerySet[OfficialExternalGames] = (
             obj.officialexternalgames_set.filter(date__year=self.season)
+            # association.abbr is read by OfficialExternalGamesSerializer;
+            # fetching it per row used to be free when association was a local
+            # CharField, and is now an N+1 without this join.
+            .select_related("association").annotate(
+                **{
+                    ANNOTATED_CALCULATED_GAMES: OfficialExternalGames.calculated_games_expression()
+                }
+            )
         )
         return {
             "all_games": OfficialExternalGamesSerializer(
@@ -288,7 +308,8 @@ class OfficialGamelistSerializer(OfficialSerializer):
                 is_self=self.is_self,
             ).data,
             "number_games": sum(
-                entry.calculated_number_games for entry in all_official_entries
+                getattr(entry, ANNOTATED_CALCULATED_GAMES)
+                for entry in all_official_entries
             ),
             "last_update": OfficialExternalGames.objects.all().aggregate(
                 Max("notification_date")

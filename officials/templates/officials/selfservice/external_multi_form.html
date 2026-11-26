@@ -25,6 +25,9 @@
     <form method="post">
         {% csrf_token %}
         {{ formset.management_form }}
+        {% for error in formset.non_form_errors %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endfor %}
         {% if is_staff %}
         {% include 'officials/selfservice/_staff_official_picker.html' %}
         {% endif %}
@@ -108,7 +111,7 @@
         </div>
         <div class="row mb-4">
             <div class="col-12">
-                <button class="btn btn-outline-secondary w-100" type="submit" name="add_row" value="1">Weitere Zeile hinzufügen</button>
+                <button class="btn btn-outline-secondary w-100" type="submit" name="add_row" value="1" formnovalidate>Weitere Zeile hinzufügen</button>
             </div>
         </div>
         <div class="row g-2">

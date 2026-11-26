@@ -152,8 +152,9 @@ class ExternalGameOfficialEntry:
         official = Official.objects.get(pk=self.official_id)
         # ``association`` is a FK since migration 0017; imports and the
         # manual staff entry still produce the free-text value from the
-        # sheet, so resolve it through the shared resolver. An Association
-        # instance (self-service forms) passes through untouched.
+        # sheet, so resolve it through the shared resolver. The import
+        # confirm view passes an Association instance from its per-request
+        # distinct-value cache, which passes through untouched.
         association = (
             self.association
             if isinstance(self.association, Association)

@@ -1,6 +1,9 @@
 import json
 import logging
 from datetime import date, datetime, timedelta
+from functools import partial
+from types import SimpleNamespace
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -39,7 +42,10 @@ from officials.forms import (
     MoodleLoginForm,
 )
 from officials.models import Official, OfficialLicenseHistory
-from officials.service.association_resolution import UnknownAssociationError
+from officials.service.association_resolution import (
+    UnknownAssociationError,
+    resolve_association,
+)
 from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.game_official_entries import AmbiguousGameOfficialError
 from officials.service.game_official_import import (
@@ -64,6 +70,7 @@ from officials.selfservice import (
     UNASSIGN_URL_NAME,
     acting_official_id,
     can_edit_official,
+    can_take_over_typed_name,
     delete_remember_cookie,
     name_matches_official,
     restore_moodle_session,
@@ -308,16 +315,40 @@ class GameOfficialListView(View):
             OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR,
         )
 
+        url_pattern = (
+            OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR
+            if team_id
+            else OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR
+        )
+        base_kwargs = {"season": year}
+        if team_id:
+            base_kwargs["pk"] = team_id
+        base_url = reverse(url_pattern, kwargs=base_kwargs)
+
+        def filter_url(*, want_mine=False, want_open=False) -> str:
+            params = {}
+            if want_mine:
+                params["mine"] = "1"
+            if want_open:
+                params["open"] = "1"
+            return f"{base_url}?{urlencode(params)}" if params else base_url
+
         context = {
             "season": year,
             "team": team,
             "team_id": team_id,
             "years": sorted(years, reverse=True),
-            "url_pattern": (
-                OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_TEAM_AND_YEAR
-                if team_id
-                else OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR
-            ),
+            "url_pattern": url_pattern,
+            # Toggles stay on the current season/team URL and compose with
+            # the other filter, instead of jumping to the season-less
+            # canonical routes (which dropped both).
+            "mine_on_url": filter_url(want_mine=True, want_open=open_filter),
+            "mine_off_url": filter_url(want_open=open_filter),
+            "open_on_url": filter_url(want_mine=mine, want_open=True),
+            "open_off_url": filter_url(want_mine=mine),
+            "year_query": filter_url(want_mine=mine, want_open=open_filter).partition(
+                "?"
+            )[2],
             "pk": team_id,
             "object_list": self._rows_with_flags(
                 game_officials_object_list,
@@ -365,12 +396,24 @@ class GameOfficialListView(View):
                 and row_official_id is None
                 and name_matches_official(raw["name"], acting_official)
             )
-            # A mapped row whose typed name looks like this official can be
-            # taken over ("Das war ich"); staff can reassign any mapped row.
+            # Claim/takeover links must match the write gate: a Moodle
+            # official needs the full typed name on the row, mapped or not,
+            # and a mapped row whose current owner already fits that name is
+            # not offered for takeover. Using the tolerant name_matches_
+            # official here would offer a button the write then refuses.
+            current_owner = (
+                SimpleNamespace(
+                    first_name=raw.get("official__first_name"),
+                    last_name=raw.get("official__last_name"),
+                )
+                if row_official_id is not None
+                else None
+            )
             row["can_reclaim"] = is_staff or (
                 acting_official is not None
-                and row_official_id is not None
-                and name_matches_official(raw["name"], acting_official)
+                and can_take_over_typed_name(
+                    raw["name"], acting_official, current_owner
+                )
             )
             if row["is_own_row"]:
                 # The visitor's own row shows the name; every other row keeps
@@ -667,16 +710,46 @@ def _group_by_status(items: list) -> dict:
     return groups
 
 
-def _external_row_data(item: dict) -> dict:
+def _association_resolver():
+    """Resolve each distinct sheet value at most once per confirm request.
+
+    A real import has thousands of rows but only a handful of distinct
+    association strings. Letting ExternalGameOfficialEntry.save() resolve the
+    raw value per row would add 1-3 SELECTs to every entry. Failures are
+    cached as errors too and re-raised per row, so _commit still reports an
+    unknown association as a per-row failure instead of a 500.
+    """
+    cache = {}
+
+    def resolve(value):
+        if value not in cache:
+            try:
+                cache[value] = resolve_association(value)
+            except UnknownAssociationError as error:
+                cache[value] = error
+        result = cache[value]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    return resolve
+
+
+def _external_row_data(item: dict, resolve=None) -> dict:
     """Rebuilds the ExternalGameOfficialEntry kwargs from a stored
     suggestion dict (whose date/notification_date are ISO strings, see
-    _external_suggestion_to_initial)."""
+    _external_suggestion_to_initial). ``resolve`` turns the sheet's free-text
+    association into an Association instance once per distinct value; without
+    it the entry falls back to its own per-value resolver (manual entry)."""
+    association = item.get("association") or ""
+    if resolve is not None:
+        association = resolve(association)
     return {
         "official_id": item.get("official_id"),
         "number_games": item.get("number_games"),
         "date": _parse_iso_date(item.get("date")),
         "position": item.get("position"),
-        "association": item.get("association") or "",
+        "association": association,
         "halftime_duration": item.get("halftime_duration"),
         "has_clockcontrol": bool(item.get("has_clockcontrol")),
         "is_international": bool(item.get("is_international")),
@@ -736,6 +809,7 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
         selected_internal = _selected_ids(request, "internal_rows")
 
         official_service = OfficialService()
+        resolve = _association_resolver()
         external_created, external_errors = self._commit(
             [
                 item
@@ -743,7 +817,7 @@ class GameOfficialImportConfirmView(LoginRequiredMixin, UserPassesTestMixin, Vie
                 if item.get("row_number") in selected_external
             ],
             official_service.create_external_official_entry,
-            _external_row_data,
+            partial(_external_row_data, resolve=resolve),
         )
         internal_created, internal_errors = self._commit(
             [
@@ -1033,6 +1107,9 @@ class MoodleLoginView(View):
                 password = form.cleaned_data["password"]
                 moodle_service = MoodleService()
                 official_id = moodle_service.login(username, password)
+                # Privilege boundary: drop the pre-auth session key so a
+                # fixated anonymous session cannot become this logged-in one.
+                request.session.cycle_key()
                 request.session[MOODLE_LOGGED_IN_USER] = official_id
 
                 response = redirect(safe_next(request))
@@ -1102,7 +1179,10 @@ class OfficialSignUpListView(View):
 
 class OfficialSignOutView(View):
     def get(self, request, *args, **kwargs):
-        RememberMeService.revoke(request.COOKIES.get(MOODLE_REMEMBER_COOKIE))
+        # Revoke every selector in the raw header: legacy cookies at the old
+        # path survive alongside the current one and would silently restore
+        # the session after logout.
+        RememberMeService.revoke_all_from_cookie_header(request.META.get("HTTP_COOKIE"))
         request.session.pop(MOODLE_LOGGED_IN_USER, None)
         messages.success(request, "Du wurdest abgemeldet.")
 

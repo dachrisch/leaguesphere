@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from django.contrib.messages import get_messages
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -15,10 +17,11 @@ from officials.tests.setup_factories.factories_officials import OfficialFactory
 
 LIST_URL_NAME = "view-officials-game-officials-appearance"
 CLAIM_URL_NAME = "view-officials-selfservice-claim"
+SEASON = date.today().year
 
 
 def _game_with_row(official=None, name="Max Mustermann", position="Referee"):
-    gameday = GamedayFactory(date="2026-05-01", name="Spieltag Einsätze")
+    gameday = GamedayFactory(date=date(SEASON, 5, 1), name="Spieltag Einsätze")
     gameinfo = GameinfoFactory(gameday=gameday)
     row = GameOfficialFactory(
         gameinfo=gameinfo, official=official, name=name, position=position
@@ -141,15 +144,45 @@ class TestClaimAssignment(SelfServiceTestBase):
         assert f"Spiel #{gameinfo.pk}" in content
         assert f"Spiel #{gameinfo.pk} (#{gameinfo.pk})" not in content
 
-    def test_moodle_claim_other_row_allowed(self):
-        # Decision 1: any unmapped row may be claimed, no name check.
+    def test_moodle_cannot_claim_a_foreign_unmapped_row(self):
+        # An unassigned row is not a free-for-all: the typed scorecard name
+        # must contain the Moodle official's full name, just like a takeover
+        # of a mapped row. A typed name proves nothing, but it is the only
+        # check we have, so POST must enforce it too.
         gameinfo, row = _game_with_row(name="Someone Else")
         self.login_moodle()
 
-        self.client.post(reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}))
+        response = self.client.post(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}), follow=True
+        )
 
         row.refresh_from_db()
-        assert row.official == self.official
+        assert row.official is None
+        assert any("passt nicht" in m for m in self.messages(response))
+
+    def test_moodle_cannot_claim_unmapped_row_with_partial_name(self):
+        for typed_name in ("Max", "Mustermann"):
+            with self.subTest(typed_name=typed_name):
+                gameinfo, row = _game_with_row(name=typed_name)
+                self.login_moodle()
+
+                self.client.post(reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}))
+
+                row.refresh_from_db()
+                assert row.official is None
+
+    def test_confirm_hides_form_for_a_foreign_unmapped_row(self):
+        gameinfo, row = _game_with_row(name="Someone Else")
+        self.login_moodle()
+
+        content = self.client.get(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk})
+        ).content.decode()
+
+        assert "Einsatz übernehmen" not in content
+        assert "passt nicht" in content
+        # No name enumeration through the confirm page either.
+        assert ">Someone Else<" not in content
 
     def test_anonymous_claim_redirects(self):
         gameinfo, row = _game_with_row()
@@ -187,6 +220,84 @@ class TestClaimAssignment(SelfServiceTestBase):
 
         row.refresh_from_db()
         assert row.official == self.other
+
+
+class TestAddAssignmentRejectsFutureGames(SelfServiceTestBase):
+    def setUp(self):
+        super().setUp()
+        self.future_gameday = GamedayFactory(
+            date=date.today() + timedelta(days=30), name="Zukünftiger Spieltag"
+        )
+        self.future_game = GameinfoFactory(gameday=self.future_gameday)
+
+    def _post_payload(self):
+        return {
+            "gameday": str(self.future_gameday.pk),
+            "gameinfo": str(self.future_game.pk),
+            "position": "Referee",
+        }
+
+    def test_future_gameday_hidden_from_official_but_visible_to_staff(self):
+        self.login_moodle()
+        official_content = self.client.get(
+            reverse(ASSIGNMENT_URL_NAME)
+        ).content.decode()
+        assert "Zukünftiger Spieltag" not in official_content
+
+        staff = Client()
+        staff.force_login(_staff_user())
+        staff_content = staff.get(reverse(ASSIGNMENT_URL_NAME)).content.decode()
+        assert "Zukünftiger Spieltag" in staff_content
+
+    def test_official_cannot_post_a_future_game(self):
+        self.login_moodle()
+
+        response = self.client.post(
+            reverse(ASSIGNMENT_URL_NAME), self._post_payload(), follow=True
+        )
+
+        assert not GameOfficial.objects.filter(gameinfo=self.future_game).exists()
+        # The form refuses the future gameday as an invalid choice, so the
+        # write never happens; the view re-checks the date as a second line
+        # of defence for crafted posts that slip past choice validation.
+        assert self.messages(response)
+
+    def test_server_side_date_check_catches_a_well_formed_forged_post(self):
+        from unittest.mock import patch
+
+        from officials.forms_selfservice import AddAssignmentForm
+
+        self.login_moodle()
+
+        def forged_valid(form):
+            form._errors = {}  # skip real choice validation, like a forged form
+            form.cleaned_data = {
+                "gameinfo": self.future_game,
+                "position": "Referee",
+            }
+            return True
+
+        with patch.object(AddAssignmentForm, "is_valid", autospec=True) as is_valid:
+            is_valid.side_effect = forged_valid
+            response = self.client.post(
+                reverse(ASSIGNMENT_URL_NAME), self._post_payload(), follow=True
+            )
+
+        assert not GameOfficial.objects.filter(gameinfo=self.future_game).exists()
+        assert any("zukünftigen Spieltag" in m for m in self.messages(response))
+
+    def test_staff_can_post_a_future_game(self):
+        staff = Client()
+        staff.force_login(_staff_user())
+
+        staff.post(
+            reverse(ASSIGNMENT_URL_NAME),
+            {**self._post_payload(), "official_id": str(self.other.pk)},
+        )
+
+        assert GameOfficial.objects.filter(
+            gameinfo=self.future_game, official=self.other
+        ).exists()
 
 
 def _staff_user():
@@ -230,7 +341,12 @@ class TestEinsaetzeHighlightAndFilter(SelfServiceTestBase):
         content = self.client.get(reverse(LIST_URL_NAME)).content.decode()
 
         assert "table-info" in content
-        assert "Max Mustermann" in content
+        # Assert on the row's profile link, not the login banner, which
+        # prints the acting official's name for unrelated reasons.
+        assert (
+            f'href="/officials/profile/{self.official.pk}/gamelist/{SEASON}/">'
+            "Max Mustermann</a>"
+        ) in content
 
     def test_unmapped_name_match_is_highlighted_with_claim_link(self):
         gameinfo, row = _game_with_row(name="Max Mustermann")
@@ -240,6 +356,17 @@ class TestEinsaetzeHighlightAndFilter(SelfServiceTestBase):
 
         assert "Mir zuordnen" in content
         assert reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}) in content
+
+    def test_list_offers_claim_only_on_matching_unmapped_rows(self):
+        gameinfo, own = _game_with_row(name="Max Mustermann")
+        gameinfo, foreign = _game_with_row(name="Someone Else")
+        self.login_moodle()
+
+        content = self.client.get(reverse(LIST_URL_NAME)).content.decode()
+
+        assert reverse(CLAIM_URL_NAME, kwargs={"pk": own.pk}) in content
+        assert reverse(CLAIM_URL_NAME, kwargs={"pk": foreign.pk}) not in content
+        assert content.count("Mir zuordnen") == 1
 
     def test_mine_filter_query_count_is_flat_as_rows_grow(self):
         from django.db import connection
@@ -295,7 +422,9 @@ UNASSIGN_URL_NAME = "view-officials-selfservice-unassign"
 class TestAddAssignment(SelfServiceTestBase):
     def setUp(self):
         super().setUp()
-        self.gameday = GamedayFactory(date="2026-06-01", name="Spieltag Nachtragen")
+        self.gameday = GamedayFactory(
+            date=date(SEASON, 6, 1), name="Spieltag Nachtragen"
+        )
         self.gameinfo = GameinfoFactory(gameday=self.gameday)
 
     def _post(self, client=None, **data):
@@ -400,7 +529,7 @@ class TestAddAssignment(SelfServiceTestBase):
         from html import unescape
 
         self.login_moodle()
-        target = reverse(LIST_URL_NAME) + "?mine=1&season=2026"
+        target = reverse(LIST_URL_NAME) + f"?mine=1&season={SEASON}"
 
         content = unescape(
             self.client.get(
@@ -416,12 +545,12 @@ class TestAddAssignment(SelfServiceTestBase):
 
         content = self.client.get(
             reverse(ASSIGNMENT_URL_NAME),
-            {"season": "2026", "gameday": str(self.gameday.pk)},
+            {"season": str(SEASON), "gameday": str(self.gameday.pk)},
         ).content.decode()
 
         expected = reverse(
             "view-officials-game-officials-appearance-for-year",
-            kwargs={"season": 2026},
+            kwargs={"season": SEASON},
         )
         assert f'href="{expected}"' in content
 
@@ -680,6 +809,32 @@ class TestDfflGameDelete(SelfServiceTestBase):
         assert row.gameinfo_id == gameinfo.pk
         assert Gameinfo.objects.filter(pk=gameinfo.pk).exists()
 
+    def test_concurrent_reassignment_loses_the_clear(self):
+        from unittest.mock import patch
+
+        from officials import selfservice
+
+        gameinfo, row = _game_with_row(official=self.official)
+        self.login_moodle()
+        real_get = selfservice.get_object_or_404
+
+        def reassign_between_select_and_update(model, pk):
+            loaded = real_get(model, pk=pk)
+            GameOfficial.objects.filter(pk=loaded.pk).update(official=self.other)
+            return loaded  # deliberately stale: still owned by self.official
+
+        with patch(
+            "officials.selfservice.get_object_or_404",
+            side_effect=reassign_between_select_and_update,
+        ):
+            response = self.client.post(
+                reverse(DFFL_DELETE_URL_NAME, kwargs={"pk": row.pk}), follow=True
+            )
+
+        row.refresh_from_db()
+        assert row.official == self.other
+        assert any("bereits zugeordnet" in m for m in self.messages(response))
+
     def test_other_official_forbidden(self):
         gameinfo, row = _game_with_row(official=self.other)
         self.login_moodle()
@@ -779,6 +934,43 @@ class TestExternalGameMultiAdd(SelfServiceTestBase):
     def setUp(self):
         super().setUp()
         DbSetupOfficials.create_production_associations()
+
+    def test_duplicate_rows_in_one_submission_are_rejected(self):
+        from officials.models import OfficialExternalGames
+
+        self.login_moodle()
+
+        response = self.client.post(
+            reverse(MULTI_ADD_URL_NAME), _formset_data([{}, {}])
+        )
+
+        assert response.status_code == 200
+        assert OfficialExternalGames.objects.count() == 0
+        assert "identisch" in response.content.decode()
+
+    def test_duplicate_of_an_existing_entry_is_rejected(self):
+        from officials.models import OfficialExternalGames
+
+        self.login_moodle()
+        _external_entry(self.official, association_abbr="AFCVT", date="2026-06-02")
+
+        response = self.client.post(reverse(MULTI_ADD_URL_NAME), _formset_data([{}]))
+
+        assert response.status_code == 200
+        assert OfficialExternalGames.objects.count() == 1
+        assert "existiert bereits" in response.content.decode()
+
+    def test_staff_id_survives_add_row_and_add_row_skips_validation(self):
+        staff = Client()
+        staff.force_login(_staff_user())
+
+        content = staff.post(
+            reverse(MULTI_ADD_URL_NAME),
+            _formset_data([{}], official_id=str(self.other.pk), add_row="1"),
+        ).content.decode()
+
+        assert f'value="{self.other.pk}"' in content
+        assert "formnovalidate" in content
 
     def test_multi_add_three_rows_atomic(self):
         self.login_moodle()
@@ -919,7 +1111,7 @@ class TestExternalGameMultiAdd(SelfServiceTestBase):
         from html import unescape
 
         self.login_moodle()
-        target = reverse(LIST_URL_NAME) + "?mine=1&season=2026"
+        target = reverse(LIST_URL_NAME) + f"?mine=1&season={SEASON}"
 
         content = unescape(
             self.client.get(
@@ -967,6 +1159,48 @@ class TestStaffExternalFieldsAreSaved(SelfServiceTestBase):
         assert str(entry.notification_date) == "2026-06-03"
         assert entry.reporter_name == "Staff Melder"
 
+    def test_unknown_staff_official_id_is_a_form_error_without_a_write(self):
+        DbSetupOfficials.create_production_associations()
+        entry = _external_entry(self.official)
+        client = Client()
+        client.force_login(_staff_user())
+
+        response = client.post(
+            reverse(EXTERNAL_EDIT_URL_NAME, kwargs={"pk": entry.pk}),
+            _external_form_data(
+                official_id="999999", reporter_name="Soll nicht stehen"
+            ),
+        )
+
+        assert "Offizielle-ID nicht gefunden" in response.content.decode()
+        entry.refresh_from_db()
+        assert entry.official_id == self.official.pk
+        assert entry.reporter_name != "Soll nicht stehen"
+
+
+class TestNamelessOfficialCannotClaim(SelfServiceTestBase):
+    def test_empty_name_tokens_never_pass_the_gate(self):
+        from types import SimpleNamespace
+
+        from officials.selfservice import can_reclaim_official
+
+        nameless = OfficialFactory(
+            first_name="", last_name="!!!", team=self.official.team
+        )
+        row = SimpleNamespace(name="Any Name", official_id=None, official=None)
+        request = SimpleNamespace(
+            user=SimpleNamespace(is_authenticated=True, is_staff=False)
+        )
+
+        assert can_reclaim_official(request, row, nameless) is False
+
+        gameinfo, real_row = _game_with_row(name="Any Name")
+        client = self.login_moodle(official=nameless)
+        client.post(reverse(CLAIM_URL_NAME, kwargs={"pk": real_row.pk}))
+
+        real_row.refresh_from_db()
+        assert real_row.official is None
+
 
 class TestOwnOpenRowHighlight(SelfServiceTestBase):
     def test_only_the_matching_open_row_is_highlighted(self):
@@ -999,6 +1233,59 @@ class TestRememberCookieRotationOnWriteViews(SelfServiceTestBase):
         assert rotated.value
         assert rotated["path"] == "/officials/"
 
+    def test_logout_revokes_legacy_and_current_remember_tokens(self):
+        from officials.constants import (
+            LEGACY_REMEMBER_COOKIE_PATH,
+            MOODLE_REMEMBER_COOKIE,
+            REMEMBER_COOKIE_PATH,
+        )
+        from officials.models import MoodleRememberToken
+        from officials.selfservice import delete_remember_cookie
+        from officials.service.remember_me import RememberMeService
+        from django.http import HttpResponse
+
+        first = RememberMeService.issue(self.official.pk)
+        second = RememberMeService.issue(self.official.pk)
+        assert MoodleRememberToken.objects.count() == 2
+
+        response = self.client.get(
+            reverse("view-officials-sign-out"),
+            HTTP_COOKIE=f"{MOODLE_REMEMBER_COOKIE}={first}; "
+            f"{MOODLE_REMEMBER_COOKIE}={second}",
+        )
+
+        assert MoodleRememberToken.objects.count() == 0
+        deletions = [m.OutputString() for m in response.cookies.values()]
+        assert any(f"Path={REMEMBER_COOKIE_PATH}" in h for h in deletions)
+        assert any(f"Path={LEGACY_REMEMBER_COOKIE_PATH}" in h for h in deletions)
+
+        # Explicit helper check: both deletion headers carry the real name.
+        helper_response = HttpResponse()
+        delete_remember_cookie(helper_response)
+        assert [m.key for m in helper_response.cookies.values()] == [
+            MOODLE_REMEMBER_COOKIE,
+            MOODLE_REMEMBER_COOKIE,
+        ]
+
+    def test_remember_me_restore_rotates_the_session_key(self):
+        from officials.service.remember_me import RememberMeService
+
+        client = Client()
+        client.cookies[MOODLE_REMEMBER_COOKIE] = RememberMeService.issue(
+            self.official.pk
+        )
+        session = client.session
+        session["pre_auth"] = "kept"
+        session.save()
+        old_key = session.session_key
+        assert old_key is not None
+
+        client.get(reverse(ASSIGNMENT_URL_NAME))
+
+        assert client.session.session_key != old_key
+        assert client.session["pre_auth"] == "kept"
+        assert client.session.get(MOODLE_LOGGED_IN_USER) == self.official.pk
+
 
 class TestAddAssignmentInputRobustness(SelfServiceTestBase):
     def test_unknown_gameday_parameter_does_not_crash(self):
@@ -1020,8 +1307,11 @@ class TestSelfServiceButtons(SelfServiceTestBase):
         ).content.decode()
 
         assert 'btn btn-primary w-100" type="submit">Einsatz übernehmen' in content
-        assert "btn btn-outline-danger" in content
-        assert ">Abbrechen<" in content
+        assert (
+            '<div class="col-auto">\n                <a class="btn btn-outline-danger"'
+            in content
+        )
+        assert "Abbrechen" in content
 
     def test_cancel_links_use_outline_danger(self):
         DbSetupOfficials.create_production_associations()
@@ -1083,6 +1373,38 @@ class TestReclaimMappedAssignment(SelfServiceTestBase):
                 row.refresh_from_db()
                 assert row.official == self.other
                 assert any("anderen Person" in m for m in self.messages(response))
+
+    def test_superset_typed_name_does_not_steal_a_correctly_mapped_row(self):
+        # "Max Mustermann" must not take over "Max Mustermann-Schmidt" when
+        # that row is already mapped to Max Schmidt: the typed name fits the
+        # current owner, so it is theirs, not a typo to be corrected.
+        owner = OfficialFactory(
+            first_name="Max", last_name="Schmidt", team=self.official.team
+        )
+        gameinfo, row = _game_with_row(official=owner, name="Max Mustermann-Schmidt")
+        self.login_moodle()
+
+        response = self.client.post(
+            reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}), follow=True
+        )
+
+        row.refresh_from_db()
+        assert row.official == owner
+        assert any("anderen Person" in m for m in self.messages(response))
+
+    def test_homonym_does_not_take_over_another_officials_row(self):
+        twin = OfficialFactory(
+            first_name=self.official.first_name,
+            last_name=self.official.last_name,
+            team=self.official.team,
+        )
+        gameinfo, row = _game_with_row(official=twin, name="Max Mustermann")
+        self.login_moodle()
+
+        self.client.post(reverse(CLAIM_URL_NAME, kwargs={"pk": row.pk}))
+
+        row.refresh_from_db()
+        assert row.official == twin
 
     def test_partial_typed_name_is_not_revealed_on_confirm_page(self):
         gameinfo, row = self._mapped_row_for("Danz", self.other)

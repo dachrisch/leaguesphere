@@ -174,12 +174,16 @@ class TestEinsaetzeListUi(SelfServiceUiTestBase):
 
         assert f'href="/gamedays/gameday/{gameday.pk}/"' in content
 
-    def test_mine_filter_toggle_uses_canonical_url(self):
+    def test_mine_filter_toggle_keeps_the_current_season(self):
         self.login()
 
         content = self.page()
+        expected = reverse(
+            "view-officials-game-officials-appearance-for-year",
+            kwargs={"season": SEASON},
+        )
 
-        assert 'href="/officials/einsaetze/meine/"' in content
+        assert f'href="{expected}?mine=1"' in content
         assert "Nur meine Einträge" in content
 
 
@@ -194,7 +198,8 @@ class TestAddAssignmentUi(SelfServiceUiTestBase):
 
         assert re.search(
             r'<div class="row[^"]*">.*?btn btn-primary w-100[^>]*>\s*Einsatz nachtragen'
-            r".*?btn btn-outline-danger w-100[^>]*>\s*Abbrechen.*?</div>",
+            r'.*?<div class="col-auto">\s*<a class="btn btn-outline-danger"[^>]*>\s*'
+            r"Abbrechen.*?</div>",
             content,
             re.S,
         ), content

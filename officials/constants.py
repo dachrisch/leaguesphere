@@ -22,3 +22,6 @@ MOODLE_LOGGED_IN_USER = "moodle_logged_in_user"
 # self-service pages (Einsätze, profile) restore the session from it too.
 MOODLE_REMEMBER_COOKIE = "officials_remember"
 REMEMBER_COOKIE_PATH = "/officials/"
+# Cookies issued before the self-service rollout used this narrower path.
+# They remain in browsers alongside the new one, so logout has to clear both.
+LEGACY_REMEMBER_COOKIE_PATH = "/officials/gameday/sign-up/"

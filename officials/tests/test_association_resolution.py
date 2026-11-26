@@ -37,6 +37,16 @@ class _MigrationRow:
         self.association_new_id = None
 
 
+class _ReverseMigrationRow:
+    """Stand-in for the historical row in backwards(): both columns exist."""
+
+    def __init__(self, pk, abbr):
+        self.pk = pk
+        self.association = None
+        self.association_new_id = 1 if abbr else None
+        self.association_new = MagicMock(abbr=abbr)
+
+
 # Every distinct value found in the production dump's free-text association
 # column, mapped onto the association it must resolve to (user-fixed mapping:
 # no new association rows are created).
@@ -274,3 +284,59 @@ class TestAssociationResolutionMigration:
         assert bulk_updates == [
             ([1, 2, 3, 4], ["association_new"], [afcvt_pk, afcvt_pk, afcvt_pk, nord_pk])
         ]
+
+    def test_validate_runs_before_ddl_and_aborts_on_unknown_value(self, associations):
+        """MariaDB DDL is not transactional: an unmapped value must abort
+        before AddField commits a column that a retry would try to add again.
+        """
+        from django.db.migrations import AddField, RunPython
+
+        operations = MIGRATION.Migration.operations
+        assert isinstance(operations[0], RunPython)
+        assert operations[0].code is MIGRATION.validate_before_ddl
+        assert isinstance(operations[1], AddField)
+
+        fake_model = MagicMock()
+        fake_model.objects.values_list.return_value = ["AFCVHH", "Fantasie"]
+        fake_apps = MagicMock()
+        fake_apps.get_model.side_effect = lambda app, model: (
+            fake_model if model == "OfficialExternalGames" else Association
+        )
+
+        with pytest.raises(MIGRATION.UnknownAssociationError, match="Fantasie"):
+            MIGRATION.validate_before_ddl(fake_apps, None)
+        # Nothing to write and no schema work in the validation step itself.
+        fake_model.objects.bulk_update.assert_not_called()
+
+    def test_backwards_bulk_updates_instead_of_one_save_per_row(self):
+        """A production-size rollback must not issue ~6k single-row UPDATEs
+        while holding row locks: the reverse path batches like forwards()."""
+        rows = [
+            _ReverseMigrationRow(pk, "AFCVT" if pk % 2 else "AFCVNORD")
+            for pk in range(1, MIGRATION._BATCH_SIZE + 2)
+        ]
+        manager = MagicMock()
+        manager.select_related.return_value.only.return_value.iterator.return_value = (
+            iter(rows)
+        )
+        bulk_updates = []
+        manager.bulk_update.side_effect = lambda objs, fields: bulk_updates.append(
+            ([row.pk for row in objs], list(fields), [row.association for row in objs])
+        )
+        fake_model = MagicMock()
+        fake_model.objects = manager
+        fake_apps = MagicMock()
+        fake_apps.get_model.return_value = fake_model
+
+        MIGRATION.backwards(fake_apps, None)
+
+        assert [len(pks) for pks, _, _ in bulk_updates] == [
+            MIGRATION._BATCH_SIZE,
+            1,
+        ]
+        assert {tuple(fields) for _, fields, _ in bulk_updates} == {("association",)}
+        assert bulk_updates[0][2] == [
+            "AFCVT" if pk % 2 else "AFCVNORD"
+            for pk in range(1, MIGRATION._BATCH_SIZE + 1)
+        ]
+        manager.select_related.assert_called_once_with("association_new")

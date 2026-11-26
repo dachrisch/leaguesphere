@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from officials.constants import MOODLE_REMEMBER_COOKIE
 from officials.models import MoodleRememberToken
 
 REMEMBER_ME_MAX_AGE = timedelta(days=30)
@@ -69,6 +70,26 @@ class RememberMeService:
             return
         selector = cookie_value.split(":", 1)[0]
         MoodleRememberToken.objects.filter(selector=selector).delete()
+
+    @staticmethod
+    def revoke_all_from_cookie_header(cookie_header: str | None) -> None:
+        """Revoke every remember-me selector present in a raw Cookie header.
+
+        ``request.COOKIES`` keeps only one of several same-named cookies at
+        different paths, so parsing the raw header is the only way to revoke
+        a stale pre-rollout token alongside the current one on logout.
+        """
+        if not cookie_header:
+            return
+        selectors = set()
+        for part in cookie_header.split(";"):
+            name, separator, value = part.strip().partition("=")
+            if separator and name == MOODLE_REMEMBER_COOKIE:
+                selector = value.partition(":")[0]
+                if selector:
+                    selectors.add(selector)
+        if selectors:
+            MoodleRememberToken.objects.filter(selector__in=selectors).delete()
 
     @staticmethod
     def prune_expired() -> int:

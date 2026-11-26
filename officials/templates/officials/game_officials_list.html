@@ -23,14 +23,14 @@
         <p>
             {% if moodle_official_id %}
             <a class="btn btn-sm {% if mine_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-               href="{% if mine_filter %}{% url 'view-officials-game-officials-appearance' %}{% else %}{% url 'view-officials-game-officials-mine' %}{% endif %}">
+               href="{% if mine_filter %}{{ mine_off_url }}{% else %}{{ mine_on_url }}{% endif %}">
                 {% if mine_filter %}Alle Einträge zeigen{% else %}Nur meine Einträge{% endif %}
             </a>
             <a class="btn btn-sm btn-outline-primary"
                href="{{ add_assignment_url }}?season={{ season }}">Einsatz nachtragen</a>
             {% endif %}
             <a class="btn btn-sm {% if open_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-               href="{% if open_filter %}{% url 'view-officials-game-officials-appearance' %}{% else %}{% url 'view-officials-game-officials-open' %}{% endif %}">Nur ? Einträge</a>
+               href="{% if open_filter %}{{ open_off_url }}{% else %}{{ open_on_url }}{% endif %}">Nur ? Einträge</a>
         </p>
         {% endif %}
         {% include 'utils/year_filter.html' %}
@@ -75,10 +75,12 @@
                 {% if moodle_official_id or is_staff %}
                 <td>
                     {% if not official.official_id %}
+                    {% if official.can_reclaim %}
                     <a class="btn btn-sm btn-outline-primary"
                        href="{% url claim_url_name pk=official.id %}?next={{ request.get_full_path|urlencode }}">
                         {% if is_staff %}Zuordnen{% else %}Mir zuordnen{% endif %}
                     </a>
+                    {% endif %}
                     {% elif official.is_own_row %}
                     <a class="btn btn-sm btn-outline-danger"
                        href="{% url 'view-officials-selfservice-dffl-delete' pk=official.id %}">Löschen</a>

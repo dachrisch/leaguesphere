@@ -2,19 +2,45 @@
 
 from datetime import date, timedelta
 
+from django.db import connection
 from django.test import Client, TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from gamedays.models import Association
 from gamedays.tests.setup_factories.factories import TeamFactory
 from officials.constants import MOODLE_LOGGED_IN_USER
-from officials.forms_selfservice import ExternalGameForm
+from officials.forms_selfservice import (
+    ExternalGameForm,
+    ExternalGameFormSet,
+    load_association_choices,
+)
 from officials.models import OfficialExternalGames
 from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
 from officials.tests.setup_factories.factories_officials import OfficialFactory
 
 MULTI_ADD_URL_NAME = "view-officials-selfservice-external-multi-add"
 EXTERNAL_EDIT_URL_NAME = "view-officials-selfservice-external-edit"
+
+
+class TestFormsetAssociationQueries(TestCase):
+    def setUp(self):
+        DbSetupOfficials.create_production_associations()
+
+    @staticmethod
+    def _render_queries(row_count):
+        formset = ExternalGameFormSet(
+            initial=[{} for _ in range(row_count)],
+            form_kwargs={"associations": load_association_choices()},
+        )
+        with CaptureQueriesContext(connection) as captured:
+            str(formset)
+        return len(captured.captured_queries)
+
+    def test_association_dropdown_is_evaluated_once_for_all_rows(self):
+        baseline = self._render_queries(1)
+
+        assert self._render_queries(5) == baseline
 
 
 class SelfServiceFormTestBase(TestCase):

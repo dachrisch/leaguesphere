@@ -1,3 +1,4 @@
+from datetime import date
 from http import HTTPStatus
 
 import pytest
@@ -150,6 +151,27 @@ class TestSafeNext:
 
         assert safe_next(request) == reverse("view-officials-sign-up-list")
 
+    @pytest.mark.parametrize(
+        "target", [r"///evil.example.com/", r"/\evil.example.com/"]
+    )
+    def test_next_with_protocol_relative_variants_falls_back(self, target):
+        request = _request("get", data={"next": target})
+
+        assert safe_next(request) == reverse("view-officials-sign-up-list")
+
+    @pytest.mark.parametrize(
+        "target",
+        [
+            "/officials/gameday/sign-up/7/add/",
+            "/officials/gameday/sign-up/7/cancel/",
+        ],
+    )
+    def test_next_never_targets_a_get_signup_action(self, target):
+        # Those views write on GET; a crafted login link must not land there.
+        request = _request("get", data={"next": target})
+
+        assert safe_next(request) == reverse("view-officials-sign-up-list")
+
 
 class TestLoginWiring(WebTest):
     def setUp(self):
@@ -227,7 +249,9 @@ class TestEinsaetzePageCacheAndBanner(WebTest):
 
         # A gameday created after the anonymous page was cached must not show
         # up in the next anonymous response - that one comes from the cache.
-        gameday = GamedayFactory(date="2026-05-01", name="CACHE-PROBE-SPIELTAG")
+        gameday = GamedayFactory(
+            date=date(date.today().year, 5, 1), name="CACHE-PROBE-SPIELTAG"
+        )
         gameinfo = GameinfoFactory(gameday=gameday)
         GameOfficialFactory(gameinfo=gameinfo, position="Referee")
 
