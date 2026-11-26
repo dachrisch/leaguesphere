@@ -83,7 +83,15 @@ def test_string_file_contents_are_resolved_before_the_request():
     seen = {}
 
     class Session:
-        def request(self, path, method="GET", json_body=None, form=None, files=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            files=None,
+            headers=None,
+        ):
             seen["files"] = files
             return type(
                 "R",

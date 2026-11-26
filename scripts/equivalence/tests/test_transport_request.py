@@ -60,8 +60,24 @@ def test_get_has_no_body_no_auth_and_no_extra_headers():
 def test_headers_authorization_and_csrf_are_sent_only_where_needed():
     session = make_session(username="user", password="pw", headers={"Accept": "x"})
     session._cookies.set_cookie(
-        Cookie(0, "csrftoken", "tok", None, False, "stage.example", False, False,
-               "/", True, False, None, False, None, None, {})
+        Cookie(
+            0,
+            "csrftoken",
+            "tok",
+            None,
+            False,
+            "stage.example",
+            False,
+            False,
+            "/",
+            True,
+            False,
+            None,
+            False,
+            None,
+            None,
+            {},
+        )
     )
     session.request("/api/x", method="post")
     request = session._opener.requests[0]
@@ -92,12 +108,17 @@ def test_multipart_body_keeps_form_fields_and_both_content_types():
     }
     session.request("/api/import", method="POST", form={"k": "v"}, files=files)
     request = session._opener.requests[0]
-    assert b'multipart/form-data; boundary=' in (request.get_header("Content-type") or "").encode()
+    assert (
+        b"multipart/form-data; boundary="
+        in (request.get_header("Content-type") or "").encode()
+    )
     assert b'name="k"' in request.data
     assert b'name="note"' in request.data
     assert b"text" in request.data
     # No form fields: the `(form or {})` loop is skipped but the file is sent.
-    session.request("/api/import", method="POST", files={"f": ("f.csv", b"x", "text/csv")})
+    session.request(
+        "/api/import", method="POST", files={"f": ("f.csv", b"x", "text/csv")}
+    )
     assert b'name="f"' in session._opener.requests[1].data
 
 
