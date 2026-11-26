@@ -447,20 +447,21 @@ export function usePatFlow({
    * also for a team touchdown entered without a number (IFAF R 8-1-1).
    */
   const submitTouchdown = async (events: GameLogEventInput[]): Promise<void> => {
+    // `submit` refuses a write without a possession team (writeTeam throws),
+    // so by the time it resolves `possessionName` is never null. The old
+    // `if (team !== null)` wrapper could not run and carried no behaviour.
     const team = possessionName;
     await submit(events);
     // The touchdown does not flip the ball any more; its op is what the try's
     // flip will name so undoing the touchdown takes the flip with it.
     const originId = session.lastOpId() ?? undefined;
     const jersey = events[0]?.player;
-    if (team !== null) {
-      openPat(
-        team,
-        typeof jersey === "number" ? jersey : null,
-        originId,
-        touchdownGroupOf(team),
-      );
-    }
+    openPat(
+      team as string,
+      typeof jersey === "number" ? jersey : null,
+      originId,
+      touchdownGroupOf(team as string),
+    );
   };
 
   /** Forget the open try (a miss, a saved conversion, a new touchdown). */
