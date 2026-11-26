@@ -43,7 +43,9 @@ from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
 from gamedays.service import passcheck_hooks
 
-logger = logging.getLogger(__name__)
+# Keep the historical logger name: L3 preserved `officials.views` for the
+# same kind of move, and log queries must keep matching the old emitter.
+logger = logging.getLogger("gamedays.api.game_views")
 
 DEVICE_LOCK_DETAIL = "Dieses Spiel läuft auf einem anderen Gerät."
 GAME_FINISHED_DETAIL = "Dieses Spiel ist beendet."

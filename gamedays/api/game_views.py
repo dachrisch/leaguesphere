@@ -1,13 +1,12 @@
 import json
 import logging
-import uuid
 from collections import OrderedDict
 from http import HTTPStatus
 
 from django.db import transaction
 from django.db.models import F
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
-from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -20,11 +19,9 @@ from gameevents.service.log_payload import (
     event_seqs_for_rows,
 )
 from gameevents.service.projector import InvalidEnvelope
-from gameevents.service.rules import load_rules, penalty_catalogue
 from gameevents.service.undo import record_legacy_undo
 from gamedays.api.serializers import (
     GamedaySerializer,
-    GameFinalizer,
     GameSetupSerializer,
     GameLogSerializer,
 )
@@ -32,11 +29,9 @@ from gamedays.models import (
     Team,
     Gameinfo,
     GameSetup,
-    GameLogSubmission,
     Gameresult,
     TeamLog,
 )
-from gamedays.service.device_lock import release_device_lock, stored_device
 from gamedays.service.game_service import GameService
 from gamedays.service.gamelog import gameday_ref_now, serialize_events
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
@@ -45,10 +40,6 @@ from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
 from gamedays.service import passcheck_hooks
 
 logger = logging.getLogger(__name__)
-
-DEVICE_LOCK_DETAIL = "Dieses Spiel läuft auf einem anderen Gerät."
-GAME_FINISHED_DETAIL = "Dieses Spiel ist beendet."
-
 
 # Phase 3 Layer 4: device-lock/finalize/config orchestration lives in its own
 # module; re-exported so ``api/urls.py`` and internal callers stay unchanged.

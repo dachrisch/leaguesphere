@@ -51,6 +51,8 @@ class Step:
     capture_regex: str | None = None
     # Multipart file upload (officials import); name -> (filename, bytes, type).
     files: dict | None = None
+    # Extra request headers (e.g. the scorecard device id).
+    headers: dict | None = None
 
 
 @dataclass
@@ -889,6 +891,77 @@ SCENARIOS = {
             expect=200,
         ),
     ],
+    "device-lock-halftime-finalize": [
+        _gameday_create_step(),
+        *_publish_steps_with_teams(),
+        Step(
+            name="read-games",
+            method="GET",
+            path="/api/gamedays/{gameday_id}/games/",
+            role="anonymous",
+            expect=200,
+            capture="game_id",
+            capture_path="0.id",
+        ),
+        Step(
+            name="read-home-team",
+            method="GET",
+            path="/api/gamedays/{gameday_id}/games/",
+            role="anonymous",
+            expect=200,
+            capture="team_name",
+            capture_path="0.team_name",
+        ),
+        Step(
+            name="start-game",
+            method="PUT",
+            path="/api/game/{game_id}/setup",
+            json={
+                "direction": "Nord",
+                "fhPossession": "{team_name}",
+                "device_id": "{run_id}-device",
+            },
+            expect=(200, 409),
+        ),
+        Step(
+            name="device-conflict-put",
+            method="PUT",
+            path="/api/game/{game_id}/setup",
+            json={
+                "direction": "Nord",
+                "fhPossession": "{team_name}",
+                "device_id": "other-device",
+            },
+            headers={"X-SCORECARD_DEVICE": "other-device"},
+            expect=409,
+        ),
+        Step(
+            name="halftime-put",
+            method="PUT",
+            path="/api/game/{game_id}/halftime",
+            json={},
+            expect=(200, 409),
+        ),
+        Step(
+            name="finalize-put",
+            method="PUT",
+            path="/api/game/{game_id}/finalize",
+            json={},
+            expect=(200, 409),
+        ),
+        Step(
+            name="device-release",
+            method="DELETE",
+            path="/api/game/{game_id}/device",
+            expect=(200, 204),
+        ),
+        Step(
+            name="read-game-summary",
+            method="GET",
+            path="/api/game/{game_id}/summary",
+            expect=200,
+        ),
+    ],
     "officials-import-post": [
         Step(
             name="discover-team",
@@ -1063,6 +1136,7 @@ def run_scenario(name, sessions, context, run_id):
             form=form,
             follow_redirects=not step.no_redirect,
             files=files,
+            headers=step.headers,
         )
         expected = step.expect if isinstance(step.expect, tuple) else (step.expect,)
         if response.status not in expected:

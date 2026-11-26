@@ -28,6 +28,17 @@ def test_import_post_scenario_has_parse_and_confirm_steps():
     assert "file" in upload.files
 
 
+def test_device_scenario_witnesses_the_moved_endpoints():
+    steps = scenarios.SCENARIOS["device-lock-halftime-finalize"]
+    by_name = {step.name: step for step in steps}
+    assert by_name["device-conflict-put"].headers == {
+        "X-SCORECARD_DEVICE": "other-device"
+    }
+    assert by_name["halftime-put"].path.endswith("/halftime")
+    assert by_name["finalize-put"].path.endswith("/finalize")
+    assert by_name["device-release"].method == "DELETE"
+
+
 def test_import_post_scenario_is_stable_across_both_sides():
     class Session:
         def __init__(self, side):
