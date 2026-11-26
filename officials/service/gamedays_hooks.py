@@ -14,7 +14,9 @@ def detail_contributor(draft):
         show_official_names = True
     elif draft.request.user.username:
         try:
-            show_official_names = draft.request.user.username in draft.qualify_table
+            # Use the raw table: the original view ran this membership check
+            # before TableContextBuilder.build() converted the DataFrame.
+            show_official_names = draft.request.user.username in draft.raw_qualify_table
         except TypeError:
             show_official_names = False
 

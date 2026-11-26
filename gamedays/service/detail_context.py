@@ -22,13 +22,15 @@ class DetailContextDraft:
     render_configs: dict = field(default_factory=dict)
     config: dict = field(default_factory=dict)
     qualify_table: object = None
+    # Kept unconverted for contributors that read raw column labels (e.g.
+    # the officials username membership check).
+    raw_qualify_table: object = None
     final_table: object = None
     officials: list = field(default_factory=list)
     url_pattern_official: str = ""
     url_pattern_official_signup: str = ""
     url_pattern_liveticker: str = ""
     allow_officials_to_register: bool | None = None
-    today_status_by_gameday: dict = field(default_factory=dict)
 
 
 def register_contributor(name, priority, contributor):

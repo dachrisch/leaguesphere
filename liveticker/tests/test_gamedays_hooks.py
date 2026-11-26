@@ -20,23 +20,15 @@ def test_register_registers_the_hook():
     assert register.call_count == 3
 
 
-def test_detail_contributor_fills_ticker_and_statuses():
+def test_detail_contributor_fills_ticker_url():
     from types import SimpleNamespace
 
-    draft = SimpleNamespace(
-        gameday=object(), today_status_by_gameday={}, url_pattern_liveticker=""
-    )
-    with (
-        patch(
-            "liveticker.service.gamedays_hooks.today_statuses", return_value={1: "live"}
-        ),
-        patch(
-            "liveticker.service.gamedays_hooks.gameday_ticker_url",
-            return_value="/ticker",
-        ),
+    draft = SimpleNamespace(gameday=object(), url_pattern_liveticker="")
+    with patch(
+        "liveticker.service.gamedays_hooks.gameday_ticker_url",
+        return_value="/ticker",
     ):
         from liveticker.service.gamedays_hooks import detail_contributor
 
         detail_contributor(draft)
-    assert draft.today_status_by_gameday == {1: "live"}
     assert draft.url_pattern_liveticker == "/ticker"

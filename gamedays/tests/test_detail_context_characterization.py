@@ -10,6 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from gamedays.constants import LEAGUE_GAMEDAY_DETAIL
+from gamedays.service import detail_context
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from league_table.models import LeagueSeasonConfig
 
@@ -21,22 +22,17 @@ class DetailContextCharacterization(TestCase):
     def _url(self, gameday):
         return reverse(LEAGUE_GAMEDAY_DETAIL, kwargs={"pk": gameday.pk})
 
-    def test_officials_not_installed_uses_empty_defaults(self):
-        gameday = DBSetup().create_empty_gameday()
-        with patch(
-            "gamedays.views.settings.INSTALLED_APPS",
-            [
-                app
-                for app in __import__(
-                    "django.conf", fromlist=["settings"]
-                ).settings.INSTALLED_APPS
-                if app != "officials"
-            ],
-        ):
+    def test_no_contributors_uses_empty_defaults(self):
+        """Without contributors the view renders raw tables as HTML itself."""
+        gameday = DBSetup().g62_qualify_finished()
+        with patch.dict(detail_context.CONTRIBUTORS, {}, clear=True):
             response = self.client.get(self._url(gameday))
         assert response.status_code == 200
-        assert response.context_data["info"]["officials"] == []
-        assert response.context_data["info"]["url_pattern_official"] == ""
+        info = response.context_data["info"]
+        assert info["officials"] == []
+        assert info["url_pattern_official"] == ""
+        assert info["url_pattern_official_signup"] == ""
+        assert "<table" in info["qualify_table"]
 
     def test_non_staff_username_is_checked_against_the_table(self):
         gameday = DBSetup().create_empty_gameday()
@@ -45,12 +41,17 @@ class DetailContextCharacterization(TestCase):
         response = self.client.get(self._url(gameday))
         assert response.status_code == 200
 
-    def test_league_table_not_installed_uses_to_html(self):
-        gameday = DBSetup().create_empty_gameday()
-        with patch("gamedays.views.apps.is_installed", return_value=False):
+    def test_without_league_table_contributor_uses_to_html(self):
+        gameday = DBSetup().g62_qualify_finished()
+        contributors = {
+            name: value
+            for name, value in detail_context.CONTRIBUTORS.items()
+            if name != "league_table"
+        }
+        with patch.dict(detail_context.CONTRIBUTORS, contributors, clear=True):
             response = self.client.get(self._url(gameday))
         assert response.status_code == 200
-        assert response.status_code == 200
+        assert "<table" in response.context_data["info"]["qualify_table"]
 
     def test_missing_slugs_skip_the_table_url(self):
         gameday = DBSetup().create_empty_gameday()
@@ -77,7 +78,8 @@ class DetailContextCharacterization(TestCase):
             )
             response = self.client.get(self._url(gameday))
             assert response.status_code == 200
-            assert response.status_code == 200
+            signup_url = response.context_data["info"]["url_pattern_official_signup"]
+            assert bool(signup_url) is allow
 
     def test_default_config_allow_and_deny(self):
         for allow in (True, False):
@@ -89,3 +91,5 @@ class DetailContextCharacterization(TestCase):
             config.save()
             response = self.client.get(self._url(gameday))
             assert response.status_code == 200
+            signup_url = response.context_data["info"]["url_pattern_official_signup"]
+            assert bool(signup_url) is allow

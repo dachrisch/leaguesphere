@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 
 from officials.service import gamedays_hooks as hooks
@@ -15,6 +16,7 @@ def _draft(user):
         request=SimpleNamespace(user=user),
         gameday=SimpleNamespace(pk=1),
         qualify_table={"ref": 1},
+        raw_qualify_table={"ref": 1},
         officials=None,
         url_pattern_official="initial",
         url_pattern_official_signup="initial",
@@ -47,6 +49,29 @@ def test_detail_contributor_resolves_names(user, expected):
     assert draft.url_pattern_official_signup == "absolute"
     show = signups.call_args.args[1]
     assert show is {"staff": True, "member": True, "anon": False}[expected]
+
+
+@pytest.mark.parametrize(
+    "raw_columns,expected",
+    [(["html", "A"], True), (["A"], False)],
+)
+def test_membership_checks_the_raw_qualify_table(raw_columns, expected):
+    """The converted builder dict must not change which usernames match."""
+    draft = _draft(SimpleNamespace(is_staff=False, username="html"))
+    draft.qualify_table = {"html": "<table>converted</table>"}
+    draft.raw_qualify_table = pd.DataFrame(columns=raw_columns)
+    with (
+        patch(
+            "officials.service.gamedays_hooks.OfficialSignupService.get_signed_up_officials",
+            return_value=[],
+        ) as signups,
+        patch(
+            "officials.service.gamedays_hooks.UrlService.build_absolute_url",
+            return_value="absolute",
+        ),
+    ):
+        hooks.detail_contributor(draft)
+    assert signups.call_args.args[1] is expected
 
 
 def test_detail_contributor_handles_unhashable_qualify_table():

@@ -21,7 +21,6 @@ def gameday_ticker_url(gameday):
 
 
 def detail_contributor(draft):
-    draft.today_status_by_gameday = today_statuses()
     draft.url_pattern_liveticker = gameday_ticker_url(draft.gameday)
 
 

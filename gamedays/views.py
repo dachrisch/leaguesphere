@@ -2,8 +2,6 @@ import json
 from datetime import datetime, timedelta
 
 import pandas as pd
-from django.apps import apps
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Max
@@ -68,7 +66,6 @@ from .models import (
     Team,
     Tournament,
 )
-from .service.builders import TableContextBuilder
 from .service.gameday_form_service import GamedayFormService
 from .service.gameday_service import GamedayService, GamedayGameService, EmptySchedule
 from .service.gameday_settings import ID
@@ -252,6 +249,7 @@ class GamedayDetailView(DetailView):
             render_configs=render_configs,
         )
         draft.qualify_table = gs.get_qualify_table()
+        draft.raw_qualify_table = draft.qualify_table
         draft.final_table = gs.get_final_table()
         detail_context.build(draft)
 

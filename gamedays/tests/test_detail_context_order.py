@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+import pytest
+
 from gamedays.service import detail_context
+
+
+@pytest.fixture(autouse=True)
+def restore_contributors():
+    """Never leave the detail view's registry empty for later tests."""
+    saved = dict(detail_context.CONTRIBUTORS)
+    yield
+    detail_context.CONTRIBUTORS.clear()
+    detail_context.CONTRIBUTORS.update(saved)
 
 
 def test_contributors_run_in_documented_priority_order():
