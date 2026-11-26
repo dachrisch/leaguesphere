@@ -38,7 +38,8 @@
     "eslint:json": "eslint ./src --format json -o js-lint-results-gameday_designer.json",
     "dev": "vite build",
     "i18n:types": "i18next-resources-for-ts toc -i ./src/i18n/locales/de -o ./src/i18n/types.d.ts",
-    "prebuild": "npm run i18n:types"
+    "prebuild": "npm run i18n:types",
+    "test:phase3": "vitest run --config vitest.phase3.config.mts --coverage"
   },
   "browserslist": {
     "production": [
