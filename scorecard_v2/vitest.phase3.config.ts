@@ -36,6 +36,10 @@ export default defineConfig({
         "src/screens/tracking-flow/usePatFlow.ts",
         // useSeriesTiles.ts
         "src/screens/tracking-flow/useSeriesTiles.ts",
+        // panels.ts
+        "src/screens/tracking-flow/panels.ts",
+        // TrackingPanels.tsx
+        "src/screens/tracking-flow/TrackingPanels.tsx",
       ],
       thresholds: { branches: 100, perFile: true },
     },
