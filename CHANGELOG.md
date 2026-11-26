@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.28.3](https://github.com/dachrisch/leaguesphere/compare/v5.28.2...v5.28.3) (2026-11-26)
+
+
+### Documentation
+
+* **skills:** add PR review skill with stack review learnings ([12d069c](https://github.com/dachrisch/leaguesphere/commit/12d069c776166cb30d9bfc387a3042d928841200))
+* **skills:** add PR review skill with stack review learnings ([06093ee](https://github.com/dachrisch/leaguesphere/commit/06093eea83ced2d8125b3c1286cf101cfe9345d1))
+
 ## [5.28.2](https://github.com/dachrisch/leaguesphere/compare/v5.28.1...v5.28.2) (2026-11-26)
 
 
