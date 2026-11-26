@@ -271,7 +271,6 @@ JOURNEY_INACTIVITY_MINUTES = int(os.environ.get("JOURNEY_INACTIVITY_MINUTES", 30
 # table. Off by default: with the flag off the liveticker runs exactly the
 # query it ran before the event store existed, so merging the slice changes
 # nothing user-visible until stage has proven the projection.
-SCORECARD_EVENT_FEED = os.environ.get("SCORECARD_EVENT_FEED", "false") == "true"
 
 # --- liveticker -------------------------------------------------------------
 # The feed is polled by every open ticker. Keep the page cache at 60 s until a

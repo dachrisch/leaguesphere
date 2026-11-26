@@ -274,8 +274,11 @@ def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
     """
 
     if game_ids is None:
+        # Only v2 games must reconcile. Shadow-only events are audit records
+        # and their games stay on the legacy read path (Phase 2 decision 5).
         requested = list(
-            GameEvent.objects.values_list("game_id", flat=True)
+            GameEvent.objects.filter(source=GameEvent.Source.V2)
+            .values_list("game_id", flat=True)
             .distinct()
             .order_by("game_id")
         )

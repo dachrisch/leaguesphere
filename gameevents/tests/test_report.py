@@ -300,7 +300,7 @@ def test_report_option_writes_json_without_changing_stdout_or_queries(
     destination = tmp_path / "report.json"
 
     out = StringIO()
-    with django_assert_num_queries(6):
+    with django_assert_num_queries(7):
         call_command(
             "check_game_projection",
             "--all",

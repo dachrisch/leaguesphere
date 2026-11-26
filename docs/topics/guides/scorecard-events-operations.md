@@ -34,24 +34,24 @@ Read-only and public, like the other game read endpoints.
 - `409 {"detail": "…", "needs_reconciliation": true}` means the projection is
   flagged: it is **not** served as a score. Run the rebuild below.
 
-## `SCORECARD_EVENT_FEED`
+## The event read path (formerly `SCORECARD_EVENT_FEED`)
 
-Default **off** (`false`; set the environment variable to `true` to enable).
-With the flag off the liveticker runs exactly the query it ran before the
-event store existed.
-
-With the flag on, a live game that has events takes its total score from
+The event path is now permanent: the flag and its environment variable were
+removed in Phase 2 after the prod soak. A live game takes its total score from
 `GameState` and, while `Gameinfo.status` is in progress, the half it displays
 from `GameState.period` (`1. Halbzeit`/`2. Halbzeit`). Which games are live,
 upcoming or the previous slot is still selected from `Gameinfo.status` — the
 projection never changes the selection. Ticks remain the projected `TeamLog`
 rows, so their ordering and text are the ones the widget has always rendered.
 
-A game whose projection is flagged `needs_reconciliation` falls back to its
+A game is event-sourced only when it has a `source=v2` event. Games with rows
+but no events — and games whose only events are shadow/legacy audit records —
+stay on the row-based read path; they are the accepted legacy set (below).
+A v2 projection flagged `needs_reconciliation` also falls back to its
 `TeamLog` rows for that response (one warning per liveticker request names the
-games); the public widget never sees the feed's `409` and never blanks a game.
-The liveticker ETag includes the projection's `last_seq` while the flag is on,
-so an event that writes no tick (a plain possession change) still invalidates a
+games), so the public widget never sees the feed's `409` and never blanks a
+game. The liveticker ETag always includes the projection's `last_seq`, so an
+event that writes no tick (a plain possession change) still invalidates a
 cached response.
 
 ## `check_game_projection`
@@ -152,25 +152,14 @@ regeneration command are in
 A flagged v2 game is repaired with a data-only
 `rebuild_game_projection --game <id>`, never a code change.
 
-## Where the flag has to be set (and where it cannot)
+## Environment after the cutover
 
-`SCORECARD_EVENT_FEED` is read from the process environment
-(`league_manager/settings/base.py`). Setting it inside a deployed image has no
-effect: the container's environment comes from the host, not the build.
+There is no flag to set: `SCORECARD_EVENT_FEED` was removed from the settings,
+`.env_template` and `deployed/ls.env.staging.template`. Old values left in a
+host env file are ignored. The remaining user-gated work is a separate
+`dachrisch/servyy-container` cleanup of the stage/demo/prod env files (and the
+agent-stage validation override), not an app change.
 
-- **Local dev**: `.env_template` / your shell.
-- **Staging/demo**: the env file Ansible renders from
-  `deployed/ls.env.staging.template` (and the demo equivalent). That template
-  already carries `SCORECARD_EVENT_FEED=false` (see
-  `deployed/ls.env.staging.template:33`), so the default is off without any
-  extra edit. Flipping the flag on stage is a host-environment change applied
-  through Ansible in `dachrisch/servyy-container` — not something an image or
-  a repo-only change can do — the same gate as
-  `container/nginx.staging.conf`, which staging mounts from the host jail.
-
-Consequence: a release candidate can be *validated* against the event path
-(feed endpoint, `check_game_projection`) without the flag, but the liveticker
-cannot switch to the projection from an image alone.
 
 Validation done on stage for `v5.1.1-rc.1`, for the record:
 

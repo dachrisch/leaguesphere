@@ -242,7 +242,7 @@ class TestAllResults(TestCase):
             gameday = GamedayFactory()
             self._finished_games(gameday, number_of_games)
             service = LivetickerService([], [], [gameday.pk], all_results=True)
-            with self.assertNumQueries(2):
+            with self.assertNumQueries(3):
                 payload = service.get_liveticker_as_json()
             return len(payload)
 
@@ -287,7 +287,7 @@ class TestAllScheduled(TestCase):
             gameday = GamedayFactory()
             self._scheduled_games(gameday, number_of_games)
             service = LivetickerService([], [], [gameday.pk], all_results=True)
-            with self.assertNumQueries(2):
+            with self.assertNumQueries(3):
                 payload = service.get_liveticker_as_json()
             return len(payload)
 

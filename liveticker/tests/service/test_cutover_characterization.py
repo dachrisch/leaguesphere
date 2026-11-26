@@ -8,7 +8,7 @@ coverage gate is checked against HEAD before any of these functions changes.
 from datetime import UTC, datetime
 
 import pytest
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 
 from gameevents.models import GameEvent, GameState
@@ -65,7 +65,6 @@ class ProjectionCharacterisation(TestCase):
         assert row["score_home"] == 7
         assert row["status"] == "beendet"
 
-    @override_settings(SCORECARD_EVENT_FEED=False)
     def test_flag_off_payload_is_unchanged_for_a_legacy_game(self):
         gameday = GamedayFactory()
         game = GameinfoFactory(gameday=gameday, status="Geplant", standing="G")

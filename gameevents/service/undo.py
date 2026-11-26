@@ -141,7 +141,11 @@ def _record_correction(game, target, author):
         game,
         [value],
         client_id=value.client_id,
-        source=GameEvent.Source.LEGACY,
+        source=(
+            GameEvent.Source.V2
+            if GameEvent.objects.filter(game=game, source=GameEvent.Source.V2).exists()
+            else GameEvent.Source.LEGACY
+        ),
         write_rows=False,
         author=author,
     )

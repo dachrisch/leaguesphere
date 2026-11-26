@@ -150,6 +150,7 @@ class Command(BaseCommand):
             generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             ref_sha=ref_sha,
             cand_sha=cand_sha,
+            shadow_only=shadow_only,
         )
         Path(path).write_text(
             json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"

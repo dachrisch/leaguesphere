@@ -92,7 +92,11 @@ def get_feed(game, after: int = 0) -> Feed:
     projection may not be served (flagged, or missing altogether).
     """
 
-    events = GameEvent.objects.filter(game=game).select_related("undo_of")
+    # A game is event-sourced only when it has a v2 event; shadow-only games
+    # keep the row-based legacy read path after the cutover.
+    events = GameEvent.objects.filter(
+        game=game, source=GameEvent.Source.V2
+    ).select_related("undo_of")
     if not events.exists():
         return legacy_feed(game)
 

@@ -53,7 +53,6 @@ class LivetickerService:
         self._init_gamedays(gameday_ids, league)
         self.games_with_all_ticks = games_with_all_ticks
         self.all_results = all_results
-        self.event_feed_enabled = bool(getattr(settings, "SCORECARD_EVENT_FEED", False))
 
     def _init_gamedays(self, gameday_ids, league):
         self.gameday_ids = resolve_gameday_ids(gameday_ids, league)
@@ -74,8 +73,7 @@ class LivetickerService:
                 filter_conditions |= self._get_upcoming_slot_filter(gameday_id)
                 filter_conditions |= self._get_latest_slot_filter(gameday_id)
             next_games_list += self._get_all_live_games(filter_conditions)
-        if self.event_feed_enabled:
-            self._apply_event_projection(next_games_list)
+        self._apply_event_projection(next_games_list)
         self._update_next_games_with_teamlog(next_games_list)
         # One reference instant per response: every tick and gameStarted
         # serializes against the same "now" for the UTC date resolution.
@@ -103,8 +101,10 @@ class LivetickerService:
         if not next_games_list:
             return
         game_ids = [game[LivetickerSerializer.ID] for game in next_games_list]
+        # Only a v2 event makes the log own the game. Shadow-only games stay
+        # on the row-based legacy path after the cutover.
         event_game_ids = set(
-            GameEvent.objects.filter(game_id__in=game_ids)
+            GameEvent.objects.filter(game_id__in=game_ids, source=GameEvent.Source.V2)
             .values_list("game_id", flat=True)
             .distinct()
         )
@@ -134,8 +134,8 @@ class LivetickerService:
                 game["status"] = PERIOD_STATUS.get(state["period"], game["status"])
         if flagged:
             logger.warning(
-                "SCORECARD_EVENT_FEED: games %s need reconciliation; serving "
-                "their TeamLog rows instead of the projection",
+                "games %s need reconciliation; serving their TeamLog rows "
+                "instead of the projection",
                 ", ".join(str(game_id) for game_id in flagged),
             )
 
