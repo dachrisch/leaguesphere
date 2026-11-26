@@ -58,13 +58,14 @@ def create(context, run_id, *, started=False, finished=False, locked=False):
         "season_id": seed["season_id"],
         "league_id": seed["league_id"],
     }
-    for step in (
-        scenarios._gameday_create_step(),
-        *scenarios._publish_steps_with_teams(),
-    ):
+    _run_step(session, scenarios._gameday_create_step(), fixture_context)
+    # The publish steps interpolate {gameday_id}; resolve it from the created
+    # row before replaying them, exactly as the backend runner's capture does.
+    gameday_id = _find_run(session, run_id)
+    fixture_context["gameday_id"] = gameday_id
+    for step in scenarios._publish_steps_with_teams():
         _run_step(session, step, fixture_context)
 
-    gameday_id = _find_run(session, run_id)
     games = session.request(f"/api/gamedays/{gameday_id}/games/")
     payload = games.json()
     rows = payload.get("results", payload if isinstance(payload, list) else [])
