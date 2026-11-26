@@ -18,7 +18,6 @@ from django.views.generic import (
     CreateView,
     FormView,
     DeleteView,
-    ListView,
     TemplateView,
 )
 from formtools.wizard.views import SessionWizardView
@@ -57,11 +56,7 @@ from .models import (
     Gameday,
     Gameinfo,
     Gameresult,
-    League,
     ResourceUrl,
-    Season,
-    SeasonLeagueTeam,
-    Team,
     Tournament,
 )
 from .service.gameday_form_service import GamedayFormService
