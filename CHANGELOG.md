@@ -1,5 +1,57 @@
 # Changelog
 
+## [6.0.0](https://github.com/dachrisch/leaguesphere/compare/v5.30.1...v6.0.0) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **gameevents:** finish the v2 cutover without stale flag guidance
+* **gameevents:** scorecard_v2 can no longer continue a game that the old scorecard started; that game is finished on the old app.
+* **gameevents:** preserve v1 validation and idempotency after shadow removal
+
+### Features
+
+* add --report to check_game_projection with source-aware legacy acceptance ([82c936a](https://github.com/dachrisch/leaguesphere/commit/82c936a8df17215dc73d5eecc0811ce14beff982))
+* extend equivalence harness with feed, liveticker and cutover scenarios ([c60c3ed](https://github.com/dachrisch/leaguesphere/commit/c60c3edaaed44e1d1100e5d2918f62e815550b32))
+
+
+### Bug Fixes
+
+* **deps:** update dependency i18next to v27.2.10 ([#2603](https://github.com/dachrisch/leaguesphere/issues/2603)) ([710127e](https://github.com/dachrisch/leaguesphere/commit/710127e1f296337d8caece55c83306c8b44037ca))
+* **equivalence:** exercise the reconciliation flag path ([b045f27](https://github.com/dachrisch/leaguesphere/commit/b045f2707c6ae4ba6e68914b7802f4d09aa02f45))
+* **equivalence:** keep ETag revalidation probes and report unrun ones ([5940d9c](https://github.com/dachrisch/leaguesphere/commit/5940d9cc4b82fd60115ef8c0c634a43dabf283a6))
+* **equivalence:** skip unresolved probes and patch the active team lookup ([2f351b6](https://github.com/dachrisch/leaguesphere/commit/2f351b6535f839514eb0a567252f65488fce5851))
+* **gamedays:** answer a rejected result edit with a fixed message ([5597ba9](https://github.com/dachrisch/leaguesphere/commit/5597ba9d009402dc5d889e642218247e58c64fcb))
+* **gameevents:** describe shadow-only games accurately and fix the ADR flag wording ([1b99738](https://github.com/dachrisch/leaguesphere/commit/1b9973897a30ee7185c7d0450d2c00137beeb0f7))
+* **gameevents:** do not count lifecycle markers as old-app plays ([f077c07](https://github.com/dachrisch/leaguesphere/commit/f077c07bc27d61236abd3ed1bccac0d2ca3b749d))
+* **gameevents:** finish the v2 cutover without stale flag guidance ([5abcd75](https://github.com/dachrisch/leaguesphere/commit/5abcd75a851d6472abf2d5e88f5360f4bff3762c))
+* **gameevents:** keep the projection on the result after a manual edit ([6acf125](https://github.com/dachrisch/leaguesphere/commit/6acf125a83a958459047b329bd0902243f2a5a60))
+* **gameevents:** measure the whole accepted legacy set ([ec2a52f](https://github.com/dachrisch/leaguesphere/commit/ec2a52f3d240c46e43e90bf07fb907738f493e24))
+* **gameevents:** preserve v1 validation and idempotency after shadow removal ([12ae316](https://github.com/dachrisch/leaguesphere/commit/12ae316ec7de0d6435d70f107303f034610dcce3))
+* **gameevents:** record a manual result edit on a v2 game as a correction ([a715123](https://github.com/dachrisch/leaguesphere/commit/a71512383fdfe10187105fca4503b863fc3ebd33))
+* **gameevents:** refuse canonical writes to games the old app started ([0c19320](https://github.com/dachrisch/leaguesphere/commit/0c19320038d4143b3e0039b469c07da51407be73))
+* make cutover scenarios pass on the shared stage and normalise wizard ids ([bef8cb1](https://github.com/dachrisch/leaguesphere/commit/bef8cb11623b2a5b124de6c64ee3351bb229dca2))
+* **report:** keep stdout counting games with no events only ([3e4fc45](https://github.com/dachrisch/leaguesphere/commit/3e4fc45565c57fc70df706204e6ddaa7aa15f105))
+* **report:** sort seasons numerically and document game-mode report ([797f89d](https://github.com/dachrisch/leaguesphere/commit/797f89d7b3182e0da6cb8193433cba8b0b8d8dec))
+* **report:** sort the unknown season last instead of failing ([d0f6285](https://github.com/dachrisch/leaguesphere/commit/d0f62856fdbff698b63a533d28e043510d8db5a3))
+
+
+### Documentation
+
+* add ADR-0026 for event store ownership (Phase 2 layer 1) ([f2c4e6c](https://github.com/dachrisch/leaguesphere/commit/f2c4e6c86d5d83d63936a63b49305c3c7fb9b82d))
+* **adr:** accept ADR-0026 and correct cutover gate wording ([2c0282c](https://github.com/dachrisch/leaguesphere/commit/2c0282c2e2e075b04a1d56541fe49f52c7819b6e))
+* **equivalence:** record the L4 flag-on run and soften claims ([fe87e3f](https://github.com/dachrisch/leaguesphere/commit/fe87e3f2262f36a9362570e6cb8af49c092f6dbe))
+* **equivalence:** record the phase 2 flag-on validation run (P2 L4) ([a2fd012](https://github.com/dachrisch/leaguesphere/commit/a2fd012c5b84ae7e2db520b2a0d3f7a844e53b54))
+* **equivalence:** state what the L4 flag-on run did not cover ([def79d0](https://github.com/dachrisch/leaguesphere/commit/def79d072f1da5888c3fd52c38e4c63b8d931121))
+* **gameevents:** retire stale flag-on guidance after cutover ([aec2e6a](https://github.com/dachrisch/leaguesphere/commit/aec2e6ac54e4424571e1f807fde80ded05938e44))
+* **planning:** apply approved phase 2 review decisions ([820109f](https://github.com/dachrisch/leaguesphere/commit/820109f5c9c39b4ef8d5fab08900047f9a5708e0))
+* **planning:** drop provisional wording and align Phase 1 layer count ([d070483](https://github.com/dachrisch/leaguesphere/commit/d070483149576575a5a6d13bb9d7b5527d10d459))
+* **planning:** record joint L5/L6 release and gate details ([c3421b0](https://github.com/dachrisch/leaguesphere/commit/c3421b01c83e9b4db0afefde5ee5f257f844391b))
+* record accepted legacy set from the agent-stage reconciliation report ([d67e4b9](https://github.com/dachrisch/leaguesphere/commit/d67e4b980c3dd1c7bf2f9bb44a70938daa9d53a9))
+* record Phase 2 plan (provisional decisions pending user review) ([9a8f677](https://github.com/dachrisch/leaguesphere/commit/9a8f6774ca35f264ea0611f93dbf14ff0c58e1c1))
+* record the Phase 2 flag-on validation procedure and result ([119f77a](https://github.com/dachrisch/leaguesphere/commit/119f77ad10c41b9a7df36dfa42e268e3faf32050))
+* **report:** pin the accepted set to its snapshot boundary ([da65180](https://github.com/dachrisch/leaguesphere/commit/da65180601f710fe5663fc7ffbaa2ba366349a7b))
+
 ## [5.30.1](https://github.com/dachrisch/leaguesphere/compare/v5.30.0...v5.30.1) (2026-11-27)
 
 
