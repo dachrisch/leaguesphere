@@ -192,7 +192,8 @@ describe('custom select styles and renderers', () => {
 
     render(<CustomSingleValue {...(plainProps as unknown as SingleValueProps<TeamOption, false, GroupBase<TeamOption>>)} />);
     expect(screen.getAllByText('plain').length).toBeGreaterThan(0);
-    const plainValue = screen.getAllByText('plain').at(-1)?.parentElement;
+    const plain = screen.getAllByText('plain');
+    const plainValue = plain[plain.length - 1]?.parentElement;
     expect(plainValue?.querySelector('i.bi-trophy-fill')).toBeNull();
     expect(plainValue?.querySelector('div')).toBeNull();
   });
