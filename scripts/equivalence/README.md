@@ -53,7 +53,14 @@ python3 scripts/equivalence/runner.py \
 - The officials sign-up flow is Moodle-gated (`MOODLE_LOGGED_IN_USER`), so
   with harness accounts the scenario only exercises the guard redirect.
 
-## Flag-ON comparison (Phase 2)
+## Flag-ON comparison (Phase 2, historical procedure)
+
+**This procedure only applies to the pre-cutover build.** Layer 6 removes
+`SCORECARD_EVENT_FEED`, so there is no flag to toggle after the cutover. It is
+kept as the record of the Layer 4 flag-ON comparison and of the flag-ON half of
+the Layers 5/6 release candidate. Layers 5 and 6 ship together in one release
+after the agent-stage gameday rehearsal; the flag is never flipped on a
+post-cutover build.
 
 On servyy-test the flag is turned on for `cand` only through the
 `ls_agent_stage` role's `ls_agent_stage_cand_env` (a Compose `environment`
