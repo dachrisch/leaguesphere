@@ -15,7 +15,7 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
 
-from gameevents.models import GameState
+from gameevents.models import GameEvent, GameState
 from gamedays.models import Gameresult, Gameinfo, TeamLog
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
@@ -292,6 +292,26 @@ class EventProjectionTest(TestCase):
         payload = payload_for(game.gameday_id)
 
         assert payload[0]["home"]["score"] == 6
+
+    def test_a_shadow_only_game_is_served_from_the_rows(self):
+        """Ownership is a ``source=v2`` event; shadow events stay audit-only.
+
+        The audit event an earlier deploy's shadow left is built through the
+        canonical service and relabelled ``legacy`` (v1 writes no longer
+        create events). Its projection and the rows then disagree on purpose:
+        the liveticker must read the rows, exactly like a pure legacy game.
+        """
+
+        game, _home, _away = make_live_game("shadow-only")
+        submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+        GameEvent.objects.filter(game=game).update(source=GameEvent.Source.LEGACY)
+        # Only the rows' result table moves; a projection read would say 6.
+        Gameresult.objects.filter(gameinfo=game, isHome=True).update(fh=0, sh=0)
+
+        payload = payload_for(game.gameday_id)
+
+        assert payload[0]["home"]["score"] == 0
+        assert payload[0]["ticks"][0]["text"] == "Touchdown: #7"
 
     def test_a_flagged_projection_falls_back_to_the_rows_and_warns_once(self):
         first, _home, _away = make_live_game("flagged-one")

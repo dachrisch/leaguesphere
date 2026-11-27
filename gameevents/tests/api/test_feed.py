@@ -309,8 +309,11 @@ def test_an_unknown_game_is_a_404(client):
 def test_a_shadow_only_game_is_served_from_rows_by_the_feed(client):
     game, home, _away = make_game("feed-shadow-only")
     login(client)
+    # v1 writes no longer create events, so build the audit event an earlier
+    # deploy's shadow left the way the DB-backed source test does: through
+    # the canonical endpoint, relabelled legacy.
     assert (
-        post_legacy(
+        post_events(
             client,
             game,
             legacy_body(
@@ -320,6 +323,9 @@ def test_a_shadow_only_game_is_served_from_rows_by_the_feed(client):
         == 201
     )
     GameEvent.objects.filter(game=game).update(source=GameEvent.Source.LEGACY)
+    # Make the projection disagree with the rows: a projection read would
+    # serve 99, the row path serves the touchdown's 6.
+    GameState.objects.filter(game=game).update(score_home=99)
 
     body = get_feed(client, game).json()
 
@@ -335,16 +341,15 @@ def test_a_v2_owned_game_still_serves_its_legacy_sourced_events(client):
     game, home, _away = make_game("feed-mixed-sources")
     login(client)
     submit(client, game, [TD])
-    GameEvent.objects.filter(game=game).update(
-        seq=2, legacy_sequence=2, source=GameEvent.Source.LEGACY
-    )
     submit(client, game, [PAT], client_id=sub_id(2))
-    GameState.objects.filter(game=game).update(last_seq=3, score_home=7)
+    # Relabel the first event after both writes: a game with live rows and no
+    # v2 event refuses canonical writes, so the v2 event must exist first.
+    GameEvent.objects.filter(game=game, seq=1).update(source=GameEvent.Source.LEGACY)
 
     body = get_feed(client, game).json()
 
     assert [event["source"] for event in body["events"]] == ["legacy", "v2"]
-    assert body["state"]["last_seq"] == 3
+    assert body["state"]["last_seq"] == 2
 
 
 @pytest.mark.django_db
