@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.30.1](https://github.com/dachrisch/leaguesphere/compare/v5.30.0...v5.30.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **dbaccess:** give each temporary DB request its own MySQL account ([#2598](https://github.com/dachrisch/leaguesphere/issues/2598)) ([8fe1169](https://github.com/dachrisch/leaguesphere/commit/8fe116920aed59c0e9eb3255d80cfc6c01277bf0))
+* **deps:** update dependency eslint-config-prettier to v10.1.9 ([#2599](https://github.com/dachrisch/leaguesphere/issues/2599)) ([aeb4eaa](https://github.com/dachrisch/leaguesphere/commit/aeb4eaa7da3d7cf608b539920f4e6b7f82bc88bb))
+
 ## [5.30.0](https://github.com/dachrisch/leaguesphere/compare/v5.29.0...v5.30.0) (2026-11-27)
 
 
