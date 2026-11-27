@@ -50,12 +50,14 @@ class Gameday_designerMenuViewOnlyEntry(BaseMenu):
     """
     Show a view-only 'Spieltag ansehen' link to authenticated non-staff users.
 
-    Placed in a dedicated 'Spieltage' dropdown group that is invisible to
-    staff (who use the 'Orga' group) and anonymous users.
+    Placed in a dedicated 'Designer' dropdown group that is invisible to
+    staff (who use the 'Orga' group) and anonymous users. The site header
+    carries the flat 'Spieltage' link to the gameday list for everyone, so
+    this group must not reuse that label.
     """
 
     def get_name(self):
-        return "Spieltage"
+        return "Designer"
 
     def get_menu_items(self, request):
         if not request.user.is_authenticated or request.user.is_staff:

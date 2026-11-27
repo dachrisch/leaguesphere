@@ -18,6 +18,7 @@ that already exists — no notifications, no email, no feed, no per-user state.
 | `/home/` | `HomeView`, `LoginRequiredMixin` |
 | `/` | unchanged: permanent redirect to the gameday list |
 | nav "Home" | now points at `/home/`; `LOGIN_REDIRECT_URL = "home"` |
+| nav "Spieltage" | flat link to `league-gameday-list` for everyone, added because repointing Home left no visible path to the gamedays |
 
 `league_manager/views.py::homeview` and its unused template were removed.
 

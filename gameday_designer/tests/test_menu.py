@@ -93,7 +93,7 @@ def test_designer_orga_entry_hidden_for_non_staff(rf):
 
 
 def test_view_only_entry_group_name():
-    assert Gameday_designerMenuViewOnlyEntry().get_name() == "Spieltage"
+    assert Gameday_designerMenuViewOnlyEntry().get_name() == "Designer"
 
 
 def test_view_only_entry_shows_for_authenticated_non_staff(rf):

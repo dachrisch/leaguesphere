@@ -4,6 +4,8 @@
 `league_manager/tests/test_views.py::TestHomeView` stay valid.
 """
 
+import re
+
 import pytest
 from django.conf import settings
 from django.urls import reverse
@@ -46,6 +48,23 @@ def test_navigation_home_entry_points_at_the_home_page(client):
     response = client.get(reverse(LEAGUE_GAMEDAY_LIST))
 
     assert 'href="/home/"' in response.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_navigation_has_a_flat_spieltage_link(client, django_user_model, authenticated):
+    """Spieltage is a top-level nav link to the gameday list, for everyone."""
+    if authenticated:
+        django_user_model.objects.create_user(
+            username="home-nav", password="a-long-test-password"
+        )
+        assert client.login(username="home-nav", password="a-long-test-password")
+
+    html = client.get(reverse(LEAGUE_GAMEDAY_LIST)).content.decode()
+
+    gameday_list_url = reverse(LEAGUE_GAMEDAY_LIST)
+    assert f'<a class="nav-link" href="{gameday_list_url}">Spieltage</a>' in html
+    assert not re.search(rf'dropdown-item[^>]*href="{gameday_list_url}"', html)
 
 
 def test_dead_homeview_is_removed():

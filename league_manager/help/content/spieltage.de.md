@@ -11,7 +11,7 @@ Spielplan und den erfassten Ergebnissen.
 
 ## Den passenden Spieltag finden
 
-- Über die Startseite gelangst du zur Liste der Spieltage.
+- Im Menü **Spieltage** oder über die Startseite gelangst du zur Liste der Spieltage.
 - Die Spiele sind nach Liga, Saison und Datum sortiert.
 - Der **Tagesstatus** zeigt, ob ein Spieltag bevorsteht, gerade läuft oder
   abgeschlossen ist.
