@@ -137,7 +137,11 @@ describe('custom select styles and renderers', () => {
       cx: () => '',
     } as unknown as OptionProps<TeamOption, false, GroupBase<TeamOption>>;
     render(<CustomOption {...headerProps} />);
-    expect(screen.getByText('Header')).toBeTruthy();
+    expect(screen.getByText('Header').parentElement).toHaveStyle({
+      borderLeft: '3px solid #abc',
+      backgroundColor: '#f8f9fa',
+      color: '#6c757d',
+    });
 
     render(
       <CustomOption
@@ -147,7 +151,9 @@ describe('custom select styles and renderers', () => {
         } as unknown as OptionProps<TeamOption, false, GroupBase<TeamOption>>)}
       />
     );
-    expect(screen.getByText('PlainHeader')).toBeTruthy();
+    expect(screen.getByText('PlainHeader').parentElement).toHaveStyle({
+      borderLeft: '3px solid #dee2e6',
+    });
 
     const teamProps = {
       ...headerProps,
@@ -156,6 +162,9 @@ describe('custom select styles and renderers', () => {
     } as unknown as OptionProps<TeamOption, false, GroupBase<TeamOption>>;
     render(<CustomOption {...teamProps} />);
     expect(screen.getByText('Coloured')).toBeTruthy();
+    expect(screen.getByText('Coloured').parentElement?.querySelector('div')).toHaveStyle({
+      backgroundColor: '#def',
+    });
 
     const plainProps = {
       ...headerProps,
@@ -177,8 +186,14 @@ describe('custom select styles and renderers', () => {
     } as unknown as SingleValueProps<TeamOption, false, GroupBase<TeamOption>>;
     render(<CustomSingleValue {...singleProps} />);
     expect(screen.getByText(/Winner/)).toBeTruthy();
+    expect(screen.getByText('Winner').parentElement).toHaveClass('fw-bold', 'text-success');
+    expect(document.querySelector('i.bi-trophy-fill')).toHaveAttribute('title', 'Sieger');
+    expect(screen.getByText('Winner').parentElement?.querySelector('div')).toHaveStyle({ backgroundColor: '#fff' });
 
     render(<CustomSingleValue {...(plainProps as unknown as SingleValueProps<TeamOption, false, GroupBase<TeamOption>>)} />);
     expect(screen.getAllByText('plain').length).toBeGreaterThan(0);
+    const plainValue = screen.getAllByText('plain').at(-1)?.parentElement;
+    expect(plainValue?.querySelector('i.bi-trophy-fill')).toBeNull();
+    expect(plainValue?.querySelector('div')).toBeNull();
   });
 });
