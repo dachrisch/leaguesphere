@@ -386,6 +386,16 @@ def test_runner_posts_the_report_to_requested_prs(
     assert any("4242" in args for args in posted)
 
 
+def test_recorded_session_reports_unexpected_requests():
+    from transport import RecordedSession
+
+    session = RecordedSession({})
+    with pytest.raises(AssertionError, match="unexpected request"):
+        session.request("/missing/")
+    session.responses[("GET", "/ok/")] = (200, "ok")
+    assert session.request("/ok/").status == 200
+
+
 def test_transport_can_keep_a_redirect_visible(server_factory):
     server, url = server_factory(
         {
