@@ -186,7 +186,7 @@ describe('custom select styles and renderers', () => {
     } as unknown as SingleValueProps<TeamOption, false, GroupBase<TeamOption>>;
     render(<CustomSingleValue {...singleProps} />);
     expect(screen.getByText(/Winner/)).toBeTruthy();
-    expect(screen.getByText('Winner').parentElement).toHaveClass('fw-bold', 'text-success');
+    expect(document.querySelector('span.fw-bold.text-success')).toHaveTextContent('Winner');
     expect(document.querySelector('i.bi-trophy-fill')).toHaveAttribute('title', 'Sieger');
     expect(screen.getByText('Winner').parentElement?.querySelector('div')).toHaveStyle({ backgroundColor: '#fff' });
 
