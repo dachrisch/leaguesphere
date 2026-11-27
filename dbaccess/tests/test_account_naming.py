@@ -33,6 +33,13 @@ def test_the_id_is_appended_as_base36_after_an_explicit_request_marker():
     assert db_user_for("chrisd", 36) == "dbeaver_prod_chrisd_r10"
 
 
+def test_base36_refuses_negative_ids():
+    # A request id is an auto-field primary key; a negative one is a caller bug,
+    # not a name to mint. Guard the branch the sidecar relies on.
+    with pytest.raises(ValueError, match="non-negative"):
+        base36(-1)
+
+
 def test_base36_is_injective_over_the_whole_bigautofield_range():
     # No hash: the full primary key is encoded, so two requests can never
     # produce the same suffix - not even at the 64-bit ceiling.

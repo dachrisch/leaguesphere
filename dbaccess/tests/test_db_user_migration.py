@@ -8,6 +8,8 @@ management command finalises the rest once the last in-flight session has
 ended.
 """
 
+import io
+
 import pytest
 
 from dbaccess.accounts import db_user_for
@@ -98,6 +100,22 @@ def test_finalize_command_rewrites_legacy_names_that_have_since_been_dropped():
     assert row.db_user == db_user_for("chrisd", row.pk)
     assert still_live.db_user == LEGACY
     assert row.events.filter(action="db_user-migrated").exists()
+
+
+@pytest.mark.django_db
+def test_finalize_dry_run_reports_changes_without_touching_the_ledger():
+    from django.core.management import call_command
+
+    row = _row(state="dropped", db_user=LEGACY)
+    output = io.StringIO()
+
+    call_command("dbaccess_finalize_db_users", dry_run=True, stdout=output)
+
+    row.refresh_from_db()
+    assert row.db_user == LEGACY
+    assert "->" in output.getvalue()
+    assert "would be updated" in output.getvalue()
+    assert not row.events.filter(action="db_user-migrated").exists()
 
 
 @pytest.mark.django_db
