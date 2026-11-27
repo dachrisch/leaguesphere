@@ -192,9 +192,17 @@ describe("useSeriesTiles tiles (Phase 3 characterization)", () => {
       kind: "series",
       mode: "turnover",
     });
-    const armed = setup({ armed: "interception" });
+    // An armed jersey tile replaces the one-tap row it was armed from. The
+    // fixture must actually contain that row or `setReplacing(null)` is a
+    // no-op and the assertion cannot witness the replacement path.
+    const interception = logEvent({ id: 2, event: "Interception", team: "Wolves" });
+    const interceptionRows = logRows(log([interception]));
+    const armed = setup({
+      armed: "interception",
+      rows: interceptionRows,
+    });
     act(() => armed.result.current.tapSeriesTile("interception", true));
-    expect(armed.result.current.state.replacing).toBeNull();
+    expect(armed.result.current.state.replacing).toEqual(interceptionRows[0]);
     expect(armed.result.current.state.sheet).toEqual({
       kind: "series",
       mode: "interception",
