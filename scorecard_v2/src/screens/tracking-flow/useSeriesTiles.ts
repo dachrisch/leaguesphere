@@ -6,11 +6,13 @@ import {
 import type { GameLogEventInput } from "../../api/types";
 import {
   advance,
+  driveAfter,
   driveSpotText,
+  geometryOf,
   driveText,
   isTurnoverOnDowns,
 } from "../../app/drive";
-import { LogRow } from "../../components/EventLog";
+import type { LogRow } from "../../components/EventLog";
 import { errorMessage } from "../../components/sheets/errors";
 import { seriesEvent, type SeriesMode } from "../../components/sheets/SeriesSheet";
 import type { SpielzugPick } from "../../components/sheets/SpielzugSheet";
@@ -24,8 +26,8 @@ interface UseSeriesTilesArgs {
   session: GameSession;
   possessionName: string | null;
   opponentName: string | null;
-  drive: ReturnType<typeof import("../../app/drive").driveAfter>;
-  geometry: ReturnType<typeof import("../../app/drive").geometryOf>;
+  drive: ReturnType<typeof driveAfter>;
+  geometry: ReturnType<typeof geometryOf>;
   sheet: SheetState | null;
   setSheet: Dispatch<SetStateAction<SheetState | null>>;
   sheetHistory: SheetState[];
