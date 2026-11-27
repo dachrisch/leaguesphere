@@ -5,6 +5,7 @@
 | **Status** | Planning — **blocked on the decisions in [§4](#4-open-decisions-requiring-a-human-call)** |
 | **Date** | 2026-11-27 |
 | **Origin** | [2026-02-25 Multi-Tenant RBAC Implementation Proposal](../history/2026-02-25-multi-tenant-rbac-thesis-implementation-proposal.md) — the response to Niklas Just's bachelor thesis *"Entwurf und Implementierung eines multimandantenfähigen Rechtemanagementsystems"* |
+| **Thesis basis** | Bachelorarbeit, Niklas Just (2123394), Feb 2026 — actor/role definitions, tenant grain and Model 3 decision (§3–4); chapters 5–7 contain no implementation or conclusion text, so the detailed requirements below come from the response document |
 | **Decision** | start fresh; do **not** resurrect `feat/multi-tenancy` (`da87406d`, 2026-03-18) |
 | **Supersedes** | nothing. The thesis response stays as the historical requirement source; this document turns it into buildable, testable requirements. |
 | **Related** | [Snapshot as the only public API](./2026-10-04-snapshot-only-public-api.md), [Architecture Remediation Roadmap](./2026-11-25-architecture-remediation-roadmap.md), [Phase 0 plan](./2026-11-25-phase0-plan.md) |
@@ -39,9 +40,10 @@ models.
 
 ### 1.3 Goals
 
-1. **A tenant is a league.** Every isolatable row has a tenant key or a deterministic path to
-   one, and every request runs under exactly one resolved tenant (or an explicit, audited
-   global scope).
+1. **A tenant is a league.** The thesis evaluates the German league landscape, rejects federal
+   states as tenants, and models its thirteen 2026 leagues as thirteen tenants (§4.1). Every
+   isolatable row has a tenant key or a deterministic path to one, and every request runs under
+   exactly one resolved tenant (or an explicit, audited global scope).
 2. **Isolation is enforced by the data layer**, not by remembering `.filter(league=...)` in
    300 views. A forgotten filter must produce a loud failure, not a cross-tenant leak.
 3. **Authorization is tenant- and object-scoped.** "Is staff" becomes "holds role X in
@@ -65,11 +67,17 @@ models.
 - **No frontend redesign.** Permission-aware UI only; no new visual language.
 - **No "organisation" tenancy above federations.** Association grouping is modelled where it
   already exists, not invented as a third level.
+- **No sport-specific logic in the tenancy layer.** The thesis asks for a system that can be
+  adapted to other sports, with youth leagues as a first scaling exercise (§3.4). Tenancy
+  primitives SHALL stay sport-agnostic; this is a design constraint, not a new module.
 
 ### 1.5 What "tenant" means in this document
 
-A **tenant** is a `gamedays.League` row (e.g. "DFFL", "DFFL2", "DFFL-F"). It is the unit of
-data isolation, role scope, URL prefix, cache partition and audit attribution. A
+A **tenant** is a `gamedays.League` row (e.g. "DFFL", "DFFL2", "DFFL-F"). The thesis counts
+**13 leagues** as tenants as of 2026 and explicitly rejects federal states (*Bundesländer*):
+federal leagues, state leagues and cross-state divisions overlap, and the structure changes
+from year to year (§4.1). It is the unit of data isolation, role scope, URL prefix, cache
+partition and audit attribution. A
 **membership** is a `UserRole` row binding a user to a tenant with a role. An **object scope**
 is the narrower ownership inside a tenant (a team, a gameday's author, an official's own
 signup).
@@ -102,6 +110,9 @@ requirements are written against.
 | B17 | `gameevents` writes `gamedays` projection tables through a projector boundary (`project_submission`, `project_game`) | `gameevents/service/append.py:212`, `projector.py:675` | Writes can bypass views entirely; the projector must stamp or derive the tenant |
 | B18 | `scorecard_v2` is an offline PWA with an IndexedDB outbox and a device lock on `GameSetup.device_id` | `gamedays/api/game_views.py`, `gamedays/service/device_lock.py` | Offline caches and device locks are cross-tenant state that must be namespaced |
 | B19 | Repo gates: TDD, mandatory query-count assertions, `black .`, `npm run eslint`, scope coverage, app-boundary check, DCO-signed conventional commits | [AGENTS.md](../../../../AGENTS.md) | Every phase's exit criteria must include these |
+| B20 | The thesis counts **13 leagues** as tenants and rejects federal states: federal leagues, state leagues and merged divisions overlap and the structure changes annually | Thesis §4.1 | Confirms D1's League grain with an explicit source |
+| B21 | The thesis reviews `django-tenants`, `django-tenant-schemas`, `django-multitenant` and `django-db-multitenant` and extends `django.contrib.auth` instead of adopting a library | Thesis §3.3, §4.3 | The bespoke `access` app follows the thesis; no third-party tenancy dependency |
+| B22 | The thesis asks for adaptability to other sports and names youth leagues as a first scalability exercise | Thesis §3.4 | Tenancy primitives stay sport-agnostic; youth leagues belong in the load scenario (R56) |
 
 ---
 
@@ -117,8 +128,8 @@ corrects it — those corrections are the most valuable part of this document.
 | ID | Requirement | Verified by |
 |---|---|---|
 | **R1** | The tenant entity SHALL be the existing `gamedays.League` row. No parallel tenant table SHALL be introduced; `League.slug` is the tenant key used in URLs, cache keys and audit records. | Migration review; no second tenant table in `sqlmigrate` output |
-| **R2** | `UserRole` SHALL be a single table: `user` FK, `role` (choices), `association` FK nullable, `league` FK nullable, `team` FK nullable, `created_at`, `created_by`, plus a **`scope_key`** CharField (`sys`, `assoc:<id>`, `league:<id>`, `team:<id>`) derived in `save()` and covered by `UniqueConstraint(user, role, scope_key)`. The derived key is required because **MariaDB has no partial unique indexes and permits duplicate NULLs in a unique index**, so a constraint over the nullable FK columns would not prevent duplicate `SYSTEM_ADMIN` rows. `UserRole` SHALL NOT encode the role in a Django `Group` name. | Model review; DB constraint test inserting duplicate `SYSTEM_ADMIN` and duplicate `LEAGUE_ADMIN` rows |
-| **R3** | Role scope SHALL be expressed by which nullable columns are set, enforced by `CheckConstraint`s: `SYSTEM_ADMIN` → association, league and team all NULL; `ASSOCIATION_ADMIN` → association set, league/team NULL; `LEAGUE_ADMIN` → league set, association/team NULL; `TEAM_MANAGER` → team set (league derived via `SeasonLeagueTeam`); `REFEREE`/`PLAYER` → identity is global, all three scopes NULL. `scope_key` SHALL agree with the populated columns. | Constraint tests for every invalid combination, including `scope_key` mismatch |
+| **R2** | `UserRole` SHALL be a single table: `user` FK, `role` (choices), `league` FK nullable, `team` FK nullable, `created_at`, `created_by`, plus a **`scope_key`** CharField (`sys`, `league:<id>`, `team:<id>`) derived in `save()` and covered by `UniqueConstraint(user, role, scope_key)`. This realises the thesis's "Zuordnungstabellen" between users, roles and tenants (§4.3.2): one row per user–tenant–role, with a user holding different roles in different tenants. The derived key is required because **MariaDB has no partial unique indexes and permits duplicate NULLs in a unique index**, so a constraint over the nullable FK columns would not prevent duplicate `SYSTEM_ADMIN` rows. `UserRole` SHALL NOT encode the role in a Django `Group` name. | Model review; DB constraint test inserting duplicate `SYSTEM_ADMIN` and duplicate `LEAGUE_ADMIN` rows |
+| **R3** | Role scope SHALL be expressed by which nullable columns are set, enforced by `CheckConstraint`s: `SYSTEM_ADMIN` → league and team NULL; `LEAGUE_ADMIN` → league set, team NULL; `TEAM_MANAGER` → team set (league derived via `SeasonLeagueTeam`); `REFEREE`/`PLAYER` → identity is global, both scopes NULL. `scope_key` SHALL agree with the populated columns. `Association` is NOT a role scope — see D1. | Constraint tests for every invalid combination, including `scope_key` mismatch |
 | **R4** | Every tenant-owned root table SHALL carry exactly one tenant key or a deterministic, indexed path to one. The audit table in [§3.1.1](#311-tenant-key-matrix) is the definition of "tenant-owned" and SHALL be updated whenever a model is added. | `scripts/check_tenancy_coverage.py` (new) failing on an unlisted model |
 | **R5** | `Team` SHALL NOT gain a `league` FK. Team read scope SHALL be derived from `SeasonLeagueTeam` membership for the resolved tenant (and the requested season, where supplied). | Isolation test: a team that only ever played in league B is invisible under tenant A; scope test proves the join |
 | **R6** | Team *administration* (create/rename/logo) MAY use a denormalised `Team.home_league` FK if the team-admin UX needs a stable owner; if added, it SHALL be documented as an ownership hint, never used for read isolation. | Decision [D2](#d2-how-team-is-scoped--no-league-fk-seasonal-league-movement); test that hiding a team does not depend on `home_league` |
@@ -203,9 +214,15 @@ deliberate deviation and the single most important architectural correction in t
 
 ### 3.4 Roles and the permission matrix
 
+The role set follows the thesis's five actor groups verbatim (§4.1): Spieler → `PLAYER`,
+Teammanager → `TEAM_MANAGER`, Schiedsrichter → `REFEREE`, Liga-Admin → `LEAGUE_ADMIN`, plus
+the thesis's added System-Admin → `SYSTEM_ADMIN`. No association-level role is introduced:
+`Association` stays a grouping attribute (D1), which also matches the non-goal of no
+organisation tier above federations. `PUBLIC` is the absence of a role, not a row.
+
 | ID | Requirement | Verified by |
 |---|---|---|
-| **R32** | Roles SHALL be: `SYSTEM_ADMIN`, `ASSOCIATION_ADMIN`, `LEAGUE_ADMIN`, `TEAM_MANAGER`, `REFEREE`, `PLAYER`. `PUBLIC` is the absence of a role, not a row. | `UserRole.Role` review |
+| **R32** | Roles SHALL be exactly `SYSTEM_ADMIN`, `LEAGUE_ADMIN`, `TEAM_MANAGER`, `REFEREE`, `PLAYER`. Adding a new role SHALL require an update to this matrix and an ADR, not a one-off group name. | `UserRole.Role` review; role-set diff against thesis §4.1 |
 | **R33** | Django's per-model permissions (`gamedays.change_gameday`) SHALL **not** be used for tenant authorization. They are global and cannot express "admin of league A"; they MAY be mirrored for the Django admin only. | `rg permission_required` returns only admin/project uses; authorization tests use `UserRole` |
 | **R34** | Authorization SHALL be a two-step check: **tenant membership with role** (row scope) and then **object ownership/relationship** (object scope). A role check that ignores the object SHALL fail review. | Permission matrix tests per role × resource × action |
 | **R35** | Effective permissions SHALL be computed by one kernel (`access.policy.can(user, action, tenant, obj=None)`), so API, HTML views, admin and frontend guards cannot drift. | One test suite; `rg "is_staff"` count only in the kernel and deprecated paths |
@@ -219,25 +236,25 @@ deliberate deviation and the single most important architectural correction in t
 
 `✓` allowed, `o` allowed for own object only, `–` denied.
 
-| Resource / action | PUBLIC | PLAYER | TEAM_MANAGER | REFEREE | LEAGUE_ADMIN | ASSOC_ADMIN | SYSTEM_ADMIN |
-|---|---|---|---|---|---|---|---|
-| Snapshot / liveticker / sitemap reads | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| League schedule, published gamedays | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Draft gamedays | – | – | – | – | ✓ | ✓ | ✓ |
-| Create / edit / publish gameday | – | – | – | – | ✓ | ✓ | ✓ |
-| Enter / correct results | – | – | – | – | ✓ | ✓ | ✓ |
-| Read own roster | – | o | o | – | ✓ | ✓ | ✓ |
-| Edit roster, jersey numbers | – | – | o | – | ✓ | ✓ | ✓ |
-| Approve player transfer | – | – | o (both teams) | – | ✓ | ✓ | ✓ |
-| Read passcheck verification | – | – | o | ✓ | ✓ | ✓ | ✓ |
-| Submit passcheck verification | – | – | – | ✓ | ✓ | ✓ | ✓ |
-| Sign up as official, read own assignments | – | – | – | o | ✓ | ✓ | ✓ |
-| Assign officials to gamedays | – | – | – | – | ✓ | ✓ | ✓ |
-| Read official names unmasked | – | – | – | o | ✓ | ✓ | ✓ |
-| League config, ruleset, eligibility rules | – | – | – | – | ✓ | ✓ | ✓ |
-| Create league / assign league admins | – | – | – | – | – | ✓ | ✓ |
-| Platform config, seeds, `dbaccess` | – | – | – | – | – | – | ✓ |
-| Cross-league standings / aggregate | ✓ (published) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Resource / action | PUBLIC | PLAYER | TEAM_MANAGER | REFEREE | LEAGUE_ADMIN | SYSTEM_ADMIN |
+|---|---|---|---|---|---|---|
+| Snapshot / liveticker / sitemap reads | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| League schedule, published gamedays | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Draft gamedays | – | – | – | – | ✓ | ✓ |
+| Create / edit / publish gameday | – | – | – | – | ✓ | ✓ |
+| Enter / correct results | – | – | – | – | ✓ | ✓ |
+| Read own roster | – | o | o | – | ✓ | ✓ |
+| Edit roster, jersey numbers | – | – | o | – | ✓ | ✓ |
+| Approve player transfer | – | – | o (both teams) | – | ✓ | ✓ |
+| Read passcheck verification | – | – | o | ✓ | ✓ | ✓ |
+| Submit passcheck verification | – | – | – | ✓ | ✓ | ✓ |
+| Sign up as official, read own assignments | – | – | – | o | ✓ | ✓ |
+| Assign officials to gamedays | – | – | – | – | ✓ | ✓ |
+| Read official names unmasked | – | – | – | o | ✓ | ✓ |
+| League config, ruleset, eligibility rules | – | – | – | – | ✓ | ✓ |
+| Create league / assign league admins | – | – | – | – | – | ✓ |
+| Platform config, seeds, `dbaccess` | – | – | – | – | – | ✓ |
+| Cross-league standings / aggregate | ✓ (published) | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ### 3.5 Phased migration
 
@@ -268,7 +285,7 @@ deliberate deviation and the single most important architectural correction in t
 | **R53** | Every tenant-aware model SHALL have isolation tests: cross-tenant read → 404/empty, cross-tenant write → 403, unset tenant → loud failure, public endpoint → allowed. | Generated matrix test, one row per model |
 | **R54** | Every modified endpoint SHALL keep its query count constant in result-set size and add **at most one** query for tenant resolution (cached). | `assertNumQueries` in every touched test |
 | **R55** | A bypass audit SHALL cover raw SQL, management commands, projectors, admin actions, signals and offline replay, each with a named test or an allowlist entry. | Audit checklist in [§7.3](#73-bypass-audit) signed off per phase |
-| **R56** | A load test SHALL simulate ≥3 tenants with skewed traffic and assert p95 latency and error rate do not regress versus the current baseline. | k6 scenario + Grafana comparison |
+| **R56** | A load test SHALL simulate ≥3 tenants with skewed traffic and assert p95 latency and error rate do not regress versus the current baseline. The scenario SHALL include a youth-league tenant — the thesis's proposed first scalability exercise (§3.4). | k6 scenario + Grafana comparison |
 | **R57** | The isolation suite SHALL be generative: for each tenant-aware model, create two tenants, one row each, and assert every list/detail route never returns the other's row. | Parametrised test over the R4 matrix |
 | **R58** | A "tenant stamping" property test SHALL assert that every object created through any write path (view, serializer, projector, command) carries the resolved tenant, or fails. | Property/invariant test |
 
@@ -295,10 +312,13 @@ written against; changing it changes the named requirements.
 - **Question**: Is the isolation unit a `League` (DFFL, DFFL2, DFFL-F), an `Association`
   (e.g. a regional federation), or both (Association owns Leagues)?
 - **Recommended default**: **League**, with `Association` kept as a grouping/reporting layer.
-- **Rationale**: `Gameday` already carries `league`; the thesis's own examples ("DFFL",
-  "DFFL2", "DFFL-F") are leagues; roles like "league admin" are named after it; the snapshot
-  and league-table URLs are already league-keyed. Making Association the tenant would force a
-  second key on every gameday for no current product need.
+- **Rationale**: The thesis settles this itself in §4.1: it evaluates federal states
+  (*Bundesländer*) as tenants and rejects them because federal leagues, state leagues and
+  merged divisions cross boundaries and the structure changes annually, settling on the 13
+  leagues as 13 tenants. `Gameday` already carries `league`; the thesis's own examples
+  ("DFFL", "DFFL2", "DFFL-F") are leagues; roles like "league admin" are named after it; the
+  snapshot and league-table URLs are already league-keyed. Making Association the tenant
+  would force a second key on every gameday for no current product need.
 - **Alternatives**: (a) Association as tenant — simpler federation reporting, but every
   league would become a sub-scope and cross-association sharing gets harder; (b) two-level
   → `Tenant` table with `parent` — most flexible, largest migration, and `Association` would
@@ -315,9 +335,12 @@ written against; changing it changes the named requirements.
   `SeasonLeagueTeam` for the resolved tenant (and requested season). Add **no** `Team.league`.
   For team administration, derive the admin's scope from `UserRole(team=...)`, not from a
   league column.
-- **Rationale**: A `Team.league` column would be wrong for any team that ever moves; the
-  existing season-rollover and eligibility features depend on per-season membership. This is
-  also exactly why the old branch's assumption fails.
+- **Rationale**: The thesis's §4.3.2 names "Gamedays **or Teams**" as objects receiving a
+  `tenantId`. That proposal does not stand against the current domain: `Team` has no league FK
+  (B3) and moves between leagues by season, so a `Team.league` column would be factually wrong
+  and would break season rollover and eligibility. The derived `SeasonLeagueTeam` path keeps the
+  thesis's *intent* — every tenant-owned row has a tenant key — without inventing data the
+  domain does not have. This is also exactly why the old branch's assumption fails.
 - **Alternatives**: (a) `Team.home_league` FK as an ownership hint — cheap for the admin UX,
   but it will be mistaken for the isolation key and cause leaks; if adopted, R6 constrains it
   to non-security use. (b) A `TeamTenant` join table with validity dates — correct but
@@ -433,7 +456,9 @@ written against; changing it changes the named requirements.
 - **Recommended default**: **Stay on MariaDB/MySQL; do not rely on RLS.** Enforce in the
   application layer (managers + policy kernel), with the DB as defence in depth via
   constraints and indexes, not as the isolation mechanism.
-- **Rationale**: The production stack, backups, LXC test DB, `dbaccess` tooling and every
+- **Rationale**: The thesis's own library survey (§3.3) rejects the available tenancy
+  packages for this stack and extends `django.contrib.auth` instead; the bespoke `access` app
+  follows that route. The production stack, backups, LXC test DB, `dbaccess` tooling and every
   migration are MariaDB. A platform migration is a separate, larger project; RLS would also
   hide isolation failures from tests unless every test runs as a non-owner role.
 - **Alternatives**: Postgres + RLS — genuinely stronger against ORM bypass, but changes
@@ -454,7 +479,7 @@ league_manager/                  project: settings, root URLs, middleware wiring
 
 access/                          NEW app: tenancy + RBAC
 ├── context.py                   contextvars only — imports NO Django models
-├── models.py                    UserRole, RoleAudit, TenantAudit; FKs to gamedays.League/Team/Association
+├── models.py                    UserRole, RoleAudit, TenantAudit; FKs to gamedays.League/Team
 ├── policy.py                    can(user, action, tenant, obj) — the single kernel
 ├── permissions.py               DRF permission classes (import context + policy only)
 ├── querysets.py                 TenantScopedQuerySet / Manager, unscoped()
