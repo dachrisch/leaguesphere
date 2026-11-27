@@ -166,6 +166,28 @@ def test_officials_signup_runs_when_an_official_session_exists():
     ]
 
 
+def test_non_text_payload_is_kept_without_normalisation(monkeypatch):
+    """Bytes that are not JSON hit the final normalisation branch."""
+
+    class Session:
+        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+            return Response(200, {}, b"raw", path, method)
+
+    monkeypatch.setitem(
+        scenarios.SCENARIOS,
+        "scalar-body",
+        [
+            scenarios.Step(
+                name="scalar", method="GET", path="/scalar/", role="anonymous"
+            )
+        ],
+    )
+    run = scenarios.run_scenario(
+        "scalar-body", {"anonymous": Session()}, {}, "eq-scalar"
+    )
+    assert run.steps[0].body == b"raw"
+
+
 def test_missing_capture_does_not_abort_the_scenario():
     api = FakeApi(id_base=900)
     api.empty_games = True
