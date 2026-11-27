@@ -309,6 +309,27 @@ def test_wizard_format_requires_an_unfollowed_redirect():
     assert wizard_calls[-1]["follow_redirects"] is False
 
 
+def test_form_values_are_text_and_repeated_fields_stay_lists():
+    """A list-valued form field (doseq) must not collapse into "[11, 12]"."""
+    api = FakeApi(id_base=901)
+    scenarios.run_scenario(
+        "finalize-legacy",
+        {"staff": api, "anonymous": api},
+        {**CONTEXT, "wizard_team_ids": [11, 12, 13]},
+        "eq-form-text",
+    )
+    format_call = next(
+        call
+        for call in api.calls
+        if call["form"] and "gameday-format-0-group" in call["form"]
+    )
+    assert format_call["form"]["gameday-format-0-group"] == ["11", "12", "13"]
+    assert scenarios._form_text({"id": 7, "ids": [1, 2]}) == {
+        "id": "7",
+        "ids": ["1", "2"],
+    }
+
+
 def test_finalize_canvas_has_a_downstream_reference():
     canvas = scenarios.CANVAS_WITH_REFERENCE
     games = [node for node in canvas["nodes"] if node["type"] == "game"]

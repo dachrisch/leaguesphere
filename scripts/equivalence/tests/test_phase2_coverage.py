@@ -250,7 +250,9 @@ def test_run_scenario_rejects_a_missing_flag_contract():
         ):
             if method == "GET" and "/feed" in path:
                 return self._json(409, {"detail": "flagged for another reason"})
-            return super().request(path, method, json_body, form, headers, files)
+            return super().request(
+                path, method, json_body, form, headers, follow_redirects, files
+            )
 
     with pytest.raises(RuntimeError, match="needs_reconciliation"):
         scenarios.run_scenario(

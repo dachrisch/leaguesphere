@@ -975,6 +975,21 @@ def _resolve(value, context):
     return value
 
 
+def _form_text(form):
+    """An HTML form as text values, keeping repeated fields as lists.
+
+    JSON payloads keep dict/int values (designer template mappings), but a
+    form is submitted as text: a captured numeric id must become "7", not 7,
+    for the wizard's confirm step. A list (``{wizard_team_ids}``) is a
+    repeated field that the transport sends with ``doseq``, so each item
+    becomes text instead of the whole list turning into "[11, 12]".
+    """
+    return {
+        key: ([str(item) for item in value] if isinstance(value, list) else str(value))
+        for key, value in form.items()
+    }
+
+
 def _pluck(payload, path):
     current = payload
     for part in path.split("."):
@@ -1033,10 +1048,7 @@ def run_scenario(name, sessions, context, run_id):
         body = _resolve(step.json, context) if step.json is not None else None
         form = _resolve(step.form, context) if step.form is not None else None
         if form is not None:
-            # JSON payloads keep dict/int values (designer template mappings),
-            # but an HTML form is submitted as text: a captured numeric id
-            # must become "7", not 7, for the wizard's confirm step.
-            form = {key: str(value) for key, value in form.items()}
+            form = _form_text(form)
         files = None
         if step.files is not None:
             files = {}
