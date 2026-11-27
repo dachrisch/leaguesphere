@@ -155,33 +155,53 @@ def test_a_non_delete_error_with_delete_ticked_is_not_blamed_on_the_provisioner(
     assert "run the ls.dbeaver role" not in reason
 
 
-def _person_check() -> re.Pattern:
-    """The pattern the sidecar applies to a row's `person` before minting."""
-    match = re.search(r"printf '%s' \"\$person\" \| grep -Eq '([^']+)'", _script())
+def _account_check() -> re.Pattern:
+    """The guard the sidecar applies to the row's `db_user` before minting."""
+    match = re.search(r"printf '%s' \"\$db_user_row\" \| grep -Eq '([^']+)'", _script())
 
     assert (
         match
-    ), "the sidecar no longer validates `person` in a form this test can read"
+    ), "the sidecar no longer validates `db_user` in a form this test can read"
     return re.compile(match.group(1))
 
 
-def test_every_handle_the_app_derives_passes_the_sidecars_person_check():
-    """The two halves must agree on the alphabet, or every mint is parked.
+def test_the_sidecar_takes_the_account_name_from_the_row():
+    """One row owns one account; the shell must not re-derive it from `person`.
 
-    `access_handle()` derives the name the sidecar creates; when the sidecar is
-    stricter than the derivation, the request is approved and *then* fails, and
-    the person who approved it has spent their decision on nothing.
+    Deriving it a second time is what made the account deterministic per person
+    in the first place - and any drift between the app's and the shell's naming
+    would silently reintroduce the mismatch.
     """
-    from dbaccess.models import access_handle
+    script = _script()
 
-    pattern = _person_check()
+    assert "SELECT id, db_user, tables_csv" in script
+    assert 'user="$db_user_row"' in script
+    assert 'user="dbeaver_prod_${person}"' not in script
+
+
+def test_every_name_the_app_stores_passes_the_sidecars_account_check():
+    """The two halves must agree on the alphabet, or every mint is parked."""
+    from dbaccess.accounts import db_user_for
+
+    pattern = _account_check()
     for login in ("chrisd", "5erAdmin", "Müller", "first-last_99", "a" * 60):
-        handle = access_handle(login)
+        user = db_user_for(login, 17)
 
-        assert handle, login
         assert pattern.fullmatch(
-            handle
-        ), f"{login!r} derives the handle {handle!r}, which the sidecar refuses"
+            user
+        ), f"{login!r} stores {user!r}, which the sidecar refuses"
+
+
+def test_the_sidecar_refuses_an_account_name_that_could_escape_its_sql():
+    pattern = _account_check()
+
+    for user in (
+        "dbeaver_prod_x'; DROP USER root@'localhost'; --",
+        "admin",
+        "dbeaver_prod_x_r",
+        "dbeaver_prod_x_rf@'%'",
+    ):
+        assert not pattern.fullmatch(user), user
 
 
 def _table_check() -> re.Pattern:

@@ -6,8 +6,9 @@
 # in the application schema - there is no HTTP surface, no volume and no port.
 #
 # Rules this file holds itself to:
-#   * the account name is DERIVED here (dbeaver_prod_<person>), never taken from
-#     the row - a row may name a person, not an identity;
+#   * the account name comes from the row (one row, one account). It is checked
+#     before it reaches hand-written SQL; the app wrote it at creation time as
+#     dbeaver_prod_<handle>_r<base36(id)>, and a re-mint keeps it unchanged;
 #   * the host pattern comes from the environment, never from the row, because
 #     MariaDB will happily create '%' and the reaper is then the only guard;
 #   * every table is checked against the live schema before anything is granted,
@@ -157,23 +158,23 @@ if [ "$have_write_columns" = "2" ]; then
 fi
 
 sql "$DB" -e "
-    SELECT id, person, tables_csv, ttl_hours, $write_columns
+    SELECT id, db_user, tables_csv, ttl_hours, $write_columns
       FROM dbaccess_request
      WHERE state='approved'
      ORDER BY id
-     LIMIT $MAX_PER_TICK" | while IFS="$TAB" read -r id person tables ttl may_insert may_delete; do
+     LIMIT $MAX_PER_TICK" | while IFS="$TAB" read -r id db_user_row tables ttl may_insert may_delete; do
     [ -n "${id:-}" ] || continue
 
-    # The alphabet is the app's `HANDLE_ALPHABET` (dbaccess/models.py) - a
-    # leading digit included, because `dbeaver_prod_5eradmin` is a legal
-    # account and the app derives it from a login like `5erAdmin`. The length
-    # is the app's HANDLE_LENGTH (20), not the 21 the first draft allowed.
-    if ! printf '%s' "$person" | grep -Eq '^[a-z0-9][a-z0-9]{0,19}$'; then
-        fail_row "$id" "person must be lowercase ASCII letters and digits (1-20, may start with a digit)"
+    # The app owns the name; this is the injection guard, not a second naming
+    # implementation. Prefix (the reaper matches it), safe characters, the
+    # request suffix, and MariaDB's 32-byte limit must all hold.
+    if [ "${#db_user_row}" -gt 32 ] ||
+       ! printf '%s' "$db_user_row" | grep -Eq '^dbeaver_prod_[a-z0-9]*_r[0-9a-z]+$'; then
+        fail_row "$id" "invalid minted account name on the row"
         continue
     fi
 
-    user="dbeaver_prod_${person}"
+    user="$db_user_row"
     valid_tables=""
     for t in $(printf '%s' "$tables" | tr ',' ' '); do
         if ! printf '%s' "$t" | grep -Eq "$VALID_ID"; then
