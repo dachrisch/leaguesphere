@@ -126,7 +126,7 @@ excluding every path containing `test` gives **137 occurrences in 29 files**. Th
 | B16 | **14 invocable management commands** in 15 modules (22 files once `__init__.py` is included), including projectors (`rebuild_game_projection`, `check_game_projection`) and seeders | Counting protocol above | Every command is a tenant-context bypass candidate |
 | B17 | `gameevents` writes `gamedays` projection tables through a projector boundary (`project_submission`, `project_game`) | `gameevents/service/append.py:212`, `projector.py:675` | Writes can bypass views entirely; the projector must stamp or derive the tenant |
 | B18 | `scorecard_v2` is an offline PWA with an IndexedDB outbox and a device lock on `GameSetup.device_id` | `gamedays/api/game_views.py`, `gamedays/service/device_lock.py` | Offline caches and device locks are cross-tenant state that must be namespaced |
-| B19 | Repo gates: TDD, mandatory query-count assertions, `black .`, `npm run eslint`, scope coverage, app-boundary check, DCO-signed conventional commits | [AGENTS.md](../../../../AGENTS.md) | Every phase's exit criteria must include these |
+| B19 | Repo gates: TDD, mandatory query-count assertions, `black .`, `npm run eslint`, scope coverage, app-boundary check, **100% branch coverage of every created/changed/moved function** (`python3 scripts/check_branch_coverage.py --coverage coverage.json --base origin/master --shard <shard>`; pragmas need an inline reason), DCO-signed conventional commits | [AGENTS.md](../../../../AGENTS.md) | Every phase's exit criteria must include these; the branch-coverage rule is detailed in §7.6 |
 | B20 | The thesis counts **13 leagues** as tenants and rejects federal states: federal leagues, state leagues and merged divisions overlap and the structure changes annually | Thesis §4.1 | Confirms D1's League grain with an explicit source |
 | B21 | The thesis reviews `django-tenants`, `django-tenant-schemas`, `django-multitenant` and `django-db-multitenant` and extends `django.contrib.auth` instead of adopting a library | Thesis §3.3, §4.3 | The bespoke `access` app follows the thesis; no third-party tenancy dependency |
 | B22 | The thesis asks for adaptability to other sports and names youth leagues as a first scalability exercise | Thesis §3.4 | Tenancy primitives stay sport-agnostic; youth leagues belong in the load scenario (R56) |
@@ -797,8 +797,9 @@ mechanism (§5.4.1), `/api/me/leagues/`, `TenantModelAdmin`, feature flags defau
 model is converted yet.
 **Exit**: unit tests for context (nesting, exception, streaming), resolution (precedence,
 404/403/400), kernel (anonymous published/unpublished, global roles, team-scoped manager), and
-enforcement (violation strict/log, zero extra queries); `black .`; boundary check green; zero
-behaviour change in staging with flags off.
+enforcement (violation strict/log, zero extra queries); `black .`; boundary check green;
+100% branch coverage of every function the phase creates or changes (§7.6); zero behaviour
+change in staging with flags off.
 
 ### Phase 2 — Identity and role backfill
 
@@ -811,7 +812,8 @@ shim.
 **Exit**: on a prod clone, every authority-holding user (`is_staff` or legacy team-manager
 permission) has an equivalent `UserRole`; `audit_identity_links` reports **zero ambiguous**
 matches, every matched role-holder is linked, and the unmatched-official list is reviewed and
-accepted; `report_duplicate_season_league_teams` returns zero; tests for every mapping rule.
+accepted; `report_duplicate_season_league_teams` returns zero; tests for every mapping rule;
+100% branch coverage of every function the phase creates or changes (§7.6).
 
 ### Phase 3 — Read isolation, app by app
 
@@ -821,7 +823,8 @@ public reads and cross-league behaviour).
 `officials` → `journey` → `gameday_designer`; route manifest entries for public reads;
 shadow-read disagreement report (R43) running in production.
 **Exit**: per app — isolation suite green (R53/R57), query counts flat or +1 (R54), zero
-shadow-read disagreements over a gameday weekend, no unlisted `unscoped()` site.
+shadow-read disagreements over a gameday weekend, no unlisted `unscoped()` site, 100% branch
+coverage of every function the phase creates or changes (§7.6).
 
 ### Phase 4 — Write authorization
 
@@ -830,7 +833,8 @@ shadow-read disagreements over a gameday weekend, no unlisted `unscoped()` site.
 lock release (R39); transfer approval across two teams (R10); projector stamping (R58);
 admin actions.
 **Exit**: permission matrix tests per role; cross-tenant write returns 403; admin isolation
-tests; bypass audit (R55) signed off.
+tests; bypass audit (R55) signed off; 100% branch coverage of every function the phase creates
+or changes (§7.6).
 
 ### Phase 5 — API surface
 
@@ -839,16 +843,20 @@ tests; bypass audit (R55) signed off.
 `/api/me/permissions/`; error envelope (R28); throttle per tenant (R50); export command
 (R51).
 **Exit**: contract tests for new routes; snapshot byte-identical; no public endpoint change;
-deprecation plan published.
+deprecation plan published; 100% branch coverage of every function the phase creates or changes
+(§7.6).
 
 ### Phase 6 — Frontend and offline
 
 **Entry**: Phase 5 exit, with D3 and D5 recorded.
 **Work**: tenant-aware routes/boot payload; permission-driven menus (R63); league switcher
 (R62); cache keying (R61); `scorecard_v2` outbox namespacing and conflict rule (R64);
-remove `useIsStaff` in favour of permissions.
+remove `useIsStaff` in favour of permissions. UI work follows the existing button patterns
+(`docs/topics/guides/ui-button-patterns.md`: primary CTA full width, cancel
+`btn-outline-danger`) — permission-aware only, within the non-goal of no visual redesign.
 **Exit**: frontend tests per role; eslint zero errors; offline replay test across a tenant
-switch; no `is_staff` reads in frontend code.
+switch; no `is_staff` reads in frontend code; 100% branch coverage of every function the phase
+creates or changes (§7.6).
 
 ### Phase 7 — Deprecate `is_staff` and legacy permissions
 
@@ -858,7 +866,8 @@ seeds/tests/Django-admin gate.
 `is_staff`-based helpers; decide `is_staff`'s fate (D7); remove flat API routes; security
 audit; load test (R56); documentation + in-app help update.
 **Exit**: final `rg` inventory in §10 matches reality; security audit signed; load test
-within budget; docs updated.
+within budget; docs updated; 100% branch coverage of every function the phase creates or changes
+(§7.6).
 
 ### 6.1 `is_staff`: write → view → deprecate
 
@@ -941,6 +950,33 @@ k6 scenario with three tenants and skewed traffic (one heavy league, one youth l
 light league) on stage; compare p95 and error rate against the current baseline; assert the
 tenant resolution and policy kernel add no measurable overhead at 10 VUs (the repo's existing
 ramp). Per-tenant throttles (R50) are exercised.
+
+### 7.6 Branch coverage of changed functions
+
+CI runs the repo's branch-coverage gate **per shard**:
+
+```bash
+python3 scripts/check_branch_coverage.py --coverage coverage.json --base origin/master --shard <shard>
+```
+
+It scopes the report to **functions created, changed or moved by the PR** and requires **100%
+branch coverage in each of them**. A `# pragma: no cover` is accepted only with an inline reason
+on the same line; a bare pragma fails the gate. See
+`docs/topics/planning/current/2026-11-25-phase1-plan.md` for the check's own contract.
+
+This complements rather than replaces the other gates: TDD (B19) proves the behaviour was
+specified first, query-count assertions (R54) prove the data access does not scale with the
+result set, and branch coverage proves **every new decision path actually executes**. For this
+plan the prime targets are:
+
+- the policy kernel's role branches and the published/draft predicate map (§5.6) — every role
+  and both public-read outcomes;
+- the enforcement mechanism's strict/log split and allowlist hit/miss (§5.4.1);
+- the resolver's 404 / 403 / 400 outcomes and the conflict path (R13–R15);
+- `unscoped()` reason validation (R20).
+
+Because the gate is per shard, a phase must keep **its own** shard green; a broad suite in
+another shard does not cover a changed function.
 
 ---
 
