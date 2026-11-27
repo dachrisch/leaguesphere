@@ -39,11 +39,15 @@ class ApiContextCharacterization(WebTest):
         )
         DBSetup().create_game_officials(game, official=second)
 
-        # Exactly four queries: the connection check, site config, the crew
-        # rows and one bulk licence join. Two officials must not add a licence
-        # query per official, so pin the total exactly as well as the join.
-        with self.assertNumQueries(4) as queries:
-            response = self.app.get(reverse(API_GAME_OFFICIALS, kwargs={"pk": game.pk}))
+        # The connection check and SiteConfiguration lookup are cached in the
+        # process after the first request. Warm them so the measured count does
+        # not depend on which test ran first.
+        url = reverse(API_GAME_OFFICIALS, kwargs={"pk": game.pk})
+        self.app.get(url)
+        # Two officials must cost one crew query and one bulk licence join,
+        # never one licence query per official.
+        with self.assertNumQueries(2) as queries:
+            response = self.app.get(url)
         assert response.status_code == 200
         assert {row["license"] for row in response.json} == {"F1", "F2"}
         licence_queries = [
