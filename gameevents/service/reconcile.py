@@ -107,6 +107,11 @@ class GameCheck:
         return self.legacy or self.drift is None
 
     def summary(self) -> str:
+        if self.legacy and self.event_count:
+            return (
+                f"game {self.game_id}: skipped (shadow-only, "
+                f"{self.event_count} audit events; accepted legacy game)"
+            )
         if self.legacy:
             return f"game {self.game_id}: skipped (no events, legacy game)"
         if self.drift is None:
@@ -313,8 +318,19 @@ def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
             event.source == GameEvent.Source.V2 for event in game_events
         ):
             # An explicitly named shadow-only game is accepted legacy, not
-            # reconciled -- the same discriminator as --all.
-            checks.append(GameCheck(game_id, 0, 0, legacy=True))
+            # reconciled -- the same discriminator as --all. It keeps its
+            # audit-event count and season so stdout and the report do not
+            # describe it as a game without events.
+            checks.append(
+                GameCheck(
+                    game_id,
+                    len(game_events),
+                    game_events[-1].seq,
+                    legacy=True,
+                    source=GameEvent.Source.LEGACY,
+                    season_id=game_events[0].game.gameday.season_id,
+                )
+            )
             continue
         source = max(
             (event.source for event in game_events),

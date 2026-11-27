@@ -17,9 +17,11 @@ wording is historical and is retained there for traceability.
 The scorecard event architecture separated *recording* (the v2 app writes
 sport-neutral `GameEvent`s) from *meaning* (the server projects them into
 `GameState` for the liveticker). The migration from the legacy `TeamLog` read
-path is a strangler: the flag `SCORECARD_EVENT_FEED` is off by default, both
-write paths are live, and every v1 gamelog write also emits a shadow event so
-the event store looks populated.
+path was a strangler: when this ADR was written the flag
+`SCORECARD_EVENT_FEED` was off by default, both write paths were live, and every
+v1 gamelog write also emitted a shadow event so the event store looked
+populated. Phase 2 Layer 5 removed the shadow write and Layer 6 removed the
+flag; the event path is now permanent.
 
 Three facts forced an explicit decision before the cutover:
 

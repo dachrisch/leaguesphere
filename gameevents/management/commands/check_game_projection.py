@@ -75,14 +75,17 @@ class Command(BaseCommand):
                 raise CommandError(f"No game found for gameId {game_id}")
             checks = check_games([game_id])
             # A shadow-only game is part of the accepted legacy set even when
-            # it has events; only a v2 game has to reconcile.
+            # it has events; only a v2 game has to reconcile. check_games
+            # marks it legacy but keeps its audit-event count.
             shadow_only_games = [
                 (check.game_id, check.season_id)
                 for check in checks
-                if not check.legacy and check.source != GameEvent.Source.V2
+                if check.event_count and check.source != GameEvent.Source.V2
             ]
             legacy_games = [
-                (check.game_id, check.season_id) for check in checks if check.legacy
+                (check.game_id, check.season_id)
+                for check in checks
+                if check.legacy and not check.event_count
             ] + shadow_only_games
             event_game_ids = [
                 check.game_id
