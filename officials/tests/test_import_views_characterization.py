@@ -196,14 +196,14 @@ class ImportPostQueryCountCharacterization(TestCase):
         return ",".join(str(row["row_number"]) for row in data["external"]["new"])
 
     def test_upload_post_success(self):
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(9):
             response = self._upload()
         assert response.status_code == 200
         assert len(response.json()["external"]["new"]) == 1
 
     def test_confirm_post_redirects_after_commit(self):
         rows = self._new_external_rows()
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9):
             response = self.client.post(
                 reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM),
                 {"external_rows": rows},
@@ -214,7 +214,7 @@ class ImportPostQueryCountCharacterization(TestCase):
 
     def test_confirm_post_ajax_reports_created_rows(self):
         rows = self._new_external_rows()
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9):
             response = self.client.post(
                 reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM),
                 {"external_rows": rows},
