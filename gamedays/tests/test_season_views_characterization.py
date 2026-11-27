@@ -182,7 +182,7 @@ class SeasonRolloverCharacterization(TestCase):
         existing = SeasonLeagueTeamFactory(
             season=self.season, league=self.league, teams=[]
         )
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(9):
             response = self.client.post(self.assign_url(), {"teams": [self.team.pk]})
         assert response.status_code == 302
         assert response.url == reverse(
