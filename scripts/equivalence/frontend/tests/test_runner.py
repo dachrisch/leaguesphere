@@ -255,11 +255,25 @@ def test_module_path_setup_covers_both_sys_path_branches():
     # removed (insert/True arc). `exec`, not importlib.reload, keeps the module
     # importable while the paths are temporarily absent.
     source = Path(runner.__file__).read_text(encoding="utf-8")
-    for part in (str(runner.HERE), str(runner.PARENT)):
-        if part not in sys.path:
+    parts = (str(runner.HERE), str(runner.PARENT))
+    original = list(sys.path)
+    try:
+        # False arc: both paths already present, so no duplicate is inserted.
+        for part in parts:
+            while part in sys.path:
+                sys.path.remove(part)
             sys.path.insert(0, part)
-    exec(compile(source, runner.__file__, "exec"), runner.__dict__)
-    for part in (str(runner.HERE), str(runner.PARENT)):
-        while part in sys.path:
-            sys.path.remove(part)
-    exec(compile(source, runner.__file__, "exec"), runner.__dict__)
+        before = list(sys.path)
+        exec(compile(source, runner.__file__, "exec"), runner.__dict__)
+        assert sys.path == before
+        # True arc: remove both paths, then the module must re-insert each one
+        # at the front (in loop order: PARENT ends up ahead of HERE).
+        for part in parts:
+            while part in sys.path:
+                sys.path.remove(part)
+        assert not any(part in sys.path for part in parts)
+        exec(compile(source, runner.__file__, "exec"), runner.__dict__)
+        assert sys.path[:2] == list(reversed(parts))
+        assert all(part in sys.path for part in parts)
+    finally:
+        sys.path[:] = original
