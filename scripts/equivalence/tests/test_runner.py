@@ -29,7 +29,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802 (http.server API)
         length = int(self.headers.get("Content-Length", "0"))
-        self.rfile.read(length)
+        self.server.bodies.append(self.rfile.read(length).decode("utf-8"))
         self._handle("POST")
 
     def _handle(self, method):
@@ -81,6 +81,7 @@ def server_factory():
         server.require_auth = require_auth
         server.requests = []
         server.headers = []
+        server.bodies = []
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         servers.append(server)
@@ -383,6 +384,48 @@ def test_runner_posts_the_report_to_requested_prs(
         ]
     )
     assert any("4242" in args for args in posted)
+
+
+def test_transport_encodes_repeated_form_fields_as_multiple_values(server_factory):
+    server, url = server_factory({("POST", "/form/"): (200, "ok", "text/plain")})
+    session = Session(url)
+    session.request("/form/", method="POST", form={"teams": [11, 12, 13], "name": "x"})
+    assert server.bodies[-1] == "teams=11&teams=12&teams=13&name=x"
+
+
+def test_runner_passes_discovered_team_ids_to_scenarios(
+    server_factory, tmp_path, monkeypatch
+):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    for server in (ref, cand):
+        server.routes[("GET", "/api/teams/")] = (
+            200,
+            {"results": [{"id": 11}, {"id": 12}, {"id": 13}]},
+            "application/json",
+        )
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+    seen = []
+
+    def fake_run(name, sessions, context, run_id):
+        seen.append(dict(context))
+        return runner.scenario_mod.ScenarioRun(name=name, run_id=run_id)
+
+    monkeypatch.setattr(runner.scenario_mod, "run_scenario", fake_run)
+    runner.main(
+        [
+            "--ref",
+            ref_url,
+            "--cand",
+            cand_url,
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(report),
+        ]
+    )
+    assert seen and all(ctx.get("wizard_team_ids") == [11, 12, 13] for ctx in seen)
 
 
 def test_basic_auth_is_required_by_the_transport(server_factory):

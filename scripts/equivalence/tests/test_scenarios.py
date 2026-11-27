@@ -12,6 +12,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import scenarios  # noqa: E402
@@ -229,14 +231,26 @@ def test_finalize_legacy_captures_a_real_game_id():
     assert wizard_post["form"]["gameday-format-0-group"] == [11, 12, 13]
 
 
-def test_finalize_legacy_fails_when_no_game_is_captured():
+def test_finalize_legacy_requires_a_captured_game_id():
     api = FakeApi(id_base=900)
     api.empty_games = True
     context = {**CONTEXT, "wizard_team_ids": [11, 12, 13]}
-    run = scenarios.run_scenario(
-        "finalize-legacy", {"staff": api, "anonymous": api}, context, "eq-legacy-empty"
+    with pytest.raises(RuntimeError, match="required 'game_id'"):
+        scenarios.run_scenario(
+            "finalize-legacy",
+            {"staff": api, "anonymous": api},
+            context,
+            "eq-legacy-empty",
+        )
+
+
+def test_wizard_format_requires_a_redirect():
+    step = next(
+        step
+        for step in scenarios.SCENARIOS["finalize-legacy"]
+        if step.name == "wizard-format"
     )
-    assert "game_id" not in run.captured
+    assert step.expect == 302
 
 
 def test_finalize_canvas_has_a_downstream_reference():

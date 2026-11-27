@@ -35,6 +35,7 @@ class Step:
     expect: tuple = (200, 201)
     capture: str | None = None
     capture_path: str | None = None
+    required_capture: bool = False
 
 
 @dataclass
@@ -313,12 +314,12 @@ def _wizard_steps():
                 "gameday-format-0-group_name": "Gruppe 1",
                 "gameday-format-0-league_group": "",
             },
-            expect=(200, 302),
+            expect=302,  # an invalid formset re-renders with 200
         ),
     ]
 
 
-def _read_game_id_steps():
+def _read_game_id_steps(required=False):
     """Capture all per-run ids the later read-backs can echo back."""
     return [
         Step(
@@ -329,6 +330,7 @@ def _read_game_id_steps():
             expect=200,
             capture="game_id",
             capture_path="0.id",
+            required_capture=required,
         ),
         Step(
             name="read-games-home-id",
@@ -460,7 +462,7 @@ SCENARIOS = {
             method="POST",
             path="/api/gamedays/{gameday_id}/publish/",
         ),
-        *_read_game_id_steps(),
+        *_read_game_id_steps(required=True),
         Step(
             name="finalize-game",
             method="PUT",
@@ -620,4 +622,9 @@ def run_scenario(name, sessions, context, run_id):
         run.steps.append(
             StepResult(name=step.name, status=response.status, body=normalised)
         )
+    for step in SCENARIOS[name]:
+        if step.required_capture and step.capture not in run.captured:
+            raise RuntimeError(
+                f"{name}:{step.name} did not capture required '{step.capture}'"
+            )
     return run

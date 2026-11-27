@@ -114,7 +114,9 @@ def run(args):
         # Same stage database on both sides: discovering the template once is
         # deterministic and adds no probe noise. Unavailable data stays
         # unresolved and is reported as a harness error, never fabricated.
-        context.update(scenario_mod.discover_team_ids(ref_sessions))
+        team_ids = scenario_mod.discover_team_ids(ref_sessions)
+        if team_ids:
+            context["wizard_team_ids"] = team_ids
         context.update(scenario_mod.discover_template_context(ref_sessions))
         for name in scenario_mod.SCENARIOS:
             if args.scenarios and name not in args.scenarios:

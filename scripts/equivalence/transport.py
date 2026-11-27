@@ -92,7 +92,7 @@ class Session:
             data = jsonlib.dumps(json_body).encode("utf-8")
             request_headers["Content-Type"] = "application/json"
         elif form is not None:
-            data = urllib.parse.urlencode(form).encode("utf-8")
+            data = urllib.parse.urlencode(form, doseq=True).encode("utf-8")
             request_headers["Content-Type"] = "application/x-www-form-urlencoded"
 
         request = urllib.request.Request(
