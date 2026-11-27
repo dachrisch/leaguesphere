@@ -22,9 +22,12 @@ See [current/](./current/) for active planning work.
 - [2026-11-25 Architecture Remediation Roadmap](./current/2026-11-25-architecture-remediation-roadmap.md): agreed five-issue ranking, phase order 0a → 0c → 0b → 1–5, equivalence step, delivery workflow and all 18 user decisions
 - [2026-11-25 Phase 0 Implementation Plan](./current/2026-11-25-phase0-plan.md): self-contained brief for the implementing session — 0a boundary check, 0c equivalence harness (repo + infra PR), 0b black reformat, as a `gh stack`
 - [2026-11-25 Phase 1 Implementation Plan](./current/2026-11-25-phase1-plan.md): self-contained brief for inverting the five consumer imports out of `gamedays` — guardrails and 100% branch gate, schedule-strategy and hook registries, seven `gh stack` layers, characterization and equivalence exits
+- [2026-11-27 Fresh Multi-Tenant RBAC — Requirements & Plan](./current/2026-11-27-multi-tenant-rbac-requirements-and-plan.md): start-fresh requirements (R1–R64), 9 decisions (3 settled), target architecture, 8-phase (P0–P7) delivery, isolation test strategy and the `is_staff` write→view→deprecate ladder
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
+
+- [2026-02-25 Multi-Tenant RBAC Thesis Implementation Proposal](./history/2026-02-25-multi-tenant-rbac-thesis-implementation-proposal.md): LeagueSphere's response to Niklas Just's bachelor thesis — middleware-based tenant isolation for the shared-schema multi-tenant model
 
 ## Overview
 
