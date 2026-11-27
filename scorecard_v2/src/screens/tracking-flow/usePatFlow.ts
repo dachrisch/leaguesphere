@@ -65,11 +65,8 @@ interface UsePatFlowArgs {
   setPatTry: Dispatcher<PatTry | null>;
   patMiss: PatMiss | null;
   setPatMiss: Dispatcher<PatMiss | null>;
-  patDefense: boolean;
   setPatDefense: Dispatcher<boolean>;
-  patDefenseJersey: number | null;
   setPatDefenseJersey: Dispatcher<number | null>;
-  patJersey: number | null;
   setPatJersey: Dispatcher<number | null>;
   patQb: number | null;
   setPatQb: Dispatcher<number | null>;
@@ -77,16 +74,11 @@ interface UsePatFlowArgs {
   setPatBusy: Dispatcher<boolean>;
   patFirst: MutableRefObject<HTMLButtonElement | null>;
   patOriginRef: MutableRefObject<{ team: string; originId?: string } | null>;
-  patError: string | null;
   setPatError: Dispatcher<string | null>;
-  finishBlocked: boolean;
   setFinishBlocked: Dispatcher<boolean>;
-  halftimePending: boolean;
   setHalftimePending: Dispatcher<boolean>;
-  halftimeError: string | null;
   setHalftimeError: Dispatcher<string | null>;
   setHalftimeOpen: Dispatcher<boolean>;
-  breakStartedAt: number | null;
   setBreakStartedAt: Dispatcher<number | null>;
   setPosting: Dispatcher<boolean>;
   setConfirmation: Dispatcher<string | null>;
@@ -123,11 +115,8 @@ export function usePatFlow({
   setPatTry,
   patMiss,
   setPatMiss,
-  patDefense: _patDefense,
   setPatDefense,
-  patDefenseJersey: _patDefenseJersey,
   setPatDefenseJersey,
-  patJersey: _patJersey,
   setPatJersey,
   patQb,
   setPatQb,
@@ -135,16 +124,11 @@ export function usePatFlow({
   setPatBusy,
   patFirst,
   patOriginRef,
-  patError: _patError,
   setPatError,
-  finishBlocked: _finishBlocked,
   setFinishBlocked,
-  halftimePending: _halftimePending,
   setHalftimePending,
-  halftimeError: _halftimeError,
   setHalftimeError,
   setHalftimeOpen,
-  breakStartedAt: _breakStartedAt,
   setBreakStartedAt,
   setPosting,
   setConfirmation,
@@ -156,15 +140,6 @@ export function usePatFlow({
   disarm,
   onFinalize,
 }: UsePatFlowArgs) {
-  void _patDefense;
-  void _patDefenseJersey;
-  void _patJersey;
-  void _patError;
-  void _finishBlocked;
-  void _halftimePending;
-  void _halftimeError;
-  void _breakStartedAt;
-
   const drive = useMemo(
     () => driveAfter(rows, geometry, possessionName),
     [rows, geometry, possessionName],
