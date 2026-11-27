@@ -70,6 +70,7 @@ def test_static_proof_pins_the_built_digest_and_named_bundles():
         "gameday_designer/js/index.js",
         "passcheck/js/passcheck.js",
         "liveticker/js/liveticker.js",
+        "liveticker/v2/js/liveticker-v2.js",
     ):
         assert bundle in proof
     assert "find " not in proof  # an arbitrary .js chunk is not proof

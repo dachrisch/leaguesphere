@@ -257,7 +257,8 @@ jobs:
             scorecard_v2/js/scorecard_v2.js \
             gameday_designer/js/index.js \
             passcheck/js/passcheck.js \
-            liveticker/js/liveticker.js; do
+            liveticker/js/liveticker.js \
+            liveticker/v2/js/liveticker-v2.js; do
             body="$(curl -fsS "http://127.0.0.1:$port/static/$bundle")"
             test -n "$body"
           done
