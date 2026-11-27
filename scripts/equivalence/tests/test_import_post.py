@@ -31,9 +31,10 @@ def test_import_post_scenario_has_parse_and_confirm_steps():
 def test_device_scenario_witnesses_the_moved_endpoints():
     steps = scenarios.SCENARIOS["device-lock-halftime-finalize"]
     by_name = {step.name: step for step in steps}
-    assert by_name["device-conflict-put"].headers == {
-        "X-SCORECARD_DEVICE": "other-device"
-    }
+    conflict = by_name["device-conflict-put"]
+    assert conflict.headers == {"X-Scorecard-Device": "other-device"}
+    # Only the header disagrees with the stored lock holder.
+    assert conflict.json["device_id"] == by_name["start-game"].json["device_id"]
     assert by_name["halftime-put"].path.endswith("/halftime")
     assert by_name["finalize-put"].path.endswith("/finalize")
     assert by_name["device-release"].method == "DELETE"

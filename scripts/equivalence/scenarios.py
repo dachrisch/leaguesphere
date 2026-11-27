@@ -929,12 +929,16 @@ SCENARIOS = {
             name="device-conflict-put",
             method="PUT",
             path="/api/game/{game_id}/setup",
+            # The body names the device that holds the lock, so only the
+            # header can cause the 409: this witnesses _requested_device's
+            # header-first precedence. Hyphens, not underscores: runserver
+            # and gunicorn drop header names that contain an underscore.
             json={
                 "direction": "Nord",
                 "fhPossession": "{team_name}",
-                "device_id": "other-device",
+                "device_id": "{run_id}-device",
             },
-            headers={"X-SCORECARD_DEVICE": "other-device"},
+            headers={"X-Scorecard-Device": "other-device"},
             expect=409,
         ),
         Step(
