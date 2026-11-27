@@ -17,6 +17,7 @@ under `tmp_path`, so the tests cannot drift with the real `gamedays/`.
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -190,3 +191,164 @@ def test_generate_writes_tagged_entries(checker, tmp_path, capsys):
     assert "|import gameevents" not in written
     output = capsys.readouterr().out
     assert "3 entries written (gameevents allowed, not listed)" in output
+
+
+def test_checker_runs_as_a_script(checker, tmp_path):
+    root = write_root(
+        tmp_path,
+        {"gamedays/service/demo.py": "import gamedays.models\n"},
+    )
+    allowlist = write_allowlist(tmp_path)
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(Path(checker.__file__).resolve()),
+            "--root",
+            str(root),
+            "--allowlist",
+            str(allowlist),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+
+
+def test_dynamic_get_model_two_args_fails(checker, tmp_path, capsys):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/service/demo.py": (
+                'group = apps.get_model("league_table", "LeagueGroup")\n'
+            )
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 1
+    out = capsys.readouterr().out
+    assert "league_table.LeagueGroup" in out or "league_table" in out
+
+
+def test_dynamic_get_model_dotted_fails(checker, tmp_path, capsys):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/service/demo.py": (
+                'group = apps.get_model("league_table.LeagueGroup")\n'
+            )
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 1
+    assert "league_table" in capsys.readouterr().out
+
+
+def test_nested_dynamic_call_is_caught(checker, tmp_path, capsys):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/views.py": (
+                "def render():\n"
+                '    return helper(apps.get_model("officials", "Official"))\n'
+            )
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 1
+    assert "officials" in capsys.readouterr().out
+
+
+def test_dynamic_import_module_fails(checker, tmp_path, capsys):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/service/demo.py": 'mod = importlib.import_module("passcheck.models")\n'
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 1
+    assert "passcheck" in capsys.readouterr().out
+
+
+def test_dynamic_forms_ignore_other_calls_and_values(checker, tmp_path):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/service/demo.py": (
+                "print('hello')\n"
+                "apps.get_model()\n"
+                'apps.get_model(MODEL, "LeagueGroup")\n'
+                'apps.do_thing("league_table")\n'
+                'importlib.import_module("os.path")\n'
+                'get_factory()("league_table")\n'
+            )
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 0
+
+
+def test_gameevents_dynamic_is_reported_not_failed(checker, tmp_path, capsys):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/service/demo.py": (
+                'model = apps.get_model("gameevents", "TeamLog")\n'
+                'mod = importlib.import_module("gameevents.service.append")\n'
+            )
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 0
+    assert "gameevents" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("source", "app"),
+    [
+        (
+            "from importlib import import_module\n"
+            'mod = import_module("league_table.models")\n',
+            "league_table",
+        ),
+        ('mod = __import__("officials.models")\n', "officials"),
+        (
+            'model = apps.get_model(app_label="passcheck", model_name="Player")\n',
+            "passcheck",
+        ),
+        (
+            'mod = __import__("gameday_designer.models", fromlist=["X"])\n',
+            "gameday_designer",
+        ),
+    ],
+)
+def test_bare_dynamic_forms_fail(checker, tmp_path, capsys, source, app):
+    root = write_root(tmp_path, {"gamedays/service/demo.py": source})
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 1
+    assert app in capsys.readouterr().out
+
+
+def test_bare_dynamic_gameevents_is_reported_not_failed(checker, tmp_path, capsys):
+    root = write_root(
+        tmp_path,
+        {
+            "gamedays/service/demo.py": (
+                "from importlib import import_module\n"
+                'mod = import_module("gameevents.service.append")\n'
+                'model = __import__("gameevents.models")\n'
+            )
+        },
+    )
+    allowlist = write_allowlist(tmp_path)
+
+    assert checker.main(["--root", str(root), "--allowlist", str(allowlist)]) == 0
+    assert "gameevents" in capsys.readouterr().out

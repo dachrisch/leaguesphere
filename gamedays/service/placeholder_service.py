@@ -1,6 +1,6 @@
 import logging
 from gamedays.models import Gameinfo, Gameday
-from gameday_designer.models import ScheduleTemplate, TemplateSlot, TemplateApplication
+from gamedays.service import designer_hooks
 
 logger = logging.getLogger(__name__)
 
@@ -23,32 +23,16 @@ class GamedayPlaceholderService:
         }
         self._slots_by_field = None
 
-    def get_template(self) -> ScheduleTemplate:
+    def get_template(self):
         if self._template:
             return self._template
 
         if not self.gameday:
             return None
 
-        # 1. Try via TemplateApplication
-        application = TemplateApplication.objects.filter(gameday=self.gameday).first()
-        if application:
-            self._template = application.template
-            return self._template
-
-        # 2. Fallback to format-based name for migrated templates (convention from migrate_json_schedules)
-        template_name = f"schedule_{self.gameday.format}"
-        if template_name:
-            logger.info(
-                f"No TemplateApplication found for gameday {self.gameday_id}; "
-                f"falling back to format-name lookup: '{template_name}'"
-            )
-        self._template = ScheduleTemplate.objects.filter(name=template_name).first()
-        if self._template:
-            logger.info(
-                f"Gameday {self.gameday_id} matched template by format name '{template_name}' "
-                f"(no TemplateApplication record). Consider creating one."
-            )
+        # Phase 1 (#2537): template resolution belongs to gameday_designer;
+        # the hook keeps the TemplateApplication-first, format-name fallback.
+        self._template = designer_hooks.template_for_gameday(self.gameday)
         return self._template
 
     def _get_slots_by_field(self) -> dict:
@@ -62,9 +46,7 @@ class GamedayPlaceholderService:
             return self._slots_by_field
 
         self._slots_by_field = {}
-        for slot in TemplateSlot.objects.filter(template=template).order_by(
-            "field", "slot_order"
-        ):
+        for slot in designer_hooks.slots_for_template(template):
             self._slots_by_field.setdefault(slot.field, []).append(slot)
         return self._slots_by_field
 
@@ -110,7 +92,7 @@ class GamedayPlaceholderService:
             )
             return "TBD"
 
-    def _find_slot_for_game(self, gi: Gameinfo) -> TemplateSlot:
+    def _find_slot_for_game(self, gi: Gameinfo):
         """Matches a Gameinfo to its TemplateSlot by counting previous games on the same field."""
         field_slots = self._get_slots_by_field().get(gi.field, [])
         if not field_slots:

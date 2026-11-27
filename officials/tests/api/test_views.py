@@ -462,6 +462,10 @@ class TestOfficialsSearchList(WebTest):
         assert response.status_code == HTTPStatus.BAD_REQUEST
 
     def test_query_count_does_not_depend_on_result_count(self):
+        # The first request in a process lazily loads the site configuration
+        # and opens the DB connection. Warm those one-time queries so the two
+        # captures measure only result-count-dependent work.
+        self._search("hans")
         team = TeamFactory(name="Lions")
         self._official("Hans", "Berg", team, 401)
         self._official("Hanna", "Bergmann", team, 402)

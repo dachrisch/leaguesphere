@@ -3,11 +3,15 @@ import json
 import pathlib
 import re
 from dataclasses import dataclass
-from typing import Union, List, Optional
+from typing import Any, Union, List, Optional
 
 from gamedays.models import Team, Gameday, Gameinfo, Gameresult
 from gamedays.service.stage_category import derive_legacy_stage_category
-from league_table.models import LeagueGroup
+
+# Phase 1 (#2537): LeagueGroup was imported here only for the annotations
+# below. The value is assigned through the Gameinfo.league_group FK
+# (see _create_gameinfo_and_gameresult), so the import is an annotation-only
+# back-edge. `Any` keeps the annotations honest without importing a consumer.
 
 
 class TeamNotExistent(BaseException):
@@ -22,7 +26,7 @@ class ScheduleTeamMismatchError(BaseException):
 class ScheduleEntry:
     stage: str
     standing: str
-    league_group: Optional["LeagueGroup"]
+    league_group: Optional[Any]
     home: str
     away: str
     officials: str
@@ -76,7 +80,7 @@ class FieldSchedule:
 @dataclass
 class GroupSchedule:
     name: str
-    league_group: Optional["LeagueGroup"]
+    league_group: Optional[Any]
     teams: list[Team]
 
 

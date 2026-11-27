@@ -4,7 +4,9 @@ from typing import Optional
 from django.utils import timezone
 
 from gamedays.models import Gameinfo
-from league_table.models import LeagueGroup
+from django.core.exceptions import ObjectDoesNotExist
+
+from gamedays.service import league_group_hooks
 
 STATUS_HALFTIME = "2. Halbzeit"
 STATUS_FIRST_HALF = "1. Halbzeit"
@@ -88,11 +90,15 @@ class GameinfoWrapper(object):
 
     def update_standing(self, standing: str):
         try:
-            group_id = int(standing)
-            group = LeagueGroup.objects.get(pk=group_id)
-            self.gameinfo.standing = group.name
-            self.gameinfo.league_group = group
-        except (TypeError, ValueError, LeagueGroup.DoesNotExist):
+            group = league_group_hooks.group_by_id(int(standing))
+        except (TypeError, ValueError, ObjectDoesNotExist):
+            group = None
+        if group is None:
+            # Explicit fallback: a non-numeric standing or a missing group
+            # stays a free-text standing with no league group.
             self.gameinfo.standing = standing
             self.gameinfo.league_group = None
+        else:
+            self.gameinfo.standing = group.name
+            self.gameinfo.league_group = group
         self.gameinfo.save()

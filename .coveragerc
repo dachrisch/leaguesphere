@@ -1,6 +1,7 @@
 # .coveragerc to control coverage.py
 [run]
 source = .
+branch = True
 omit =
    *venv/*
    *venv/bin/*

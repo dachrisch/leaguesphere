@@ -2,9 +2,7 @@ import pandas as pd
 from django.core.exceptions import ObjectDoesNotExist
 
 from gamedays.models import Gameday, Gameinfo, TeamLog
-from league_table.models import LeagueSeasonConfig
-from league_table.service.leaguetable_settings import SHOW_PLAYER_NAMES, TOP_N_PLAYER
-from passcheck.models import PlayerlistGameday
+from gamedays.service import league_table_hooks, passcheck_hooks
 
 INDIVIDUAL_STATISTIC_EVENTS = [
     "Touchdown",
@@ -38,13 +36,9 @@ class LeagueStatisticsModelWrapper:
         self.player_aggregation = pd.DataFrame([])
         self.team_aggregation = pd.DataFrame([])
 
-        try:
-            self.league_season_config = LeagueSeasonConfig.objects.get(
-                league__name=self.league, season__name=self.season
-            )
-
-        except LeagueSeasonConfig.DoesNotExist:
-            self.league_season_config = None
+        self.league_season_config = league_table_hooks.season_config(
+            self.league, self.season
+        )
 
         self.scoring_column_values = {
             "Touchdown": 6,
@@ -86,32 +80,7 @@ class LeagueStatisticsModelWrapper:
         )
 
     def _get_season_passcheck_player_jersey_number(self):
-        key_mapping = {
-            "gameday_id": "gameday_id",
-            "gameday_jersey": "gameday_jersey",
-            "playerlist__team_id": "team_id",
-            "playerlist__player__person__first_name": "first_name",
-            "playerlist__player__person__last_name": "last_name",
-        }
-
-        passcheck_players = (
-            pd.DataFrame(
-                PlayerlistGameday.objects.filter(
-                    gameday__season__name=self.season
-                ).values(*key_mapping.keys())
-            )
-            .rename(columns=key_mapping)
-            .astype(
-                {
-                    "gameday_id": int,
-                    "gameday_jersey": int,
-                    "team_id": int,
-                    "first_name": str,
-                    "last_name": str,
-                }
-            )
-        )
-        return passcheck_players
+        return passcheck_hooks.season_player_jersey_names(self.season)
 
     def _aggregate_team_logs(self):
         self.team_logs = pd.DataFrame(
@@ -129,9 +98,9 @@ class LeagueStatisticsModelWrapper:
 
         config = dict()
         if safe_config := self.league_season_config:
-            config = safe_config.get_season_statistic_settings()
+            config = league_table_hooks.season_statistic_settings(safe_config)
 
-        if config.get(SHOW_PLAYER_NAMES, False):
+        if league_table_hooks.show_player_names(config):
             passcheck_player_names_df = (
                 self._get_season_passcheck_player_jersey_number()
             )

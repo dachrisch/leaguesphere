@@ -55,10 +55,7 @@ from gamedays.models import (
 from gamedays.serializers.game_results import GameInfoSerializer
 from gamedays.service.gamelog import gameday_ref_now, serialize_events
 from gamedays.service.model_helper import TeamLogHelper
-from league_table.api.etag import standing_state_parts
-from league_table.api.standings import build_standings
-from league_table.models import LeagueSeasonConfig
-from liveticker.service.liveticker_service import LivetickerService
+from gamedays.service import league_table_hooks, liveticker_hooks
 
 logger = logging.getLogger(__name__)
 
@@ -271,14 +268,7 @@ def scope_league_season_configs(filters):
     )
     if not pairs:
         return []
-    pair_filter = Q()
-    for league_id, season_id in pairs:
-        pair_filter |= Q(league_id=league_id, season_id=season_id)
-    return list(
-        LeagueSeasonConfig.objects.filter(pair_filter)
-        .select_related("league", "season")
-        .order_by("season__name", "league__name", "pk")
-    )
+    return league_table_hooks.league_season_configs_for_pairs(pairs)
 
 
 def _extra_etag_parts(filters, include):
@@ -294,7 +284,9 @@ def _extra_etag_parts(filters, include):
     if INCLUDE_STANDINGS in include:
         # Standings cover the whole league-season, not just the scope: a
         # team-scoped snapshot must change when any team's result does.
-        state = standing_state_parts(scope_league_season_configs(filters))
+        state = league_table_hooks.standing_state_parts(
+            scope_league_season_configs(filters)
+        )
         parts.append(f"standings={[state[pk] for pk in sorted(state)]}")
     if INCLUDE_LIVE in include:
         # Which games count as "today" changes at midnight (server TZ).
@@ -527,7 +519,7 @@ def build_live_by_game(gamedays):
     gameday_ids = [gameday.pk for gameday in gamedays if gameday.date == today]
     if not gameday_ids:
         return {}
-    entries = LivetickerService([], [], gameday_ids).get_liveticker_as_json()
+    entries = liveticker_hooks.live_feed(gameday_ids)
     for entry in entries:
         # The public snapshot's live block is additive-only: keep the long
         # team description in ``name`` even though the internal ticker now
@@ -614,7 +606,9 @@ def build_snapshot_payload(filters, include):
     if INCLUDE_TEAMS in include:
         payload["teams"] = build_teams_map(filters)
     if INCLUDE_STANDINGS in include:
-        payload["standings"] = build_standings(scope_league_season_configs(filters))
+        payload["standings"] = league_table_hooks.build_standings(
+            scope_league_season_configs(filters)
+        )
     return payload
 
 

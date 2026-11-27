@@ -5,7 +5,7 @@ The harness proves that a refactor behaves like the code it replaces by
 diffing the same reads from two deployments that share one database:
 
 - **ref** — the master image the phase started from (no watchtower label),
-- **cand** — `leaguesphere/backend:agent-candidate` (watchtower-dev picks it up).
+- **cand** — `leaguesphere/backend:agent-candidate` (the `ls-agent-cand-update` system timer picks it up; health-gated, ~5 min).
 
 The agent stage, its basic-auth proxy and the harness accounts live in the
 `servyy-container` infra repo (`ls_agent_stage` role). This directory holds

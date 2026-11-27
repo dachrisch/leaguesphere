@@ -5,3 +5,8 @@ class GamedayDesignerConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "gameday_designer"
     verbose_name = "Gameday Designer"
+
+    def ready(self):
+        from gameday_designer.service.gamedays_hooks import register
+
+        register()
