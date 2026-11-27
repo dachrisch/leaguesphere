@@ -11,7 +11,8 @@ Spielplan und den erfassten Ergebnissen.
 
 ## Den passenden Spieltag finden
 
-- Im Menü **Spieltage** oder über die Startseite gelangst du zur Liste der Spieltage.
+- Im Menü **Spieltage → Übersicht** oder über die Startseite gelangst du zur Liste der Spieltage.
+- Ohne Staff-Rechte findest du im selben Menü auch **Spieltag ansehen** für den Designer.
 - Die Spiele sind nach Liga, Saison und Datum sortiert.
 - Der **Tagesstatus** zeigt, ob ein Spieltag bevorsteht, gerade läuft oder
   abgeschlossen ist.

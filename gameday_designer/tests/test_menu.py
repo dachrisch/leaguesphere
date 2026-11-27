@@ -9,11 +9,8 @@ import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
 
-from gamedays.menu import GamedaysMenuAdmin
-from gameday_designer.menu import (
-    Gameday_designerMenuOrgaEntry,
-    Gameday_designerMenuViewOnlyEntry,
-)
+from gamedays.menu import GamedaysMenu, GamedaysMenuAdmin
+from gameday_designer.menu import Gameday_designerMenuOrgaEntry
 
 
 @pytest.fixture
@@ -88,32 +85,28 @@ def test_designer_orga_entry_hidden_for_non_staff(rf):
 
 
 # ---------------------------------------------------------------------------
-# Gameday_designerMenuViewOnlyEntry — "Spieltage" group for non-staff
+# GamedaysMenu — "Spieltage" dropdown for everyone
 # ---------------------------------------------------------------------------
 
 
-def test_view_only_entry_group_name():
-    assert Gameday_designerMenuViewOnlyEntry().get_name() == "Designer"
+def test_spieltage_menu_group_name():
+    assert GamedaysMenu().get_name() == "Spieltage"
 
 
-def test_view_only_entry_shows_for_authenticated_non_staff(rf):
+@pytest.mark.parametrize(
+    "user,has_designer",
+    [
+        (AnonymousUser(), False),
+        (_make_user(is_staff=False), True),
+        (_make_user(is_staff=True), False),
+    ],
+)
+def test_spieltage_menu_has_list_for_all_and_designer_only_for_non_staff(
+    rf, user, has_designer
+):
     req = rf.get("/")
-    req.user = _make_user(is_staff=False, is_authenticated=True)
-    items = Gameday_designerMenuViewOnlyEntry().get_menu_items(req)
-    assert len(items) == 1
-    assert items[0]["name"] == "Spieltag ansehen"
-    assert items[0]["url"] == "/gamedays/gameday/design/"
+    req.user = user
+    urls = [item["url"] for item in GamedaysMenu().get_menu_items(req)]
 
-
-def test_view_only_entry_hidden_for_staff(rf):
-    req = rf.get("/")
-    req.user = _make_user(is_staff=True, is_authenticated=True)
-    items = Gameday_designerMenuViewOnlyEntry().get_menu_items(req)
-    assert items == []
-
-
-def test_view_only_entry_hidden_for_anonymous(rf):
-    req = rf.get("/")
-    req.user = AnonymousUser()
-    items = Gameday_designerMenuViewOnlyEntry().get_menu_items(req)
-    assert items == []
+    assert "/gamedays/gamedays/" in urls
+    assert ("/gamedays/gameday/design/" in urls) is has_designer

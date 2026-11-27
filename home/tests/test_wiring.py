@@ -51,20 +51,29 @@ def test_navigation_home_entry_points_at_the_home_page(client):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("authenticated", [False, True])
-def test_navigation_has_a_flat_spieltage_link(client, django_user_model, authenticated):
-    """Spieltage is a top-level nav link to the gameday list, for everyone."""
-    if authenticated:
+@pytest.mark.parametrize("role", ["anonymous", "non-staff", "staff"])
+def test_navigation_spieltage_dropdown(client, django_user_model, role):
+    """One 'Spieltage' dropdown holds the list link and, for non-staff, the designer."""
+    if role != "anonymous":
+        is_staff = role == "staff"
         django_user_model.objects.create_user(
-            username="home-nav", password="a-long-test-password"
+            username=f"nav-{role}",
+            password="a-long-test-password",
+            is_staff=is_staff,
         )
-        assert client.login(username="home-nav", password="a-long-test-password")
+        assert client.login(username=f"nav-{role}", password="a-long-test-password")
 
     html = client.get(reverse(LEAGUE_GAMEDAY_LIST)).content.decode()
 
     gameday_list_url = reverse(LEAGUE_GAMEDAY_LIST)
-    assert f'<a class="nav-link" href="{gameday_list_url}">Spieltage</a>' in html
-    assert not re.search(rf'dropdown-item[^>]*href="{gameday_list_url}"', html)
+    assert re.search(r"nav-link dropdown-toggle[^>]*>\s*Spieltage", html, re.S)
+    assert re.search(
+        rf'class="dropdown-item"[^>]*href="{gameday_list_url}"[^>]*>\s*Übersicht',
+        html,
+        re.S,
+    )
+    assert ("Spieltag ansehen" in html) == (role == "non-staff")
+    assert f'<a class="nav-link" href="{gameday_list_url}">Spieltage</a>' not in html
 
 
 def test_dead_homeview_is_removed():
