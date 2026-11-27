@@ -6,6 +6,7 @@ redirect. The page links out to the Moodle password-reset flow and in-app to
 Scorecard v2.
 """
 
+import re
 from http import HTTPStatus
 from urllib.parse import parse_qs, urlsplit
 
@@ -70,8 +71,8 @@ class TestLoginPageContent(TestCase):
         assert "Passwort vergessen?" in self.html
 
     def test_forgot_password_link_explains_that_leaguesphere_is_left(self):
-        assert "Du verlässt LeagueSphere" in self.html
-        assert "Flag Academy" in self.html
+        assert "Du verlässt Leaguesphere" in self.html
+        assert "AFVD Flag Academy (offd.de)" in self.html
 
     def test_submit_button_is_primary_and_full_width(self):
         assert 'class="btn btn-primary w-100"' in self.html
@@ -80,5 +81,7 @@ class TestLoginPageContent(TestCase):
     def test_scorecard_v2_link_is_rendered_in_warning_alert(self):
         assert "alert alert-warning" in self.html
         assert f'href="{reverse("scorecard-v2-home")}"' in self.html
-        assert "Scorecard / Passcheck" in self.html
-        assert "gehe hier" in self.html
+        assert re.search(
+            rf'Scorecard / Passcheck klicke <a href="{re.escape(reverse("scorecard-v2-home"))}">hier</a>',
+            self.html,
+        )

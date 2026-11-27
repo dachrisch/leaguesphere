@@ -34,7 +34,7 @@ EXTERNAL_DELETE_URL_NAME = "view-officials-selfservice-external-delete"
 MULTI_ADD_URL_NAME = "view-officials-selfservice-external-multi-add"
 HELP_URL = "/help/offizielle-einsaetze/"
 HELP_ICON = "bi bi-question-circle"
-HELP_TEXT = "Wie funktioniert die Selbstbedienung?"
+HELP_TEXT = "Einsätze müssen selbst gepflegt werden. Wie das funktioniert?"
 
 
 class UiCopyTestBase(TestCase):

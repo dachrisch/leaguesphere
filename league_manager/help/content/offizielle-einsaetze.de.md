@@ -7,7 +7,7 @@ meldest du dich mit deinem offd.de-Konto an – Staff kann dasselbe für alle tu
 ## So gehst du vor
 
 1. **Anmelden**: Auf [Alle Einsätze](/officials/einsaetze/) auf **Über offd.de
-   anmelden** klicken und die Moodle-Zugangsdaten eingeben. Deine eigenen Zeilen
+   anmelden** klicken und deine Zugangsdaten eingeben. Deine eigenen Zeilen
    sind danach farbig markiert.
 2. **Einsatz übernehmen**: Bei einer Zeile mit **?**, in der dein vollständiger
    Name eingetragen ist, auf **Mir zuordnen** klicken. Steht dein vollständiger

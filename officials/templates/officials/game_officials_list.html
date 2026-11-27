@@ -14,14 +14,14 @@
         <h1>{{ season }} - {% if team %} {{ team }} alle Einsätze {% else %} Alle Einsätze {% endif %}</h1>
         <div class="alert alert-info">
             <i class="bi bi-question-circle me-1" aria-hidden="true"></i>
-            Wie funktioniert die Selbstbedienung? In der
+            Einsätze müssen selbst gepflegt werden. Wie das funktioniert? In der
             <a href="{% url 'help-topic' 'offizielle-einsaetze' %}">Hilfe</a> ist alles erklärt.
         </div>
         <p>
             Personen die ein <b>Fragezeichen</b> (<b>?</b>) hinter dem Namen haben, deren Spiele werden nicht gezählt,
             da für diese kein Eintrag gefunden wurde. Entweder haben diese keine Lizenz oder
             der Name wurde nicht über die Scorecard ausgewählt / gesucht.<br/>
-            Zum Anpassen bitte über den folgenden Button anmelden.
+            Zum Anpassen bitte über den folgenden Button anmelden:
         </p>
         {% include 'officials/selfservice/_banner.html' %}
         {% if moodle_official_id or is_staff %}
