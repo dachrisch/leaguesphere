@@ -7,14 +7,19 @@ function about to move into ``officials/import_views.py``.
 from datetime import date
 from types import SimpleNamespace
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import Error as DatabaseError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from gamedays.models import Gameinfo
-from officials.models import Official
-from gamedays.tests.setup_factories.factories import UserFactory
+from officials.models import Official, OfficialExternalGames
+from officials.service.association_resolution import UnknownAssociationError
+from gamedays.tests.setup_factories.factories import TeamFactory, UserFactory
 from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
+from officials.tests.setup_factories.db_setup_officials import DbSetupOfficials
+from officials.tests.setup_factories.factories_officials import OfficialFactory
+from officials.tests.test_views import _external_import_row, _import_csv_bytes
 from officials.urls import (
     OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM,
     OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD,
@@ -44,6 +49,13 @@ class ImportHelperCharacterization(TestCase):
         assert (
             _entry_error_message(DatabaseError())
             == "Datenbankfehler - Zeile vermutlich zu lang für ein Feld"
+        )
+        # Checked before the generic ValueError branch it subclasses; the
+        # manual AddExternalGameOfficialUpdateView reaches it via the
+        # officials.views re-export.
+        assert (
+            _entry_error_message(UnknownAssociationError("Atlantis"))
+            == "Unbekannter Verband - Zeile nicht importiert"
         )
         assert _entry_error_message(ValueError("bad row")) == "bad row"
         assert _entry_error_message(RuntimeError()) == ""
@@ -149,3 +161,65 @@ class ImportViewCharacterization(TestCase):
         ):
             response = self.client.get(reverse(name))
             assert response.status_code == 403
+
+
+class ImportPostQueryCountCharacterization(TestCase):
+    """Exact query counts for the successful upload POST and the confirm
+    POST (redirect and AJAX), on top of the behaviour test_views.py pins."""
+
+    def setUp(self):
+        pin_request_path_caches()
+        DbSetupOfficials.create_production_associations()
+        self.client.force_login(
+            UserFactory(username="import_count_staff", is_staff=True)
+        )
+        team = TeamFactory(name="Count Team")
+        self.official = OfficialFactory(
+            first_name="Franzi", last_name="Fedora", team=team
+        )
+
+    def _upload(self):
+        rows = [
+            _external_import_row(
+                self.official.pk, 1, "01.05.2024", "Referee", "Hamburg", 20
+            )
+        ]
+        upload = SimpleUploadedFile(
+            "import.csv", _import_csv_bytes(rows), content_type="text/csv"
+        )
+        return self.client.post(
+            reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD), {"file": upload}
+        )
+
+    def _new_external_rows(self):
+        data = self._upload().json()
+        return ",".join(str(row["row_number"]) for row in data["external"]["new"])
+
+    def test_upload_post_success(self):
+        with self.assertNumQueries(6):
+            response = self._upload()
+        assert response.status_code == 200
+        assert len(response.json()["external"]["new"]) == 1
+
+    def test_confirm_post_redirects_after_commit(self):
+        rows = self._new_external_rows()
+        with self.assertNumQueries(8):
+            response = self.client.post(
+                reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM),
+                {"external_rows": rows},
+            )
+        assert response.status_code == 302
+        assert response.url == reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_UPLOAD)
+        assert OfficialExternalGames.objects.filter(official=self.official).count() == 1
+
+    def test_confirm_post_ajax_reports_created_rows(self):
+        rows = self._new_external_rows()
+        with self.assertNumQueries(8):
+            response = self.client.post(
+                reverse(OFFICIALS_GAMEOFFICIAL_IMPORT_CONFIRM),
+                {"external_rows": rows},
+                HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+            )
+        assert response.status_code == 200
+        assert response.json()["summary"]["external_created"] == 1
+        assert response.json()["summary"]["error_count"] == 0
