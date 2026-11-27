@@ -150,6 +150,7 @@ def test_capture_many_extracts_several_ids_and_tolerates_missing_paths():
             form=None,
             files=None,
             headers=None,
+            follow_redirects=True,
         ):
             return type(
                 "R",
