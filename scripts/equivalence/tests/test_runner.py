@@ -386,6 +386,19 @@ def test_runner_posts_the_report_to_requested_prs(
     assert any("4242" in args for args in posted)
 
 
+def test_transport_can_keep_a_redirect_visible(server_factory):
+    server, url = server_factory(
+        {
+            ("POST", "/redirect/"): (302, "/target/", "text/plain"),
+            ("GET", "/target/"): (200, "ok", "text/plain"),
+        }
+    )
+    session = Session(url)
+    assert session.request("/redirect/", method="POST").status == 200
+    kept = session.request("/redirect/", method="POST", follow_redirects=False)
+    assert kept.status == 302 and kept.url.endswith("/redirect/")
+
+
 def test_transport_merges_per_request_headers(server_factory):
     server, url = server_factory(routes_for("sha-ref"))
     session = Session(url)

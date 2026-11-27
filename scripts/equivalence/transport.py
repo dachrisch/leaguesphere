@@ -31,6 +31,13 @@ class Response:
         return jsonlib.loads(self.body)
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Keep 3xx responses visible to the caller."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 @dataclass
 class Session:
     """One HTTP session (cookie jar) against one deployment base URL."""
@@ -66,7 +73,15 @@ class Session:
                 return cookie.value
         return ""
 
-    def request(self, path, method="GET", json_body=None, form=None, headers=None):
+    def request(
+        self,
+        path,
+        method="GET",
+        json_body=None,
+        form=None,
+        headers=None,
+        follow_redirects=True,
+    ):
         data = None
         request_headers = {"Accept": "application/json, text/html;q=0.9"}
         request_headers.update(self.headers)
@@ -98,8 +113,13 @@ class Session:
         request = urllib.request.Request(
             self._url(path), data=data, headers=request_headers, method=method
         )
+        opener = self._opener
+        if not follow_redirects:
+            opener = urllib.request.build_opener(
+                urllib.request.HTTPCookieProcessor(self._cookies), _NoRedirect()
+            )
         try:
-            with self._opener.open(request, timeout=self.timeout) as response:
+            with opener.open(request, timeout=self.timeout) as response:
                 return Response(
                     status=response.status,
                     headers=dict(response.headers),
@@ -146,7 +166,15 @@ class RecordedSession:
         self.responses = responses
         self.requests = []
 
-    def request(self, path, method="GET", json_body=None, form=None, headers=None):
+    def request(
+        self,
+        path,
+        method="GET",
+        json_body=None,
+        form=None,
+        headers=None,
+        follow_redirects=True,
+    ):
         self.requests.append(
             {"path": path, "method": method, "json": json_body, "form": form}
         )

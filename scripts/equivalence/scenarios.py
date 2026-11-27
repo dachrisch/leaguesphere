@@ -36,6 +36,7 @@ class Step:
     capture: str | None = None
     capture_path: str | None = None
     required_capture: bool = False
+    no_redirect: bool = False
 
 
 @dataclass
@@ -315,6 +316,7 @@ def _wizard_steps():
                 "gameday-format-0-league_group": "",
             },
             expect=302,  # an invalid formset re-renders with 200
+            no_redirect=True,  # the done() redirect must stay visible
         ),
     ]
 
@@ -587,7 +589,11 @@ def run_scenario(name, sessions, context, run_id):
         body = _resolve(step.json, context) if step.json is not None else None
         form = _resolve(step.form, context) if step.form is not None else None
         response = role_session.request(
-            path, method=step.method, json_body=body, form=form
+            path,
+            method=step.method,
+            json_body=body,
+            form=form,
+            follow_redirects=not step.no_redirect,
         )
         expected = step.expect if isinstance(step.expect, tuple) else (step.expect,)
         if response.status not in expected:
@@ -608,6 +614,11 @@ def run_scenario(name, sessions, context, run_id):
                 context[step.capture] = value
                 run.captured[step.capture] = value
                 run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
+        if step.required_capture and step.capture not in run.captured:
+            # Fail here, before a later step can send the literal {token}.
+            raise RuntimeError(
+                f"{name}:{step.name} did not capture required '{step.capture}'"
+            )
         if isinstance(payload, (dict, list)):
             # Scenario rows are new on each side: primary keys differ by
             # construction, so every `id` key is normalised (the captured
@@ -622,9 +633,4 @@ def run_scenario(name, sessions, context, run_id):
         run.steps.append(
             StepResult(name=step.name, status=response.status, body=normalised)
         )
-    for step in SCENARIOS[name]:
-        if step.required_capture and step.capture not in run.captured:
-            raise RuntimeError(
-                f"{name}:{step.name} did not capture required '{step.capture}'"
-            )
     return run

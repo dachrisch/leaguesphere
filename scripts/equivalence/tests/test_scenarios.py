@@ -29,9 +29,23 @@ class FakeApi:
         self.calls = []
         self.empty_games = False
 
-    def request(self, path, method="GET", json_body=None, form=None, headers=None):
+    def request(
+        self,
+        path,
+        method="GET",
+        json_body=None,
+        form=None,
+        headers=None,
+        follow_redirects=True,
+    ):
         self.calls.append(
-            {"path": path, "method": method, "json": json_body, "form": form}
+            {
+                "path": path,
+                "method": method,
+                "json": json_body,
+                "form": form,
+                "follow_redirects": follow_redirects,
+            }
         )
         gameday_id = f"/{self.id_base}/"
         if method == "POST" and path == "/api/gamedays/":
@@ -172,7 +186,15 @@ def test_non_text_payload_is_kept_without_normalisation(monkeypatch):
     """Bytes that are not JSON hit the final normalisation branch."""
 
     class Session:
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             return Response(200, {}, b"raw", path, method)
 
     monkeypatch.setitem(
@@ -244,13 +266,26 @@ def test_finalize_legacy_requires_a_captured_game_id():
         )
 
 
-def test_wizard_format_requires_a_redirect():
+def test_wizard_format_requires_an_unfollowed_redirect():
     step = next(
         step
         for step in scenarios.SCENARIOS["finalize-legacy"]
         if step.name == "wizard-format"
     )
-    assert step.expect == 302
+    assert step.expect == 302 and step.no_redirect is True
+    api = FakeApi(id_base=900)
+    scenarios.run_scenario(
+        "finalize-legacy",
+        {"staff": api, "anonymous": api},
+        {**CONTEXT, "wizard_team_ids": [11, 12, 13]},
+        "eq-redirect",
+    )
+    wizard_calls = [
+        call
+        for call in api.calls
+        if call["path"].endswith("/gameinfos/wizard/") and call["method"] == "POST"
+    ]
+    assert wizard_calls[-1]["follow_redirects"] is False
 
 
 def test_finalize_canvas_has_a_downstream_reference():
@@ -328,7 +363,15 @@ class FakeSession:
     def __init__(self, responses):
         self.responses = responses
 
-    def request(self, path, method="GET", json_body=None, form=None, headers=None):
+    def request(
+        self,
+        path,
+        method="GET",
+        json_body=None,
+        form=None,
+        headers=None,
+        follow_redirects=True,
+    ):
         return self.responses.get(path, Response(404, {}, "", "", method))
 
 
