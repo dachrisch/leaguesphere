@@ -213,10 +213,14 @@ def test_source_derivation_and_accepted_set_are_db_backed(
         )
     payload = json.loads(destination.read_text())
 
-    assert f"game {v2_game.pk}: ok (2 events, seq 2)\n" in out.getvalue()
-    assert f"game {shadow_game.pk}: ok (1 events, seq 1)\n" in out.getvalue()
-    assert "checked 2 event-sourced game(s)" in out.getvalue()
-    assert "projection matches the event log\n" in out.getvalue()
+    # stdout keeps its pre-report meaning: the shadow-only game is checked
+    # (it has events) and is not also counted as a skipped legacy game.
+    assert out.getvalue() == (
+        f"game {shadow_game.pk}: ok (1 events, seq 1)\n"
+        f"game {v2_game.pk}: ok (2 events, seq 2)\n"
+        "checked 2 event-sourced game(s); skipped 0 legacy game(s) without events\n"
+        "projection matches the event log\n"
+    )
     assert payload["legacy_without_events"] == 1
     assert payload["shadow_only"] == 1
     assert payload["legacy_without_events_digest"] == legacy_digest(
@@ -303,7 +307,48 @@ def test_report_cutoff_filters_the_accepted_set_without_extra_queries(
     payload = json.loads(destination.read_text())
     assert payload["legacy_cutoff"] == game.pk - 1
     assert payload["legacy_without_events"] == 0
-    assert "skipped 0 legacy game(s)" in out.getvalue()
+    # The cutoff is report-only: stdout still counts the legacy game.
+    assert out.getvalue() == (
+        f"game {game.pk}: ok (2 events, seq 2)\n"
+        "checked 1 event-sourced game(s); skipped 1 legacy game(s) without events\n"
+        "projection matches the event log\n"
+    )
+
+
+@pytest.mark.django_db
+def test_game_mode_on_a_shadow_only_game_prints_no_legacy_line(client, tmp_path):
+    shadow_game, home, _away = make_game("shadow-game-mode")
+    login(client)
+    posted = post_legacy(
+        client,
+        shadow_game,
+        legacy_body(
+            shadow_game,
+            home,
+            [{"name": "Touchdown", "player": 7}],
+            client_id=sub_id(12),
+        ),
+    )
+    assert posted.status_code == 201
+    destination = tmp_path / "shadow.json"
+
+    out = StringIO()
+    call_command(
+        "check_game_projection",
+        "--game",
+        str(shadow_game.pk),
+        "--report",
+        str(destination),
+        stdout=out,
+    )
+
+    assert out.getvalue() == (
+        f"game {shadow_game.pk}: ok (1 events, seq 1)\n"
+        "projection matches the event log\n"
+    )
+    payload = json.loads(destination.read_text())
+    assert payload["shadow_only"] == 1
+    assert payload["legacy_without_events"] == 1
 
 
 @pytest.mark.django_db

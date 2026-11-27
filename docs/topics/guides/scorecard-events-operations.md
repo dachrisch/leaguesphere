@@ -140,7 +140,10 @@ is involved.
 The accepted set is recorded by count, SHA-256 digest of its sorted ids, a
 `shadow_only` breakdown, per-season counts and an id cutoff (`--legacy-cutoff`)
 that makes the digest reproducible — **not** by storing the raw ids in a public
-repository. Every drift/flagged entry carries its `source`; the gate reads
+repository. The accepted set and `--legacy-cutoff` shape the report only: stdout
+keeps the pre-report meaning, so `skipped N legacy game(s) without events`
+counts games with no events at all, and a shadow-only game is counted under
+`checked`, never under `skipped`. Every drift/flagged entry carries its `source`; the gate reads
 `v2_drift == 0` and `v2_flagged == 0`, not the exit code alone. The agent-stage
 measurement (6,369 games; zero drift; zero flagged v2 games) and the
 regeneration command are in

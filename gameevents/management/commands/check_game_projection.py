@@ -45,6 +45,8 @@ class Command(BaseCommand):
             help="check every game that has events (legacy games are skipped)",
         )
         # Additive: none of these change stdout, exit status or query count.
+        # The accepted legacy set (and its cutoff) shapes the report only;
+        # stdout keeps counting games with no events at all, as before.
         parser.add_argument(
             "--report",
             metavar="PATH",
@@ -60,7 +62,10 @@ class Command(BaseCommand):
             "--legacy-cutoff",
             type=int,
             default=None,
-            help="include only accepted legacy games with id <= CUTOFF (reproducible digest)",
+            help=(
+                "report only: include accepted legacy games with id <= CUTOFF "
+                "(reproducible digest); stdout is unchanged"
+            ),
         )
 
     def handle(self, *args, **options):
@@ -88,13 +93,16 @@ class Command(BaseCommand):
             checks = check_games()
             legacy_games, shadow_only_games = self._legacy_games()
             event_game_ids = [check.game_id for check in checks]
+        # stdout counts games with rows and no events, exactly as before the
+        # report existed. Shadow-only games are checked (they have events), so
+        # they belong to the accepted set in the report, never to "skipped".
+        legacy = len(legacy_games) - len(shadow_only_games)
         cutoff = options["legacy_cutoff"]
         if cutoff is not None:
             legacy_games = [game for game in legacy_games if game[0] <= cutoff]
             shadow_only_games = [
                 game for game in shadow_only_games if game[0] <= cutoff
             ]
-        legacy = len(legacy_games)
 
         failed = [check for check in checks if not check.ok]
         for check in checks:
