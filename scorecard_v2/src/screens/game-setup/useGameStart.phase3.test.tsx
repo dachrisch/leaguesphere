@@ -331,10 +331,18 @@ describe("take-over and retry (Phase 3 characterization)", () => {
   });
 
   it("retries a forced start after a lock release", async () => {
-    const { result } = setup({ readOnly: false });
+    // The screen is still read-only when staff releases the device lock
+    // (scorecard_v2/AGENTS.md device-lock contract): a plain start stays
+    // refused, only the forced retry may write.
+    const { result } = setup({ readOnly: true });
+    await act(async () => result.current.runStart());
+    expect(apiPutMock).not.toHaveBeenCalled();
+
     await act(async () => result.current.retryStart());
-    expect(result.current.state.readOnly).toBe(false);
+    expect(apiPutMock).toHaveBeenCalledWith(
+      "/api/game/42/setup",
+      expect.anything(),
+    );
     expect(result.current.state.error).toBeNull();
-    expect(apiPutMock).toHaveBeenCalled();
   });
 });

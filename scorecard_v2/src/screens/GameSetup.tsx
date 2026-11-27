@@ -306,6 +306,8 @@ export default function GameSetupScreen({
   });
 
   const startLabel = computeStartLabel(readOnly, offline, saving, hasSetup, scheduled);
+  // One source of truth for "may this start?": the banner and the confirmation
+  // sheet both read `startBlockers`, so they cannot drift apart.
   const blockers = startBlockers({
     crew: crewLines,
     tossTeam,

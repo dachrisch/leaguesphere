@@ -43,6 +43,11 @@ export function crewProgress({
   crewOpen,
   displayName,
 }: CrewProgressArgs) {
+  /**
+   * A crew with every required slot staffed, every licence valid and nothing
+   * to clean up needs no attention: it folds into one row. Anything off keeps
+   * the rows open, so the problem is never hidden behind "ändern".
+   */
   const crewComplete =
     requiredSlots.length > 0 &&
     requiredFilled === requiredSlots.length &&
@@ -76,6 +81,11 @@ export function startState({
   ready,
   blockers,
 }: StartBannerArgs) {
+  // The banner and the start bar must say the same thing: a complete setup is
+  // only "ready" when the bar is not disabled by the device lock or the
+  // missing connection. Otherwise the banner names that reason instead of
+  // claiming green. Missing input still comes from the same blockers array the
+  // confirmation sheet uses.
   const banner = readOnly
     ? {
         tone: "miss" as const,
@@ -99,6 +109,9 @@ export function startState({
             title: "Angaben fehlen",
             lines: blockers,
           };
+
+  // The banner can scroll under the sticky start bar, so the bar repeats the
+  // first open item: the reason the start is refused is never out of view.
   const openItems = !readOnly && !offline ? blockers : [];
   const startWhy =
     openItems.length === 0
@@ -109,7 +122,11 @@ export function startState({
   return { banner, openItems, startWhy };
 }
 
-/** The confirmation sheet and the banner share this one readiness verdict. */
+/**
+ * The confirmation sheet and the banner share this one readiness verdict.
+ * One source of truth for "may this start?": both read `startBlockers`, so
+ * they cannot drift apart.
+ */
 export function startReady(blockers: string[]): boolean {
   return blockers.length === 0;
 }
