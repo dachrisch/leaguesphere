@@ -7,7 +7,9 @@ are read from their event projection; legacy games keep the row-based path.
 """
 
 import pytest
+from django.utils import timezone
 
+from gameevents.api.views import V1_OWNED_DETAIL
 from gameevents.models import GameEvent, GameState
 from gameevents.tests.api.support import (
     legacy_body,
@@ -116,20 +118,34 @@ def test_a_v1_write_to_a_v2_owned_game_is_refused_without_rows(client):
     assert GameEvent.objects.filter(game=game).count() == 1
 
 
+def _v1_touchdown(client, game, home, number):
+    response = post_legacy(
+        client,
+        game,
+        legacy_body(
+            game,
+            home,
+            [{"name": "Touchdown", "player": 7}],
+            client_id=sub_id(number),
+        ),
+    )
+    assert response.status_code == 201
+    return response
+
+
 @pytest.mark.django_db
-def test_a_canonical_write_after_v1_rows_does_not_reuse_their_sequence(client):
+def test_a_canonical_write_to_a_game_started_on_the_old_app_is_refused(client):
+    """Mirror of the v2-owned 409: the old app owns a game it started.
+
+    Without the shadow the v1 play has no event, so accepting the canonical
+    write would leave a ``GameState`` of 6 after two touchdowns, which neither
+    the feed nor ``check_game_projection`` could detect. Refuse it instead;
+    nothing is written and the old app can keep scoring the game.
+    """
+
     game, home, _away = make_game("mixed-legacy-first")
     login(client)
-    assert (
-        post_legacy(
-            client,
-            game,
-            legacy_body(
-                game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(2)
-            ),
-        ).status_code
-        == 201
-    )
+    _v1_touchdown(client, game, home, 2)
 
     response = post_events(
         client,
@@ -139,14 +155,80 @@ def test_a_canonical_write_after_v1_rows_does_not_reuse_their_sequence(client):
         ),
     )
 
+    assert response.status_code == 409
+    assert response.json() == {"detail": V1_OWNED_DETAIL}
+    assert not GameEvent.objects.filter(game=game).exists()
+    assert not GameState.objects.filter(game=game).exists()
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    # The old app still owns the game and keeps writing it.
+    _v1_touchdown(client, game, home, 4)
+    assert sorted(
+        TeamLog.objects.filter(gameinfo=game).values_list("sequence", flat=True)
+    ) == [1, 2]
+
+
+@pytest.mark.django_db
+def test_a_game_with_shadow_events_but_no_v2_event_is_still_old_app_owned(client):
+    """Shadow events from before the removal do not hand a game to v2.
+
+    v1 plays after the deploy have no event, so the shadow log is incomplete
+    from then on; the same refusal applies.
+    """
+
+    game, home, _away = make_game("mixed-shadow-first")
+    login(client)
+    _v1_touchdown(client, game, home, 5)
+    # The audit event the shadow wrote for that play before this release.
+    GameEvent.objects.create(
+        game=game,
+        seq=1,
+        type="score",
+        code="touchdown",
+        side="home",
+        player=7,
+        period=1,
+        payload={},
+        client_id=str(sub_id(5)),
+        source=GameEvent.Source.LEGACY,
+        client_at=timezone.now(),
+    )
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(7)
+        ),
+    )
+
+    assert response.status_code == 409
+    assert not GameEvent.objects.filter(game=game, source="v2").exists()
+
+
+@pytest.mark.django_db
+def test_a_canonical_write_after_only_deleted_v1_rows_does_not_reuse_their_sequence(
+    client,
+):
+    game, home, _away = make_game("mixed-legacy-deleted")
+    login(client)
+    _v1_touchdown(client, game, home, 8)
+    TeamLog.objects.filter(gameinfo=game).update(isDeleted=True)
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(9)
+        ),
+    )
+
+    # A deleted play leaves nothing for the state to miss, so v2 may take the
+    # game -- without colliding with the deleted row's sequence number.
     assert response.status_code == 201
     assert GameEvent.objects.get(game=game).seq == 2
     assert sorted(
         TeamLog.objects.filter(gameinfo=game).values_list("sequence", flat=True)
     ) == [1, 2]
-    # No backfill: GameState replays only stored events, so it cannot count
-    # the pre-log row. check_game_projection reports that drift; the fix here
-    # is that the two writers no longer collide on the same sequence number.
     assert response.json()["state"]["score_home"] == 6
 
 

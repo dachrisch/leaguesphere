@@ -131,8 +131,11 @@ def test_a_sequence_zero_undo_of_the_harness_setup_flags_the_projection(client):
 
     game, home, _away = make_game("undo-shared-sequence")
     login(client)
+    # A game started on the old app refuses canonical writes after the shadow
+    # removal, so the canonical event comes first and owns the game; the
+    # penalty then goes through the same endpoint (legacy body accepted).
     assert (
-        post_legacy(
+        post_events(
             client,
             game,
             legacy_body(
@@ -142,32 +145,19 @@ def test_a_sequence_zero_undo_of_the_harness_setup_flags_the_projection(client):
         == 201
     )
     assert (
-        post_legacy(
-            client,
-            game,
-            legacy_body(
-                game, home, [{"name": "Strafe", "player": 7, "input": "Holding"}]
-            ),
-        ).status_code
-        == 201
-    )
-    assert TeamLog.objects.filter(gameinfo=game, sequence=0).exists()
-    # After the shadow removal the v1 writes above have no events, so the
-    # scenario writes one canonical event before the delete. Otherwise the
-    # no-events branch returns without flagging on this layer.
-    assert (
         post_events(
             client,
             game,
             legacy_body(
                 game,
                 home,
-                [{"name": "Touchdown", "player": 7}],
+                [{"name": "Strafe", "player": 7, "input": "Holding"}],
                 client_id=sub_id(2),
             ),
         ).status_code
         == 201
     )
+    assert TeamLog.objects.filter(gameinfo=game, sequence=0).exists()
 
     response = delete_sequence(client, game, 0)
 

@@ -362,7 +362,9 @@ def test_report_cutoff_filters_the_accepted_set_without_extra_queries(
 def test_game_mode_on_a_shadow_only_game_prints_no_legacy_line(client, tmp_path):
     shadow_game, home, _away = make_game("shadow-game-mode")
     login(client)
-    posted = post_legacy(
+    # No v1 write creates an event after the shadow removal: build the audit
+    # event an earlier deploy left, as the DB-backed source test does.
+    posted = post_events(
         client,
         shadow_game,
         legacy_body(
@@ -373,6 +375,7 @@ def test_game_mode_on_a_shadow_only_game_prints_no_legacy_line(client, tmp_path)
         ),
     )
     assert posted.status_code == 201
+    GameEvent.objects.filter(game=shadow_game).update(source=GameEvent.Source.LEGACY)
     destination = tmp_path / "shadow.json"
 
     out = StringIO()

@@ -22,7 +22,9 @@ Write responses:
   replay must never be pinned);
 - ``409 {"expected_next": N}`` -- the supplied ``seq`` values are not the
   store's next ones;
-- ``409 {"detail": ...}`` -- the game is finished, or another device holds it;
+- ``409 {"detail": ...}`` -- the game is finished, or another device holds it,
+  or the old app owns it (live v1 rows and no v2 event, see
+  ``v1_owned_response``);
 - ``400`` -- invalid/unknown envelope or legacy event name, nothing stored.
 
 Scope note: this endpoint projects into ``TeamLog``, ``GameState`` **and**
@@ -67,7 +69,7 @@ from gameevents.service.feed import (
 )
 from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.projector import GameEventValue, GameStateValue, InvalidEnvelope
-from gamedays.models import GameLogSubmission, Gameinfo, Team
+from gamedays.models import GameLogSubmission, Gameinfo, Team, TeamLog
 from gamedays.service.game_service import GameService
 
 
@@ -236,6 +238,37 @@ def _v1_submission_applied(game, client_id) -> bool:
     return GameLogSubmission.objects.filter(gameinfo=game, client_id=client_id).exists()
 
 
+V1_OWNED_DETAIL = (
+    "Dieses Spiel wurde in der alten Scorecard begonnen. Bitte dort zu Ende führen."
+)
+
+
+def v1_owned_response(game):
+    """Refuse a canonical write to a game the old app owns.
+
+    One owner per game (ADR-0026): the first write decides. Without the shadow
+    a v1 play has no event, so a game started on the old app and continued
+    here would get a ``GameState`` that replays the v2 events only and silently
+    misses the old-app plays -- and ``check_game_projection`` cannot see it,
+    because it compares the state with a replay of the same events. The
+    reverse direction (a v1 write to a v2-owned game) is already a 409; this
+    is its mirror. Such a game is finished on the old app, which keeps writing
+    rows for it. Replays were answered before this check, so a retried v1
+    submission is still a 200. Rows that are all deleted do not own a game:
+    there is no play left for the state to miss.
+    """
+
+    if GameEvent.objects.filter(game=game, source=GameEvent.Source.V2).exists():
+        return None
+    if not TeamLog.objects.filter(gameinfo=game, isDeleted=False).exists():
+        return None
+    # scorecard_v2 shows a rejected op's detail to the scorer, in German.
+    return Response(
+        {"detail": V1_OWNED_DETAIL},
+        status=HTTPStatus.CONFLICT,
+    )
+
+
 class GameEventsAPIView(APIView):
     def post(self, request, game_id):
         try:
@@ -261,6 +294,9 @@ class GameEventsAPIView(APIView):
         # Answer with the row-derived state the v1 log would show.
         if _v1_submission_applied(game, parsed.client_id):
             return _response(legacy_state(game), HTTPStatus.OK)
+        owned = v1_owned_response(game)
+        if owned is not None:
+            return owned
 
         # The same two refusals as ``POST /api/gamelog/``, in the same order:
         # a finished game is the final word (replays are answered above), and
