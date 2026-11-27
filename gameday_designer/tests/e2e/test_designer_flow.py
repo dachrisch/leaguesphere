@@ -81,8 +81,17 @@ def _setup_published_gameday(page: Page, live_server) -> str:
     # The accordion starts expanded (activeKey="0") but a scroll event can collapse it.
     # Explicitly click the toggle to guarantee the body is open, then wait for the
     # name input to be interactive before filling any fields.
-    page.get_by_test_id("gameday-metadata-toggle").click()
-    expect(page.locator("#gamedayName")).to_be_visible(timeout=10000)
+    def ensure_metadata_open():
+        # A scroll event can collapse the accordion permanently. Re-open it and
+        # reset the container scroll before acting on a field inside the body.
+        if not page.locator("#gamedayName").is_visible():
+            page.get_by_test_id("gameday-metadata-toggle").click()
+        page.evaluate(
+            "document.querySelector('.list-designer-app__content')?.scrollTo(0, 0)"
+        )
+        expect(page.locator("#gamedayName")).to_be_visible(timeout=10000)
+
+    ensure_metadata_open()
 
     # ---- 5. Fill in metadata -------------------------------------------------
     # The accordion body is expanded by default (activeKey="0").
@@ -114,8 +123,10 @@ def _setup_published_gameday(page: Page, live_server) -> str:
     expect(page.locator("#gamedaySeason option", has_text="2026")).to_be_attached(
         timeout=10000
     )
-    page.select_option("#gamedaySeason", label="2026")
-    page.select_option("#gamedayLeague", label="E2E Test League")
+    ensure_metadata_open()
+    page.select_option("#gamedaySeason", label="2026", timeout=10000)
+    ensure_metadata_open()
+    page.select_option("#gamedayLeague", label="E2E Test League", timeout=10000)
 
     # ---- 6. Generate tournament via Template Library -------------------------
     page.get_by_test_id("open-template-library-button").click()
