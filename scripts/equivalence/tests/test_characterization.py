@@ -367,7 +367,15 @@ def test_characterization_run_reports_scenario_diff(
 
 def test_characterization_scalar_scenario_payload_is_kept():
     class ScalarApi:
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             return Response(status=200, headers={}, body="42", url="", method=method)
 
     run = scenarios.run_scenario(

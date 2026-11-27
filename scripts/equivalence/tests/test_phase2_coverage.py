@@ -202,7 +202,15 @@ def test_run_scenario_enforces_the_flag_contract_on_both_sides():
 
 def test_run_scenario_rejects_a_missing_flag_contract():
     class UnflaggedApi(FakeApi):
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             if method == "GET" and "/feed" in path:
                 return self._json(409, {"detail": "flagged for another reason"})
             return super().request(path, method, json_body, form, headers)
@@ -305,7 +313,15 @@ def test_etag_revalidation_uses_its_own_expanded_sample():
         def __init__(self):
             self.headers_seen = {}
 
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             self.headers_seen[path] = dict(headers or {})
             if any(
                 key.lower() == "if-none-match" and value
@@ -344,7 +360,15 @@ def test_etag_revalidation_uses_its_own_expanded_sample():
 
 def test_revalidation_that_never_returns_304_is_reported():
     class NoRevalidation:
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             return Response(200, {"ETag": '"x"'}, "{}", url=path, method=method)
 
     probe_list = [
@@ -409,7 +433,7 @@ def test_runner_accepts_intended_scenario_diff_and_rejects_unexplained(
 
     monkeypatch.setattr(runner.scenario_mod, "run_scenario", fake_run)
     monkeypatch.setattr(
-        runner.scenario_mod, "discover_team_ids", lambda session: [1, 2]
+        runner.scenario_mod, "discover_pair_team_ids", lambda session: [1, 2]
     )
     monkeypatch.setattr(
         runner,
@@ -460,7 +484,15 @@ def test_wizard_capture_from_url_is_normalised():
         def __init__(self, url):
             self.url = url
 
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             if method == "POST" and path == "/gamedays/gameday/new/":
                 return Response(200, {}, "{}", self.url, method=method)
             return Response(200, {}, "{}", self.url, method=method)
@@ -501,7 +533,15 @@ def test_capture_regex_without_a_match_is_tolerated(monkeypatch):
     from transport import Response
 
     class NoDigits:
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             return Response(200, {}, "<p>no digits</p>", path, method=method)
 
     monkeypatch.setattr(
@@ -532,7 +572,15 @@ def test_capture_regex_with_a_match_is_normalised(monkeypatch):
     from transport import Response
 
     class WithDigits:
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            follow_redirects=True,
+        ):
             return Response(200, {}, "<td>42</td>", path, method=method)
 
     monkeypatch.setattr(
@@ -556,3 +604,86 @@ def test_capture_regex_with_a_match_is_normalised(monkeypatch):
         "capture-regex-hit", {"anonymous": WithDigits()}, CONTEXT, "eq-match"
     )
     assert 42 in run.id_tokens
+
+
+REAL_GAMEDAYS = [
+    {
+        "id": 11,
+        "status": "PUBLISHED",
+        "has_designer_state": True,
+        "season": 1,
+        "league": 2,
+        "game_id": 101,
+    },
+    {
+        "id": 12,
+        "status": "PUBLISHED",
+        "has_designer_state": False,
+        "season": 1,
+        "league": 2,
+        "game_id": 102,
+    },
+    {
+        "id": 13,
+        "status": "COMPLETED",
+        "has_designer_state": False,
+        "season": 1,
+        "league": 2,
+        "game_id": 103,
+    },
+]
+
+
+def test_real_manifest_keeps_every_etag_revalidation_probe():
+    expanded = probes.expand_probes(probes.load_manifest(), REAL_GAMEDAYS)
+    by_name = {probe.name: probe for probe in expanded}
+
+    for category, gameday in (
+        ("designer-template", 11),
+        ("canvas-published", 12),
+        ("completed", 13),
+    ):
+        sample = f"{category}:{gameday}"
+        feed = by_name[f"feed-etag-revalidation#{sample}"]
+        assert feed.headers == {"If-None-Match": f"@etag:game-feed#{sample}"}
+        assert f"game-feed#{sample}" in by_name
+        liveticker = by_name[f"liveticker-etag-revalidation#{sample}"]
+        assert liveticker.headers == {"If-None-Match": f"@etag:liveticker-api#{sample}"}
+        assert f"liveticker-api#{sample}" in by_name
+    assert by_name["snapshot-etag-revalidation"].headers == {
+        "If-None-Match": "@etag:snapshot-api"
+    }
+
+
+def test_real_manifest_revalidates_the_probe_that_fetched_the_target():
+    # Gameday 12 is in both "canvas-published" and "upcoming"; the expansion
+    # keeps one plain probe and one revalidation probe per target.
+    expanded = probes.expand_probes(probes.load_manifest(), REAL_GAMEDAYS)
+    feed_12 = [probe for probe in expanded if probe.path == "/api/game/102/feed"]
+
+    assert [probe.name for probe in feed_12] == [
+        "game-feed#canvas-published:12",
+        "feed-etag-revalidation#canvas-published:12",
+    ]
+
+
+def test_conditional_probe_that_never_ran_is_a_revalidation_miss():
+    probe_list = [
+        probes.Probe("game-feed#any:11", "/api/game/11/feed", "json", "anonymous"),
+        probes.Probe(
+            "feed-etag-revalidation#any:11",
+            "/api/game/11/feed",
+            "json",
+            "anonymous",
+            {"If-None-Match": "@etag:game-feed#any:11"},
+        ),
+    ]
+    results = {
+        "game-feed#any:11": probes.ProbeResult(
+            "game-feed#any:11", 200, "json", {}, etag='"x"'
+        )
+    }
+
+    assert probes.revalidation_misses(results, probe_list) == [
+        "feed-etag-revalidation#any:11"
+    ]

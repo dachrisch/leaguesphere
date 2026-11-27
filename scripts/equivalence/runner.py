@@ -124,9 +124,9 @@ def run(args):
             context["wizard_team_ids"] = team_ids
         context.update(scenario_mod.discover_template_context(ref_sessions))
         # The Phase 2 wizard scenario needs two real team ids.
-        team_ids = scenario_mod.discover_team_ids(ref_sessions["anonymous"])
-        context["team_id"] = team_ids[0] if team_ids else None
-        context["team_id_away"] = team_ids[1] if len(team_ids) > 1 else None
+        pair = scenario_mod.discover_pair_team_ids(ref_sessions["anonymous"])
+        context["team_id"] = pair[0] if pair else None
+        context["team_id_away"] = pair[1] if len(pair) > 1 else None
         for name in scenario_mod.SCENARIOS:
             if args.scenarios and name not in args.scenarios:
                 continue

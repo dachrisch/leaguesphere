@@ -142,10 +142,14 @@ def _validator_source(probe_name):
     return base + separator + sample
 
 
-def _headers(definition, probe_name):
-    """Resolve a header's ``{source}`` placeholder to the sampled source probe."""
+def _headers(definition, probe_name, source_name=None):
+    """Resolve a header's ``{source}`` placeholder to the sampled source probe.
 
-    source_name = _validator_source(probe_name)
+    ``source_name`` is the probe that already fetched the same target, when
+    the expansion knows it; otherwise the name is derived from ``probe_name``.
+    """
+
+    source_name = source_name or _validator_source(probe_name)
     return {
         key: value.replace("{source}", source_name)
         for key, value in definition.get("headers", {}).items()
@@ -157,6 +161,9 @@ def expand_probes(manifest, gamedays):
     sample = select_sample(manifest, gamedays)
     probes = []
     seen = set()
+    # Plain probe kept per target, so a conditional probe on the same target
+    # revalidates the ETag of the response that was actually fetched.
+    fetched_by = {}
 
     for definition in manifest.get("probes", []):
         categories = definition.get("categories")
@@ -178,18 +185,26 @@ def expand_probes(manifest, gamedays):
                 # against it is a 404 on both sides, not a comparison.
                 if any("{" + name + "}" in path for name in PLACEHOLDERS):
                     continue
-                key = (path, definition["role"], definition["kind"])
+                target = (path, definition["role"], definition["kind"])
+                # Headers are part of the identity: a revalidation probe shares
+                # its target with the plain probe it revalidates and must not
+                # be deduped away. Only the same definition seen through a
+                # second category (same gameday) is a duplicate.
+                headers = tuple(sorted(definition.get("headers", {}).items()))
+                key = target + (headers,)
                 if key in seen:
                     continue
                 seen.add(key)
                 name = f"{definition['name']}#{category}:{gameday.get('id')}"
+                if not headers:
+                    fetched_by.setdefault(target, name)
                 probes.append(
                     Probe(
                         name=name,
                         path=path,
                         kind=definition["kind"],
                         role=definition["role"],
-                        headers=_headers(definition, name),
+                        headers=_headers(definition, name, fetched_by.get(target)),
                     )
                 )
     return probes
@@ -248,7 +263,9 @@ def revalidation_misses(results, probes):
     """Revalidation probes whose own sample never answered 304.
 
     A 200 on a conditional request means the validator was wrong or missing,
-    so the 200↔304 contract was not demonstrated for that probe.
+    so the 200↔304 contract was not demonstrated for that probe. A conditional
+    probe with no result at all (never run) is a miss too: a revalidation that
+    silently did not happen must not read as a pass.
     """
 
     conditional = {
@@ -257,7 +274,9 @@ def revalidation_misses(results, probes):
         if any(value.startswith("@etag:") for value in probe.headers.values())
     }
     return sorted(
-        name for name in conditional if name in results and results[name].status != 304
+        name
+        for name in conditional
+        if name not in results or results[name].status != 304
     )
 
 

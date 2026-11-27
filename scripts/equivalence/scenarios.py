@@ -861,8 +861,12 @@ def _pluck(payload, path):
     return current
 
 
-def discover_team_ids(session):
-    """Two throwaway team ids for the legacy-wizard schedule form."""
+def discover_pair_team_ids(session):
+    """Two throwaway team ids for the legacy-wizard schedule form.
+
+    Distinct from Phase 1's ``discover_team_ids(sessions)``, which feeds the
+    format-3_1 wizard scenario from the role-session map.
+    """
 
     response = session.request("/api/teams/")
     if response.status == 200:
@@ -878,7 +882,7 @@ def discover_team_ids(session):
 def discover_team_id(session):
     """Backward-compatible single-id helper used by the scenario context."""
 
-    ids = discover_team_ids(session)
+    ids = discover_pair_team_ids(session)
     return ids[0] if ids else None
 
 
