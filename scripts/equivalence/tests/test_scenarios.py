@@ -215,6 +215,7 @@ def test_non_text_payload_is_kept_without_normalisation(monkeypatch):
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             return Response(200, {}, b"raw", path, method)
 
@@ -271,7 +272,7 @@ def test_finalize_legacy_captures_a_real_game_id():
         and call["method"] == "POST"
         and "gameday-format-0-group" in (call["form"] or {})
     )
-    assert wizard_post["form"]["gameday-format-0-group"] == [11, 12, 13]
+    assert wizard_post["form"]["gameday-format-0-group"] == ["11", "12", "13"]
 
 
 def test_finalize_legacy_requires_a_captured_game_id():
@@ -413,6 +414,7 @@ class FakeSession:
         form=None,
         headers=None,
         follow_redirects=True,
+        files=None,
     ):
         return self.responses.get(path, Response(404, {}, "", "", method))
 

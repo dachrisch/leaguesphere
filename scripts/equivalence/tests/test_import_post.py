@@ -41,6 +41,7 @@ def test_import_post_scenario_is_stable_across_both_sides():
             form=None,
             files=None,
             headers=None,
+            follow_redirects=True,
         ):
             if method == "GET" and path == "/api/teams/":
                 return Response(200, {}, '{"results":[{"id":1}]}', path, method)
@@ -91,6 +92,7 @@ def test_string_file_contents_are_resolved_before_the_request():
             form=None,
             files=None,
             headers=None,
+            follow_redirects=True,
         ):
             seen["files"] = files
             return type(
