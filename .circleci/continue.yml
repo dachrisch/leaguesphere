@@ -456,6 +456,9 @@ jobs:
             - run:
                 name: "JavaScript Test Suite"
                 command: npm --prefix scorecard_v2/ run test:run
+            - run:
+                name: "Phase 3 branch-coverage gate (scorecard_v2)"
+                command: npm --prefix scorecard_v2/ run test:phase3
             - codecov/upload:
                 dir: scorecard_v2/coverage
                 flags: scorecard-v2
