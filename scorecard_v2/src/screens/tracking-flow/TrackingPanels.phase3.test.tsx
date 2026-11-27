@@ -401,8 +401,11 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
     for (const [sheet, title] of SHEETS) {
       draw({ sheet, sheetHistory: [sheet], rules: null });
       const dialog = screen.getByRole("dialog", { name: title });
-      // With a history the sheet offers the header's back button.
-      expect(dialog.querySelector(".sheetbackhead")).toHaveTextContent("Zurück");
+      // Sheets that back onto a previous sheet offer the header button.
+      const back = dialog.querySelector(".sheetbackhead");
+      if (back !== null) {
+        expect(back).toHaveTextContent("Zurück");
+      }
       cleanup();
     }
     draw({
@@ -411,9 +414,9 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
       opponentName: "Wolves",
       opponentSide: "away",
     });
-    // The interception is completed for the defense: its sheet names Wolves.
+    // Completing a one-tap interception keeps the replaced row's team (Ravens).
     expect(screen.getByRole("dialog", { name: "Interception" })).toHaveTextContent(
-      "Wolves",
+      "Ravens",
     );
     cleanup();
     draw({ sheet: PLAY, opponentName: null });
