@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from officials.constants import OFFICIALS_STATISTICS, OFFICIALS_STATISTICS_FOR_SEASON
 from officials.views import (
@@ -21,12 +22,25 @@ from officials.views import (
     OfficialSignOutView,
     LicenseCheckForOfficials,
 )
+from officials.selfservice import (
+    AddAssignmentView,
+    ClaimGameOfficialView,
+    DfflGameDeleteView,
+    ExternalGameDeleteView,
+    ExternalGameEditView,
+    ExternalGameMultiAddView,
+    MyAssignmentsView,
+    UnassignGameOfficialView,
+)
 
 OFFICIALS_LIST_FOR_TEAM = "view-officials-list-for-team"
 OFFICIALS_LIST_FOR_TEAM_AND_YEAR = "view-officials-list-for-team-and-year"
 OFFICIALS_LIST_FOR_ALL_TEAMS = "view-officials-list-for-all-teams"
 OFFICIALS_LIST_FOR_ALL_TEAMS_AND_YEAR = "view-officials-list-for-all-teams-and-year"
 OFFICIALS_GAME_OFFICIALS_APPEARANCE = "view-officials-game-officials-appearance"
+OFFICIALS_GAME_OFFICIALS_MINE = "view-officials-game-officials-mine"
+OFFICIALS_GAME_OFFICIALS_OPEN = "view-officials-game-officials-open"
+OFFICIALS_MY_ASSIGNMENTS_NAV = "view-officials-my-assignments-navigation"
 OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR = (
     "view-officials-game-officials-appearance-for-year"
 )
@@ -50,6 +64,15 @@ OFFICIALS_SIGN_UP_LIST = "view-officials-sign-up-list"
 OFFICIALS_SIGN_UP_FOR_GAMEDAY = "view-officials-sign-up-for-gameday"
 OFFICIALS_SIGN_UP_CANCEL_FOR_GAMEDAY = "view-officials-sign-up-cancel-for-gameday"
 OFFICIALS_SIGN_OUT = "view-officials-sign-out"
+OFFICIALS_SELF_SERVICE_CLAIM = "view-officials-selfservice-claim"
+OFFICIALS_SELF_SERVICE_ADD_ASSIGNMENT = "view-officials-selfservice-add-assignment"
+OFFICIALS_SELF_SERVICE_UNASSIGN = "view-officials-selfservice-unassign"
+OFFICIALS_SELF_SERVICE_EXTERNAL_EDIT = "view-officials-selfservice-external-edit"
+OFFICIALS_SELF_SERVICE_EXTERNAL_DELETE = "view-officials-selfservice-external-delete"
+OFFICIALS_SELF_SERVICE_DFFL_DELETE = "view-officials-selfservice-dffl-delete"
+OFFICIALS_SELF_SERVICE_EXTERNAL_MULTI_ADD = (
+    "view-officials-selfservice-external-multi-add"
+)
 # OFFICIALS_STATISTICS / OFFICIALS_STATISTICS_FOR_SEASON live in
 # officials/constants.py (imported above) since OfficialsStatisticsView
 # also needs them and can't import from this module without a circular
@@ -88,6 +111,23 @@ urlpatterns = [
         name=OFFICIALS_GAME_OFFICIALS_APPEARANCE,
     ),
     path(
+        "einsaetze/meine/",
+        GameOfficialListView.as_view(),
+        {"mine": True},
+        name=OFFICIALS_GAME_OFFICIALS_MINE,
+    ),
+    path(
+        "einsaetze/offen/",
+        GameOfficialListView.as_view(),
+        {"open": True},
+        name=OFFICIALS_GAME_OFFICIALS_OPEN,
+    ),
+    path(
+        "meine-einsaetze/",
+        MyAssignmentsView.as_view(),
+        name=OFFICIALS_MY_ASSIGNMENTS_NAV,
+    ),
+    path(
         "einsaetze/<int:season>/",
         GameOfficialListView.as_view(),
         name=OFFICIALS_GAME_OFFICIALS_APPEARANCE_FOR_YEAR,
@@ -111,6 +151,41 @@ urlpatterns = [
         "gameofficial/external/create/",
         AddExternalGameOfficialUpdateView.as_view(),
         name=OFFICIALS_GAMEOFFICIAL_EXTERNAL_CREATE,
+    ),
+    path(
+        "gameofficial/<int:pk>/claim/",
+        ClaimGameOfficialView.as_view(),
+        name=OFFICIALS_SELF_SERVICE_CLAIM,
+    ),
+    path(
+        "gameofficial/add-assignment/",
+        AddAssignmentView.as_view(),
+        name=OFFICIALS_SELF_SERVICE_ADD_ASSIGNMENT,
+    ),
+    path(
+        "gameofficial/<int:pk>/unassign/",
+        UnassignGameOfficialView.as_view(),
+        name=OFFICIALS_SELF_SERVICE_UNASSIGN,
+    ),
+    path(
+        "external/<int:pk>/edit/",
+        ExternalGameEditView.as_view(),
+        name=OFFICIALS_SELF_SERVICE_EXTERNAL_EDIT,
+    ),
+    path(
+        "external/<int:pk>/delete/",
+        ExternalGameDeleteView.as_view(),
+        name=OFFICIALS_SELF_SERVICE_EXTERNAL_DELETE,
+    ),
+    path(
+        "gameofficial/<int:pk>/delete/",
+        DfflGameDeleteView.as_view(),
+        name=OFFICIALS_SELF_SERVICE_DFFL_DELETE,
+    ),
+    path(
+        "external/multi-add/",
+        ExternalGameMultiAddView.as_view(),
+        name=OFFICIALS_SELF_SERVICE_EXTERNAL_MULTI_ADD,
     ),
     path(
         "gameofficial/import/upload/",
@@ -143,8 +218,16 @@ urlpatterns = [
         OfficialAssociationListView.as_view(),
         name=OFFICIALS_ASSOCIATION_LIST,
     ),
+    path("login/", MoodleLoginView.as_view(), name=OFFICIALS_MOODLE_LOGIN),
+    # Old links/bookmarks keep working: redirect to the canonical path while
+    # carrying the ``?next=`` query string over (RedirectView appends it raw).
     path(
-        "gameday/sign-up/login/", MoodleLoginView.as_view(), name=OFFICIALS_MOODLE_LOGIN
+        "gameday/sign-up/login/",
+        RedirectView.as_view(
+            pattern_name=OFFICIALS_MOODLE_LOGIN,
+            permanent=False,
+            query_string=True,
+        ),
     ),
     path(
         "gameday/sign-up/",

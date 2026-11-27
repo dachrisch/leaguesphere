@@ -12,14 +12,35 @@
         {% else %}
         {% include 'team/team_navigation.html' %}
         <h1>{{ season }} - {% if team %} {{ team }} alle Einsätze {% else %} Alle Einsätze {% endif %}</h1>
+        <div class="alert alert-info">
+            <i class="bi bi-question-circle me-1" aria-hidden="true"></i>
+            Einsätze müssen selbst gepflegt werden. Wie das funktioniert? In der
+            <a href="{% url 'help-topic' 'offizielle-einsaetze' %}">Hilfe</a> ist alles erklärt.
+        </div>
         <p>
             Personen die ein <b>Fragezeichen</b> (<b>?</b>) hinter dem Namen haben, deren Spiele werden nicht gezählt,
             da für diese kein Eintrag gefunden wurde. Entweder haben diese keine Lizenz oder
             der Name wurde nicht über die Scorecard ausgewählt / gesucht.<br/>
-            Bei Fragen bitte an Chris wenden: c.kaempfe@afvd.de
+            Zum Anpassen bitte über den folgenden Button anmelden:
         </p>
+        {% include 'officials/selfservice/_banner.html' %}
+        {% if moodle_official_id or is_staff %}
+        <p>
+            {% if moodle_official_id %}
+            <a class="btn btn-sm {% if mine_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+               href="{% if mine_filter %}{{ mine_off_url }}{% else %}{{ mine_on_url }}{% endif %}">
+                {% if mine_filter %}Alle Einträge zeigen{% else %}Nur meine Einträge{% endif %}
+            </a>
+            <a class="btn btn-sm btn-outline-primary"
+               href="{{ add_assignment_url }}?season={{ season }}">Einsatz nachtragen</a>
+            {% endif %}
+            <a class="btn btn-sm {% if open_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+               href="{% if open_filter %}{{ open_off_url }}{% else %}{{ open_on_url }}{% endif %}">Nur ? Einträge</a>
+        </p>
+        {% endif %}
         {% include 'utils/year_filter.html' %}
         {% include 'officials/_pagination_game_officials_list.html' %}
+        <div class="table-responsive">
         <table class="table table-hover">
             <thead>
             <tr>
@@ -31,25 +52,67 @@
                 <th scope="col">Position</th>
                 <th scope="col">Spiel</th>
                 <th scope="col">Platzierung</th>
+                {% if moodle_official_id or is_staff %}
+                <th scope="col">Aktion</th>
+                {% endif %}
             </tr>
             </thead>
             <tbody>
             {% for official in object_list %}
-            <tr>
+            <tr class="{% if official.is_own_row or official.is_own_open_row %}table-info{% endif %}">
                 <th scope="row">{{official.id}}</th>
                 <td>{{official.gameday_date}}</td>
-                <td>{{official.gameday_name}}</td>
                 <td>
-                    <a href="{% url 'view-officials-game-officials-appearance-for-team-and-year' pk=official.team_official_id season=season %}">{{official.team_name}}</a>
+                    <a href="/gamedays/gameday/{{ official.gameday_id }}/">{{official.gameday_name}}</a>
                 </td>
-                <td>{{official.name}}</td>
+                <td>
+                    {% if team_id %}
+                    <a href="{% url 'view-officials-list-for-team' pk=team_id %}">{{official.team_name}}</a>
+                    {% else %}
+                    <a href="{% url 'view-officials-game-officials-appearance-for-team-and-year' pk=official.team_official_id season=season %}">{{official.team_name}}</a>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if official.official_id %}
+                    <a href="/officials/profile/{{ official.official_id }}/gamelist/{{ season }}/">{{official.name}}</a>
+                    {% else %}
+                    {{official.name}}
+                    {% endif %}
+                </td>
                 <td>{{official.position}}</td>
                 <td>{{official.home}} vs {{official.away}} (#{{official.gameinfo_id}})</td>
                 <td>{{official.standing}}</td>
+                {% if moodle_official_id or is_staff %}
+                <td>
+                    {% if not official.official_id %}
+                    {% if official.can_reclaim %}
+                    <a class="btn btn-sm btn-outline-primary"
+                       href="{% url claim_url_name pk=official.id %}?next={{ request.get_full_path|urlencode }}">
+                        {% if is_staff %}Zuordnen{% else %}Mir zuordnen{% endif %}
+                    </a>
+                    {% endif %}
+                    {% elif official.is_own_row %}
+                    <a class="btn btn-sm btn-outline-danger"
+                       href="{% url 'view-officials-selfservice-dffl-delete' pk=official.id %}"><i class="bi bi-person-dash me-1" aria-hidden="true"></i>Entfernen</a>
+                    {% elif official.can_reclaim %}
+                    <a class="btn btn-sm btn-outline-primary"
+                       href="{% url claim_url_name pk=official.id %}?next={{ request.get_full_path|urlencode }}">
+                        {% if is_staff %}Zuordnen{% else %}Das war ich{% endif %}
+                    </a>
+                    {% endif %}
+                    {% if is_staff and official.official_id %}
+                    <a class="btn btn-sm btn-outline-danger"
+                       href="{% url unassign_url_name pk=official.id %}?next={{ request.get_full_path|urlencode }}">
+                        Zuordnung aufheben
+                    </a>
+                    {% endif %}
+                </td>
+                {% endif %}
             </tr>
             {% endfor %}
             </tbody>
         </table>
+        </div>
         {% include 'officials/_pagination_game_officials_list.html' %}
         {% endif %}
     </div>

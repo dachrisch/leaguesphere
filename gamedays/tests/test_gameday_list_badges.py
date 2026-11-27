@@ -141,7 +141,10 @@ class TestTodayGamedayChips(GamedayListBadgesTestBase):
                         "starts_at": None,
                     }
                 }
-                with mock.patch("gamedays.views.today_statuses", return_value=statuses):
+                with mock.patch(
+                    "gamedays.service.liveticker_hooks.today_statuses",
+                    return_value=statuses,
+                ):
                     rendered = chips(self.get_list().content.decode())
 
                 assert len(rendered) == 1
@@ -201,7 +204,7 @@ class TestTodayGamedayChips(GamedayListBadgesTestBase):
 
         self.purge_status_cache()
         with mock.patch(
-            "gamedays.views.today_statuses", wraps=today_statuses
+            "gamedays.service.liveticker_hooks.today_statuses", wraps=today_statuses
         ) as one_row_statuses:
             with CaptureQueriesContext(connection) as one_row:
                 self.client.get(url)
@@ -213,7 +216,7 @@ class TestTodayGamedayChips(GamedayListBadgesTestBase):
         # One call for four rows: a per-row call would not show up in the query
         # count, because the 30 s cache answers calls 2-4 from memory.
         with mock.patch(
-            "gamedays.views.today_statuses", wraps=today_statuses
+            "gamedays.service.liveticker_hooks.today_statuses", wraps=today_statuses
         ) as four_row_statuses:
             with CaptureQueriesContext(connection) as four_rows:
                 self.client.get(url)

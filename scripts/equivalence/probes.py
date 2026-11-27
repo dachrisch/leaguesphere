@@ -9,7 +9,7 @@ the manifest stores selection rules, never ids.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 
@@ -29,6 +29,7 @@ class Probe:
     path: str
     kind: str
     role: str
+    headers: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -38,6 +39,14 @@ class ProbeResult:
     kind: str
     body: object
     role: str = "anonymous"
+    etag: str = ""
+
+
+def _header(headers, name):
+    """Case-insensitive response-header lookup."""
+    return next(
+        (value for key, value in headers.items() if key.lower() == name.lower()), ""
+    )
 
 
 def load_manifest(path=None):
@@ -100,6 +109,7 @@ def expand_probes(manifest, gamedays):
                     path=definition["path"],
                     kind=definition["kind"],
                     role=definition["role"],
+                    headers=definition.get("headers", {}),
                 )
             )
             continue
@@ -116,6 +126,7 @@ def expand_probes(manifest, gamedays):
                         path=path,
                         kind=definition["kind"],
                         role=definition["role"],
+                        headers=definition.get("headers", {}),
                     )
                 )
     return probes
@@ -138,13 +149,20 @@ def run_probes(sessions, manifest, probes=None):
         if session is None:
             skipped.append(probe.name)
             continue
-        response = session.request(probe.path)
+        headers = {}
+        for key, value in probe.headers.items():
+            if value.startswith("@etag:"):
+                source = results.get(value[len("@etag:") :])
+                value = source.etag if source else ""
+            headers[key] = value
+        response = session.request(probe.path, headers=headers)
         results[probe.name] = ProbeResult(
             name=probe.name,
             status=response.status,
             kind=probe.kind,
             body=normalise.normalise_body(probe.kind, response.body),
             role=probe.role,
+            etag=_header(response.headers, "ETag"),
         )
     return results, skipped
 

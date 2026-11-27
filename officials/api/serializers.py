@@ -6,7 +6,6 @@ from rest_framework.fields import (
     SerializerMethodField,
     BooleanField,
     DateField,
-    FloatField,
     IntegerField,
 )
 from rest_framework.serializers import ModelSerializer, Serializer
@@ -23,6 +22,10 @@ from officials.service.boff_license_calculation import LicenseStrategy
 from officials.service.moodle.moodle_service import MoodleService
 
 PREFETCHED_LICENSE_HISTORY = "prefetched_license_history"
+# The gamelist queryset computes the adjusted game count in SQL once per row;
+# the alias keeps it distinct from OfficialExternalGames.calculated_number_games
+# (a property that would otherwise issue one aggregate query per row).
+ANNOTATED_CALCULATED_GAMES = "annotated_calculated_number_games"
 
 
 def prefetch_official_license_history():
@@ -44,21 +47,32 @@ def prefetch_official_license_history():
 class OfficialExternalGamesSerializer(ModelSerializer):
     date = DateField(format="%d.%m.%Y")
     notification_date = DateField(format="%d.%m.%Y")
-    calculated_number_games = FloatField(read_only=True)
+    calculated_number_games = SerializerMethodField("get_calculated_number_games")
     reporter_name = SerializerMethodField("get_reporter_name")
+    association = CharField(source="association.abbr", read_only=True)
 
     class Meta:
         model = OfficialExternalGames
         exclude = ("official",)
 
-    def __init__(self, is_staff=False, *args, **kwargs):
+    def __init__(self, is_staff=False, is_self=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_staff = is_staff
+        self.is_self = is_self
 
     def get_reporter_name(self, obj: OfficialExternalGames):
-        if self.is_staff:
+        if self.is_staff or self.is_self:
             return obj.reporter_name
         return Obfuscator.obfuscate(*obj.reporter_name.split(" ")[:2])
+
+    def get_calculated_number_games(self, obj: OfficialExternalGames):
+        # The gamelist queryset annotates this once for all rows; a serializer
+        # built from a single instance (no annotation) still works via the
+        # model property.
+        annotated = getattr(obj, ANNOTATED_CALCULATED_GAMES, None)
+        if annotated is not None:
+            return annotated
+        return obj.calculated_number_games
 
 
 class OfficialTeamListScorecardSerializer(Serializer):
@@ -256,21 +270,46 @@ class OfficialGamelistSerializer(OfficialSerializer):
     dffl_games = SerializerMethodField("get_dffl_games")
     external_games = SerializerMethodField("get_external_games")
 
-    def __init__(self, season, is_staff=False, *args, **kwargs):
+    def __init__(self, season, is_staff=False, is_self=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_staff = is_staff
+        self.is_self = is_self
         self.season = season
+
+    def _obfuscate_text_if_needed(self, text: str) -> str:
+        # The Moodle-logged-in official sees their own unobfuscated data,
+        # without gaining any of staff's other privileges.
+        if self.is_staff or self.is_self:
+            return text
+        return Obfuscator.obfuscate(text)
+
+    def get_name(self, obj: Official):
+        return Obfuscator.reveal_unless_obfuscated(
+            self.is_staff or self.is_self, obj.first_name, obj.last_name
+        )
 
     def get_external_games(self, obj: Official):
         all_official_entries: QuerySet[OfficialExternalGames] = (
             obj.officialexternalgames_set.filter(date__year=self.season)
+            # association.abbr is read by OfficialExternalGamesSerializer;
+            # fetching it per row used to be free when association was a local
+            # CharField, and is now an N+1 without this join.
+            .select_related("association").annotate(
+                **{
+                    ANNOTATED_CALCULATED_GAMES: OfficialExternalGames.calculated_games_expression()
+                }
+            )
         )
         return {
             "all_games": OfficialExternalGamesSerializer(
-                instance=all_official_entries, many=True, is_staff=self.is_staff
+                instance=all_official_entries,
+                many=True,
+                is_staff=self.is_staff,
+                is_self=self.is_self,
             ).data,
             "number_games": sum(
-                entry.calculated_number_games for entry in all_official_entries
+                getattr(entry, ANNOTATED_CALCULATED_GAMES)
+                for entry in all_official_entries
             ),
             "last_update": OfficialExternalGames.objects.all().aggregate(
                 Max("notification_date")
@@ -294,6 +333,7 @@ class OfficialGamelistSerializer(OfficialSerializer):
             "position": obj.position,
             "game_official_id": obj.pk,
             "gameinfo_id": obj.gameinfo.pk,
+            "gameday_id": obj.gameinfo.gameday_id,
             "gameday": obj.gameinfo.gameday.name,
             "date": obj.gameinfo.gameday.date.strftime("%d.%m.%Y"),
             "vs": home + " vs " + away,
@@ -309,6 +349,7 @@ class GameOfficialAllInfoSerializer(Serializer):
     POSITION_C = "position"
     GAMEINFO_ID_C = "gameinfo_id"
     GAMEINFO_STANDING_C = "gameinfo__standing"
+    GAMEDAY_ID_C = "gameinfo__gameday_id"
     GAMEDAY_NAME_C = "gameinfo__gameday__name"
     GAMEDAY_DATE_C = "gameinfo__gameday__date"
     GAMEINFO_OFFICIALS_ID_C = "gameinfo__officials_id"
@@ -317,6 +358,7 @@ class GameOfficialAllInfoSerializer(Serializer):
     OFFICIAL_FIRST_NAME_C = "official__first_name"
     OFFICIAL_LAST_NAME_C = "official__last_name"
     OFFICIAL_TEAM_NAME_C = "official__team__name"
+    OFFICIAL_ID_C = "official_id"
     ALL_VALUE_FIELDS = [
         ID_C,
         HOME_C,
@@ -325,6 +367,7 @@ class GameOfficialAllInfoSerializer(Serializer):
         POSITION_C,
         GAMEINFO_ID_C,
         GAMEINFO_STANDING_C,
+        GAMEDAY_ID_C,
         GAMEDAY_DATE_C,
         GAMEDAY_NAME_C,
         GAMEINFO_OFFICIALS_ID_C,
@@ -333,13 +376,18 @@ class GameOfficialAllInfoSerializer(Serializer):
         OFFICIAL_FIRST_NAME_C,
         OFFICIAL_LAST_NAME_C,
         OFFICIAL_TEAM_NAME_C,
+        OFFICIAL_ID_C,
     ]
 
     name = SerializerMethodField("obfuscate_name")
     id = CharField()
+    official_id = CharField(allow_null=True)
     gameday_name = CharField(source=GAMEDAY_NAME_C)
     gameday_date = SerializerMethodField()
     gameinfo_id = CharField()
+    # Optional so manually built dicts (serializer unit tests) keep their old
+    # wire shape; real list rows always carry the id from ALL_VALUE_FIELDS.
+    gameday_id = CharField(source=GAMEDAY_ID_C, required=False)
     home = CharField()
     away = CharField()
     position = CharField()
@@ -367,10 +415,16 @@ class GameOfficialAllInfoSerializer(Serializer):
         ):
             name = official_name["name"]
         else:
-            name = Obfuscator.obfuscate(*official_name[self.NAME_C].split(" ")[:2])
+            # A row can carry neither an official nor a typed name (the
+            # scorecard leaves such rows behind). Splitting None used to 500
+            # the whole list for every non-staff visitor.
+            typed_name = official_name[self.NAME_C] or ""
+            name = (
+                Obfuscator.obfuscate(*typed_name.split(" ")[:2]) if typed_name else ""
+            )
         if official_name["is_mapped"]:
             return name
-        return f"{name} ?"
+        return f"{name} ?".strip()
 
     def _get_official_name(self, game_official: dict) -> dict:
         if game_official.get(self.OFFICIAL_FIRST_NAME_C) is not None:

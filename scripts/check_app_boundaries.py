@@ -22,7 +22,7 @@ Rules:
   only shrink as Phase 1 removes imports.
 
 The two schema-level FKs (`Gameinfo.league_group`,
-`Gameinfo.official`) are string references, not imports: they are kept
+`GameOfficial.official`) are string references, not imports: they are kept
 by decision and documented in the allowlist header, not modelled here.
 
 Stdlib only (`ast`, `argparse`, `pathlib`, `sys`): the always-on
@@ -73,7 +73,12 @@ HEADER = """\
 #
 # Kept by decision, not modelled here (string FK references, not imports):
 #   gamedays/models.py: Gameinfo.league_group -> "league_table.LeagueGroup"
-#   gamedays/models.py: Gameinfo.official -> "officials.Official"
+#   gamedays/models.py: GameOfficial.official -> "officials.Official"
+#
+# Dynamic back-edges are normalised too: apps.get_model("app", "Model"),
+# apps.get_model("app.Model"), keyword get_model(app_label="app"), bare
+# import_module("app.module") and __import__("app.module") cannot be hidden
+# in a function body or a nested call.
 """
 
 
@@ -108,6 +113,51 @@ def boundary_modules(node):
     ]
 
 
+def dynamic_modules(node):
+    """Normalise dynamic back-edges (get_model / import_module calls).
+
+    Catches attribute calls, bare ``import_module``/``__import__`` names and
+    keyword arguments such as ``get_model(app_label="passcheck", ...)``.
+    """
+    if not isinstance(node, ast.Call):
+        return []
+    func = node.func
+    if isinstance(func, ast.Attribute):
+        name = func.attr
+    elif isinstance(func, ast.Name):
+        name = func.id
+    else:
+        return []
+
+    values = {}
+    for index, arg in enumerate(node.args):
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            values[index] = arg.value
+    for keyword in node.keywords:
+        if (
+            keyword.arg
+            and isinstance(keyword.value, ast.Constant)
+            and isinstance(keyword.value.value, str)
+        ):
+            values[keyword.arg] = keyword.value.value
+
+    if name == "get_model":
+        raw = values.get("app_label", values.get(0, ""))
+        model = values.get("model_name", values.get(1, ""))
+        if model:
+            raw = f"{raw}.{model}" if raw else ""
+    elif name in ("import_module", "__import__"):
+        raw = values.get(0, "")
+    else:
+        return []
+    if not raw:
+        return []
+    top = raw.split(".")[0]
+    if top not in BOUNDARY_MODULES:
+        return []
+    return [(f'{name}("{raw}")', [top])]
+
+
 def is_scanned(relative_path):
     parts = relative_path.parts
     if "tests" in parts or "migrations" in parts:
@@ -140,16 +190,19 @@ def scan(root):
 
         found_in_file = 0
         for node in ast.walk(tree):
-            if not isinstance(node, (ast.Import, ast.ImportFrom)):
-                continue
-            modules = boundary_modules(node)
-            if not modules:
-                continue
-            statement = f"{relative_path.as_posix()}|{normalise(node)}"
-            for module in modules:
-                counts[module] += 1
-            entries[statement] = modules[0]
-            found_in_file += 1
+            matches = []
+            if isinstance(node, (ast.Import, ast.ImportFrom)):
+                modules = boundary_modules(node)
+                if modules:
+                    matches.append((normalise(node), modules))
+            else:
+                matches.extend(dynamic_modules(node))
+            for statement, modules in matches:
+                key = f"{relative_path.as_posix()}|{statement}"
+                for module in modules:
+                    counts[module] += 1
+                entries[key] = modules[0]
+                found_in_file += 1
         if found_in_file:
             files += 1
 
@@ -265,5 +318,7 @@ def main(argv=None):
     return check(root, allowlist)
 
 
-if __name__ == "__main__":
+if (
+    __name__ == "__main__"
+):  # pragma: no cover -- CLI entrypoint exercised via subprocess
     sys.exit(main())

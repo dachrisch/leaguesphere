@@ -171,7 +171,14 @@ commands:
             # project-level legacy MYSQL_PWD win and fail authentication.
             MYSQL_PASSWORD: ci-test-pw
           command: |
-            uv run pytest << parameters.paths >> -n 4 --nomigrations --junitxml=test-reports/<< parameters.junit >> --cov=. --cov-report=xml --cov-report=html
+            uv run pytest << parameters.paths >> -n 4 --nomigrations --junitxml=test-reports/<< parameters.junit >> --cov=. --cov-report=xml --cov-report=html --cov-report=json:coverage.json
+      - run:
+          name: Branch coverage of changed functions (<< parameters.cov_flag >>)
+          command: |
+            git fetch --no-tags origin master:refs/remotes/origin/master
+            python3 scripts/check_branch_coverage.py \
+              --coverage coverage.json --base origin/master \
+              --shard << parameters.cov_flag >>
       - store_test_results:
           path: test-reports
       - codecov/upload:
@@ -379,7 +386,7 @@ jobs:
             - checkout
             - setup_uv
             - python_shard_test:
-                paths: "tests/ scripts/tests/"
+                paths: "tests/ scripts/tests/ scripts/equivalence/tests/"
                 junit: "test-results-cross.xml"
                 cov_flag: "python-cross"
 

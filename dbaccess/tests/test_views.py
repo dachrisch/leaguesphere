@@ -523,3 +523,46 @@ def test_the_reveal_page_shows_the_whole_dbeaver_config(client, requester, setti
     assert "Public Key" in body
     assert "dbeaver stage tunnel key (lehel)" in body
     assert response.context["tunnel"]["ssh_port"] == "22"
+
+
+@pytest.mark.django_db
+def test_the_detail_page_shows_the_request_specific_account(client, requester):
+    """The header is the account that will be minted, not just the person."""
+    access_request = _request(requester, person="5eradmin")
+    client.force_login(requester)
+
+    body = client.get(
+        reverse("dbaccess-detail", args=[access_request.pk])
+    ).content.decode()
+
+    assert f"<code>{access_request.db_user}</code>" in body
+    assert "<code>dbeaver_prod_5eradmin</code>" not in body
+
+
+@pytest.mark.django_db
+def test_the_reveal_page_names_this_request_not_the_person(client, requester, settings):
+    """A saved password from a previous request must visibly not apply here."""
+    settings.DBACCESS_SECRET_KEY = Fernet.generate_key().decode()
+    access_request = _request(
+        requester,
+        person="5eradmin",
+        state=AccessRequest.State.ACTIVE,
+        secret="pw123",
+    )
+    client.force_login(requester)
+
+    body = client.post(
+        reverse("dbaccess-reveal", args=[access_request.pk])
+    ).content.decode()
+
+    assert f"<code>{access_request.db_user}</code>" in body
+    assert "<code>dbeaver_prod_5eradmin</code>" not in body
+
+
+@pytest.mark.django_db
+def test_the_form_previews_a_per_request_account(client, requester):
+    client.force_login(requester)
+
+    body = client.get(reverse("dbaccess-create")).content.decode()
+
+    assert "dbeaver_prod_requester_r&lt;request id&gt;" in body

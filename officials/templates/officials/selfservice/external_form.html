@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+<div class="content-section">
+    <h1>Spiel außerhalb der DFFL bearbeiten</h1>
+    <p>
+        Ändere die Angaben zu diesem Einsatz. Der Verband wird aus der Liste gewählt,
+        freie Eingaben sind nicht möglich.
+    </p>
+    {% include 'officials/selfservice/_banner.html' %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <div class="row g-2">
+            <div class="col">
+                <button class="btn btn-primary w-100" type="submit">Speichern</button>
+            </div>
+            <div class="col-auto">
+                <a class="btn btn-outline-danger"
+                   href="{% url 'view-officials-profile-gamelist' pk=entry.official_id season=entry.date.year %}">Abbrechen</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock content %}

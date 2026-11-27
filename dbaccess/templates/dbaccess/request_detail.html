@@ -6,7 +6,7 @@
 
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-2 mb-4">
             <div>
-                <h1 class="h4 mb-1"><code>dbeaver_prod_{{ access_request.person }}</code></h1>
+                <h1 class="h4 mb-1"><code>{% if access_request.db_user %}{{ access_request.db_user }}{% else %}dbeaver_prod_{{ access_request.person }}_r&hellip;{% endif %}</code></h1>
                 <p class="text-muted small mb-0">
                     Asked by {{ access_request.requester }}
                     on {{ access_request.created_at|date:"d.m.Y H:i" }}

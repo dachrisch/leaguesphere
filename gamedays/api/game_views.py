@@ -5,7 +5,7 @@ from collections import OrderedDict
 from http import HTTPStatus
 
 from django.db import transaction
-from django.db.models import F, Max, Q
+from django.db.models import F, Max
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -42,7 +42,7 @@ from gamedays.service.gamelog import gameday_ref_now, serialize_events
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 from gamedays.service.gameday_service import GamedayService
 from gamedays.service.model_helper import GameresultHelper, TeamLogHelper
-from passcheck.models import PasscheckVerification, PlayerlistGameday
+from gamedays.service import passcheck_hooks
 
 logger = logging.getLogger(__name__)
 
@@ -624,32 +624,7 @@ class GamesToWhistleAPIView(APIView):
 
     @staticmethod
     def _annotate_passcheck(games_to_whistle, gameday_id):
-        """Add the passcheck state the scorecard game list renders.
-
-        ``PasscheckVerification`` holds one row per verified team per gameday;
-        a game is fully checked only when both of its teams are verified.
-
-        Caution: the pandas merge in ``GamedayModelWrapper`` keeps both ``id``
-        columns, and ``id_home``/``id_away`` are the renamed ``Gameresult`` pks
-        (``id_y``) — not ``Team`` pks. They arrive as strings (``""`` for an
-        unresolved bracket placeholder), so the lookup keys are stringified.
-        """
-        game_ids = [game["id"] for game in games_to_whistle]
-        team_by_result = {
-            str(result_id): team_id
-            for result_id, team_id in Gameresult.objects.filter(
-                gameinfo_id__in=game_ids
-            ).values_list("id", "team_id")
-        }
-        verified = set(
-            PasscheckVerification.objects.filter(gameday_id=gameday_id).values_list(
-                "team_id", flat=True
-            )
-        )
-        for game in games_to_whistle:
-            home = team_by_result.get(str(game.get("id_home", "")))
-            away = team_by_result.get(str(game.get("id_away", "")))
-            game["passcheck"] = home in verified and away in verified
+        passcheck_hooks.annotate_passcheck(games_to_whistle, gameday_id)
 
 
 class GameSummaryAPIView(APIView):
@@ -764,24 +739,9 @@ class GameRosterAPIView(APIView):
 
         # One query for both sides, so the roster stays flat however many
         # players it lists.
-        verified = set(
-            PasscheckVerification.objects.filter(
-                gameday_id=game.gameday_id, team_id__in=sides
-            ).values_list("team_id", flat=True)
-        )
+        verified = passcheck_hooks.verified_team_ids(game.gameday_id, sides)
 
-        rows = (
-            PlayerlistGameday.objects.filter(
-                gameday_id=game.gameday_id,
-                playerlist__team_id__in=sides,
-            )
-            .filter(playerlist__joined_on__lte=game.gameday.date)
-            .filter(
-                Q(playerlist__left_on__isnull=True)
-                | Q(playerlist__left_on__gt=game.gameday.date)
-            )
-            .select_related("playerlist__player__person")
-        )
+        rows = passcheck_hooks.roster_rows(game.gameday_id, sides, game.gameday.date)
         return Response(
             [
                 {

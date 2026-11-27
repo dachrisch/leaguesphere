@@ -23,7 +23,7 @@ class EmptyMatchReportService:
     def get_passcheck_player_details(self, render_config):
         return {}
 
-    def get_gameday_match_reports(self, render_config):
+    def get_gameday_match_reports(self, render_config, include_official_actions=False):
         return []
 
     def get_passcheck_player_list(self):
@@ -58,8 +58,11 @@ class MatchreportService:
     def get_staff_passcheck_details(self):
         return self.mmw.get_staff_passcheck_details()
 
-    def get_gameday_match_reports(self, render_config):
-        return self.mmw.get_gameday_match_report(render_config=render_config)
+    def get_gameday_match_reports(self, render_config, include_official_actions=False):
+        return self.mmw.get_gameday_match_report(
+            render_config=render_config,
+            include_official_actions=include_official_actions,
+        )
 
     def get_passcheck_player_list(self):
         return self.mmw.get_gameday_passcheck_player_list()

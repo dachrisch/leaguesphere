@@ -16,9 +16,9 @@ import re
 from collections import defaultdict
 
 from gamedays.models import Gameday, Gameinfo, Gameresult
+from gamedays.service import designer_hooks
 from gamedays.service.placeholder_service import GamedayPlaceholderService
 from gamedays.service.stage_category import derive_legacy_stage_category
-from gameday_designer.models import TemplateSlot, TemplateUpdateRule
 
 # Matches the reference patterns that the frontend's parseReference()
 # (templateMapper.ts) can resolve into graph edges. Anything that doesn't
@@ -236,11 +236,7 @@ class GamedayMigrationService:
                 team_mapping, warnings, slot.official_group, slot.official_team, gi
             )
 
-        all_slots = list(
-            TemplateSlot.objects.filter(template=template).order_by(
-                "field", "slot_order"
-            )
-        )
+        all_slots = designer_hooks.slots_for_template(template)
 
         slots = [
             self._serialize_slot(slot, stage_category_by_slot_id, time_by_slot_id)
@@ -334,7 +330,7 @@ class GamedayMigrationService:
 
     @staticmethod
     def _serialize_slot(
-        slot: TemplateSlot,
+        slot,
         stage_category_by_slot_id: dict,
         time_by_slot_id: dict,
     ) -> dict:
@@ -366,16 +362,15 @@ class GamedayMigrationService:
         }
 
     @staticmethod
-    def _serialize_update_rules(slots: list[TemplateSlot]) -> list[dict]:
+    def _serialize_update_rules(slots: list) -> list[dict]:
         """Serialize TemplateUpdateRule/TemplateUpdateRuleTeam data for slots
         that have structured rules. This lets the frontend build bracket
         edges directly by node ID, bypassing parseReference()'s string
         vocabulary limitations."""
         rules = []
         for slot in slots:
-            try:
-                rule = TemplateUpdateRule.objects.get(slot=slot)
-            except TemplateUpdateRule.DoesNotExist:
+            rule = designer_hooks.update_rule_for_slot(slot)
+            if rule is None:
                 continue
 
             team_rules = []

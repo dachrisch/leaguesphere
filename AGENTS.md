@@ -258,7 +258,8 @@ Before marking a task complete (reviewers: see [.claude/skills/reviewing-prs/SKI
 5. ✅ Lint frontend: `npm run eslint` (ZERO errors)
 6. ✅ Scoped CI coverage passes: `python3 scripts/check_scope_coverage.py` (update `.circleci/scope-mapping.txt`/`scope-exclude.txt` when adding files or CI rules — see [Scoped CI](docs/topics/deployment/scoped-ci.md))
 7. ✅ Dependency boundary passes: `python3 scripts/check_app_boundaries.py --root .` (`gamedays` must not import its consumer apps; the allowlist may only shrink — see [Phase 0 plan](docs/topics/planning/current/2026-11-25-phase0-plan.md))
-8. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
+8. ✅ Branch coverage of changed functions passes: `python3 scripts/check_branch_coverage.py --coverage coverage.json --base origin/master --shard <shard>` (100% of branches in every created, changed or moved function; pragmas need an inline reason — see [Phase 1 plan](docs/topics/planning/current/2026-11-25-phase1-plan.md))
+9. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
 
 ---
 
@@ -341,7 +342,7 @@ See `gamedays/tests/setup_factories/db_setup.py::DBSetup.create_playoff_placehol
 For detailed protocols and standards, refer to:
 - **[Contributor Guide](docs/topics/guides/contributor-guide.md)**: Build, test, code style, and safety guidelines (primary reference)
 - **[Architecture Overview](docs/topics/architecture/architecture-overview.md)**: System design and tech stack decisions
-- **[Coding Standards](docs/topics/guides/coding-standards.md)**: Python, TypeScript, and CSS conventions
+- **[Coding Standards](docs/topics/guides/coding-standards.md)**: Python, TypeScript, and CSS conventions. For UI work also follow the **[UI Button Patterns](docs/topics/guides/ui-button-patterns.md)** (primary CTA full width, cancel `btn-outline-danger`).
 - **[Infrastructure Policy](docs/topics/deployment/infrastructure-policy.md)**: Deployment safety and Ansible rules
 - **[Setup Guide](docs/topics/guides/setup-guide.md)**: Local environment configuration
 

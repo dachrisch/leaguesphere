@@ -29,7 +29,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802 (http.server API)
         length = int(self.headers.get("Content-Length", "0"))
-        self.rfile.read(length)
+        self.server.bodies.append(self.rfile.read(length).decode("utf-8"))
         self._handle("POST")
 
     def _handle(self, method):
@@ -81,6 +81,7 @@ def server_factory():
         server.require_auth = require_auth
         server.requests = []
         server.headers = []
+        server.bodies = []
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         servers.append(server)
@@ -253,6 +254,208 @@ def test_runner_reports_harness_errors_without_values(server_factory, tmp_path):
 
     assert exit_code == 0
     assert "Harness errors" in report.read_text()
+
+
+def test_runner_reports_a_probe_missing_on_one_side(
+    server_factory, tmp_path, monkeypatch
+):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+    real = runner.probe_mod.run_probes
+    calls = []
+
+    def fake(sessions, manifest_def, probes):
+        results, skipped = real(sessions, manifest_def, probes)
+        calls.append(results)
+        if len(calls) == 2:
+            results = dict(results)
+            results.pop(sorted(results)[0])
+        return results, skipped
+
+    monkeypatch.setattr(runner.probe_mod, "run_probes", fake)
+    assert (
+        runner.main(
+            [
+                "--ref",
+                ref_url,
+                "--cand",
+                cand_url,
+                "--manifest",
+                str(manifest),
+                "--report",
+                str(report),
+                "--skip-scenarios",
+            ]
+        )
+        == 1
+    )
+    assert "missing" in report.read_text().lower()
+
+
+def test_runner_honours_the_scenarios_filter(server_factory, tmp_path):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+
+    assert (
+        runner.main(
+            [
+                "--ref",
+                ref_url,
+                "--cand",
+                cand_url,
+                "--manifest",
+                str(manifest),
+                "--report",
+                str(report),
+                "--scenarios",
+                "designer-publish",
+            ]
+        )
+        == 0
+    )
+    text = report.read_text()
+    assert "designer-publish" in text
+    assert "finalize-game" not in text
+
+
+def test_runner_reports_scenario_diffs(server_factory, tmp_path, monkeypatch):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+
+    def fake_run(name, sessions, context, run_id):
+        body = {"value": "ref" if run_id.endswith("ref") else "cand"}
+        return runner.scenario_mod.ScenarioRun(
+            name=name,
+            run_id=run_id,
+            steps=[runner.scenario_mod.StepResult(name="x", status=200, body=body)],
+        )
+
+    monkeypatch.setattr(runner.scenario_mod, "run_scenario", fake_run)
+    assert (
+        runner.main(
+            [
+                "--ref",
+                ref_url,
+                "--cand",
+                cand_url,
+                "--manifest",
+                str(manifest),
+                "--report",
+                str(report),
+            ]
+        )
+        == 1
+    )
+    assert "scenario" in report.read_text().lower()
+
+
+def test_runner_posts_the_report_to_requested_prs(
+    server_factory, tmp_path, monkeypatch
+):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+    posted = []
+
+    def fake_run(args, **kwargs):
+        posted.append(args)
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    runner.main(
+        [
+            "--ref",
+            ref_url,
+            "--cand",
+            cand_url,
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(report),
+            "--skip-scenarios",
+            "--comment-pr",
+            "4242",
+        ]
+    )
+    assert any("4242" in args for args in posted)
+
+
+def test_recorded_session_reports_unexpected_requests():
+    from transport import RecordedSession
+
+    session = RecordedSession({})
+    with pytest.raises(AssertionError, match="unexpected request"):
+        session.request("/missing/")
+    session.responses[("GET", "/ok/")] = (200, "ok")
+    assert session.request("/ok/").status == 200
+
+
+def test_transport_can_keep_a_redirect_visible(server_factory):
+    server, url = server_factory(
+        {
+            ("POST", "/redirect/"): (302, "/target/", "text/plain"),
+            ("GET", "/target/"): (200, "ok", "text/plain"),
+        }
+    )
+    session = Session(url)
+    assert session.request("/redirect/", method="POST").status == 200
+    kept = session.request("/redirect/", method="POST", follow_redirects=False)
+    assert kept.status == 302 and kept.url.endswith("/redirect/")
+
+
+def test_transport_merges_per_request_headers(server_factory):
+    server, url = server_factory(routes_for("sha-ref"))
+    session = Session(url)
+    session.request("/", headers={"X-Equivalence-Test": "yes"})
+    assert server.headers[-1]["X-Equivalence-Test"] == "yes"
+
+
+def test_transport_encodes_repeated_form_fields_as_multiple_values(server_factory):
+    server, url = server_factory({("POST", "/form/"): (200, "ok", "text/plain")})
+    session = Session(url)
+    session.request("/form/", method="POST", form={"teams": [11, 12, 13], "name": "x"})
+    assert server.bodies[-1] == "teams=11&teams=12&teams=13&name=x"
+
+
+def test_runner_passes_discovered_team_ids_to_scenarios(
+    server_factory, tmp_path, monkeypatch
+):
+    ref, ref_url = server_factory(routes_for("sha-ref"))
+    cand, cand_url = server_factory(routes_for("sha-cand"))
+    for server in (ref, cand):
+        server.routes[("GET", "/api/teams/")] = (
+            200,
+            {"results": [{"id": 11}, {"id": 12}, {"id": 13}]},
+            "application/json",
+        )
+    manifest = write_manifest(tmp_path, with_staff=False)
+    report = tmp_path / "report.md"
+    seen = []
+
+    def fake_run(name, sessions, context, run_id):
+        seen.append(dict(context))
+        return runner.scenario_mod.ScenarioRun(name=name, run_id=run_id)
+
+    monkeypatch.setattr(runner.scenario_mod, "run_scenario", fake_run)
+    runner.main(
+        [
+            "--ref",
+            ref_url,
+            "--cand",
+            cand_url,
+            "--manifest",
+            str(manifest),
+            "--report",
+            str(report),
+        ]
+    )
+    assert seen and all(ctx.get("wizard_team_ids") == [11, 12, 13] for ctx in seen)
 
 
 def test_basic_auth_is_required_by_the_transport(server_factory):

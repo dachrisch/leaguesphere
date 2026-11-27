@@ -1,5 +1,92 @@
 # Changelog
 
+## [5.30.1](https://github.com/dachrisch/leaguesphere/compare/v5.30.0...v5.30.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **dbaccess:** give each temporary DB request its own MySQL account ([#2598](https://github.com/dachrisch/leaguesphere/issues/2598)) ([8fe1169](https://github.com/dachrisch/leaguesphere/commit/8fe116920aed59c0e9eb3255d80cfc6c01277bf0))
+* **deps:** update dependency eslint-config-prettier to v10.1.9 ([#2599](https://github.com/dachrisch/leaguesphere/issues/2599)) ([aeb4eaa](https://github.com/dachrisch/leaguesphere/commit/aeb4eaa7da3d7cf608b539920f4e6b7f82bc88bb))
+
+## [5.30.0](https://github.com/dachrisch/leaguesphere/compare/v5.29.0...v5.30.0) (2026-11-27)
+
+
+### Features
+
+* add ordered schedule strategy and designer hook registries ([90f47d2](https://github.com/dachrisch/leaguesphere/commit/90f47d2d97c179727dc6d9040db80a5ecfc96bd5))
+* add phase 1 guardrails, hook registry and branch-coverage gate ([8804673](https://github.com/dachrisch/leaguesphere/commit/880467390872aa5bd1c303ee0dd42f10eafb054b))
+
+
+### Bug Fixes
+
+* build the legacy equivalence gameday through the wizard ([56c42af](https://github.com/dachrisch/leaguesphere/commit/56c42afd10bb5dc93eb51af4e3404de3783ebc92))
+* capture scenario ids and exercise all three finalise paths ([51cf370](https://github.com/dachrisch/leaguesphere/commit/51cf370a991ec18eb938f5df280283e54538f8de))
+* catch bare dynamic imports in boundary checker ([06c919d](https://github.com/dachrisch/leaguesphere/commit/06c919d02d34f4fbc55fe6c1154d2f5eca404a2a))
+* create the verification user in the passcheck test ([c4b6750](https://github.com/dachrisch/leaguesphere/commit/c4b675069d99c34e9551acddac91980222f50a22))
+* fail loudly on deleted groups and pin group choices ([9a0edf3](https://github.com/dachrisch/leaguesphere/commit/9a0edf3f18f2cfd6dfa7d367148c2a7523932316))
+* guard schedule predicates and keep designer hook required ([f210d41](https://github.com/dachrisch/leaguesphere/commit/f210d41245c061a64dd0da59bef55410ae00e70c))
+* guard season_settings hook and restore characterization ([9d04528](https://github.com/dachrisch/leaguesphere/commit/9d045282f9689cde0427cd0a7575cc18be4f88b2))
+* keep raw qualify table for officials membership check ([471b840](https://github.com/dachrisch/leaguesphere/commit/471b840997ba524ec65d201b7a00350a0fbe91e3))
+* keep wizard redirect visible and fail at the capture step ([652b242](https://github.com/dachrisch/leaguesphere/commit/652b242483c8fd830328c60b51786b061d9b99da))
+* make registry owners and replacement rules explicit ([cc78d15](https://github.com/dachrisch/leaguesphere/commit/cc78d15ee8a99318cb6039371f957f8d495a2083))
+* make the legacy scenario executable on real HTTP ([7887441](https://github.com/dachrisch/leaguesphere/commit/7887441ea714e2980df3fd3403158b858d92cd3a))
+* normalise scenario result ids from the games payload ([5e83d2b](https://github.com/dachrisch/leaguesphere/commit/5e83d2b2c61e63bf70a69349b787b8fa2ea7d254))
+* run equivalence harness tests in the python-cross shard ([93c5399](https://github.com/dachrisch/leaguesphere/commit/93c5399f10651467e3d75bde96f860a59056caef))
+* scope coverage gate on real coverage.py JSON ([5417de4](https://github.com/dachrisch/leaguesphere/commit/5417de41dedc99b7c7b170f1eb2f0963e52b283e))
+
+
+### Documentation
+
+* align Phase 1 plan with review decisions ([64b7b0a](https://github.com/dachrisch/leaguesphere/commit/64b7b0a4c46e0b284407bf220ec80c2124ed7f93))
+* correct the .coveragerc omit section reference ([2d804c4](https://github.com/dachrisch/leaguesphere/commit/2d804c4aaed875b1b153ed49349be82c26eec0cb))
+* diff the Phase 1 branch gate against origin/master ([0f8c60a](https://github.com/dachrisch/leaguesphere/commit/0f8c60a50cae668c4a74f04356388537bf354391))
+* list the template and wizard-built legacy equivalence scenarios ([f3c43a4](https://github.com/dachrisch/leaguesphere/commit/f3c43a463b00973516ca333c7d031e798ea79337))
+* record agreed Phase 1 plan ([e4b9abe](https://github.com/dachrisch/leaguesphere/commit/e4b9abe0333814202b47b68c2014243c42cbd4a5))
+
+## [5.29.0](https://github.com/dachrisch/leaguesphere/compare/v5.28.3...v5.29.0) (2026-11-27)
+
+
+### Features
+
+* **matchreport:** claim and unassign actions on the gameday detail page ([6962e8b](https://github.com/dachrisch/leaguesphere/commit/6962e8b29387f7dd9d077249b5188e20c4ae51cd))
+* **officials:** add assignments via picker and staff unassign ([7843396](https://github.com/dachrisch/leaguesphere/commit/784339695b5ed2084c22d237b3bfd13b1efa3131))
+* **officials:** allow claiming a mapped row whose typed name matches the official ([8239a77](https://github.com/dachrisch/leaguesphere/commit/8239a77b63e12997ab28a193bccab01d141f90a5))
+* **officials:** association resolver with production alias mapping ([6f940f6](https://github.com/dachrisch/leaguesphere/commit/6f940f61beee80bcef711019e162701497197b08))
+* **officials:** canonical mine and open filter URLs ([553cba1](https://github.com/dachrisch/leaguesphere/commit/553cba1af7ad6bfcb09d1d439f7ba69097a565b3))
+* **officials:** claim unmapped assignments from Einsaetze list ([02195df](https://github.com/dachrisch/leaguesphere/commit/02195df4a6b152089bc9b7ba5f439ad5d7e7ae27))
+* **officials:** delete own DFFL assignments from profile gamelist ([502b9fb](https://github.com/dachrisch/leaguesphere/commit/502b9fbcd60b45c55935a961151eabbdef91c596))
+* **officials:** edit and delete external games with association dropdown ([8e4556f](https://github.com/dachrisch/leaguesphere/commit/8e4556f9b884f9939098fc7967e8e01c7dfc781c))
+* **officials:** full-width claim button and danger-styled cancel links ([62ccd4b](https://github.com/dachrisch/leaguesphere/commit/62ccd4bf43bbd5fbcabd6c99578ce24dd5d3c5a9))
+* **officials:** link names and gamedays and clean up the profile page ([35bf5dc](https://github.com/dachrisch/leaguesphere/commit/35bf5dc9d5a8476fd1b7a0adceae1d21240f67ee))
+* **officials:** Meine Einsaetze navigation and shared button pattern ([6d208dc](https://github.com/dachrisch/leaguesphere/commit/6d208dc34f0202abc776f9e24d65e473af774f9a))
+* **officials:** migrate external games association to Association FK ([7cfd010](https://github.com/dachrisch/leaguesphere/commit/7cfd0103f08432ecaf6019e44afe5a52d7745020))
+* **officials:** multi-entry formset for external game self-reporting ([cfad488](https://github.com/dachrisch/leaguesphere/commit/cfad4882781cbe7d587b6db821ff4b4db09547b5))
+* **officials:** open-rows filter, staff banner state and internal nachmelden link ([4c7d25c](https://github.com/dachrisch/leaguesphere/commit/4c7d25c0404f0c95c7c5ed78d3fe965754c3b91e))
+* **officials:** polish forms and multi-entry layout from the review walkthrough ([9b33423](https://github.com/dachrisch/leaguesphere/commit/9b334238b479cb4dc4b8b07dc2ec763a99b03a72))
+* **officials:** polish self-service UI copy, links and staff actions ([906968e](https://github.com/dachrisch/leaguesphere/commit/906968e0a79b8f9947d99a74689af3d3d1ac2dee))
+* **officials:** profile links, self-name reveal and mobile form spacing ([5a94546](https://github.com/dachrisch/leaguesphere/commit/5a94546de5f3f41a26988ec3cf924564a6841bd1))
+* **officials:** self-service duty management (rebased) ([ce41b2a](https://github.com/dachrisch/leaguesphere/commit/ce41b2a3f2aceec7deda7a5b0d2203a38c7d4fe4))
+* **officials:** self-service permission gate and offd.de login wiring ([bc0907a](https://github.com/dachrisch/leaguesphere/commit/bc0907a2d2aa9e75c7a4eaf9b5ca4cbfdc77a118))
+* **officials:** staff overwrites, season-aware add, unassign semantics and login copy ([0be601f](https://github.com/dachrisch/leaguesphere/commit/0be601f13a182cb85adb1f6c7df163973256715d))
+* **officials:** validate and restyle external game forms for mobile ([2f0f425](https://github.com/dachrisch/leaguesphere/commit/2f0f425b57d7fe384641fd1c2b48eab52df45bad))
+
+
+### Bug Fixes
+
+* **matchreport:** return to the gameday after assigning or cancelling ([ffc2845](https://github.com/dachrisch/leaguesphere/commit/ffc2845f76b64263393a9dfa556a9eb242e0d697))
+* **officials:** address PR [#2577](https://github.com/dachrisch/leaguesphere/issues/2577) review findings and align docs ([c816874](https://github.com/dachrisch/leaguesphere/commit/c8168740e75122839e3a8e8958fa3615ffddb933))
+* **officials:** address review findings in staff fields, highlight, picker and cookie rotation ([f7f139c](https://github.com/dachrisch/leaguesphere/commit/f7f139c8c4275a886d2e3f7495115ee43408d196))
+* **officials:** deterministic association resolver and migration ([8b071f4](https://github.com/dachrisch/leaguesphere/commit/8b071f44b871d9db4c3555d9de027bc95c2adad7))
+* **officials:** show a form error when Moodle is unreachable or misconfigured ([f4e5bd6](https://github.com/dachrisch/leaguesphere/commit/f4e5bd65e4ff999e70a7cd5334f2e77adfce5721))
+* **officials:** tighten reclaim gate, serialize adds and protect typed names ([de6b453](https://github.com/dachrisch/leaguesphere/commit/de6b4532e90e1fb4a1255cacb6e99e0aa7b5aa71))
+
+
+### Documentation
+
+* officials self-service feature overview ([7d35c3c](https://github.com/dachrisch/leaguesphere/commit/7d35c3ca5c8e73fe64e7e3e34b450653486c468b))
+* **officials:** help topic and module guide for self-service ([fe38b6b](https://github.com/dachrisch/leaguesphere/commit/fe38b6bf8335c5ec5dd6fa2ef8bc80028d92564a))
+* **officials:** refine self-service help and login copy ([6e064d0](https://github.com/dachrisch/leaguesphere/commit/6e064d0fbbe53e5fb76ee1836bcb989801093062))
+
 ## [5.28.3](https://github.com/dachrisch/leaguesphere/compare/v5.28.2...v5.28.3) (2026-11-26)
 
 
