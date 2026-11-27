@@ -58,7 +58,7 @@ stream can never pin a side's worker.
 
 | Pattern | Reason |
 |---|---|
-| `^vor \d+\s*(s\|sek\|min\|h)$`, `^gerade eben$` | Relative clock labels change while a step runs. |
+| `\bvor \d+\s*(?:s\|sek\|min\|h)\b`, `\bgerade eben\b` → `<time>` | Relative clock labels change while a step runs. Unanchored (`capture.py` `VOLATILE_NODES`): the label is replaced in place inside its line, the rest of the line is kept. |
 | `\[(focused\|active)\]` → removed token | Focus state depends on the last clicked control; the rest of the line is kept. |
 | `\b(fade\|slide\|transition)-(in\|out)\b` → removed token | CSS transition state is timing-dependent; the rest of the line is kept. |
 
@@ -69,8 +69,9 @@ Relative clock labels become `<time>` rather than dropping the line.
 `scorecard_v2_tracking` (log filter, Spielzug sheet, a real touchdown + extra
 point write and undo, halftime write, series tile, and the live/finished/
 stranded panel states), `scorecard_v2_gamesetup` (crew picker, a real start
-write and the saved-setup "Fortsetzen" state), `designer_gametable` (team cell
-and the grouped team-option menu), `officials_pages` (signup guard + licence
+write and the saved-setup "Fortsetzen" state), `designer_gametable` (opens the
+grouped team-option menu on a team cell of a DRAFT fixture gameday, picks
+another team and waits for the designer's own autosave `PUT …/designer-state/`), `officials_pages` (signup guard + licence
 view), `passcheck` (eligibility list), `liveticker` (public page and its XHR
 sequence). All six run on **every** layer (PROVISIONAL P10); a failure is
 attributed by journey and step in the report. The first two journeys exercise
@@ -80,8 +81,17 @@ behaviour witness.
 Writes use dedicated run-id-tagged gamedays/games created through the same API
 steps as the backend write fixtures, so ref and cand start from identical
 state and never write to each other's rows; captured ids are normalised to
-`<entity-N>` and the fixtures are removed at the end of each journey. Optional
-clicks record their selector in the step's `absent` list, which is diffed too.
+`<entity-N>`. Each journey removes the gameday it created itself at the end;
+this is the one deliberate exception to plan §3.3's "never delete stage rows"
+(see `fixture.cleanup()`): a side's leftover fixture would otherwise be picked
+up by the other side's `discover()` and show up as a cross-side diff. Nothing
+else on the stage is deleted. Every write is a required click: an absent
+write control fails the journey (skipped step → exit 1). Only genuinely
+optional states (for example "Fortsetzen", which exists only once a setup was
+saved) use optional clicks, which record their selector in the step's
+`absent` list; that list is diffed too. A journey that raises (for example a
+fixture error) is listed under "Harness errors" and the remaining journeys
+still run.
 
 ## Tests and coverage
 
@@ -99,6 +109,11 @@ python3 scripts/check_branch_coverage.py --coverage coverage-frontend.json \
 ```
 
 `capture.py` and `runner.py` are characterized at 100% branches with fakes;
-the real browser/HTTP adapters live in `browser.py` and are verified by the
-noise floor on the live stage. Reports are posted manually with `gh pr comment`
+they are the only files plan §3.4 puts under the branch gate, and CI forces
+exactly those two back in with `--require-file`. The rest of the harness is
+deliberately left out of the gate: `browser.py` (the real Playwright/HTTP
+adapters), `journeys/common.py` and `journeys/fixture.py` drive a live browser
+against the stage, and a broken one cannot produce a green report, because the
+runner fails on every skipped step, harness error and too-short journey. They
+are verified by the noise floor on the live stage. Reports are posted manually with `gh pr comment`
 (PROVISIONAL P6). Rollback: stop using the harness; no app code is involved.

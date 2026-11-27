@@ -47,8 +47,15 @@ def _find_run(session, run_id):
     raise LookupError(f"fixture gameday for {run_id} was not created")
 
 
-def create(context, run_id, *, started=False, finished=False, locked=False):
-    """Create one gameday/game and optionally start or finish its game."""
+def create(
+    context, run_id, *, started=False, finished=False, locked=False, publish=True
+):
+    """Create one gameday/game and optionally start or finish its game.
+
+    ``publish=False`` stops after saving the designer canvas: the gameday stays
+    a DRAFT the designer can still edit (a published one is locked), so the
+    result has no ``game_id``.
+    """
     session = api_session(context)
     seed = discover(context)
     if not seed.get("season_id") or not seed.get("league_id"):
@@ -63,7 +70,18 @@ def create(context, run_id, *, started=False, finished=False, locked=False):
     # row before replaying them, exactly as the backend runner's capture does.
     gameday_id = _find_run(session, run_id)
     fixture_context["gameday_id"] = gameday_id
-    for step in scenarios._publish_steps_with_teams():
+    steps = scenarios._publish_steps_with_teams()
+    if not publish:
+        steps = [step for step in steps if step.method == "PUT"]
+        for step in steps:
+            _run_step(session, step, fixture_context)
+        return {
+            "gameday_id": gameday_id,
+            "season_id": seed["season_id"],
+            "league_id": seed["league_id"],
+            "run_id": run_id,
+        }
+    for step in steps:
         _run_step(session, step, fixture_context)
 
     games = session.request(f"/api/gamedays/{gameday_id}/games/")
@@ -108,7 +126,15 @@ def create(context, run_id, *, started=False, finished=False, locked=False):
 
 
 def cleanup(context, fixture):
-    """Best-effort removal: a published gameday must be unlocked first."""
+    """Remove the run's own fixture gameday (and its games) again.
+
+    This is the one deliberate exception to "never delete stage rows" (plan
+    §3.3): it only deletes the gameday this journey created a moment ago, found
+    by its unique ``<run-id>-ref``/``-cand`` name. Leaving it would put a
+    side-specific row on the shared DB that the other side's ``discover()``
+    could pick up, i.e. a cross-side diff. A published gameday must be set
+    back to DRAFT before the API lets it be deleted.
+    """
     if not fixture:
         return False
     session = api_session(context)

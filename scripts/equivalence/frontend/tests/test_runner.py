@@ -193,6 +193,43 @@ def test_run_fails_on_skipped_steps_errors_and_too_few_steps(capsys):
     assert "too few captured steps" in capsys.readouterr().out
 
 
+def test_run_reports_a_crashing_journey_and_keeps_going(capsys):
+    """One side's fixture error is a harness error; later journeys still run."""
+    ran = []
+
+    def crashes_on_cand(context, run_id, credentials):
+        if run_id.endswith("-cand"):
+            raise LookupError("no season/league on stage")
+        return (
+            {
+                "open": {"requests": [], "dom": "same", "aria": "same"},
+                "action": {"requests": [], "dom": "same", "aria": "same"},
+            },
+            [],
+        )
+
+    def healthy(context, run_id, credentials):
+        ran.append(run_id)
+        return (
+            {
+                "open": {"requests": [], "dom": "same", "aria": "same"},
+                "action": {"requests": [], "dom": "same", "aria": "same"},
+            },
+            [],
+        )
+
+    deps, calls = make_deps(journeys={"broken": crashes_on_cand, "later": healthy})
+    code = runner.run(make_args(run_id="fe-9"), deps)
+    out = capsys.readouterr().out
+
+    assert code == 1
+    assert "### Harness errors" in out
+    assert "- broken:cand: LookupError: no season/league on stage" in out
+    assert "broken: 2/0" in out
+    assert ran == ["fe-9-ref", "fe-9-cand"]
+    assert calls["closed"] == 2
+
+
 def test_run_unexplained_diff_returns_one(capsys):
     left = {"open": {"requests": [], "dom": "left", "aria": "same"}}
     right = {"open": {"requests": [], "dom": "right", "aria": "same"}}
