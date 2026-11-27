@@ -1032,6 +1032,11 @@ def run_scenario(name, sessions, context, run_id):
         path = _resolve(step.path, context)
         body = _resolve(step.json, context) if step.json is not None else None
         form = _resolve(step.form, context) if step.form is not None else None
+        if form is not None:
+            # JSON payloads keep dict/int values (designer template mappings),
+            # but an HTML form is submitted as text: a captured numeric id
+            # must become "7", not 7, for the wizard's confirm step.
+            form = {key: str(value) for key, value in form.items()}
         files = None
         if step.files is not None:
             files = {}
