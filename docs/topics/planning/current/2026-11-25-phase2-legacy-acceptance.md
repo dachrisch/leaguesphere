@@ -29,10 +29,15 @@ count, per-season counts and SHA-256 digest cover **both** cases; `shadow_only`
 is a separate breakdown of the same accepted set. Gates are read from
 `v2_drift` and `v2_flagged`, with the source on every drift/flagged entry.
 
-**Cutoff.** The report records `legacy_cutoff` (a max game id). The digest is
-computed over accepted-set ids at or below it, so the published number can be
-reproduced after new v1 games have been written by passing
-`--legacy-cutoff <recorded value>`.
+**Cutoff.** The accepted record is frozen at the agent-stage snapshot of
+2026-11-26 (`generated_at = 2026-11-26T02:01:48.651647+00:00`): it contains every
+legacy game that existed at that instant and no game written afterwards. That
+instant is the recorded cutoff. The report itself records `legacy_cutoff = null`
+because the measurement run covered the whole frozen snapshot; after new v1
+games exist, a regeneration on a later clone must pass `--legacy-cutoff` with
+the max game id at the same boundary and publish that id next to its new digest.
+A cutoff chosen after the fact cannot reproduce the 6,369-game digest, so no
+number is invented here.
 
 ## Measured result
 
@@ -51,6 +56,10 @@ It happened to have **zero shadow-only games**, so including them in the
 accepted set does **not** change any recorded number: 6,369 games, the digest
 below and all per-season counts are identical to the earlier no-event-only
 measurement. The code and tests now measure the documented definition anyway.
+Consequently the recorded `v2_drift = 0` and `v2_flagged = 0` say that no
+restored v2 game was available to drift; they do **not** by themselves prove the
+event read path, which is exercised by the harness's scenarios and by the
+gameday rehearsal (§8.3 of the phase 2 plan).
 
 SHA-256 digest of the sorted ids of the 6,369 accepted games (P3, approved
 2026-11-26: store the digest and counts, **not** the raw ids, in the public
@@ -75,10 +84,11 @@ Per-season counts of accepted legacy games (all no-event games on the stage):
 The report also recorded `generated_at = 2026-11-26T02:01:48.651647+00:00`,
 `ref_sha = 96ec02b175a62e0e264f51771355ebf806c21797` and
 `cand_sha = 3b9f4ecbf29735b301c819b56e06c74601913e7a` (the Layer 2 head).
-`legacy_cutoff` was not passed on that run, so it recorded the full set at that
-time; re-run with `--legacy-cutoff <recorded max id>` to reproduce the digest
-exactly. The gate is `v2_drift == 0` and `v2_flagged == 0`, not the command's
-exit code alone. The
+`legacy_cutoff` is `null` on that run: the frozen snapshot is the boundary, so
+the whole accepted set at that instant is covered. Reproducing the digest needs
+that same snapshot (or a later run with an explicitly recorded max-id cutoff);
+it is not reproducible by guessing a cutoff today. The gate is
+`v2_drift == 0` and `v2_flagged == 0`, not the command's exit code alone. The
 console output was:
 
 ```text
@@ -98,15 +108,19 @@ intended; the recorded acceptance numbers above come from `--all`.
 ## Regenerate
 
 Run this inside the `cand` container on servyy-test (the role is test-host only
-and the report is read-only):
+and the report is read-only). On the frozen 2026-11-26 snapshot no cutoff flag is
+needed — the snapshot itself bounds the set:
 
 ```bash
 python manage.py check_game_projection --all \
   --report /tmp/phase2-legacy-report.json \
   --ref-sha 96ec02b175a62e0e264f51771355ebf806c21797 \
-  --cand-sha <layer-head-sha> \
-  --legacy-cutoff <recorded-max-game-id>
+  --cand-sha <layer-head-sha>
 ```
+
+On a later clone, add `--legacy-cutoff <max-id-at-the-new-boundary>` and record
+that id together with the new count/digest; the old digest is not the target of
+such a run.
 
 The report builder performs no additional queries, so `--all` stays at six
 queries. The command's stdout and exit status are unchanged by `--report`.
