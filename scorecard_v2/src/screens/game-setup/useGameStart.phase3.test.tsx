@@ -266,6 +266,8 @@ describe("runStart (Phase 3 characterization)", () => {
     busy.result.current.inFlightRef.current = true;
     await act(async () => busy.result.current.runStart());
     expect(apiPutMock).not.toHaveBeenCalled();
+    expect(apiPostMock).not.toHaveBeenCalled();
+    expect(busy.result.current.onStarted).not.toHaveBeenCalled();
 
     for (const over of [
       { loading: true },
@@ -279,11 +281,9 @@ describe("runStart (Phase 3 characterization)", () => {
       const guarded = setup(over);
       await act(async () => guarded.result.current.runStart());
       expect(apiPutMock).not.toHaveBeenCalled();
+      expect(apiPostMock).not.toHaveBeenCalled();
       expect(guarded.result.current.onStarted).not.toHaveBeenCalled();
     }
-    expect(
-      setup({ readOnly: true }).result.current.args.readOnly,
-    ).toBe(true);
   });
 
   it("describes a rejected start and switches to read-only on a device lock", async () => {
