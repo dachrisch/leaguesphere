@@ -25,6 +25,8 @@ See [current/](./current/) for active planning work.
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
 
+- [2026-02-25 Multi-Tenant RBAC Thesis Implementation Proposal](./history/2026-02-25-multi-tenant-rbac-thesis-implementation-proposal.md): LeagueSphere's response to Niklas Just's bachelor thesis — middleware-based tenant isolation for the shared-schema multi-tenant model
+
 ## Overview
 
 This directory tracks project plans and completed work. Plans use YYYY-MM-DD-name.md naming.
