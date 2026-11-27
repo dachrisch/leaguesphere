@@ -23,9 +23,11 @@ def run(context, run_id, credentials):
             ("crew-option", optional('[role="option"]:not([aria-disabled="true"])')),
             ("crew-close", press("Escape")),
             # First tap opens the confirmation; the sheet's button writes the
-            # crew and setup and starts the game.
-            ("start-open", optional(".setupfoot button.startbtn")),
-            ("start-write", optional(".sheet .sheetfoot button.startbtn")),
+            # crew and setup and starts the game. Both are required writes: an
+            # absent control must fail the journey, not yield an "absent"-only
+            # step that compares equal on both sides.
+            ("start-open", click(".setupfoot button.startbtn")),
+            ("start-write", click(".sheet .sheetfoot button.startbtn")),
         ]
         run_steps(view, path, steps, skipped, actions=actions, tokens=tokens)
         # A saved setup changes the primary action to "Fortsetzen"; if the
