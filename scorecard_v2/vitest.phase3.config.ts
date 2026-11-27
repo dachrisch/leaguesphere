@@ -40,6 +40,8 @@ export default defineConfig({
         "src/screens/tracking-flow/panels.ts",
         // TrackingPanels.tsx
         "src/screens/tracking-flow/TrackingPanels.tsx",
+        // TrackingSheets.tsx
+        "src/screens/tracking-flow/TrackingSheets.tsx",
       ],
       thresholds: { branches: 100, perFile: true },
     },

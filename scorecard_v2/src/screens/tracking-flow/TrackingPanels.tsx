@@ -14,7 +14,6 @@ import type {
   TeamOfficial,
 } from "../../api/types";
 import { driveText, spotText } from "../../app/drive";
-import { readQuarterback, setQuarterback } from "../../app/quarterback";
 import { timeoutBudget, timeoutText } from "../../app/timeouts";
 import AppHeader from "../../components/AppHeader";
 import EventLog, { type LogRow } from "../../components/EventLog";
@@ -22,7 +21,6 @@ import ScoreHeader from "../../components/ScoreHeader";
 import GameInfo from "../../components/GameInfo";
 import SnapshotHint from "../../components/SnapshotHint";
 import SyncBadge, { SyncDetails } from "../../components/SyncBadge";
-import { directionFromWire } from "../../components/DirectionText";
 import {
   ArrowRight,
   Check,
@@ -37,27 +35,12 @@ import {
   SwapArrows,
   User,
 } from "../../components/icons";
-import JerseyPicker from "../../components/JerseyPicker";
-import QuarterbackPick from "../../components/QuarterbackPick";
-import ChallengeSheet from "../../components/sheets/ChallengeSheet";
-import EditSheet from "../../components/sheets/EditSheet";
-import FieldPositionSheet from "../../components/sheets/FieldPositionSheet";
-import HalftimeSheet from "../../components/sheets/HalftimeSheet";
-import MissedPatSheet from "../../components/sheets/MissedPatSheet";
-import MoreSheet from "../../components/sheets/MoreSheet";
-import PenaltySheet from "../../components/sheets/PenaltySheet";
-import PlaySheet from "../../components/sheets/PlaySheet";
-import QuarterbackSheet from "../../components/sheets/QuarterbackSheet";
-import SeriesSheet, { type SeriesMode } from "../../components/sheets/SeriesSheet";
-import Sheet from "../../components/sheets/Sheet";
-import SpielzugSheet from "../../components/sheets/SpielzugSheet";
-import TimeoutSheet from "../../components/sheets/TimeoutSheet";
-import TouchdownSheet from "../../components/sheets/TouchdownSheet";
+import type { SeriesMode } from "../../components/sheets/SeriesSheet";
 import { takeOver } from "../../session/lock";
 import type { SyncStatus } from "../../session/useSyncStatus";
 import { SyncStrip } from "./SyncStrip";
+import { TrackingSheets } from "./TrackingSheets";
 import {
-  secondHalfPossession,
   trackingSubtitle,
   trackingTitle,
   type JerseyLater,
@@ -207,118 +190,77 @@ export interface TrackingPanelsProps {
   setHalftimeOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-export function TrackingPanels({
-  game,
-  status,
-  onBack,
-  onLogout,
-  gamedayName,
-  leagueLabel,
-  staleSince,
-  canRelease,
-  log,
-  officialLog,
-  drained,
-  officials,
-  officialsUnavailable,
-  people,
-  setup,
-  rules,
-  roster,
-  possession,
-  rows,
-  possessionSide,
-  opponentSide,
-  possessionName,
-  opponentName,
-  possessionPending,
-  halftimePending,
-  posting,
-  readOnly,
-  finished,
-  penaltyDisabled,
-  composerDisabled,
-  touchdownLabel,
-  halftimeDisabled,
-  possessionError,
-  undoError,
-  quickError,
-  confirmation,
-  quick,
-  finishBlocked,
-  halftimeError,
-  patError,
-  undoKey,
-  armed,
-  drive,
-  trySpot,
-  geometry,
-  half,
-  timeoutsPerHalf,
-  possessionTimeouts,
-  timeouts,
-  unsportsmanlike,
-  touchdownGain,
-  overtime,
-  patSide,
-  patPlayers,
-  patDefensePlayers,
-  recentJerseys,
-  pendingPat,
-  patTry,
-  patMiss,
-  patDefense,
-  patDefenseJersey,
-  patJersey,
-  patQb,
-  patBusy,
-  patFirst,
-  sheet,
-  sheetHistory,
-  replacing,
-  editing,
-  timeoutTeam,
-  halftimeOpen,
-  breakStartedAt,
-  logTeamName,
-  takePossession,
-  openEdit,
-  submitEdit,
-  undo,
-  setTimeoutTeam,
-  openSheet,
-  closeSheet,
-  backSheet,
-  undoQuick,
-  tapSeriesTile,
-  submitPlay,
-  submitSeries,
-  pickFromSpielzug,
-  takeTimeout,
-  answerPat,
-  writePat,
-  writeDefensiveTry,
-  writeMissedPat,
-  patSideOf,
-  submit,
-  submitTouchdown,
-  startHalftime,
-  startSecondHalf,
-  openSinglePat,
-  startOvertime,
-  finish,
-  arm,
-  setPatDefense,
-  setPatDefenseJersey,
-  setPatTry,
-  setPatError,
-  setPatJersey,
-  setPatQb,
-  setPatMiss,
-  setEditing,
-  setHalftimeError,
-  setHalftimeOpen,
-}: TrackingPanelsProps) {
+export function TrackingPanels(props: TrackingPanelsProps) {
+  const {
+    game,
+    status,
+    onBack,
+    onLogout,
+    gamedayName,
+    leagueLabel,
+    staleSince,
+    canRelease,
+    log,
+    officialLog,
+    drained,
+    officials,
+    officialsUnavailable,
+    people,
+    setup,
+    possession,
+    rows,
+    possessionSide,
+    possessionName,
+    possessionPending,
+    halftimePending,
+    posting,
+    readOnly,
+    finished,
+    penaltyDisabled,
+    composerDisabled,
+    touchdownLabel,
+    halftimeDisabled,
+    possessionError,
+    undoError,
+    quickError,
+    confirmation,
+    quick,
+    finishBlocked,
+    halftimeError,
+    patError,
+    undoKey,
+    armed,
+    drive,
+    trySpot,
+    geometry,
+    half,
+    timeoutsPerHalf,
+    possessionTimeouts,
+    overtime,
+    pendingPat,
+    patBusy,
+    patFirst,
+    halftimeOpen,
+    breakStartedAt,
+    logTeamName,
+    takePossession,
+    openEdit,
+    undo,
+    setTimeoutTeam,
+    openSheet,
+    undoQuick,
+    tapSeriesTile,
+    answerPat,
+    openSinglePat,
+    startOvertime,
+    finish,
+    arm,
+    setPatDefense,
+    setPatDefenseJersey,
+    setPatError,
+    setHalftimeError,
+    setHalftimeOpen,
+  } = props;
   return (
     <div className="app-shell tracking">
       <AppHeader
@@ -691,322 +633,7 @@ export function TrackingPanels({
         </p>
       </main>
 
-      {patTry !== null ? (
-        <Sheet
-          busy={patBusy}
-          error={patError}
-          footer={
-            <button
-              className="startbtn"
-              disabled={patBusy || readOnly}
-              onClick={() => {
-                void writePat(patJersey);
-              }}
-              type="button"
-            >
-              {patBusy ? "Speichern …" : "Speichern"}
-            </button>
-          }
-          onBack={() => {
-            setPatTry(null);
-            setPatError(null);
-          }}
-          onClose={() => {
-            setPatTry(null);
-            setPatError(null);
-          }}
-          title={`Extrapunkt ${patTry.team}`}
-        >
-          <p className="sheetnote">
-            {patTry.defaultJersey === null
-              ? "Wer hat den Extrapunkt verwandelt?"
-              : `Wer hat den Extrapunkt verwandelt? Der Touchdown-Schütze ist vorausgewählt (#${patTry.defaultJersey}).`}
-          </p>
-          <JerseyPicker
-            disabled={patBusy || readOnly}
-            groupLabel="Trikotnummer Extrapunkt"
-            label="Trikot"
-            onChange={setPatJersey}
-            optionalLabel="Ohne Nummer"
-            players={patPlayers}
-            strict={game.passcheck === true}
-            value={patJersey}
-          />
-          <h3 className="sheetsection">Quarterback</h3>
-          <QuarterbackPick
-            disabled={patBusy || readOnly}
-            onChange={setPatQb}
-            roster={roster}
-            side={patSide}
-            value={patQb}
-          />
-        </Sheet>
-      ) : null}
-
-      {patDefense ? (
-        <Sheet
-          busy={patBusy}
-          error={patError}
-          footer={
-            <button
-              className="startbtn"
-              disabled={patBusy || readOnly}
-              onClick={() => {
-                void writeDefensiveTry(patDefenseJersey);
-              }}
-              type="button"
-            >
-              {patBusy ? "Speichern …" : "Speichern"}
-            </button>
-          }
-          onBack={() => {
-            setPatDefense(false);
-            setPatError(null);
-          }}
-          onClose={() => {
-            setPatDefense(false);
-            setPatError(null);
-          }}
-          title={`Gegner +2 · ${opponentName ?? "Gegner"}`}
-        >
-          <p className="sheetnote">
-            Wer hat den Punkt für {opponentName ?? "Gegner"} erzielt? Ohne
-            Nummer zählt der Punkt fürs Team.
-          </p>
-          <JerseyPicker
-            disabled={patBusy || readOnly}
-            groupLabel="Trikotnummer Gegner"
-            label="Trikot"
-            onChange={setPatDefenseJersey}
-            optionalLabel="Ohne Nummer"
-            players={patDefensePlayers}
-            strict={game.passcheck === true}
-            value={patDefenseJersey}
-          />
-        </Sheet>
-      ) : null}
-
-      {patMiss !== null ? (
-        <MissedPatSheet
-          initialJersey={patMiss.defaultJersey}
-          lastQuarterback={patQb}
-          onBack={() => setPatMiss(null)}
-          onClose={() => setPatMiss(null)}
-          onSubmit={writeMissedPat}
-          opponentName={opponentName ?? "Gegner"}
-          roster={roster}
-          side={patSideOf(patMiss.team)}
-          teamName={patMiss.team}
-        />
-      ) : null}
-
-      {editing !== null ? (
-        <EditSheet
-          // A second edit of another row starts from that row, not the last one.
-          key={editing.key}
-          event={editing.event}
-          half={editing.half}
-          input={editing.input}
-          jersey={editing.player}
-          payload={editing.payload}
-          onSubmit={submitEdit}
-          onClose={() => setEditing(null)}
-          roster={roster}
-          side={
-            editing.team !== null && editing.team === log.away.name
-              ? "away"
-              : "home"
-          }
-          teamName={editing.team ?? "–"}
-        />
-      ) : null}
-
-      {sheet !== null &&
-      possessionSide !== null &&
-      possessionName !== null &&
-      (sheet.kind === "touchdown" ||
-        sheet.kind === "series" ||
-        sheet.kind === "quarterback" ||
-        sheet.kind === "spielzug" ||
-        opponentName !== null) ? (
-        sheet.kind === "play" ? (
-          <PlaySheet
-            drive={drive}
-            geometry={geometry}
-            initialResult={sheet.result}
-            initialType={sheet.type}
-            lastQuarterback={readQuarterback(game.id, possessionSide)}
-            onBack={sheetHistory.length > 0 ? backSheet : undefined}
-            onClose={closeSheet}
-            onSubmit={submitPlay}
-            opponentName={opponentName ?? "Gegner"}
-            roster={roster}
-            side={possessionSide}
-            teamName={possessionName}
-          />
-        ) : sheet.kind === "fieldpos" ? (
-          <FieldPositionSheet
-            ballOn={drive.ballOn}
-            down={drive.down}
-            goal={drive.goal}
-            onBack={sheetHistory.length > 0 ? backSheet : undefined}
-            onClose={closeSheet}
-            onSubmit={(event) => submit([event])}
-            teamName={possessionName}
-          />
-        ) : sheet.kind === "challenge" ? (
-          <ChallengeSheet
-            onBack={sheetHistory.length > 0 ? backSheet : undefined}
-            onClose={closeSheet}
-            onSubmit={(event) => submit([event])}
-            teamName={possessionName}
-          />
-        ) : sheet.kind === "touchdown" ? (
-          <TouchdownSheet
-            gain={touchdownGain}
-            onClose={closeSheet}
-            onSubmit={submitTouchdown}
-            passcheck={game.passcheck === true}
-            recent={recentJerseys}
-            roster={roster}
-            side={possessionSide}
-            teamName={possessionName}
-          />
-        ) : sheet.kind === "series" ? (
-          // Completing a one-tap interception: the defender already has the
-          // ball, so the sheet sees the possession from before the tap.
-          replacing !== null &&
-          sheet.mode === "interception" &&
-          opponentName !== null &&
-          opponentSide !== null ? (
-            <SeriesSheet
-              key={sheet.mode}
-              half={half}
-              mode={sheet.mode}
-              onBack={sheetHistory.length > 0 ? backSheet : undefined}
-              onClose={closeSheet}
-              onSubmit={submitSeries}
-              opponentName={possessionName}
-              perHalf={timeoutsPerHalf}
-              roster={roster}
-              side={opponentSide}
-              teamName={opponentName}
-              timeouts={timeouts}
-            />
-          ) : (
-            <SeriesSheet
-              key={sheet.mode}
-              half={half}
-              mode={sheet.mode}
-              onBack={sheetHistory.length > 0 ? backSheet : undefined}
-              onClose={closeSheet}
-              onSubmit={submitSeries}
-              opponentName={opponentName ?? "–"}
-              perHalf={timeoutsPerHalf}
-              roster={roster}
-              side={possessionSide}
-              teamName={possessionName}
-              timeouts={timeouts}
-            />
-          )
-        ) : sheet.kind === "penalty" ? (
-          <PenaltySheet
-            ballOn={drive.ballOn}
-            history={unsportsmanlike}
-            rules={rules}
-            onClose={closeSheet}
-            onSubmit={submit}
-            opponentName={opponentName ?? ""}
-            roster={roster}
-            side={possessionSide}
-            teamName={possessionName}
-          />
-        ) : sheet.kind === "quarterback" ? (
-          <QuarterbackSheet
-            onClose={closeSheet}
-            onSubmit={(jersey) =>
-              setQuarterback(game.id, possessionSide, jersey)
-            }
-            roster={roster}
-            side={possessionSide}
-            teamName={possessionName}
-            value={readQuarterback(game.id, possessionSide)}
-          />
-        ) : sheet.kind === "spielzug" ? (
-          <SpielzugSheet
-            disabled={composerDisabled}
-            onClose={closeSheet}
-            onPick={pickFromSpielzug}
-            onPlay={(type, result) =>
-              openSheet({ kind: "play", type, result })
-            }
-          />
-        ) : (
-          <MoreSheet
-            key={sheet.mode}
-            mode={sheet.mode}
-            onBack={sheetHistory.length > 0 ? backSheet : undefined}
-            onClose={closeSheet}
-            onSubmit={submit}
-            opponentName={opponentName ?? ""}
-            roster={roster}
-            side={possessionSide}
-            teamName={possessionName}
-          />
-        )
-      ) : null}
-
-      {halftimeOpen ? (
-        <HalftimeSheet
-          away={logTeamName(officialLog.away) ?? "–"}
-          awayScore={officialLog.away.score}
-          busy={halftimePending}
-          direction={(() => {
-            const first = directionFromWire(setup?.direction ?? undefined);
-            return first === "Nord" ? "Süd" : first === "Süd" ? "Nord" : null;
-          })()}
-          disabled={halftimeDisabled}
-          error={halftimeError}
-          home={logTeamName(officialLog.home) ?? "–"}
-          homeScore={officialLog.home.score}
-          intermissionMinutes={
-            rules?.periods?.intermission_minutes ?? 2
-          }
-          onClose={() => setHalftimeOpen(false)}
-          onSecondHalf={startSecondHalf}
-          onStart={() => void startHalftime()}
-          possession={
-            secondHalfPossession(
-              setup,
-              logTeamName(log.home),
-              logTeamName(log.away),
-            ) ?? opponentName
-          }
-          setup={setup}
-          startedAt={breakStartedAt}
-        />
-      ) : null}
-
-      {timeoutTeam !== null ? (
-        <TimeoutSheet
-          disabled={readOnly}
-          half={half}
-          key={timeoutTeam}
-          onSubmit={(gameTime) => takeTimeout(timeoutTeam, gameTime)}
-          onClose={() => setTimeoutTeam(null)}
-          onTeam={(team) => setTimeoutTeam(team)}
-          opponentName={
-            timeoutTeam === possessionName ? opponentName : possessionName
-          }
-          perHalf={timeoutsPerHalf}
-          seconds={rules?.timeouts?.seconds ?? 60}
-          teamName={timeoutTeam}
-          timeouts={timeouts}
-          used={
-            timeoutBudget(rows, timeoutTeam, half, timeoutsPerHalf).used
-          }
-        />
-      ) : null}
+      <TrackingSheets {...props} />
     </div>
   );
 }

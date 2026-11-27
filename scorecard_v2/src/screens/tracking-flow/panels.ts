@@ -12,9 +12,17 @@ export interface ComposerGating {
   readOnly: boolean;
   possessionSide: Side | null;
   possessionName: string | null;
-  /** An open extra point locks every tile except the penalty flag. */
+  /**
+   * An open extra point locks every tile except the penalty flag. Optional
+   * here because `penaltyDisabled` ignores it; `composerDisabled` requires it
+   * (see {@link ComposerGatingWithPat}), so a caller cannot leave it out and
+   * get `undefined !== null`, i.e. a permanently disabled composer.
+   */
   pendingPat?: unknown;
 }
+
+/** The composer's gate: the open extra point must be passed explicitly. */
+export type ComposerGatingWithPat = ComposerGating & { pendingPat: unknown };
 
 /**
  * Nothing happens between the touchdown and the try, except a penalty: a
@@ -51,7 +59,7 @@ export function composerDisabled({
   readOnly,
   possessionSide,
   possessionName,
-}: ComposerGating): boolean {
+}: ComposerGatingWithPat): boolean {
   return (
     pendingPat !== null ||
     posting ||

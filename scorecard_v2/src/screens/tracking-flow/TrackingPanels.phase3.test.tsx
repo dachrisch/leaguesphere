@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import "fake-indexeddb/auto";
 
-import type { Game, GameLog, GameLogTeam } from "../../api/types";
+import type { GameRules } from "../../api/rules";
+import type { Game, GameLog, GameLogTeam, GameSetup } from "../../api/types";
 import { DEFAULT_GEOMETRY, firstAndTen } from "../../app/drive";
 import { TeamLogosProvider } from "../../app/teamLogos";
 import type { SyncStatus } from "../../session/useSyncStatus";
+import type { SheetState } from "./logic";
 import { TrackingPanels, type TrackingPanelsProps } from "./TrackingPanels";
 
 const team = (id: number, name: string, score: number): GameLogTeam => ({
@@ -205,7 +207,7 @@ describe("TrackingPanels (Phase 3 characterization)", () => {
   });
 
   it("puts the extra-point bar in the touchdown tile's place", () => {
-    draw({ pendingPat: { team: "Ravens", jersey: 7 } as never });
+    draw({ pendingPat: { team: "Ravens", jersey: 7 } });
     expect(screen.getByRole("group", { name: "Extrapunkt Ravens" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Touchdown/ })).toBeNull();
   });
@@ -248,16 +250,14 @@ describe("TrackingPanels (Phase 3 characterization)", () => {
     const start = screen.getByRole("button", { name: /Halbzeit starten/ });
     fireEvent.click(start);
     expect(onStart).toHaveBeenCalled();
-    const close = screen.getByRole("button", { name: /Schließen/ }) ??
-      dialog.querySelector(".sheetclose");
-    expect(close).toBeTruthy();
-    fireEvent.click(close as Element);
+    fireEvent.click(screen.getByRole("button", { name: /Schließen/ }));
     expect(onClose).toHaveBeenCalledWith(false);
     cleanup();
   });
 });
 
 describe("TrackingPanels branch characterization (Phase 3)", () => {
+  const PLAY: SheetState = { kind: "play", type: "run", result: "gain" };
   const row = {
     key: "r1",
     teamLogId: 1,
@@ -290,7 +290,7 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
     draw({ possessionName: null });
     expect(screen.getByText("Ballbesitz wählen, um Einträge zu erfassen.")).toBeTruthy();
     cleanup();
-    draw({ confirmation: "Gespeichert", pendingPat: { team: "Ravens", jersey: 7 } as never });
+    draw({ confirmation: "Gespeichert", pendingPat: { team: "Ravens", jersey: 7 } });
     expect(screen.queryByRole("status", { name: "Gespeichert" })).toBeNull();
     cleanup();
     draw({ confirmation: "Gespeichert", quick: null });
@@ -302,8 +302,10 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
     draw({ possessionSide: null });
     expect(screen.getByRole("region", { name: "Einträge" })).toBeTruthy();
     cleanup();
-    draw({ possessionTimeouts: { used: 1, total: 2 } as never });
-    expect(document.querySelector(".actioncount")).toBeTruthy();
+    draw({
+      possessionTimeouts: { perHalf: 2, used: 1, remaining: 1, exhausted: false },
+    });
+    expect(document.querySelector(".actioncount")).toHaveTextContent("1/2");
     cleanup();
     draw({ armed: "first" });
     expect(screen.getByText("Nr. ergänzen")).toBeTruthy();
@@ -343,18 +345,18 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
   });
 
   it("renders the extra-point variants", () => {
-    draw({ pendingPat: { team: "Ravens", jersey: null } as never });
+    draw({ pendingPat: { team: "Ravens", jersey: null } });
     expect(screen.getByText(/ohne Nummer/)).toBeTruthy();
     cleanup();
     draw({
-      pendingPat: { team: "Ravens", jersey: 7 } as never,
+      pendingPat: { team: "Ravens", jersey: 7 },
       patTry: { team: "Ravens", points: 1, defaultJersey: null },
       patBusy: true,
       patError: "fehler",
     });
     expect(screen.getByText(/Speichern/)).toBeTruthy();
     cleanup();
-    draw({ pendingPat: { team: "Ravens", jersey: 7 } as never, patTry: null, patDefense: false });
+    draw({ pendingPat: { team: "Ravens", jersey: 7 }, patTry: null, patDefense: false });
     const defense = screen.getByText("Gegner +2");
     fireEvent.click(defense);
     cleanup();
@@ -371,33 +373,36 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
     expect(screen.getByText(/Gegner erzielt/)).toBeTruthy();
     cleanup();
     draw({ patMiss: { team: "Ravens", defaultJersey: 7 }, patQb: 9 });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(
+      screen.getByRole("dialog", { name: "Extrapunkt Ravens · nicht verwandelt" }),
+    ).toBeTruthy();
     cleanup();
-    draw({ editing: row });
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    cleanup();
-    draw({ editing: { ...row, team: "Wolves" } });
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    cleanup();
-    draw({ editing: { ...row, team: null } });
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    cleanup();
+    for (const team of ["Ravens", "Wolves", null]) {
+      draw({ editing: { ...row, team } });
+      expect(screen.getByRole("dialog", { name: "First Down ändern" })).toBeTruthy();
+      cleanup();
+    }
   });
 
+  // Each kind opens its own sheet: the dialog is named by that sheet's title.
+  const SHEETS: [SheetState, string][] = [
+    [PLAY, "Spielzug · Ravens"],
+    [{ kind: "fieldpos" }, "Feldposition · Ravens"],
+    [{ kind: "challenge" }, "Challenge · Ravens"],
+    [{ kind: "touchdown" }, "Wer hat gepunktet?"],
+    [{ kind: "series", mode: "first" }, "First Down"],
+    [{ kind: "penalty" }, "Strafe"],
+    [{ kind: "quarterback" }, "QB · Ravens"],
+    [{ kind: "spielzug" }, "Spielzug"],
+    [{ kind: "more", mode: "safety" }, "Safety"],
+  ];
+
   it("renders every play sheet kind", () => {
-    for (const sheet of [
-      { kind: "play", type: "run", result: 3 } as never,
-      { kind: "fieldpos" },
-      { kind: "challenge" },
-      { kind: "touchdown" },
-      { kind: "series", mode: "first" },
-      { kind: "penalty" },
-      { kind: "quarterback" },
-      { kind: "spielzug" },
-      { kind: "more", mode: "safety" },
-    ] as never[]) {
-      draw({ sheet, sheetHistory: [sheet] as never[], rules: null });
-      expect(screen.getByRole("dialog")).toBeTruthy();
+    for (const [sheet, title] of SHEETS) {
+      draw({ sheet, sheetHistory: [sheet], rules: null });
+      const dialog = screen.getByRole("dialog", { name: title });
+      // With a history the sheet offers the header's back button.
+      expect(dialog.querySelector(".sheetbackhead")).toHaveTextContent("Zurück");
       cleanup();
     }
     draw({
@@ -406,9 +411,12 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
       opponentName: "Wolves",
       opponentSide: "away",
     });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    // The interception is completed for the defense: its sheet names Wolves.
+    expect(screen.getByRole("dialog", { name: "Interception" })).toHaveTextContent(
+      "Wolves",
+    );
     cleanup();
-    draw({ sheet: { kind: "play", type: "run", result: 3 } as never, opponentName: null });
+    draw({ sheet: PLAY, opponentName: null });
     expect(screen.queryByRole("dialog")).toBeNull();
     cleanup();
   });
@@ -423,70 +431,121 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
     draw({ patDefense: true, patBusy: true });
     expect(screen.getByText(/Speichern/)).toBeTruthy();
     cleanup();
-    draw({ patMiss: { team: "Ravens", defaultJersey: null }, opponentName: undefined });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    draw({
+      patMiss: { team: "Ravens", defaultJersey: null },
+      opponentName: undefined as unknown as string | null,
+    });
+    expect(
+      screen.getByRole("dialog", { name: "Extrapunkt Ravens · nicht verwandelt" }),
+    ).toBeTruthy();
     cleanup();
 
-    for (const sheet of [
-      { kind: "play", type: "run", result: 3 },
-      { kind: "fieldpos" },
-      { kind: "challenge" },
-      { kind: "series", mode: "first" },
-      { kind: "penalty" },
-      { kind: "more", mode: "safety" },
-    ] as never[]) {
-      draw({ sheet, opponentName: undefined, sheetHistory: [] });
-      expect(screen.getByRole("dialog")).toBeTruthy();
+    // No history: the same sheets open without the header's back button.
+    const kinds = ["play", "fieldpos", "challenge", "series", "penalty", "more"];
+    for (const [sheet, title] of SHEETS.filter(([candidate]) =>
+      kinds.includes(candidate.kind),
+    )) {
+      draw({
+        sheet,
+        opponentName: undefined as unknown as string | null,
+        sheetHistory: [],
+      });
+      const dialog = screen.getByRole("dialog", { name: title });
+      expect(dialog.querySelector(".sheetbackhead")).toBeNull();
       cleanup();
     }
 
+    const backSheet = vi.fn();
     draw({
       sheet: { kind: "series", mode: "interception" },
       replacing: row,
       opponentName: "Wolves",
       opponentSide: "away",
-      sheetHistory: [{ kind: "series", mode: "first" }] as never[],
+      sheetHistory: [{ kind: "series", mode: "first" }],
+      backSheet,
     });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    const interception = screen.getByRole("dialog", { name: "Interception" });
+    fireEvent.click(interception.querySelector(".sheetbackhead") as Element);
+    expect(backSheet).toHaveBeenCalled();
     cleanup();
 
     const logTeamName = (t: { name: string | null }) =>
       t.name === "Wolves" ? null : t.name;
-    draw({
-      halftimeOpen: true,
-      logTeamName,
-      log: { ...makeLog(), away: team(12, "Wolves", 3), home: team(11, "Ravens", 7) },
-    });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    const scored = {
+      ...makeLog(),
+      away: team(12, "Wolves", 3),
+      home: team(11, "Ravens", 7),
+    };
+    draw({ halftimeOpen: true, logTeamName, log: scored, officialLog: scored });
+    // An unnamed away side falls back to "–" in the score line.
+    expect(screen.getByRole("dialog", { name: "Halbzeit" })).toHaveTextContent(
+      "7 : 3 · Ravens – –",
+    );
     cleanup();
 
-    draw({
-      halftimeOpen: true,
-      logTeamName: () => null,
-    });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    draw({ halftimeOpen: true, logTeamName: () => null });
+    expect(screen.getByRole("dialog", { name: "Halbzeit" })).toHaveTextContent(
+      "7 : 0 · – – –",
+    );
     cleanup();
   });
 
-  it("renders halftime and timeout dialogs with both directions", () => {
-    for (const direction of [undefined, "Nord", "Süd"] as const) {
+  it("renders halftime and timeout dialogs with both directions", async () => {
+    // No second-half possession is known (no toss in the setup, no opponent),
+    // so the sheet shows the single fallback direction: the opposite of the
+    // first half's, or "–" without one.
+    const directions: [string | undefined, string][] = [
+      [undefined, "–"],
+      ["Nord", "Süd"],
+      ["Süd", "Nord"],
+    ];
+    for (const [direction, shown] of directions) {
       draw({
         halftimeOpen: true,
-        setup: { direction } as never,
+        opponentName: null,
+        setup: { direction } as GameSetup,
         breakStartedAt: 1000,
-        rules: { periods: { intermission_minutes: 5 } } as never,
+        rules: { periods: { intermission_minutes: 5 } } as GameRules,
       });
-      expect(screen.getByRole("dialog")).toBeTruthy();
+      // DirectionText puts the arrow before "Nord" and after "Süd".
+      expect(screen.getByLabelText("Spielrichtung 2. Halbzeit")).toHaveTextContent(
+        new RegExp(`^Spielrichtung\s*${shown}\s*$`),
+      );
+      expect(screen.getByLabelText("Pause")).toHaveTextContent("5 Minuten");
       cleanup();
     }
-    draw({ timeoutTeam: "Wolves" });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    draw({ halftimeOpen: true, rules: null });
+    expect(screen.getByLabelText("Pause")).toHaveTextContent("2 Minuten");
     cleanup();
+
+    // Not the possessing team: the switch also offers the possessing team.
+    draw({ timeoutTeam: "Wolves" });
+    expect(screen.getByRole("dialog", { name: "Auszeit Wolves" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Auszeit für" })).toHaveTextContent(
+      "WolvesRavens",
+    );
+    cleanup();
+
+    // The possessing team: the switch offers the opponent, and the running
+    // timeout uses the definition's length.
+    const takeTimeout = vi.fn(async () => undefined);
     draw({
       timeoutTeam: "Ravens",
-      rules: { timeouts: { seconds: 45 } } as never,
+      takeTimeout,
+      rules: { timeouts: { seconds: 45 } } as GameRules,
     });
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Auszeit für" })).toHaveTextContent(
+      "RavensWolves",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Auszeit nehmen" }));
+    expect(await screen.findByText("Die Auszeit dauert 45 Sekunden.")).toBeTruthy();
+    expect(takeTimeout).toHaveBeenCalledWith("Ravens", null);
+    cleanup();
+
+    draw({ timeoutTeam: "Ravens", takeTimeout: vi.fn(async () => undefined) });
+    fireEvent.click(screen.getByRole("button", { name: "Auszeit nehmen" }));
+    expect(await screen.findByText("Die Auszeit dauert 60 Sekunden.")).toBeTruthy();
     cleanup();
   });
 });
