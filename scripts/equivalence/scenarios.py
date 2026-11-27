@@ -31,6 +31,7 @@ class Step:
     path: str
     role: str = "staff"
     json: dict | None = None
+    form: dict | None = None
     expect: tuple = (200, 201)
     capture: str | None = None
     capture_path: str | None = None
@@ -49,6 +50,7 @@ class ScenarioRun:
     run_id: str
     steps: list = field(default_factory=list)
     id_tokens: dict = field(default_factory=dict)
+    captured: dict = field(default_factory=dict)
     skipped: list = field(default_factory=list)
 
     def as_results(self):
@@ -123,6 +125,21 @@ _PLACEHOLDER_KEYS = (
     ("away_group", "away_team"),
     ("official_group", "official_team"),
 )
+
+
+def discover_team_ids(sessions, limit=3):
+    """Real team ids for the wizard-built legacy schedule (format 3_1)."""
+    session = sessions.get("anonymous") or sessions.get("staff")
+    if session is None:
+        return []
+    response = session.request("/api/teams/")
+    if response.status != 200:
+        return []
+    try:
+        payload = response.json()
+        return [team["id"] for team in payload.get("results", [])][:limit]
+    except (ValueError, KeyError, TypeError):
+        return []
 
 
 def discover_template_context(sessions):
@@ -250,6 +267,53 @@ def _publish_steps(canvas=None):
             name="publish-gameday",
             method="POST",
             path="/api/gamedays/{gameday_id}/publish/",
+        ),
+    ]
+
+
+def _wizard_steps():
+    """Build a schedule from the format through the HTML wizard.
+
+    This is the legacy path: publishing a gameday with no designer state runs
+    CanvasPublishService, which returns early, so only the wizard creates the
+    Gameinfo rows that finalize needs. The wizard is a SessionWizardView: the
+    GET establishes the session/CSRF cookie, then two form posts walk its
+    steps. Management form prefix is ``gameinfo_wizard``; each form's fields
+    are prefixed with its own step name.
+    """
+    wizard_path = "/gamedays/gameday/{gameday_id}/gameinfos/wizard/"
+    return [
+        Step(
+            name="wizard-get", method="GET", path=wizard_path, role="staff", expect=200
+        ),
+        Step(
+            name="wizard-field-groups",
+            method="POST",
+            path=wizard_path,
+            role="staff",
+            form={
+                "gameinfo_wizard-current_step": "field-group-step",
+                "field-group-step-format": "3_1",
+                "field-group-step-number_fields": "1",
+            },
+            expect=(200, 302),
+        ),
+        Step(
+            name="wizard-format",
+            method="POST",
+            path=wizard_path,
+            role="staff",
+            form={
+                "gameinfo_wizard-current_step": "gameday-format",
+                "gameday-format-TOTAL_FORMS": "1",
+                "gameday-format-INITIAL_FORMS": "0",
+                "gameday-format-MIN_NUM_FORMS": "0",
+                "gameday-format-MAX_NUM_FORMS": "1000",
+                "gameday-format-0-group": "{wizard_team_ids}",
+                "gameday-format-0-group_name": "Gruppe 1",
+                "gameday-format-0-league_group": "",
+            },
+            expect=(200, 302),
         ),
     ]
 
@@ -387,8 +451,10 @@ SCENARIOS = {
             capture="gameday_id",
             capture_path="id",
         ),
-        # No designer-state step: this gameday must take the legacy
-        # ScheduleUpdate branch in signals.py, not the canvas branch.
+        # No designer-state step: the wizard builds the schedule from the
+        # format, so there are games to finalize and the legacy ScheduleUpdate
+        # branch in signals.py is the one that runs (not the canvas branch).
+        *_wizard_steps(),
         Step(
             name="publish-gameday",
             method="POST",
@@ -517,7 +583,10 @@ def run_scenario(name, sessions, context, run_id):
             continue
         path = _resolve(step.path, context)
         body = _resolve(step.json, context) if step.json is not None else None
-        response = role_session.request(path, method=step.method, json_body=body)
+        form = _resolve(step.form, context) if step.form is not None else None
+        response = role_session.request(
+            path, method=step.method, json_body=body, form=form
+        )
         expected = step.expect if isinstance(step.expect, tuple) else (step.expect,)
         if response.status not in expected:
             raise RuntimeError(
@@ -535,6 +604,7 @@ def run_scenario(name, sessions, context, run_id):
                 value = None
             if value is not None:
                 context[step.capture] = value
+                run.captured[step.capture] = value
                 run.id_tokens[value] = f"<entity-{len(run.id_tokens)}>"
         if isinstance(payload, (dict, list)):
             # Scenario rows are new on each side: primary keys differ by

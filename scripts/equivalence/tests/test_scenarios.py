@@ -45,6 +45,14 @@ class FakeApi:
                     "message": "template applied",
                 },
             )
+        if "/gameinfos/wizard/" in path:
+            return Response(
+                302 if method == "POST" else 200,
+                {},
+                "" if method == "POST" else "<form></form>",
+                path,
+                method,
+            )
         if method == "POST" and path.endswith("/publish/"):
             return self._json(200, {"id": self.id_base, "status": "PUBLISHED"})
         if method == "GET" and path == f"/api/gameday/{self.id_base}/":
@@ -166,7 +174,7 @@ def test_missing_capture_does_not_abort_the_scenario():
         "designer-publish", {"staff": api, "anonymous": api}, CONTEXT, "eq-6-ref"
     )
 
-    assert "game_id" not in run.id_tokens
+    assert "game_id" not in run.captured
 
 
 def _step_names(name):
@@ -177,6 +185,36 @@ def test_finalize_legacy_has_no_designer_state_step():
     names = _step_names("finalize-legacy")
     assert "save-designer-canvas" not in names
     assert "publish-gameday" in names and "finalize-game" in names
+    assert names.index("wizard-format") < names.index("publish-gameday")
+    assert names.index("read-games") < names.index("finalize-game")
+
+
+def test_finalize_legacy_captures_a_real_game_id():
+    """A gameday without games leaves the game_id token unresolved."""
+    api = FakeApi(id_base=900)
+    context = {**CONTEXT, "wizard_team_ids": [11, 12, 13]}
+    run = scenarios.run_scenario(
+        "finalize-legacy", {"staff": api, "anonymous": api}, context, "eq-legacy-ref"
+    )
+    assert run.captured["game_id"] == 950
+    wizard_post = next(
+        call
+        for call in api.calls
+        if call["path"].endswith("/gameinfos/wizard/")
+        and call["method"] == "POST"
+        and "gameday-format-0-group" in (call["form"] or {})
+    )
+    assert wizard_post["form"]["gameday-format-0-group"] == [11, 12, 13]
+
+
+def test_finalize_legacy_fails_when_no_game_is_captured():
+    api = FakeApi(id_base=900)
+    api.empty_games = True
+    context = {**CONTEXT, "wizard_team_ids": [11, 12, 13]}
+    run = scenarios.run_scenario(
+        "finalize-legacy", {"staff": api, "anonymous": api}, context, "eq-legacy-empty"
+    )
+    assert "game_id" not in run.captured
 
 
 def test_finalize_canvas_has_a_downstream_reference():
@@ -284,6 +322,21 @@ def _template_sessions(detail=None, teams=None, listing_status=200):
         ),
     }
     return {"staff": FakeSession(responses), "anonymous": FakeSession(responses)}
+
+
+def test_discover_team_ids_for_the_wizard():
+    sessions = _template_sessions()
+    sessions["anonymous"].responses["/api/teams/"] = _json_response(
+        {"results": [{"id": 11}, {"id": 12}, {"id": 13}, {"id": 14}]}
+    )
+    assert scenarios.discover_team_ids(sessions) == [11, 12, 13]
+    assert scenarios.discover_team_ids({}) == []
+    sessions["anonymous"].responses["/api/teams/"] = Response(500, {}, "", "", "GET")
+    assert scenarios.discover_team_ids(sessions) == []
+    sessions["anonymous"].responses["/api/teams/"] = Response(
+        200, {}, "not json", "", "GET"
+    )
+    assert scenarios.discover_team_ids(sessions) == []
 
 
 def test_discover_template_context_builds_the_mapping():
