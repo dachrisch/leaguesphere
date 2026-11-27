@@ -7,6 +7,12 @@ import { strandedNotice } from "../../session/stranded";
 import type { SyncStatus } from "../../session/useSyncStatus";
 import { useArmed } from "../useArmed";
 
+/**
+ * The one place the screen talks about transmission: read-only (another
+ * device, an expired session), offline with what is waiting, sending, or
+ * "Alles gesendet" for a moment after the queue drained. The app-bar chip
+ * only carries the short state, so nothing is said twice.
+ */
 export function SyncStrip({
   status,
   drained,

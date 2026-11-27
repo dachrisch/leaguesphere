@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Game, GameLogEventInput } from "../../api/types";
+import { IgnoredWrite } from "../../components/sheets/errors";
 import {
   addsJerseyLater,
   describeSaved,
@@ -84,8 +85,8 @@ describe("tracking helpers (Phase 3 characterization)", () => {
   it("credits interceptions to the opponent and refuses writes without a ball", () => {
     expect(writeTeam([event("Touchdown")], "Ravens", "Wolves")).toBe("Ravens");
     expect(writeTeam([event("Interception")], "Ravens", "Wolves")).toBe("Wolves");
-    expect(() => writeTeam([event("Touchdown")], null, "Wolves")).toThrow();
-    expect(() => writeTeam([event("Interception")], "Ravens", null)).toThrow();
+    expect(() => writeTeam([event("Touchdown")], null, "Wolves")).toThrow(IgnoredWrite);
+    expect(() => writeTeam([event("Interception")], "Ravens", null)).toThrow(IgnoredWrite);
   });
 
   it("describes saved entries with their confirmation, jersey or time", () => {
