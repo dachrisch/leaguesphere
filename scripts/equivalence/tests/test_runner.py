@@ -386,6 +386,13 @@ def test_runner_posts_the_report_to_requested_prs(
     assert any("4242" in args for args in posted)
 
 
+def test_transport_merges_per_request_headers(server_factory):
+    server, url = server_factory(routes_for("sha-ref"))
+    session = Session(url)
+    session.request("/", headers={"X-Equivalence-Test": "yes"})
+    assert server.headers[-1]["X-Equivalence-Test"] == "yes"
+
+
 def test_transport_encodes_repeated_form_fields_as_multiple_values(server_factory):
     server, url = server_factory({("POST", "/form/"): (200, "ok", "text/plain")})
     session = Session(url)
