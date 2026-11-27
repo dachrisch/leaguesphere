@@ -20,6 +20,7 @@ from gameevents.tests.api.support import (
     sub_id,
 )
 from gamedays.models import TeamLog
+from gamedays.service.game_service import GameService
 
 SUB_ID = sub_id(1)
 
@@ -271,3 +272,28 @@ def test_unknown_event_name_is_rejected_without_writing_rows(client):
     assert response.status_code == 400
     assert not TeamLog.objects.filter(gameinfo=game).exists()
     assert not GameEvent.objects.filter(game=game).exists()
+
+
+@pytest.mark.django_db
+def test_a_game_started_for_v2_is_not_old_app_owned_by_its_start_marker(client):
+    """Starting a game writes a ``Spiel gestartet`` row for either app.
+
+    That marker is not an old-app play: the v2 app's first canonical write
+    (the opening possession) right after the start must be accepted.
+    """
+
+    game, home, _away = make_game("v2-start-marker")
+    login(client)
+    GameService(game.pk).update_gamestart(game.gameday.author)
+    assert TeamLog.objects.filter(gameinfo=game, event="Spiel gestartet").exists()
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(10)
+        ),
+    )
+
+    assert response.status_code == 201
+    assert GameEvent.objects.filter(game=game, source="v2").count() == 1

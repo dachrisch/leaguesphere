@@ -71,6 +71,11 @@ from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.projector import GameEventValue, GameStateValue, InvalidEnvelope
 from gamedays.models import GameLogSubmission, Gameinfo, Team, TeamLog
 from gamedays.service.game_service import GameService
+from gamedays.service.gameday_settings import GAME_END, GAME_START, SECOND_HALF_START
+
+# Lifecycle markers ``GameService`` writes for either app (game start, second
+# half, end): not plays, so they never make a game the old app's.
+_LIFECYCLE_MARKERS = (GAME_START, SECOND_HALF_START, GAME_END)
 
 
 def offline_claim(values, claimed, user):
@@ -255,12 +260,17 @@ def v1_owned_response(game):
     is its mirror. Such a game is finished on the old app, which keeps writing
     rows for it. Replays were answered before this check, so a retried v1
     submission is still a 200. Rows that are all deleted do not own a game:
-    there is no play left for the state to miss.
+    there is no play left for the state to miss, and neither do the
+    lifecycle markers (``Spiel gestartet`` ...) that starting a game writes
+    for the v2 app too.
     """
 
     if GameEvent.objects.filter(game=game, source=GameEvent.Source.V2).exists():
         return None
-    if not TeamLog.objects.filter(gameinfo=game, isDeleted=False).exists():
+    plays = TeamLog.objects.filter(gameinfo=game, isDeleted=False).exclude(
+        event__in=_LIFECYCLE_MARKERS
+    )
+    if not plays.exists():
         return None
     # scorecard_v2 shows a rejected op's detail to the scorer, in German.
     return Response(
