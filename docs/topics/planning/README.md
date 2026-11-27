@@ -25,7 +25,7 @@ See [current/](./current/) for active planning work.
 - [2026-11-25 Phase 2 Implementation Plan](./current/2026-11-25-phase2-plan.md): approved brief (decisions accepted 2026-11-26) for the event-store cutover — ADR ownership, reconciliation report and accepted legacy set, flag-on validation, shadow-write and flag removal; a plan-docs PR plus six implementation layers (seven `gh stack` PRs) on top of Phase 1
 - [2026-11-25 Phase 2 Accepted Legacy Set](./current/2026-11-25-phase2-legacy-acceptance.md): measured 6,369-game legacy set, SHA-256 digest and per-season counts, with the no-backfill statement and regeneration command
 - [2026-11-25 Phase 2 Flag-ON Report](./current/2026-11-25-phase2-flag-on-report.md): cand-only `SCORECARD_EVENT_FEED=true` comparison on servyy-test: 0 unexplained diffs on 31 probes and 9 scenarios, with what that run could not prove, baked SHAs and the revert step
-- [2026-11-25 Phase 3 Implementation Plan](./current/2026-11-25-phase3-plan.md): provisional brief for splitting the orchestration god-modules — frontend equivalence journeys/images/infra, backend view extractions and staged screen splits, twelve `gh stack` layers based on the prod-safe `phase2-flag-on-validation`
+- [2026-11-25 Phase 3 Implementation Plan](./current/2026-11-25-phase3-plan.md): provisional brief for splitting the orchestration god-modules — frontend equivalence journeys/images/infra, backend view extractions and staged screen splits, a plan-docs PR plus twelve `gh stack` layers based on `master` (Phase 1 and Phase 2 merged)
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
