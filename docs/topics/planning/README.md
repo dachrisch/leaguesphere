@@ -21,6 +21,7 @@ See [current/](./current/) for active planning work.
 - [2026-11-08 Scorecard — Field Test 9316](./current/2026-11-08-scorecard-field-test-9316.md): an operator's first-half feedback triaged against the code (series engine, try state, play wizard, board layout, timeout/half-time dialogs) as layers L1–L6, with the implementation status and the resolved decisions
 - [2026-11-25 Architecture Remediation Roadmap](./current/2026-11-25-architecture-remediation-roadmap.md): agreed five-issue ranking, phase order 0a → 0c → 0b → 1–5, equivalence step, delivery workflow and all 18 user decisions
 - [2026-11-25 Phase 0 Implementation Plan](./current/2026-11-25-phase0-plan.md): self-contained brief for the implementing session — 0a boundary check, 0c equivalence harness (repo + infra PR), 0b black reformat, as a `gh stack`
+- [2026-11-27 Fresh Multi-Tenant RBAC — Requirements & Plan](./current/2026-11-27-multi-tenant-rbac-requirements-and-plan.md): start-fresh requirements (R1–R64), 9 open decisions, target architecture, 7-phase delivery, isolation test strategy and the `is_staff` write→view→deprecate ladder
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
