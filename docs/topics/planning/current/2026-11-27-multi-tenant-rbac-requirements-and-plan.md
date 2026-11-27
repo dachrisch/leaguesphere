@@ -774,7 +774,7 @@ data model).
 
 ### Phase 0 — Decisions and invariants (no product code)
 
-**Entry**: this document merged.
+**Entry**: this plan accepted; gate 0a defaults recorded in §4.
 **Work**: record the thesis-settled defaults (D1, D6, the library half of D9) as adopted;
 resolve the open decisions (D2–D5, D7–D9); sign off the permission matrix; write the
 tenant-key matrix (R4) as code (`scripts/check_tenancy_coverage.py`) with every model listed;
@@ -864,7 +864,7 @@ within budget; docs updated.
 
 | Stage | Code change | Reads authority from | Rollback | Gate to next stage |
 |---|---|---|---|---|
-| **Write** | `seed_roles_from_is_staff`, dual-write on role changes | `is_staff` (unchanged) | Delete `UserRole` rows | 100% of staff users have a role; 0 unknown users |
+| **Write** | `seed_roles_from_is_staff`, dual-write on role changes | `is_staff` (unchanged) | Delete `UserRole` rows | every authority-holding user (`is_staff` or legacy team-manager permission) has an equivalent `UserRole`; 0 unknown users |
 | **View** (shadow-read) | Kernel evaluated next to `is_staff`; disagreements logged | `is_staff` | Turn off logging | 0 disagreements over one gameday weekend |
 | **Enforce-read** | Tenant managers on, per app flag | `UserRole` | Flag off per app | Isolation + query-count suites green |
 | **Enforce-write** | `can()` replaces `is_staff` writes | `UserRole` | Flag off per app | Matrix tests + bypass audit |
