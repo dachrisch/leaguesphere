@@ -58,8 +58,13 @@ no row had, so this run alone does **not** prove that the flag-gated projection
 branch ran; #2567 fixes both and the gate for Layers 5/6 is the gameday
 rehearsal on the agent stage, not a prod soak.
 
-The harness compared the **statuses** of the feed/liveticker revalidation
-probes (200↔304) and normalised literal validators as noise; it did not assert
+The feed/liveticker revalidation probes did **not** run in this comparison:
+the harness's probe expansion deduped on path, role and kind, so
+`feed-etag-revalidation` and `liveticker-etag-revalidation` were dropped
+behind `game-feed` and `liveticker-api` for every sampled gameday, and only
+`snapshot-etag-revalidation` ran (fixed in #2567 after this run). The harness
+compared the **statuses** of the revalidation probes that did run (200↔304) and
+normalised literal validators as noise; it did not assert
 a literal 304 for each sample in this run, and plan §6 step 2 (confirm cand's
 liveticker ETag includes the projection) and a separate ref-vs-ref noise floor
 are **not recorded here**. The #2567 harness changes now resolve each probe's
