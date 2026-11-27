@@ -29,6 +29,19 @@ sets ``GameState`` to that score; later events add to it.
 - **No rows**: ``TeamLog`` stays what the scorecard recorded. The rows are the
   play-by-play; the corrected score is the result's. ``check_game_projection``
   compares the state with a replay that includes the correction, so it agrees.
+
+After a manual result
+---------------------
+Later writes keep moving ``Gameresult`` by the existing half-score delta rule
+(#1988), which stores a half that would drop below 0 as 0. The projection has
+no halves, so on its own it would subtract past that floor: a v2 touchdown
+(6:0), a halftime edit to 0:0, then an undo of the touchdown would show -6
+while ``Gameresult`` says 0. :func:`follow_manual_result` closes that gap: on a
+game whose log holds a result correction, ``append_submission`` compares the
+new projection with ``Gameresult`` and, when they differ, records one more
+``correction/result`` (``payload.reason = "follows_result"``) in the same
+transaction. The table stays the one scoring rule; the log records where it
+overrode the plain sum.
 """
 
 import logging
@@ -36,10 +49,22 @@ import uuid
 
 from gameevents.models import GameEvent
 from gameevents.service.append import append_submission, project_game
-from gameevents.service.projector import RESULT_CORRECTION_CODE, GameEventValue
+from gameevents.service.projector import (
+    RESULT_CORRECTION_CODE,
+    GameEventValue,
+    InvalidEnvelope,
+)
 from gamedays.models import Gameresult
 
 logger = logging.getLogger(__name__)
+
+# ``payload.reason`` of a correction that follows the table after a later
+# write, as opposed to one recorded by the result edit itself.
+FOLLOWS_RESULT = "follows_result"
+
+
+class NegativeResult(InvalidEnvelope):
+    """The edited result has a negative total (client error -> HTTP 400)."""
 
 
 def is_v2_owned(game) -> bool:
@@ -57,8 +82,54 @@ def _result_totals(game):
     ):
         totals["home" if is_home else "away"] = (fh or 0) + (sh or 0)
     if set(totals) != {"home", "away"}:
+        logger.warning(
+            "Game %s has no complete home/away result; its projection cannot "
+            "follow the result",
+            game.pk,
+        )
         return None
     return totals["home"], totals["away"]
+
+
+def _append_result(game, state, totals, *, author, reason=None):
+    """Append one ``correction/result`` moving ``state`` to ``totals``."""
+
+    home, away = totals
+    payload = {
+        "home": home,
+        "away": away,
+        "before": {"home": state.score_home, "away": state.score_away},
+    }
+    if reason is not None:
+        payload["reason"] = reason
+    client_id = str(uuid.uuid4())
+    outcome = append_submission(
+        game,
+        [
+            GameEventValue(
+                type=GameEvent.Type.CORRECTION,
+                code=RESULT_CORRECTION_CODE,
+                period=state.period,
+                payload=payload,
+                client_id=client_id,
+            )
+        ],
+        client_id=client_id,
+        source=GameEvent.Source.STAFF,
+        write_rows=False,
+        author=author,
+    )
+    logger.info(
+        "Recorded result of game %s (%s:%s -> %s:%s%s) as correction seq %s",
+        game.pk,
+        state.score_home,
+        state.score_away,
+        home,
+        away,
+        f", {reason}" if reason else "",
+        outcome.last_seq,
+    )
+    return outcome
 
 
 def record_result_correction(game, *, author=None):
@@ -66,7 +137,7 @@ def record_result_correction(game, *, author=None):
 
     Returns the appended ``GameEvent``, or ``None`` when nothing was recorded
     (not a v2-owned game, no complete result, or the projection already shows
-    the result).
+    the result). Raises :class:`NegativeResult` for a negative total.
     """
 
     if not is_v2_owned(game):
@@ -74,38 +145,26 @@ def record_result_correction(game, *, author=None):
     totals = _result_totals(game)
     if totals is None:
         return None
-    home, away = totals
+    if min(totals) < 0:
+        raise NegativeResult(f"result {totals[0]}:{totals[1]} is negative")
     state = project_game(game).state
-    if (state.score_home, state.score_away) == (home, away):
+    if (state.score_home, state.score_away) == totals:
         return None
+    outcome = _append_result(game, state, totals, author=author)
+    return GameEvent.objects.get(game=game, seq=outcome.last_seq)
 
-    client_id = str(uuid.uuid4())
-    value = GameEventValue(
-        type=GameEvent.Type.CORRECTION,
-        code=RESULT_CORRECTION_CODE,
-        period=state.period,
-        payload={
-            "home": home,
-            "away": away,
-            "before": {"home": state.score_home, "away": state.score_away},
-        },
-        client_id=client_id,
-    )
-    outcome = append_submission(
-        game,
-        [value],
-        client_id=client_id,
-        source=GameEvent.Source.STAFF,
-        write_rows=False,
-        author=author,
-    )
-    logger.info(
-        "Recorded result edit of game %s (%s:%s -> %s:%s) as correction seq %s",
-        game.pk,
-        state.score_home,
-        state.score_away,
-        home,
-        away,
-        outcome.last_seq,
-    )
-    return GameEvent.objects.get(game=game, client_id=client_id)
+
+def follow_manual_result(game, state, *, author=None):
+    """Re-align the projection with ``Gameresult`` after a later write.
+
+    Called by ``append_submission`` for a game whose log already holds a
+    result correction. Returns the new state, or ``None`` when the
+    projection already equals the result.
+    """
+
+    totals = _result_totals(game)
+    if totals is None or (state.score_home, state.score_away) == totals:
+        return None
+    return _append_result(
+        game, state, totals, author=author, reason=FOLLOWS_RESULT
+    ).state

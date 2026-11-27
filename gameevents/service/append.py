@@ -595,6 +595,19 @@ def append_submission(
         ),
     )
     _save_state(game, projection.state)
-    return AppendOutcome(
-        state=projection.state, applied=True, last_seq=projection.state.last_seq
+    state = projection.state
+    if _has_result_correction(stored_values) and not _has_result_correction(resolved):
+        # After a manual result, Gameresult is the scoring rule (#1988 floors
+        # a half at 0); follow it instead of letting the plain sum drift.
+        # Local import: the result service builds on this module.
+        from gameevents.service.result import follow_manual_result
+
+        state = follow_manual_result(game, state, author=author) or state
+    return AppendOutcome(state=state, applied=True, last_seq=state.last_seq)
+
+
+def _has_result_correction(values) -> bool:
+    return any(
+        value.type == "correction" and value.code == RESULT_CORRECTION_CODE
+        for value in values
     )

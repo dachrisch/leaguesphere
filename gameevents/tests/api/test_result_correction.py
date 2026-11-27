@@ -7,6 +7,7 @@ correction the public score stayed on the last scorecard score: v2 touchdown
 see it, because the state still equalled the replay of the same log.
 """
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -28,6 +29,7 @@ from gameevents.service.reconcile import check_games, rebuild_game
 from gameevents.service.replay import resolve_correction
 from gameevents.service.result import record_result_correction
 from gameevents.tests.api.support import post_events
+from gamedays.constants import API_GAMELOG
 from gamedays.models import Gameresult, TeamLog
 from gamedays.tests.setup_factories.factories import TeamLogFactory
 from liveticker.service.liveticker_service import LivetickerService
@@ -332,6 +334,7 @@ def test_a_negative_result_on_a_v2_game_rolls_the_edit_back():
     response = _patch_result(game, {"final_score": {"home": -1, "away": 3}})
 
     assert response.status_code == 400
+    assert "non-negative" in response.json()["detail"]
     assert _totals(game) == {"home": 6, "away": 0}
     assert not _result_corrections(game)
 
@@ -387,3 +390,115 @@ def test_a_play_target_without_its_sequence_is_a_service_bug():
 
     with pytest.raises(ValueError, match="legacy_sequence"):
         apply(GameStateValue(score_home=6), correction)
+
+
+# --------------------------------------------------------------------------
+# after a manual result: the projection follows Gameresult's half floor
+# --------------------------------------------------------------------------
+
+
+def _state(game):
+    state = GameState.objects.get(game=game)
+    return state.score_home, state.score_away
+
+
+def _undo_envelope(seq):
+    return {
+        "events": [{"type": "correction", "code": "undo", "payload": {"undo_of": seq}}]
+    }
+
+
+@pytest.mark.django_db
+def test_an_undo_past_the_manual_result_follows_the_result_floor(client):
+    # v2 TD 6:0, the official corrects the half to 0:0 by hand, then the
+    # scorecard undoes the touchdown: Gameresult floors the half at 0, and the
+    # projection must say 0 too, not -6.
+    game, _home, _away = make_live_game("result-floor")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+    _patch_result(game, {"halftime_score": {"home": 0, "away": 0}})
+    touchdown = GameEvent.objects.get(game=game, type="score")
+    client.force_login(game.gameday.author)
+
+    assert post_events(client, game, _undo_envelope(touchdown.seq)).status_code == 201
+
+    assert _totals(game) == {"home": 0, "away": 0}
+    assert _state(game) == (0, 0)
+    follow = _result_corrections(game)[-1]
+    assert follow.payload == {
+        "home": 0,
+        "away": 0,
+        "before": {"home": -6, "away": 0},
+        "reason": "follows_result",
+    }
+    assert TeamLog.objects.get(gameinfo=game, event="Touchdown").isDeleted
+    assert check_games([game.pk])[0].ok
+    ticker = _ticker(game)
+    assert (ticker["home"]["score"], ticker["away"]["score"]) == (0, 0)
+
+
+@pytest.mark.django_db
+def test_a_legacy_delete_past_the_manual_result_follows_the_result_floor(client):
+    game, _home, _away = make_live_game("result-floor-legacy")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+    _patch_result(game, {"halftime_score": {"home": 0, "away": 0}})
+    sequence = TeamLog.objects.get(gameinfo=game, event="Touchdown").sequence
+    client.force_login(game.gameday.author)
+
+    response = client.delete(
+        reverse(API_GAMELOG, kwargs={"id": game.pk}),
+        data=json.dumps({"sequence": sequence}),
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert _totals(game) == {"home": 0, "away": 0}
+    assert _state(game) == (0, 0)
+    assert _result_corrections(game)[-1].payload["reason"] == "follows_result"
+    assert check_games([game.pk])[0].ok
+
+
+@pytest.mark.django_db
+def test_an_undo_above_the_floor_needs_no_second_correction(client):
+    game, _home, _away = make_live_game("result-no-floor")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+    _patch_result(game, {"halftime_score": {"home": 14, "away": 0}})
+    touchdown = GameEvent.objects.get(game=game, type="score")
+    client.force_login(game.gameday.author)
+
+    assert post_events(client, game, _undo_envelope(touchdown.seq)).status_code == 201
+
+    assert _totals(game) == {"home": 8, "away": 0}
+    assert _state(game) == (8, 0)
+    assert len(_result_corrections(game)) == 1
+    assert check_games([game.pk])[0].ok
+
+
+@pytest.mark.django_db
+def test_a_game_without_a_manual_result_never_gets_a_follow_up():
+    game, _home, _away = make_live_game("result-none")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+    # The table drifts on its own (no result edit in the log): the append
+    # path leaves it to check_game_projection, as before.
+    Gameresult.objects.filter(gameinfo=game, isHome=True).update(fh=40)
+
+    submit(game, [event("score", "touchdown", "away", 9)], client_id="s2")
+
+    assert not _result_corrections(game)
+    assert _state(game) == (6, 6)
+
+
+@pytest.mark.django_db
+def test_a_log_that_cannot_record_the_result_answers_a_generic_400(monkeypatch):
+    game, _home, _away = make_live_game("result-broken-log")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+
+    def broken(*_args, **_kwargs):
+        raise InvalidEnvelope("internal detail that must not leak")
+
+    monkeypatch.setattr("gamedays.api.views.record_result_correction", broken)
+    response = _patch_result(game, {"final_score": {"home": 21, "away": 3}})
+
+    assert response.status_code == 400
+    assert "event log" in response.json()["detail"]
+    assert "internal detail" not in response.json()["detail"]
+    assert _totals(game) == {"home": 6, "away": 0}

@@ -37,7 +37,7 @@ from gamedays.api.serializers import (
     TeamSerializer,
 )
 from gameevents.service.projector import InvalidEnvelope
-from gameevents.service.result import record_result_correction
+from gameevents.service.result import NegativeResult, record_result_correction
 from gamedays.models import (
     Gameday,
     Gameinfo,
@@ -628,6 +628,17 @@ class GameResultUpdateAPIView(APIView):
         final_score = request.data.get("final_score")
 
         with transaction.atomic():
+            # Lock before the first read, in the order every result writer
+            # uses (Gameresult, then Gameinfo). On MySQL REPEATABLE READ the
+            # snapshot starts at the first plain read; taken after the locks it
+            # sees a scorecard submission that committed while we waited, so
+            # the correction below does not reuse its seq.
+            list(
+                Gameresult.objects.select_for_update()
+                .filter(gameinfo=game)
+                .order_by("pk")
+            )
+            game = Gameinfo.objects.select_for_update().get(pk=game.pk)
             if halftime_score is not None:
                 if game.status == Gameinfo.STATUS_PUBLISHED or game.status == "Geplant":
                     game.status = Gameinfo.STATUS_IN_PROGRESS
@@ -679,15 +690,28 @@ class GameResultUpdateAPIView(APIView):
             # show the entered result, not the last scorecard score.
             try:
                 record_result_correction(game, author=request.user)
-            except InvalidEnvelope:
-                # e.g. a negative score: roll the whole edit back, the result
-                # and the log must not disagree. A fixed message: the
-                # exception text is internal (CodeQL py/stack-trace-exposure).
+            except NegativeResult:
+                # Roll the whole edit back: the result and the log must not
+                # disagree. Fixed messages: the exception text is internal
+                # (CodeQL py/stack-trace-exposure).
                 transaction.set_rollback(True)
                 return Response(
                     {
                         "detail": "The result cannot be recorded: each team's "
                         "score must be a non-negative number."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            except InvalidEnvelope:
+                logger.exception(
+                    "Result edit of game %s could not be recorded in its event log",
+                    game.pk,
+                )
+                transaction.set_rollback(True)
+                return Response(
+                    {
+                        "detail": "The result cannot be recorded in this game's "
+                        "event log. Please contact an administrator."
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )

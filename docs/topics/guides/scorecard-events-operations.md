@@ -75,8 +75,16 @@ cached response.
   halftime edit that leaves the total alone) nothing is recorded.
 - Games without a `source=v2` event (legacy, shadow-only, unscored) keep the
   old behaviour: only `Gameresult` changes, no event, no `GameState`.
+- After a manual result, later writes still move `Gameresult` by the half-score
+  delta rule (#1988), which stores a half that would go below 0 as 0. When a
+  later append (a v2 event, a v2 undo or a legacy DELETE) leaves the projection
+  different from `Gameresult`, a further `correction/result` with
+  `"reason": "follows_result"` is recorded in the same transaction. Example:
+  TD 6:0, then a halftime edit to 0:0, then an undo of the TD ends at 0:0
+  everywhere, not -6.
 - The scorecard cannot send `correction/result` (400), and a
   `correction/undo` naming one is a 400: edit the result again instead.
+- A negative result total is a 400 that rolls the whole edit back.
 - `check_game_projection` and `rebuild_game_projection` replay the
   correction like any other event, so they agree with the edited score.
 

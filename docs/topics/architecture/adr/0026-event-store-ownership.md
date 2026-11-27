@@ -64,7 +64,10 @@ backfill. This ADR records that decision and makes it discoverable.
   `legacy` for the old scorecard). It carries the entered total and the score
   it replaced (`payload.before`) and sets the projected score; it writes no
   `TeamLog` row. A `staff` event never makes a game v2-owned, and games that
-  are not v2-owned keep writing `Gameresult` only.
+  are not v2-owned keep writing `Gameresult` only. Once a game has a manual
+  result, `Gameresult` (with its half-at-0 floor, #1988) stays the scoring
+  rule: a later write that leaves the projection different from it records
+  a further `correction/result` with `reason: follows_result`.
 - **No per-game schema field.** The discriminator is the existing
   `GameEvent.source` column, so no migration and no second database copy are
   needed.
