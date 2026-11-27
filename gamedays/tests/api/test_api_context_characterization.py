@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django_webtest import WebTest
 
@@ -41,18 +39,16 @@ class ApiContextCharacterization(WebTest):
         )
         DBSetup().create_game_officials(game, official=second)
 
-        with CaptureQueriesContext(connection) as queries:
+        # Exactly four queries: the connection check, site config, the crew
+        # rows and one bulk licence join. Two officials must not add a licence
+        # query per official, so pin the total exactly as well as the join.
+        with self.assertNumQueries(4) as queries:
             response = self.app.get(reverse(API_GAME_OFFICIALS, kwargs={"pk": game.pk}))
         assert response.status_code == 200
         assert {row["license"] for row in response.json} == {"F1", "F2"}
-        # Two officials still cost one bulk licence query, not one each.
-        # Other tests may leave a LeagueSeasonConfig behind, which removes two
-        # unrelated config queries, so pin the licence query count exactly and
-        # bound the total rather than depending on test order.
         licence_queries = [
             query
             for query in queries.captured_queries
             if "officials_officiallicensehistory" in query["sql"]
         ]
         assert len(licence_queries) == 1
-        assert len(queries.captured_queries) <= 4
