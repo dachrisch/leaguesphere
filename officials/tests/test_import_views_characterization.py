@@ -14,6 +14,7 @@ from django.urls import reverse
 
 from gamedays.models import Gameinfo
 from officials.models import Official, OfficialExternalGames
+from officials.import_views import _association_resolver
 from officials.service.association_resolution import UnknownAssociationError
 from gamedays.tests.setup_factories.factories import TeamFactory, UserFactory
 from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
@@ -59,6 +60,12 @@ class ImportHelperCharacterization(TestCase):
         )
         assert _entry_error_message(ValueError("bad row")) == "bad row"
         assert _entry_error_message(RuntimeError()) == ""
+
+    def test_resolver_caches_unknown_association_failures(self):
+        resolve = _association_resolver()
+        for _ in range(2):
+            with self.assertRaises(UnknownAssociationError):
+                resolve("Atlantis")
 
     def test_status_grouping_covers_all_buckets_and_unknown(self):
         items = [
