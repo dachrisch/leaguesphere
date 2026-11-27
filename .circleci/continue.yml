@@ -571,6 +571,9 @@ jobs:
             - run:
                 name: "JavaScript Test Suite"
                 command: npm --prefix gameday_designer/ run test:run
+            - run:
+                name: "Phase 3 branch-coverage gate (designer)"
+                command: npm --prefix gameday_designer/ run test:phase3
             - codecov/upload:
                 dir: gameday_designer/coverage
                 flags: gameday_designer
