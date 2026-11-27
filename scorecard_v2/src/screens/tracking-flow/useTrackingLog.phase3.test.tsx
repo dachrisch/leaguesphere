@@ -323,14 +323,6 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
     Object.assign(h.status, { paused: null });
   });
 
-  it("keeps editing null while the queue is paused for a device", () => {
-    Object.assign(h.status, { paused: "device" });
-    const paused = setup({ editing: null });
-    expect(paused.result.current.state.editing ?? null).toBeNull();
-    expect(paused.result.current.readOnly).toBe(true);
-    Object.assign(h.status, { paused: null });
-  });
-
   it("adopts a server possession only on refresh and without an in-flight change", async () => {
     const { result } = setup();
     await act(async () => {
@@ -606,19 +598,35 @@ describe("useTrackingLog handlers (Phase 3 characterization)", () => {
     expect(result.current.session.setPossession).toHaveBeenCalledTimes(1);
     result.current.refs.possessionInFlightRef.current = false;
 
-    const blocked = setup({ game: game("beendet") });
+    // Read-only (queue paused for another device) refuses a real change:
+    // the target differs from the current holder, so only `readOnly` stops it.
     Object.assign(h.status, { paused: "device" });
-    await act(async () => blocked.result.current.takePossession("Ravens"));
+    const blocked = setup();
+    expect(blocked.result.current.readOnly).toBe(true);
+    await act(async () => blocked.result.current.takePossession("Wolves"));
     expect(blocked.result.current.session.setPossession).not.toHaveBeenCalled();
+    expect(blocked.result.current.state.possession).toBe("Ravens");
     Object.assign(h.status, { paused: null });
 
+    // A rejected write rolls back to the previous holder; with the re-sync
+    // read failing too, the rollback is what stays on screen.
     const failing = setup();
     failing.result.current.session.setPossession.mockRejectedValueOnce(new Error("nope"));
+    failing.result.current.session.refresh.mockRejectedValueOnce(new Error("offline"));
     await act(async () => failing.result.current.takePossession("Wolves"));
-    expect(failing.result.current.state.possession).toBe("Wolves");
+    expect(failing.result.current.state.possession).toBe("Ravens");
     expect(failing.result.current.state.possessionError).toContain(
       "Der Ballbesitz konnte nicht geändert werden",
     );
+    expect(failing.result.current.state.possessionPending).toBe(false);
+
+    // The server may have applied the rejected PUT after all: the re-sync
+    // then wins over the rollback.
+    const applied = setup();
+    applied.result.current.session.setPossession.mockRejectedValueOnce(new Error("late"));
+    await act(async () => applied.result.current.takePossession("Wolves"));
+    expect(applied.result.current.session.refresh).toHaveBeenCalled();
+    expect(applied.result.current.state.possession).toBe("Wolves");
   });
 
   it("undoes local and server rows and keeps PAT prompts in sync", async () => {
@@ -709,6 +717,14 @@ describe("useTrackingLog handlers (Phase 3 characterization)", () => {
     const readOnly = setup({ game: game("beendet") });
     act(() => readOnly.result.current.openEdit(row()));
     expect(readOnly.result.current.state.editing).toBeNull();
+
+    // A live game whose queue is paused for another device is read-only too.
+    Object.assign(h.status, { paused: "device" });
+    const paused = setup();
+    expect(paused.result.current.readOnly).toBe(true);
+    act(() => paused.result.current.openEdit(row()));
+    expect(paused.result.current.state.editing).toBeNull();
+    Object.assign(h.status, { paused: null });
   });
 
   it("writes a corrected event and guards every refusal path", async () => {
