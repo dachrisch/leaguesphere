@@ -7,11 +7,16 @@ correction the public score stayed on the last scorecard score: v2 touchdown
 see it, because the state still equalled the replay of the same log.
 """
 
+from dataclasses import replace
+
 import pytest
+from django.contrib.auth.models import User
 from django.core.management import call_command
+from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 from rest_framework.test import APIClient
 
+from gameevents.api.serializers import parse_event_request
 from gameevents.models import GameEvent, GameState
 from gameevents.service.append import append_submission
 from gameevents.service.projector import (
@@ -20,6 +25,8 @@ from gameevents.service.projector import (
     apply,
 )
 from gameevents.service.reconcile import check_games, rebuild_game
+from gameevents.service.replay import resolve_correction
+from gameevents.service.result import record_result_correction
 from gameevents.tests.api.support import post_events
 from gamedays.models import Gameresult, TeamLog
 from gamedays.tests.setup_factories.factories import TeamLogFactory
@@ -292,3 +299,91 @@ def test_the_projector_sets_the_score_from_a_result_correction():
 def test_the_projector_rejects_a_malformed_result_correction(payload):
     with pytest.raises(InvalidEnvelope):
         apply(GameStateValue(), event("correction", "result", payload=payload))
+
+
+# --------------------------------------------------------------------------
+# the remaining branches of the functions this change touches
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_a_stranger_cannot_edit_the_result():
+    game, _home, _away = make_live_game("result-stranger")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+    stranger = User.objects.create_user(username="result-stranger", password="x")
+    client = APIClient()
+    client.force_authenticate(stranger)
+
+    response = client.patch(
+        f"/api/gamedays/gameinfo/{game.pk}/result/",
+        {"final_score": {"home": 21, "away": 3}},
+        format="json",
+    )
+
+    assert response.status_code == 403
+    assert not _result_corrections(game)
+
+
+@pytest.mark.django_db
+def test_a_negative_result_on_a_v2_game_rolls_the_edit_back():
+    game, _home, _away = make_live_game("result-negative")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+
+    response = _patch_result(game, {"final_score": {"home": -1, "away": 3}})
+
+    assert response.status_code == 400
+    assert _totals(game) == {"home": 6, "away": 0}
+    assert not _result_corrections(game)
+
+
+@pytest.mark.django_db
+def test_a_game_without_both_results_records_no_correction():
+    game, _home, _away = make_live_game("result-one-side")
+    submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+    Gameresult.objects.filter(gameinfo=game, isHome=False).delete()
+
+    assert record_result_correction(game) is None
+    assert not _result_corrections(game)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        [],
+        {"event": [{"name": "Touchdown"}], "half": 1},
+        {"events": []},
+        {
+            "client_id": "a",
+            "events": [{"type": "score", "code": "touchdown", "client_id": "b"}],
+        },
+    ],
+    ids=["not-an-object", "legacy-without-team", "no-events", "client-id-clash"],
+)
+def test_parse_event_request_rejects_malformed_bodies(data):
+    with pytest.raises(ValidationError):
+        parse_event_request(data)
+
+
+def test_parse_event_request_takes_the_events_client_id():
+    parsed = parse_event_request(
+        {"events": [{"type": "score", "code": "touchdown", "client_id": "b"}]}
+    )
+
+    assert parsed.client_id == "b"
+
+
+def test_a_correction_without_a_target_is_invalid():
+    with pytest.raises(InvalidEnvelope):
+        resolve_correction(
+            event("correction", "undo", payload={"undo_of": 1}),
+            rows_by_sequence={},
+            seqs_by_client={},
+        )
+
+
+def test_a_play_target_without_its_sequence_is_a_service_bug():
+    target = replace(event("score", "touchdown", "home", 7), seq=1)
+    correction = replace(event("correction", "undo"), undo_of=target)
+
+    with pytest.raises(ValueError, match="legacy_sequence"):
+        apply(GameStateValue(score_home=6), correction)
