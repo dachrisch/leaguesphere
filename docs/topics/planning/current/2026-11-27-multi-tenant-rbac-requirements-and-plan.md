@@ -2,13 +2,14 @@
 
 | | |
 |---|---|
-| **Status** | Planning — **blocked on the decisions in [§4](#4-open-decisions-requiring-a-human-call)** |
+| **Status** | Planning — **blocked on the open decisions in [§4](#4-decisions--settled-defaults-and-open-questions)** |
 | **Date** | 2026-11-27 |
 | **Origin** | [2026-02-25 Multi-Tenant RBAC Implementation Proposal](../history/2026-02-25-multi-tenant-rbac-thesis-implementation-proposal.md) — the response to Niklas Just's bachelor thesis *"Entwurf und Implementierung eines multimandantenfähigen Rechtemanagementsystems"* |
-| **Thesis basis** | Bachelorarbeit, Niklas Just (2123394), Feb 2026 — actor/role definitions, tenant grain and Model 3 decision (§3–4); chapters 5–7 contain no implementation or conclusion text, so the detailed requirements below come from the response document |
+| **Thesis basis** | Bachelorarbeit, Niklas Just (2123394), Feb 2026 — actor/role definitions, tenant grain, library survey, sport-agnostic requirement and Model 3 decision (§3–4); chapters 5–7 contain no implementation or conclusion text, so the detailed requirements below come from the response document |
 | **Decision** | start fresh; do **not** resurrect `feat/multi-tenancy` (`da87406d`, 2026-03-18) |
-| **Supersedes** | nothing. The thesis response stays as the historical requirement source; this document turns it into buildable, testable requirements. |
+| **Supersedes** | nothing. The 2026-02-25 response document stays as the historical requirement source; this document turns it into buildable, testable requirements. |
 | **Related** | [Snapshot as the only public API](./2026-10-04-snapshot-only-public-api.md), [Architecture Remediation Roadmap](./2026-11-25-architecture-remediation-roadmap.md), [Phase 0 plan](./2026-11-25-phase0-plan.md) |
+| **Tracking** | [#2594](https://github.com/dachrisch/leaguesphere/issues/2594) — epic and status checklist |
 
 ---
 
@@ -22,8 +23,8 @@ useful source of *ideas* and a checklist of *mistakes*.
 One-line reason: the old branch predates 4,118 commits of master, implements **role
 assignment, not tenancy** (`"tenant"` appears zero times in its diff), carries **no tests, no
 docs and no API changes**, and 12 of the 15 files it touches no longer merge cleanly — so
-rebasing it would cost more than re-deriving it from the thesis requirements against today's
-models.
+rebasing it would cost more than re-deriving it from the response document's requirements
+against today's models.
 
 ### 1.2 Why fresh — the evidence
 
@@ -58,7 +59,7 @@ models.
 
 - **No schema-per-tenant or database-per-tenant.** The thesis's Model 3 (shared database,
   shared schema, tenant key) is the decision; PostgreSQL row-level security and separate
-  schemas are out of scope (see [D9](#d9-database-platform--row-level-security)).
+  schemas are out of scope (see [D9](#d9-tenancy-library-and-database-platform)).
 - **No rewrite of the domain model.** No `Team.league`, no league-owned seasons, no changes to
   season rollover semantics.
 - **No auth-provider change.** Knox tokens, session auth and Moodle official sessions stay.
@@ -77,17 +78,16 @@ A **tenant** is a `gamedays.League` row (e.g. "DFFL", "DFFL2", "DFFL-F"). The th
 **13 leagues** as tenants as of 2026 and explicitly rejects federal states (*Bundesländer*):
 federal leagues, state leagues and cross-state divisions overlap, and the structure changes
 from year to year (§4.1). It is the unit of data isolation, role scope, URL prefix, cache
-partition and audit attribution. A
-**membership** is a `UserRole` row binding a user to a tenant with a role. An **object scope**
-is the narrower ownership inside a tenant (a team, a gameday's author, an official's own
-signup).
+partition and audit attribution. A **membership** is a `UserRole` row binding a user to a
+tenant with a role. An **object scope** is the narrower ownership inside a tenant (a team, a
+gameday's author, an official's own signup).
 
 ---
 
 ## 2. Verified baseline
 
-Every number below was measured on this branch's base commit. It is the ground truth the
-requirements are written against.
+Facts B1–B19 were measured on this branch's base commit; B20–B22 come from the thesis. Together
+they are the ground truth the requirements are written against.
 
 | # | Fact | Where | Why it matters |
 |---|---|---|---|
@@ -116,12 +116,13 @@ requirements are written against.
 
 ---
 
-## 3. Source requirements extracted from the thesis response
+## 3. Source requirements extracted from the thesis and the response document
 
 Requirements are numbered **R1…R64** and grouped by area. Each is written to be testable:
 the "Verified by" column names the artefact that proves it (a test, a check, or an audit).
-Where the thesis response is technically wrong or underspecified, the requirement says so and
-corrects it — those corrections are the most valuable part of this document.
+Where the thesis or the response document is technically wrong or underspecified, the
+requirement says so and corrects it — those corrections are the most valuable part of this
+document.
 
 ### 3.1 Data model
 
@@ -137,7 +138,7 @@ corrects it — those corrections are the most valuable part of this document.
 | **R8** | `Gameday.author`, `TeamLog.author`, `GameEvent.author` and `ScheduleTemplate.created_by` SHALL be understood as **object ownership**, not authority; the permission layer SHALL treat ownership as one input alongside role. | Permission matrix tests |
 | **R9** | The legacy `gamedays.Permissions`, `gamedays.UserPermissions` and `UserProfile.check_teammanager()` SHALL be retired in favour of `UserRole`. `UserProfile` SHALL remain only as a player profile (avatar, name, jersey). | Migration removing the two tables; `rg check_teammanager` returns only a compatibility shim |
 | **R10** | Cross-tenant relations SHALL be explicit bridge tables with their own audit columns: existing `EligibilityRule.eligible_in`, `TeamRelationship.additional_teams`, `LeagueSeasonConfig.leagues_for_league_points` are the pattern. A bridge row SHALL require a `granted_by`/`created_at` pair. | Schema review; test that a bridge does not widen default read scope |
-| **R11** | Every tenant key SHALL have an index whose leading column matches the dominant query shape: `(league, date)`, `(league, season)`, `(league, status)`, `(team, ...)`. Blanket single-column indexes on `league_id` are insufficient. | `EXPLAIN` review + query-plan test on the top 10 list views |
+| **R11** | Every tenant key SHALL have an index whose leading column matches the dominant query shape: `(league, date)`, `(league, season)`, `(league, status)`, `(team, ...)`. Blanket single-column indexes on `league_id` are insufficient. | Scripted `EXPLAIN` review of the top 10 list views recorded in the phase exit (§7.2); no brittle plan assertion |
 | **R12** | A tenant-scoped row SHALL be `NOT NULL` on its tenant key once backfilled; nullable tenant keys SHALL be limited to genuinely global rows (`League`, `Season`, `Team`, `Person`, `Association`, `SiteConfiguration`). | `check_tenancy_coverage.py` allowlist review |
 
 #### 3.1.1 Tenant key matrix
@@ -154,7 +155,7 @@ corrects it — those corrections are the most valuable part of this document.
 | `gameevents.GameEvent`, `GameState` | via `gameinfo.gameday.league` | Never trusted from the client payload |
 | `league_table.LeagueGroup`, `LeagueSeasonConfig`, `TeamPointAdjustments`, `OverrideOfficialGamedaySetting` | `league` (+`season`) | `leagues_for_league_points` stays a bridge |
 | `league_table.LeagueRuleset`, `TieBreakStep`, `LeagueRulesetTieBreak` | `league` (new, nullable = global default) | Rulesets are reusable; nullable means "platform default" |
-| `officials.Official`, `OfficialLicenseHistory` | via `team` → no; via `Official.association` and assignment rows | Referees work across leagues; scope by assignment, not ownership |
+| `officials.Official`, `OfficialLicenseHistory` | **no tenant key** — scope by assignment (`OfficialGamedaySignup`, `GameOfficial`) | Referees work across leagues; `Official.association` is an attribute, not a tenant or role scope |
 | `officials.OfficialGamedaySignup` | via `gameday` (exists) | |
 | `officials.CrewPosition` | global | |
 | `passcheck.Playerlist`, `Player` | via `team` → derived | League scope via team membership in season |
@@ -162,12 +163,12 @@ corrects it — those corrections are the most valuable part of this document.
 | `passcheck.PlayerlistTransfer` | via `current_team`/`new_team` → derived | A transfer can cross tenants; requires explicit approval authority in **both** |
 | `passcheck.EligibilityRule` | `league` (exists) + bridge | Cross-league by design |
 | `journey.Journey`, `JourneyEvent` | user-scoped, not league-scoped | Staff dashboards aggregate; see [D4](#d4-cross-league-and-global-reads) |
-| `gameday_designer.ScheduleTemplate` | `league` (new, nullable = association/global) | Existing `sharing` field already encodes private/association/global |
+| `gameday_designer.ScheduleTemplate` | `league` (new, nullable = shared template) | The existing `sharing` choices and `association` FK are *sharing* attributes, not tenancy; association/global templates are deliberately global reads |
 | `scorecard`, `scorecard_v2`, `liveticker`, `teammanager`, `accounts`, `home`, `share`, `matchreport`, `dbaccess` | no owned models (or pure config) | Thin/consumer apps; behaviour covered by API and permission requirements |
 
 ### 3.2 Tenant context and middleware
 
-The thesis proposes three middleware layers. **Layers 1 and 2 are implementable as
+The response document proposes three middleware layers. **Layers 1 and 2 are implementable as
 middleware; layer 3 is not** — Django middleware cannot intercept querysets, so
 "TenantFilteringMiddleware" is restated as the data-layer guarantee R19–R23. This is a
 deliberate deviation and the single most important architectural correction in this document.
@@ -176,7 +177,7 @@ deliberate deviation and the single most important architectural correction in t
 |---|---|---|
 | **R13** | `TenantResolutionMiddleware` SHALL resolve the tenant before the view runs, from a fixed precedence: (1) URL kwarg `league_slug`; (2) explicit `X-LeagueSphere-League` header on token-authenticated requests; (3) session key `active_league` set by the league switcher; (4) Knox token claim; (5) subdomain. It SHALL NOT resolve from POST/PUT bodies or from an arbitrary query parameter. | Unit tests for each source and for precedence |
 | **R14** | Conflicting sources (e.g. URL says `dffl`, token claim says `dffl2`) SHALL be a **403** with audit event `tenant_source_conflict`, never a silent preference. | Test with forged header + mismatched token |
-| **R15** | An **unknown** tenant slug SHALL be a **404**, a known tenant without membership SHALL be a **403**. `SYSTEM_ADMIN` bypasses membership only. | Test matrix over {unknown, known-no-role, known-role, system-admin} |
+| **R15** | An **unknown** tenant slug SHALL be a **404**. A known tenant without membership SHALL be a **403** for every action that is not declared **public-read**; public-read actions (published schedule, standings, snapshot) SHALL be allowed without membership and return published data only. `SYSTEM_ADMIN` bypasses membership only for non-public actions. | Test matrix over {unknown, known-no-role, known-role, system-admin} × {public-read, member action} |
 | **R16** | Global routes SHALL be exempt through a **code-level route manifest**, not a `/api/` prefix rule: `/api/snapshot/`, sitemaps, `/health/*`, `/login/`, `/logout/`, static/agent files, `/share/widget/`, `/liveticker/` public read routes. Adding a route to the manifest requires a comment naming its public contract. | Test that an unlisted `/api/` route under no tenant is rejected loudly |
 | **R17** | `TenantContextMiddleware` SHALL store the resolved tenant in a `contextvars.ContextVar` (never `threading.local`), expose `current_tenant()`, `require_tenant()` and `tenant_scope()`, and reset the var with the saved `Token` in a `finally` block. Nested scopes SHALL restore the **previous** value, not `None`. | Unit tests for set/reset, nesting, exception paths |
 | **R18** | Context SHALL survive Django's sync/async boundary: `sync_to_async`/`async_to_sync` copy the context (asgiref), so `contextvars` is the only correct choice. Streaming responses (SSE liveticker) SHALL re-establish the tenant inside the generator, because middleware `finally` runs before the iterator is consumed. | Streaming test asserting the generator sees the tenant |
@@ -192,7 +193,7 @@ deliberate deviation and the single most important architectural correction in t
 | Failure | Required behaviour | Forbidden behaviour |
 |---|---|---|
 | Unknown slug | 404 + audit `tenant_not_found` | 403 (leaks tenant existence) or empty page |
-| Known slug, no membership | 403 + audit `tenant_forbidden` | 200 with empty list |
+| Known slug, no membership | 403 + audit `tenant_forbidden` for a member action; public-read returns published data only | 200 with non-public data |
 | No tenant, non-global route | 400 `tenant_required` (API) / redirect (HTML) | Global query |
 | Context unset in tenant-aware manager | raise `TenantContextMissing` | return `[]` |
 | Conflicting sources | 403 + audit | silently prefer URL |
@@ -214,9 +215,9 @@ deliberate deviation and the single most important architectural correction in t
 
 ### 3.4 Roles and the permission matrix
 
-The role set follows the thesis's five actor groups verbatim (§4.1): Spieler → `PLAYER`,
-Teammanager → `TEAM_MANAGER`, Schiedsrichter → `REFEREE`, Liga-Admin → `LEAGUE_ADMIN`, plus
-the thesis's added System-Admin → `SYSTEM_ADMIN`. No association-level role is introduced:
+The role set follows the thesis's five actor groups (§4.1): Spieler → `PLAYER`, Teammanager →
+`TEAM_MANAGER`, Schiedsrichter → `REFEREE`, Liga-Admin → `LEAGUE_ADMIN`, and the thesis's
+explicitly added System-Admin → `SYSTEM_ADMIN`. No association-level role is introduced:
 `Association` stays a grouping attribute (D1), which also matches the non-goal of no
 organisation tier above federations. `PUBLIC` is the absence of a role, not a row.
 
@@ -302,10 +303,13 @@ organisation tier above federations. `PUBLIC` is the absence of a role, not a ro
 
 ---
 
-## 4. Open decisions requiring a human call
+## 4. Decisions — settled defaults and open questions
 
-Each decision below is **Awaiting decision**. The recommendation is the default the plan is
-written against; changing it changes the named requirements.
+Each decision records its status. **D1 is settled by the thesis (§4.1)**, **D6 is settled by the
+technical constraints**, and the tenancy-library half of **D9 is settled by the thesis's library
+survey (§3.3)**; these are recorded so the plan has one source of truth, not reopened. The
+remaining decisions are **Awaiting decision** — the recommendation is the default the plan is
+written against, and changing it changes the named requirements.
 
 ### D1. Tenant grain — League, Association, or two-level?
 
@@ -323,9 +327,10 @@ written against; changing it changes the named requirements.
   league would become a sub-scope and cross-association sharing gets harder; (b) two-level
   → `Tenant` table with `parent` — most flexible, largest migration, and `Association` would
   need a `parent` FK it does not have today.
-- **Impact if deferred**: R1, R2, R25, R32 and the whole URL shape are blocked. This must be
-  decided first.
-- **Status**: **Awaiting decision.**
+- **Impact**: R1, R2, R25, R32 and the whole URL shape depend on it. The thesis settles it, so
+  this is recorded rather than open; only a deliberate rejection of the thesis would reopen it.
+- **Status**: **Settled by the thesis §4.1** — 13 leagues as 13 tenants; federal states
+  rejected. No further decision needed.
 
 ### D2. How `Team` is scoped — no league FK, seasonal league movement
 
@@ -355,7 +360,10 @@ written against; changing it changes the named requirements.
   all leagues. Do they stay global?
 - **Recommended default**: **Yes — they stay global and explicitly unscoped.** Encode them in
   the route manifest (R16) and make each one an `unscoped(reason=...)` call site. Do not
-  tenant-scope public reads: a fan following a league should not need a tenant cookie.
+  tenant-scope public reads: a fan following a league should not need a tenant cookie. A public
+  read MAY still carry a tenant in the URL (e.g. `/api/leagues/<slug>/standings/`) to pick the
+  subject; the tenant then scopes *what* is shown, never *whether* the visitor is a member
+  (R15). The snapshot stays tenant-less and cross-league.
 - **Rationale**: The snapshot-only policy already decided what is public; tenancy must not
   silently break embeds, SEO or the liveticker worker. The risk is *forgetting* one, not
   allowing them.
@@ -401,7 +409,8 @@ written against; changing it changes the named requirements.
 
 ### D6. Sync vs async tenant context
 
-- **Question**: The thesis asks whether `threading.local` or `contextvars` is required.
+- **Question**: The response document asks whether `threading.local` or `contextvars` is
+  required.
 - **Recommended default**: **`contextvars`, unconditionally** (R17). The project is sync WSGI
   today, but the liveticker already runs an SSE worker process, `health_check` documents a
   past async deadlock, and Django 6 is async-first in its own internals. `contextvars` is
@@ -411,9 +420,10 @@ written against; changing it changes the named requirements.
   every context read.
 - **Alternatives**: `threading.local` — only if the project freezes on sync WSGI forever, and
   even then it is the weaker choice.
-- **Impact if deferred**: Blocks R17, R18 and streaming-stream behaviour; low risk because the
-  default is cheap.
-- **Status**: **Awaiting decision** (expected to be confirmed, not debated).
+- **Impact**: R17, R18 and the streaming guarantee are built on it; choosing otherwise would
+  rewrite both.
+- **Status**: **Settled: `contextvars`** — no alternative survives async or streaming (R17/R18).
+  Recorded, not open.
 
 ### D7. Role migration from 119 `is_staff` sites
 
@@ -439,7 +449,7 @@ written against; changing it changes the named requirements.
 
 - **Question**: `SeasonLeagueTeam(season, league)` has no uniqueness constraint, and historic
   duplicates exist. Tenant scoping reads this table on every team query. Do we fix it first?
-- **Recommended default**: **Yes — add the constraint as part of Phase 1**, after the
+- **Recommended default**: **Yes — add the constraint in Phase 2**, after the
   `report_duplicate_season_league_teams` command reports zero duplicates in stage and prod.
 - **Rationale**: Duplicate membership rows make "a team's league for a season" ambiguous,
   which makes `TEAM_MANAGER` scope ambiguous (R36). This is a prerequisite, not an
@@ -449,22 +459,27 @@ written against; changing it changes the named requirements.
 - **Impact if deferred**: Blocks R4 (index/constraint review) and R36.
 - **Status**: **Awaiting decision.**
 
-### D9. Database platform — row-level security
+### D9. Tenancy library and database platform
 
-- **Question**: The thesis asks whether PostgreSQL with row-level security should replace
-  MySQL.
-- **Recommended default**: **Stay on MariaDB/MySQL; do not rely on RLS.** Enforce in the
-  application layer (managers + policy kernel), with the DB as defence in depth via
-  constraints and indexes, not as the isolation mechanism.
-- **Rationale**: The thesis's own library survey (§3.3) rejects the available tenancy
-  packages for this stack and extends `django.contrib.auth` instead; the bespoke `access` app
-  follows that route. The production stack, backups, LXC test DB, `dbaccess` tooling and every
+- **Question**: Should a tenancy library be adopted, and should PostgreSQL with row-level
+  security replace MySQL?
+- **Recommended default**: **No tenancy library — extend `django.contrib.auth` (settled by the
+  thesis §3.3), and stay on MariaDB/MySQL without relying on RLS.** Enforce in the application
+  layer (managers + policy kernel), with the DB as defence in depth via constraints and
+  indexes, not as the isolation mechanism.
+- **Rationale**: The thesis's library survey (§3.3, B21) evaluates `django-tenants`,
+  `django-tenant-schemas`, `django-multitenant` and `django-db-multitenant` and rejects them
+  for this stack in favour of extending `django.contrib.auth`; the bespoke `access` app follows
+  that route. The production stack, backups, LXC test DB, `dbaccess` tooling and every
   migration are MariaDB. A platform migration is a separate, larger project; RLS would also
   hide isolation failures from tests unless every test runs as a non-owner role.
 - **Alternatives**: Postgres + RLS — genuinely stronger against ORM bypass, but changes
-  `dbaccess`, the snapshot cache and the deployment story.
-- **Impact if deferred**: None for the plan's shape; resolves the thesis's open question 5.
-- **Status**: **Awaiting decision.**
+  `dbaccess`, the snapshot cache and the deployment story. A tenancy library — rejected by the
+  thesis on maintenance and fit grounds.
+- **Impact**: the library decision unblocks R2/R32 and Phase 1; the database platform affects
+  nothing structural in this plan.
+- **Status**: **Library: settled by the thesis §3.3 (B21).** **Database platform: Awaiting
+  decision** — recommendation is to stay on MariaDB.
 
 ---
 
@@ -582,18 +597,18 @@ Order in `MIDDLEWARE` (after authentication, before the view):
 
 - Resolution runs after sessions/auth because it needs `request.user` and the session key.
 - Enforcement is last so it can read what the view touched.
-- `TenantEnforcementMiddleware` is the corrected thesis "layer 3": it observes, it cannot
-  filter. That is a feature — a filter that silently fails is worse than an assertion that
-  screams.
+- `TenantEnforcementMiddleware` is the corrected third layer of the response document: it
+  observes, it cannot filter. That is a feature — a filter that silently fails is worse than
+  an assertion that screams.
 
 ### 5.5 URL and API shape
 
 ```
-/api/leagues/<slug>/gamedays/                 list/create (LEAGUE_ADMIN)
-/api/leagues/<slug>/gamedays/<id>/            detail/update
-/api/leagues/<slug>/gamedays/<id>/publish/    action
-/api/leagues/<slug>/teams/                    teams in tenant (derived, R5)
-/api/leagues/<slug>/standings/                published standings (public read)
+/api/leagues/<slug>/gamedays/                 read = public-read; write = LEAGUE_ADMIN
+/api/leagues/<slug>/gamedays/<id>/            read = public-read (published); write = LEAGUE_ADMIN
+/api/leagues/<slug>/gamedays/<id>/publish/    action (LEAGUE_ADMIN)
+/api/leagues/<slug>/teams/                    read = public-read; write = LEAGUE_ADMIN (derived, R5)
+/api/leagues/<slug>/standings/                published standings (public-read, no membership)
 /api/leagues/<slug>/officials/assignments/    LEAGUE_ADMIN
 /api/me/leagues/                              memberships (R27)
 /api/me/permissions/?league=<slug>            effective actions (R27)
@@ -650,18 +665,20 @@ def can(user, action, tenant, obj=None) -> bool:
 ## 6. Phased delivery plan
 
 Seven phases. Each is independently shippable and testable; each has an exit gate that must be
-green before the next starts. Phase numbering is separate from the thesis's six phases (which
-underestimated testing and frontend and assumed the old data model).
+green before the next starts. Phase numbering is separate from the six phases in the
+2026-02-25 response document (which underestimated testing and frontend and assumed the old
+data model).
 
 ### Phase 0 — Decisions and invariants (no product code)
 
 **Entry**: this document merged.
-**Work**: resolve D1–D9; sign off the permission matrix; write the tenant-key matrix (R4) as
-code (`scripts/check_tenancy_coverage.py`) with every model listed; add the boundary entry
-for `access`.
+**Work**: record the thesis-settled defaults (D1, D6, the library half of D9) as adopted;
+resolve the open decisions (D2–D5, D7–D9); sign off the permission matrix; write the
+tenant-key matrix (R4) as code (`scripts/check_tenancy_coverage.py`) with every model listed;
+add the boundary entry for `access`.
 **Exit**: every decision records a choice; the coverage script runs and fails on an unlisted
 model; the matrix is reviewed by a second person.
-**Blocked by**: D1, D2, D3, D4, D5, D7, D8.
+**Blocked by**: D2, D3, D4, D5, D7, D8, D9 (database platform).
 
 ### Phase 1 — Foundation: `access` app, context, managers, middleware
 
@@ -755,7 +772,8 @@ within budget; docs updated.
 | God mode off | superuser, no opt-in | Tenant-scoped | 404 for other tenant |
 | God mode on | superuser + opt-in | Allowed | 200 + audit row |
 | Unknown tenant | `/api/leagues/nope/` | 404 | audit `tenant_not_found` |
-| No membership | known tenant, no role | 403 | audit `tenant_forbidden` |
+| No membership, member action | known tenant, no role | 403 | audit `tenant_forbidden` |
+| No membership, public-read | known tenant, no role, published data | 200, published rows only | no draft/private row in body |
 
 ### 7.2 Query counts
 
@@ -771,10 +789,9 @@ within budget; docs updated.
 ### 7.3 Bypass audit
 
 A checklist, signed per phase, covering: raw SQL (4 sites, B15), management commands (22,
-B16), projectors (B17), admin actions, signals, seeders,
-offline replay (B18), admin actions (24 `admin.site.register` calls), and any `unscoped()`
-call site. Each gets either a named test or an allowlist entry with a reason. **No entry
-without a reason.**
+B16), projectors (B17), admin actions (24 `admin.site.register` calls), signals, seeders,
+offline replay (B18), and any `unscoped()` call site. Each gets either a named test or an
+allowlist entry with a reason. **No entry without a reason.**
 
 ### 7.4 Security audit
 
@@ -785,10 +802,10 @@ snapshot and embed surfaces are unchanged.
 
 ### 7.5 Load test
 
-k6 scenario with three tenants and skewed traffic (one heavy league, two light) on stage;
-compare p95 and error rate against the current baseline; assert the tenant resolution and
-policy kernel add no measurable overhead at 10 VUs (the repo's existing ramp). Per-tenant
-throttles (R50) are exercised.
+k6 scenario with three tenants and skewed traffic (one heavy league, one youth league, one
+light league) on stage; compare p95 and error rate against the current baseline; assert the
+tenant resolution and policy kernel add no measurable overhead at 10 VUs (the repo's existing
+ramp). Per-tenant throttles (R50) are exercised.
 
 ---
 
@@ -797,19 +814,19 @@ throttles (R50) are exercised.
 | ID | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|---|
 | K1 | A forgotten filter leaks cross-tenant data in production | Medium | Critical | Loud `TenantContextMissing`, enforcement middleware, isolation suite, shadow-read |
-| K2 | Scope creep into a full domain-model rewrite (`Team.league`) | High | High | Explicit non-goal; R5/R6; D2 decided before Phase 1 |
+| K2 | Scope creep into a full domain-model rewrite (`Team.league`) | High | High | Explicit non-goal; R5/R6; D2 decided before any team-scoped read (Phase 3) |
 | K3 | `is_staff` migration over- or under-grants a volunteer mid-season | High | High | Write → shadow-read → enforce; disagreement report; per-app flags |
 | K4 | Cross-league features (league points, eligibility, transfers) break | High | High | Bridge tables + explicit global routes (D4); feature tests before isolation flips |
 | K5 | Public surfaces (snapshot, sitemap, embeds, liveticker) regress | Medium | High | Route manifest, byte-identical snapshot contract, embed tests |
 | K6 | Projector/management-command writes bypass the tenant | Medium | High | Tenant derived from `gameinfo.gameday`, `--league`, bypass audit |
 | K7 | `contextvars` leaks or is lost across streaming/async boundaries | Low | High | R17/R18 tests, token reset, streaming generator test |
-| K8 | Query-count or latency regression on gameday weekend | Medium | High | Composite indexes, +1-query budget, EXPLAIN tests, load test |
+| K8 | Query-count or latency regression on gameday weekend | Medium | High | Composite indexes, +1-query budget, scripted EXPLAIN review, load test |
 | K9 | Offline scorecard queues replay into the wrong tenant | Medium | High | Tenant-namespaced outbox, device-lock conflict rule (R64) |
 | K10 | Admin interface exposes other tenants to a scoped admin | Medium | High | `TenantModelAdmin`, admin isolation tests, god-mode banner |
 | K11 | Duplicate `SeasonLeagueTeam` rows make scope ambiguous | Medium | Medium | D8: constraint after duplicate report is clean |
 | K12 | The new app recreates the old circular dependency | Low | High | Import rules §5.1, boundary check includes `access` |
 | K13 | Audit logging becomes a write bottleneck on gameday | Medium | Medium | Writes/denials only (R47), async/batched, no read audit |
-| K14 | Plan stalls on decisions and never ships | High | Medium | Phase 0 exit requires recorded decisions; D6/D9 have cheap defaults |
+| K14 | Plan stalls on decisions and never ships | High | Medium | Phase 0 exit requires recorded decisions; D1/D6 are settled and the remaining defaults are cheap |
 
 ---
 
@@ -817,19 +834,19 @@ throttles (R50) are exercised.
 
 | Phase | State | Blocking decisions | Notes |
 |---|---|---|---|
-| 0 — Decisions & invariants | **Awaiting decisions** | D1–D9 | This document is the input; no code |
-| 1 — Foundation (`access`, context, middleware) | Planning | D1, D6 | Design in §5; flags off by default |
+| 0 — Decisions & invariants | **In progress — open decisions** | D2–D5, D7, D8, D9 (database platform) | D1, D6 and the D9 library half are settled and recorded |
+| 1 — Foundation (`access`, context, middleware) | Planning | none (D1, D6 settled) | Design in §5; flags off by default |
 | 2 — Identity & role backfill | Planning | D7, D8 | `Person.user`, `Official.user`, `UserRole` seed |
 | 3 — Read isolation | Planning | D2, D3, D4 | App order: gamedays → league_table → passcheck → officials → journey → designer |
 | 4 — Write authorization | Planning | D5, D7 | Kernel replaces `is_staff` writes |
-| 5 — API surface | Planning | D1, D4 | Nested routes, `/api/me` |
+| 5 — API surface | Planning | D4 | Nested routes, `/api/me`; grain settled by D1 |
 | 6 — Frontend & offline | Planning | D3, D5 | Cache keys, permissions payload, outbox |
 | 7 — Deprecate `is_staff` | Planning | D7 | Security audit + load test gate |
 
-**Current state**: `Planning` — no implementation branch, no code. The only artefact is this
+**Current state**: `Planning` — no implementation branch, no code. The only artefacts are this
 document and its tracking issue.
-**Next action**: resolve D1/D2/D6 (cheap, unblock Phase 1) and schedule the D3/D4/D5 workshop
-with the league administrators.
+**Next action**: resolve D2/D3/D4/D5/D7/D8 and confirm the D9 database platform; Phase 1 can
+start on the thesis-settled grain (D1) and context (D6) in parallel.
 
 ---
 
@@ -868,9 +885,10 @@ with the league administrators.
 | Moving `Association` out of `gamedays` | It is live (74 references on master); the new app imports it instead (B6) |
 | `League.association` FK as a tenant path | No product need; Association stays a grouping attribute (D1) |
 | `Team.league` | Factually wrong for seasonal movement (B3, D2) |
+| Association-scoped admin roles (the old branch's association assignment table) | The thesis defines five actor roles (§4.1); `Association` is a grouping attribute, not a tenant or role scope (D1, R3) |
 | Django group names as roles | Global strings with no tenant dimension (R2, R33) |
 | Unauthenticated delete views and open create views | Security defects, not features |
-| `django.contrib.auth` per-model permissions as the authorization mechanism | Cannot express tenant scope (R33, thesis's `@permission_required` example is unsound here) |
+| `django.contrib.auth` per-model permissions as the authorization mechanism | Cannot express tenant scope (R33; the response document's `@permission_required` example is unsound here) |
 | The old migration chain | 9 filename collisions; rebuilt from the current schema |
 | Big-bang `is_staff` removal | Replaced by the five-stage ladder (§6.1) |
 
@@ -888,10 +906,13 @@ with the league administrators.
 | Security & audit | R47–R52 | 4, 5, 7 |
 | Testing & load | R53–R58 | every phase |
 | Frontend | R59–R64 | 6 |
+| Thesis alignment (13 tenants, five roles, no library, sport-agnostic) | R1, R32, R56 (facts B20–B22; decision D1, library half of D9) | 0 |
 
 **Glossary**
 
-- **Tenant** — a `League`; the isolation boundary.
+- **Tenant** — a `League`; the isolation boundary (13 leagues as of 2026, thesis §4.1).
+- **Actor role** — the thesis's term for its five role groups: Spieler, Teammanager,
+  Schiedsrichter, Liga-Admin and System-Admin.
 - **Membership** — a `UserRole` row binding a user to a tenant with a role.
 - **Object scope** — ownership/relationship inside a tenant (author, team, assignment).
 - **Global route** — a route on the manifest that explicitly reads across tenants.
