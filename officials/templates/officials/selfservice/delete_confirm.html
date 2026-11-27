@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="content-section">
+    <h1>{% if entry %}Eintrag löschen{% else %}Zuordnung aufheben{% endif %}</h1>
+    {% if entry %}
+    <p>
+        Dieser Einsatz außerhalb der DFFL wird gelöscht. Das kann nicht rückgängig
+        gemacht werden.
+    </p>
+    <div class="table-responsive">
+    <table class="table table-sm">
+        <tbody>
+        <tr>
+            <th scope="row">Datum</th>
+            <td>{{ entry.date|date:"d.m.Y" }}</td>
+        </tr>
+        <tr>
+            <th scope="row">Anzahl Spiele</th>
+            <td>{{ entry.number_games }}</td>
+        </tr>
+        <tr>
+            <th scope="row">Position</th>
+            <td>{{ entry.position }}</td>
+        </tr>
+        <tr>
+            <th scope="row">Verband</th>
+            <td>{{ entry.association.abbr }}</td>
+        </tr>
+        <tr>
+            <th scope="row">Kommentar</th>
+            <td>{{ entry.comment|default:"–" }}</td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">Endgültig löschen</button>
+        <a class="btn btn-outline-danger"
+           href="{% url 'view-officials-profile-gamelist' pk=entry.official_id season=entry.date.year %}">Abbrechen</a>
+    </form>
+    {% else %}
+    <p>
+        Dieser DFFL-Einsatz wird entfernt. Der Eintrag bleibt mit dem eingegebenen Namen
+        bestehen und ist danach keiner Offiziellen mehr zugeordnet. Das Spiel selbst bleibt
+        ebenfalls bestehen.
+    </p>
+    <div class="alert alert-info">
+        Der Eintrag bleibt mit Name und Position bestehen und ist danach keiner Offiziellen mehr zugeordnet.
+    </div>
+    <div class="table-responsive">
+    <table class="table table-sm">
+        <tbody>
+        <tr>
+            <th scope="row">Spieltag</th>
+            <td>{{ game.gameday.name }} ({{ game.gameday.date|date:"d.m.Y" }})</td>
+        </tr>
+        <tr>
+            <th scope="row">Spiel</th>
+            <td>{% if home and away %}{{ home }} vs {{ away }} (#{{ game.pk }}){% else %}Spiel #{{ game.pk }}{% endif %}</td>
+        </tr>
+        <tr>
+            <th scope="row">Position</th>
+            <td>{{ row.position }}</td>
+        </tr>
+        </tbody>
+    </table>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <button class="btn btn-danger" type="submit">Zuordnung aufheben</button>
+        <a class="btn btn-outline-danger"
+           href="{{ next_url }}">Abbrechen</a>
+    </form>
+    {% endif %}
+</div>
+{% endblock content %}

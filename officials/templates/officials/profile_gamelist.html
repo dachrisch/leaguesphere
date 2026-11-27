@@ -43,8 +43,18 @@
 </p>
 {% else %}
 <br/>
+{% include 'officials/selfservice/_banner.html' %}
+<div class="alert alert-info">
+    <i class="bi bi-question-circle me-1" aria-hidden="true"></i>
+    Einsätze müssen selbst gepflegt werden. Wie das funktioniert? In der
+    <a href="{% url 'help-topic' 'offizielle-einsaetze' %}">Hilfe</a> ist alles erklärt.
+</div>
 {% include 'utils/year_filter.html' %}
+<p>
+    Fehlende Einsätze kannst du in der <a href="/officials/einsaetze/">Einsätze-Liste</a> überprüfen.
+</p>
 <h2>{{ season }} DFFL Spiele (und Ligen mit Scorecard)</h2>
+<div class="table-responsive">
 <table class="table table-hover">
     <thead>
     <tr>
@@ -54,6 +64,9 @@
         <th scope="col">Position</th>
         <th scope="col">Spiel</th>
         <th scope="col">Platzierung</th>
+        {% if can_edit_profile %}
+        <th scope="col">Aktion</th>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -66,14 +79,21 @@
     <tr>
         <th scope="row">{{official.game_official_id}}</th>
         <td>{{official.date}}</td>
-        <td>{{official.gameday}}</td>
+        <td><a href="/gamedays/gameday/{{official.gameday_id}}/">{{official.gameday}}</a></td>
         <td>{{official.position}}</td>
         <td>{{official.vs}} (#{{official.gameinfo_id}})</td>
         <td>{{official.standing}}</td>
+        {% if can_edit_profile %}
+        <td>
+            <a class="btn btn-sm btn-outline-danger"
+               href="{% url 'view-officials-selfservice-dffl-delete' pk=official.game_official_id %}"><i class="bi bi-person-dash me-1" aria-hidden="true"></i>Entfernen</a>
+        </td>
+        {% endif %}
     </tr>
     {% endfor %}
     </tbody>
 </table>
+</div>
 <h2>{{ season }} Spiele außerhalb der DFFL</h2>
 <p>
     Hier werden alle Spiele aufgelistet, die ohne Verwendung der Scorecard gepfiffen wurden.
@@ -83,15 +103,13 @@
     Ab wann ein Spiel als Lizenzspiel zählt, wird <a href="https://offd.de/mod/page/view.php?id=315"
                                                      target="_blank">hier</a> beschrieben.
 </p>
-<p>
-    <strong>Letzte Aktualisierung:</strong> {{ official_info.external_games.last_update }}
-</p>
+<div class="table-responsive">
 <table class="table table-hover">
     <thead>
     <tr>
         <th scope="col">Datum</th>
-        <th scope="col"><span data-bs-title="#Spiele gibt an, wie viele Spiele gepfiffen wurden."
-                              data-bs-toggle="tooltip">#Spiele</span><br/><span
+        <th scope="col"><span data-bs-title="Anzahl Spiele gibt an, wie viele Spiele gepfiffen wurden."
+                              data-bs-toggle="tooltip">Anzahl Spiele</span><br/><span
                 data-bs-title="#Lizenzspiele ist die Anzahl der Spiele, die für die
     Lizenzverlängerung gewertet werden" data-bs-toggle="tooltip">(#Lizenzspiele)</span></th>
         <th scope="col">
@@ -114,6 +132,9 @@
             <div data-bs-title="Durch wen wurde der Eintrag gemeldet?" data-bs-toggle="tooltip">Meldename</div>
         </th>
         <th scope="col">Kommentar</th>
+        {% if can_edit_profile %}
+        <th scope="col">Aktion</th>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -134,20 +155,25 @@
         <td>{{entry.notification_date}}</td>
         <td>{{entry.reporter_name}}</td>
         <td>{{entry.comment}}</td>
+        {% if can_edit_profile %}
+        <td>
+            <a class="btn btn-sm btn-outline-primary"
+               href="{% url 'view-officials-selfservice-external-edit' pk=entry.id %}">Bearbeiten</a>
+            <a class="btn btn-sm btn-outline-danger"
+               href="{% url 'view-officials-selfservice-external-delete' pk=entry.id %}"><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Entfernen</a>
+        </td>
+        {% endif %}
     </tr>
     {% endfor %}
     </tbody>
 </table>
-<h2>Anmerkungen</h2>
+</div>
+{% if can_edit_profile %}
 <p>
-    Sollten Spiele fehlen, kannst du <a href="{% url 'view-officials-game-officials-appearance' %}">hier</a>
-    überprüfen, ob dein Einsatz in der DFFL gezählt wurde.
+    <a class="btn btn-primary w-100"
+       href="{% url 'view-officials-selfservice-external-multi-add' %}">Spiele melden</a>
 </p>
-<p>
-    Bei fehlenden Einsätzen, unabhänig ob DFFL, außerhalb der Liga oder Flag & Fun Turnieren, kannst du diese <a
-        href="https://forms.gle/F9dSrMoodipfbys79" target="_blank">hier</a> nachmelden.<br/>
-    Bei Fragen wende dich bitte an Chris: c.kaempfe@afvd.de
-</p>
+{% endif %}
 {% include 'utils/tooltip_init.html' %}
 {% endif %}
 {% endblock gamelist %}

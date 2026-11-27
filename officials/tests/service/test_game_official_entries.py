@@ -60,6 +60,9 @@ class TestAllowedPositions(TestCase):
 
 
 class TestExternalGameOfficialEntry(TestCase):
+    def setUp(self):
+        DbSetupOfficials.create_production_associations()
+
     def test_all_ten_fields_are_persisted_correctly_not_just_seven(self):
         # Regression test: ExternalGameOfficialEntry used to build
         # OfficialExternalGames(None, *self.constructor_values), passing
@@ -88,7 +91,7 @@ class TestExternalGameOfficialEntry(TestCase):
         assert saved.number_games == 3
         assert str(saved.date) == "2024-05-01"
         assert saved.position == "Referee"
-        assert saved.association == "Hamburg"
+        assert saved.association.abbr == "AFCVHH"
         assert saved.halftime_duration == 20
         assert saved.has_clockcontrol is True
         assert saved.is_international is True
@@ -118,6 +121,23 @@ class TestExternalGameOfficialEntry(TestCase):
         # default=None (see migration 0008) - the DB column is NOT NULL,
         # so an omitted comment is normalized to "" rather than None.
         assert saved.comment == ""
+
+    def test_success_message_uses_an_zahl_spiele_not_hash_spiele(self):
+        team = TeamFactory(name="Test Team")
+        official = OfficialFactory(first_name="Franzi", last_name="Fedora", team=team)
+        entry = ExternalGameOfficialEntry(
+            official_id=official.pk,
+            number_games=2,
+            date="2024-05-01",
+            position="Referee",
+            association="Hamburg",
+            halftime_duration=20,
+        )
+
+        message = entry.save()
+
+        assert "Anzahl Spiele 2" in message
+        assert "#Spiele" not in message
 
     def test_official_not_found_raises_does_not_exist(self):
         entry = ExternalGameOfficialEntry(
