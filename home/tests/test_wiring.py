@@ -4,6 +4,8 @@
 `league_manager/tests/test_views.py::TestHomeView` stay valid.
 """
 
+import re
+
 import pytest
 from django.conf import settings
 from django.urls import reverse
@@ -46,6 +48,32 @@ def test_navigation_home_entry_points_at_the_home_page(client):
     response = client.get(reverse(LEAGUE_GAMEDAY_LIST))
 
     assert 'href="/home/"' in response.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["anonymous", "non-staff", "staff"])
+def test_navigation_spieltage_dropdown(client, django_user_model, role):
+    """One 'Spieltage' dropdown holds the list link and, for non-staff, the designer."""
+    if role != "anonymous":
+        is_staff = role == "staff"
+        django_user_model.objects.create_user(
+            username=f"nav-{role}",
+            password="a-long-test-password",
+            is_staff=is_staff,
+        )
+        assert client.login(username=f"nav-{role}", password="a-long-test-password")
+
+    html = client.get(reverse(LEAGUE_GAMEDAY_LIST)).content.decode()
+
+    gameday_list_url = reverse(LEAGUE_GAMEDAY_LIST)
+    assert re.search(r"nav-link dropdown-toggle[^>]*>\s*Spieltage", html, re.S)
+    assert re.search(
+        rf'class="dropdown-item"[^>]*href="{gameday_list_url}"[^>]*>\s*Übersicht',
+        html,
+        re.S,
+    )
+    assert ("Spieltag ansehen" in html) == (role == "non-staff")
+    assert f'<a class="nav-link" href="{gameday_list_url}">Spieltage</a>' not in html
 
 
 def test_dead_homeview_is_removed():

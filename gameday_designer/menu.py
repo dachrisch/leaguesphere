@@ -1,7 +1,8 @@
 """
 Menu integration for Gameday Designer app.
 
-Adds "Spieltag designen" entry to the "Orga" menu for staff users.
+Adds designer entries to the staff "Orga" menu. The non-staff read-only link
+lives in the "Spieltage" dropdown owned by gamedays/menu.py.
 """
 
 from league_manager.base_menu import BaseMenu, MenuItem
@@ -42,27 +43,5 @@ class Gameday_designerMenuOrgaEntry(BaseMenu):
             MenuItem.create(
                 name="📊 Live Status",
                 url="game-progress-page",  # Reverses to /gamedays/progress/
-            ),
-        ]
-
-
-class Gameday_designerMenuViewOnlyEntry(BaseMenu):
-    """
-    Show a view-only 'Spieltag ansehen' link to authenticated non-staff users.
-
-    Placed in a dedicated 'Spieltage' dropdown group that is invisible to
-    staff (who use the 'Orga' group) and anonymous users.
-    """
-
-    def get_name(self):
-        return "Spieltage"
-
-    def get_menu_items(self, request):
-        if not request.user.is_authenticated or request.user.is_staff:
-            return []
-        return [
-            MenuItem.create(
-                name="Spieltag ansehen",
-                url="gameday_designer_app:index",  # Reverses to /gamedays/gameday/design/
             ),
         ]
