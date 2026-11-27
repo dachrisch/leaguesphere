@@ -22,7 +22,7 @@ See [current/](./current/) for active planning work.
 - [2026-11-25 Architecture Remediation Roadmap](./current/2026-11-25-architecture-remediation-roadmap.md): agreed five-issue ranking, phase order 0a → 0c → 0b → 1–5, equivalence step, delivery workflow and all 18 user decisions
 - [2026-11-25 Phase 0 Implementation Plan](./current/2026-11-25-phase0-plan.md): self-contained brief for the implementing session — 0a boundary check, 0c equivalence harness (repo + infra PR), 0b black reformat, as a `gh stack`
 - [2026-11-25 Phase 1 Implementation Plan](./current/2026-11-25-phase1-plan.md): self-contained brief for inverting the five consumer imports out of `gamedays` — guardrails and 100% branch gate, schedule-strategy and hook registries, seven `gh stack` layers, characterization and equivalence exits
-- [2026-11-25 Phase 2 Implementation Plan](./current/2026-11-25-phase2-plan.md): provisional brief for the event-store cutover — ADR ownership, reconciliation report and accepted legacy set, flag-on validation, shadow-write and flag removal, six `gh stack` layers on top of Phase 1
+- [2026-11-25 Phase 2 Implementation Plan](./current/2026-11-25-phase2-plan.md): approved brief (decisions accepted 2026-11-26) for the event-store cutover — ADR ownership, reconciliation report and accepted legacy set, flag-on validation, shadow-write and flag removal; a plan-docs PR plus six implementation layers (seven `gh stack` PRs) on top of Phase 1
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
