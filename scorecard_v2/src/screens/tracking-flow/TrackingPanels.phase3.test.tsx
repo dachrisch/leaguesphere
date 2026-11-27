@@ -509,7 +509,7 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
       });
       // DirectionText puts the arrow before "Nord" and after "Süd".
       expect(screen.getByLabelText("Spielrichtung 2. Halbzeit")).toHaveTextContent(
-        new RegExp(`^Spielrichtung\s*${shown}\s*$`),
+        new RegExp(`^Spielrichtung\\s*${shown}\\s*$`),
       );
       expect(screen.getByLabelText("Pause")).toHaveTextContent("5 Minuten");
       cleanup();
