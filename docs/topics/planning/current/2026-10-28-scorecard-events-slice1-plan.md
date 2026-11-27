@@ -77,13 +77,13 @@ Implemented decisions (`gameevents/service/feed.py`):
 - the reconciliation flag is checked for event-sourced games only; a legacy
   game's rows are the source of truth, so it is always served from them.
 
-## T5 — the liveticker consumes the feed (behind a flag)
+## T5 — the liveticker consumes the feed (flag removed in Phase 2)
 
 **Files:** `liveticker/service/liveticker_service.py`, `liveticker/api/views.py`, tests, `league_manager/settings/base.py`
 
-`SCORECARD_EVENT_FEED` (default **off**): when on, live games with events take score/period/ticks from `GameState` + feed; everything else keeps today's query. **The widget payload does not change** — the React app is untouched.
+Live games with a `source=v2` event take score/period from `GameState`; ticks remain the projected `TeamLog` rows. Shadow-only and no-event games keep the row-based path. The flag was removed in Phase 2; **the widget payload does not change** — the React app is untouched.
 
-**Acceptance:** with the flag off, byte-identical payload to today (snapshot test); with it on, an event-sourced game reports the same score, period and last 5 ticks as the row-based path (comparison test on the same fixture); the ETag still changes when a new event arrives.
+**Acceptance:** an event-sourced game reports the same score, period and last 5 ticks as the row-based path (comparison test on the same fixture); the ETag still changes when a new event arrives; legacy samples stay byte-identical (Phase 2 equivalence).
 
 Implemented decisions (`liveticker/service/liveticker_service.py`,
 `liveticker/api/views.py`, `league_manager/settings/base.py`):
@@ -153,6 +153,6 @@ Sport definitions (`I4.x`), the template-driven UI, async workers, statistics, q
 
 ## Rollout
 
-1. Merge with `SCORECARD_EVENT_FEED=off` — the append path stores events and keeps writing identical rows; nothing user-visible changes.
+1. Merged with `SCORECARD_EVENT_FEED=off` — the append path stored events and kept writing identical rows; nothing user-visible changed.
 2. On stage, run `check_game_projection --all` after a gameday: expect zero drift.
-3. Flip the flag, watch the liveticker on one gameday, then keep it on.
+3. Phase 2 ran the full flag-ON validation on the agent stage, then made the event path permanent and removed the flag after a gameday rehearsal on ref vs cand (no prod soak; this plan's historical rollout step is complete).

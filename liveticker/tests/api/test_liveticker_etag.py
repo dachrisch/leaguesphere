@@ -88,14 +88,14 @@ class TestLivetickerEtag(TestCase):
             reverse(API_LIVETICKER_ALL), {"gameday": str(gameday.pk)}
         )
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(4):
             scoped = generate_liveticker_etag(request)
 
         other_gameday = GamedayFactory(name="Other season gameday")
         for index in range(50):
             make_live_game(f"etag-other-{index}", gameday=other_gameday)
 
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(4):
             self.assertEqual(generate_liveticker_etag(request), scoped)
 
     def test_two_stale_conditionals_render_the_service_once(self):

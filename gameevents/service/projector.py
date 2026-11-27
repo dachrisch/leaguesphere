@@ -60,6 +60,15 @@ projector:
 Undoing a correction restores the sequences the first correction deleted and
 adds back the score it removed, so an undo of an undo is symmetric.
 
+A **result correction** (``correction/result``) is different: it is not an undo
+of an event but the record of a manual result edit
+(``PATCH /api/gameinfo/<id>/result/`` on a v2-owned game). It names no target,
+writes and marks no row, and sets the projected score to ``payload.home`` /
+``payload.away`` (``payload.before`` keeps the score it replaced, for the
+audit). Later events add to the corrected score. It cannot be undone by a
+``correction/undo``: a manual result is changed by editing the result again,
+which records the next result correction.
+
 Envelope -> projected row (slice 1)::
 
     score / touchdown              -> Touchdown (6)
@@ -75,6 +84,7 @@ Envelope -> projected row (slice 1)::
     period / start, half_time, end -> Spiel gestartet / 2. Halbzeit gestartet /
                                       Spiel beendet (half=0, no team)
     correction / undo              -> deleted/restored sequences, no row
+    correction / result            -> score set to payload home/away, no row
 
 ``series`` is not in the plan's short type list, but scorecard v2 sends First
 Down today and the golden test must reproduce its row; it is the smallest
@@ -124,6 +134,9 @@ _MARKER_EVENTS = {
 _ZERO_SEQUENCE_EVENTS = frozenset(EXCLUDED_EVENTS) | frozenset(_MARKER_EVENTS.values())
 
 _SIDES = ("home", "away")
+
+# ``correction/result``: a manual result edit, see "Corrections" above.
+RESULT_CORRECTION_CODE = "result"
 
 
 @dataclass(frozen=True)
@@ -569,6 +582,11 @@ def _correction_effect(correction: GameEventValue) -> _CorrectionEffect:
     if target is None:
         raise InvalidEnvelope("correction event has no undo_of target")
 
+    if target.type == "correction" and target.code == RESULT_CORRECTION_CODE:
+        raise InvalidEnvelope(
+            "a result correction cannot be undone; edit the game result instead"
+        )
+
     if target.type == "correction":
         # Undoing a correction reverses that correction's own effect: restore
         # what it deleted, re-delete what it restored and add its subtraction
@@ -625,7 +643,35 @@ def _correction_effect(correction: GameEventValue) -> _CorrectionEffect:
     )
 
 
+def _result_score(payload: dict, side: str) -> int:
+    value = payload.get(side)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise InvalidEnvelope(
+            f"a result correction needs payload.{side} as a non-negative integer"
+        )
+    return value
+
+
+def _apply_result_correction(
+    state: GameStateValue, event: GameEventValue
+) -> Projection:
+    """A manual result edit: the score becomes the entered result."""
+
+    payload = event.payload or {}
+    return _projection(
+        _advance(
+            state,
+            event,
+            period=state.period,
+            score_home=_result_score(payload, "home"),
+            score_away=_result_score(payload, "away"),
+        )
+    )
+
+
 def _apply_correction(state: GameStateValue, event: GameEventValue) -> Projection:
+    if event.code == RESULT_CORRECTION_CODE:
+        return _apply_result_correction(state, event)
     effect = _correction_effect(event)
     changes: dict[str, Any] = {
         "score_home": state.score_home + effect.score_home,

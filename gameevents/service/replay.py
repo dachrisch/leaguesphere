@@ -23,6 +23,7 @@ from typing import Iterable, Mapping
 
 from gameevents.service.projector import (
     GameEventValue,
+    RESULT_CORRECTION_CODE,
     GameStateValue,
     InvalidEnvelope,
     project_submission,
@@ -106,7 +107,8 @@ def resolve_correction(
 ) -> GameEventValue:
     """Attach the target's sequence and rows to a ``correction`` event."""
 
-    if value.type != "correction":
+    if value.type != "correction" or value.code == RESULT_CORRECTION_CODE:
+        # A result correction names no target (see projector "Corrections").
         return value
     if value.undo_of is None:
         raise InvalidEnvelope("a correction event needs an undo_of target")

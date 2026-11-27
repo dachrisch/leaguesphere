@@ -20,6 +20,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from gameevents.service.append import normalise_client_id
+from gameevents.service.projector import RESULT_CORRECTION_CODE
 
 
 class EventEnvelopeSerializer(serializers.Serializer):
@@ -121,6 +122,19 @@ def parse_event_request(data) -> EventRequest:
     serializer = EventEnvelopeSerializer(data=raw, many=True)
     serializer.is_valid(raise_exception=True)
     events = serializer.validated_data
+    if any(
+        event["type"] == "correction" and event.get("code") == RESULT_CORRECTION_CODE
+        for event in events
+    ):
+        # A result correction records a manual result edit; only
+        # ``PATCH /api/gameinfo/<id>/result/`` writes one (by the gameday's
+        # staff). A scorecard device must not set the score by fiat.
+        raise ValidationError(
+            {
+                "events": "correction/result is recorded by the result edit, "
+                "not by the scorecard"
+            }
+        )
     ids = {event["client_id"] for event in events if event.get("client_id")}
     if len(ids) > 1:
         raise ValidationError(

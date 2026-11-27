@@ -710,19 +710,44 @@ SCENARIOS = {
         ),
     ],
     "reconciliation-flag": [
-        *_shadow_steps(),
+        # Setup without the v1 write: after the shadow removal a game started
+        # on the old app refuses canonical writes (409), so the flaggable
+        # state is built on the canonical endpoint alone.
+        *_shadow_steps()[:-1],
+        # A game with no events has no GameState to flag: write one canonical
+        # event first, so the game is v2-owned.
+        Step(
+            name="write-v2-events",
+            method="POST",
+            path="/api/game/{game_id}/events",
+            json={
+                "events": [
+                    {
+                        "type": "score",
+                        "code": "touchdown",
+                        "side": "home",
+                        "player": 7,
+                        "period": 1,
+                    }
+                ],
+                "client_id": "{client_id_v2}",
+            },
+            expect=(200, 201),
+        ),
         # A touchdown writes sequence 1. Deleting sequence 0 before a row
         # exists there returns early in record_legacy_undo and flags nothing;
-        # a penalty row (EXCLUDED_EVENTS) really creates sequence 0.
+        # a penalty row (EXCLUDED_EVENTS) really creates sequence 0. The
+        # canonical endpoint accepts the legacy body and writes that row.
         Step(
             name="write-sequence-zero",
             method="POST",
-            path="/api/gamelog/{game_id}",
+            path="/api/game/{game_id}/events",
             json={
                 "gameId": "{game_id}",
                 "team": "{team_name}",
                 "event": [{"name": "Strafe", "player": 7, "input": "Holding"}],
                 "half": 1,
+                "client_id": "{client_id}",
             },
             expect=(200, 201),
         ),
@@ -894,7 +919,14 @@ def run_scenario(name, sessions, context, run_id):
     # normaliser collapse the two sides' different ids.
     client_id = str(uuid.uuid5(uuid.NAMESPACE_URL, run_id))
     run.id_tokens[client_id] = "<client-id>"
-    context = {**context, "run_id": run_id, "client_id": client_id}
+    client_id_v2 = str(uuid.uuid5(uuid.NAMESPACE_URL, run_id + "-v2"))
+    run.id_tokens[client_id_v2] = "<client-id>"
+    context = {
+        **context,
+        "run_id": run_id,
+        "client_id": client_id,
+        "client_id_v2": client_id_v2,
+    }
 
     for step in SCENARIOS[name]:
         role_session = sessions.get(step.role)

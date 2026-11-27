@@ -13,7 +13,6 @@ import pytest
 from rest_framework.reverse import reverse
 
 from gameevents.models import GameEvent, GameState
-from gameevents.service.append import _link_shadow_rows
 from gameevents.service.log_payload import event_seqs_for_rows_by_game
 from gameevents.service.reconcile import check_games, rebuild_game
 from gameevents.tests.api.support import (
@@ -288,33 +287,6 @@ def test_a_rebuild_does_not_depend_on_bulk_create_returning_pks(client, monkeypa
 
 
 @pytest.mark.django_db
-def test_a_legacy_post_answers_its_own_rows_with_their_seq(client):
-    # The log a legacy POST answers with is serialized *after* the shadow
-    # append, so the rows it just wrote already carry their event ``seq`` --
-    # the handle for undoing them, without a second read.
-    login(client)
-    game, home, _away = make_game("rowundo")
-
-    response = post_legacy(
-        client,
-        game,
-        legacy_body(
-            game,
-            home,
-            [
-                {"name": "Touchdown", "player": 7},
-                {"name": "Strafe", "input": "Holding"},
-            ],
-            client_id=sub_id(1),
-        ),
-    )
-
-    assert response.status_code == HTTPStatus.CREATED
-    seqs = {event["event"]: event["seq"] for event in response.json()["events"]}
-    assert seqs == {"Touchdown": 1, "Strafe": 2}
-
-
-@pytest.mark.django_db
 def test_a_row_level_correction_refuses_an_event_without_a_linked_row(client):
     # An event stored before rows were linked cannot name a row. The service
     # must refuse it as a client error instead of deleting nothing (or, worse,
@@ -366,29 +338,6 @@ def test_undoing_the_undo_of_a_penalty_restores_that_row(client):
     assert not row.isDeleted
     [check] = check_games([game.pk])
     assert check.ok, check.summary()
-
-
-@pytest.mark.django_db
-def test_a_shadow_append_logs_a_row_mismatch(client, caplog):
-    # One row per entry is the writer's contract. When it breaks, the events
-    # stay unlinked -- and operations must be able to see that.
-    login(client)
-    game, home, _away = make_game("rowundo")
-    post_legacy(
-        client,
-        game,
-        legacy_body(
-            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(1)
-        ),
-    )
-    client_id = GameEvent.objects.get(game=game).client_id
-
-    with caplog.at_level("WARNING"):
-        _link_shadow_rows(game, client_id, [])
-
-    assert "the events stay unlinked" in caplog.text
-    # Nothing was written: the link the append made on the way in survives.
-    assert GameEvent.objects.get(game=game).team_log_id is not None
 
 
 @pytest.mark.django_db

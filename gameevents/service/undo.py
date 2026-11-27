@@ -76,6 +76,11 @@ def record_legacy_undo(game, *, sequence=None, team_log_id=None, author=None):
                 .first()
             )
             if event is None:
+                # A game the event store does not own has no GameState to
+                # flag; rebuilding one is impossible, so a flag here would be
+                # permanent. Only flag when other events exist to reconcile.
+                if not GameEvent.objects.filter(game=game).exists():
+                    return None
                 return _flag_reconciliation(
                     game,
                     f"row-level undo of team log {row.pk} has no stored event "
@@ -94,10 +99,10 @@ def record_legacy_undo(game, *, sequence=None, team_log_id=None, author=None):
 
     events = list(GameEvent.objects.filter(game=game).order_by("seq"))
     if not events:
-        return _flag_reconciliation(
-            game,
-            f"undo of sequence {sequence} has no stored event (rows predate the log)",
-        )
+        # After the shadow removal a pure v1 game has no events and no
+        # projection. Flagging would create a GameState that no rebuild can
+        # clear; the row undo itself has already happened.
+        return None
     values = values_from_rows(events)
 
     replay = replay_events(values)
@@ -136,6 +141,9 @@ def _record_correction(game, target, author):
         game,
         [value],
         client_id=value.client_id,
+        # A legacy DELETE stays legacy even when the game is v2-owned: ADR-0026
+        # reserves source=v2 for the canonical endpoint. The feed still serves
+        # this correction alongside the v2 events of the game.
         source=GameEvent.Source.LEGACY,
         write_rows=False,
         author=author,

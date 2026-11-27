@@ -17,9 +17,11 @@ wording is historical and is retained there for traceability.
 The scorecard event architecture separated *recording* (the v2 app writes
 sport-neutral `GameEvent`s) from *meaning* (the server projects them into
 `GameState` for the liveticker). The migration from the legacy `TeamLog` read
-path is a strangler: the flag `SCORECARD_EVENT_FEED` is off by default, both
-write paths are live, and every v1 gamelog write also emits a shadow event so
-the event store looks populated.
+path was a strangler: when this ADR was written the flag
+`SCORECARD_EVENT_FEED` was off by default, both write paths were live, and every
+v1 gamelog write also emitted a shadow event so the event store looked
+populated. Phase 2 Layer 5 removed the shadow write and Layer 6 removed the
+flag; the event path is now permanent.
 
 Three facts forced an explicit decision before the cutover:
 
@@ -55,6 +57,17 @@ backfill. This ADR records that decision and makes it discoverable.
   the legacy set is explicitly accepted and documented" — not "all games are
   event-sourced". A shadow-only game (`source=legacy`) is legacy for reads even
   though its events are retained as an append-only audit record.
+- **Manual result edits on a v2 game are events.** `PATCH
+  /api/gameinfo/<id>/result/` on a v2-owned game appends a
+  `correction/result` event with `source=staff` (the existing
+  `GameEvent.Source.STAFF`; `v2` stays reserved for the canonical endpoint and
+  `legacy` for the old scorecard). It carries the entered total and the score
+  it replaced (`payload.before`) and sets the projected score; it writes no
+  `TeamLog` row. A `staff` event never makes a game v2-owned, and games that
+  are not v2-owned keep writing `Gameresult` only. Once a game has a manual
+  result, `Gameresult` (with its half-at-0 floor, #1988) stays the scoring
+  rule: a later write that leaves the projection different from it records
+  a further `correction/result` with `reason: follows_result`.
 - **No per-game schema field.** The discriminator is the existing
   `GameEvent.source` column, so no migration and no second database copy are
   needed.

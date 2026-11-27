@@ -5,7 +5,7 @@ from collections import OrderedDict
 from http import HTTPStatus
 
 from django.db import transaction
-from django.db.models import F, Max
+from django.db.models import F
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from gameevents.models import GameEvent
-from gameevents.service.append import append_legacy as shadow_append
+from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.log_payload import (
     event_payloads_for_rows,
     event_seqs_for_rows,
@@ -122,9 +122,9 @@ def _submission_already_applied(game, client_id) -> bool:
     ``/api/game/<id>/events`` between releases). The claim therefore has two
     homes: ``GameLogSubmission`` for the writes this endpoint took, and the
     event store's unique ``(game, client_id)`` for the ones the canonical
-    endpoint took (which the shadow also records here). Checking only the
-    former would write a canonical submission's ``TeamLog`` rows a second time
-    on a replay; checking only the latter would do the same for a legacy one.
+    endpoint took. The canonical endpoint checks this claim too: without the
+    shadow there is no event to find for a v1 submission that is retried on
+    the other endpoint. Checking only one home would write the rows twice.
     """
     if client_id is None:
         return False
@@ -276,22 +276,36 @@ class GameLogAPIView(APIView):
                         ),
                         status=HTTPStatus.OK,
                     )
+                # Without the shadow, a v2-owned game's GameState would not
+                # see a v1 play. Refuse it instead of silently diverging;
+                # replays were answered above, so this only affects new writes.
+                if GameEvent.objects.filter(
+                    game=game, source=GameEvent.Source.V2
+                ).exists():
+                    return Response(
+                        {
+                            "detail": "this game is event-sourced; use "
+                            "/api/game/<id>/events"
+                        },
+                        status=HTTPStatus.CONFLICT,
+                    )
                 finished = _finished_game_response(game)
                 if finished is not None:
                     return finished
                 conflict = _device_lock_response(request, game.pk, data)
                 if conflict is not None:
                     return conflict
-                # The rows this request writes are the ones above this
-                # watermark: the game row is locked for the whole request, so
-                # no other writer can insert in between. They are handed to the
-                # shadow so each event can name the row it produced.
-                watermark = (
-                    TeamLog.objects.filter(gameinfo=game).aggregate(Max("pk"))[
-                        "pk__max"
-                    ]
-                    or 0
+                # The v1 name table is still a client contract: an unknown
+                # name used to fail in the shadow's translation (400, no
+                # rows). Reuse that table instead of copying it here so the
+                # projector and this endpoint cannot drift apart.
+                from_legacy_entries(
+                    data.get("event", []),
+                    side="home",
+                    half=data.get("half") or 1,
                 )
+                # A repeated submission (same client id) writes nothing; the
+                # legacy writer remains the only writer of TeamLog rows.
                 gamelog, applied = game_service.create_gamelog_once(
                     data.get("team"),
                     data.get("event"),
@@ -299,33 +313,9 @@ class GameLogAPIView(APIView):
                     data.get("half"),
                     client_id=client_id,
                 )
-                written = list(
-                    TeamLog.objects.filter(gameinfo=game, pk__gt=watermark).order_by(
-                        "pk"
-                    )
-                )
-                # The legacy writer already inserted the TeamLog rows, so the
-                # shadow records the events only (write_rows=False) and moves
-                # GameState to their projection.
-                shadow_append(
-                    game,
-                    # The legacy body may carry a pk, a name or the description
-                    # (v1 posts names); resolve it exactly like the writer did
-                    # so the shadow records the same side.
-                    team=GameService._resolve_team(data.get("team")),
-                    entries=data.get("event"),
-                    half=data.get("half"),
-                    # _client_id normalises to a UUID; the event store stores
-                    # it as text (and the outbox ids are UUID strings).
-                    client_id=str(client_id) if client_id is not None else None,
-                    author=request.user,
-                    rows=written,
-                )
-            # Serialize *after* the shadow append: ``GameLog`` builds its
-            # ``events`` list lazily, and the rows just written only carry
-            # their event ``seq`` once ``append_legacy`` has linked them. The
-            # answer a client gets for its own write is therefore complete --
-            # do not move this call inside the block above.
+            # Serialize the log after the write: ``GameLog`` builds its
+            # ``events`` list lazily, so the answer a client gets for its own
+            # write is complete. Do not move this call inside the block above.
             return Response(
                 json.loads(gamelog.as_json(), object_pairs_hook=OrderedDict),
                 # A repeated submission wrote nothing, so it is a 200.

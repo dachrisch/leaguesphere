@@ -189,6 +189,33 @@ def test_reconciliation_flag_setup_creates_the_sequence_it_deletes():
     assert feed[0].expect_body == {"needs_reconciliation": True}
 
 
+def test_flag_scenario_writes_an_event_before_the_delete_on_both_sides():
+    """After the shadow removal only a v2 event can create a flaggable state.
+
+    The v2 event comes first: a game with live v1 rows and no v2 event refuses
+    canonical writes, so the scenario writes no v1 row at all.
+    """
+
+    steps = scenarios.SCENARIOS["reconciliation-flag"]
+    names = [step.name for step in steps]
+    assert "write-shadow-event" not in names
+    assert not any(
+        step.path.startswith("/api/gamelog/") and step.method == "POST"
+        for step in steps
+    )
+    assert names.index("write-v2-events") < names.index("write-sequence-zero")
+    assert names.index("write-sequence-zero") < names.index("flag-projection")
+    event_step = next(step for step in steps if step.name == "write-v2-events")
+    assert event_step.json["client_id"] == "{client_id_v2}"
+
+    api = FakeApi(id_base=900)
+    run = scenarios.run_scenario(
+        "reconciliation-flag", {"staff": api, "anonymous": api}, CONTEXT, "eq-flag-v2"
+    )
+    assert sum(token == "<client-id>" for token in run.id_tokens.values()) == 2
+    assert run.steps[-2].status == 409
+
+
 def test_run_scenario_enforces_the_flag_contract_on_both_sides():
     api = FakeApi(id_base=900)
 

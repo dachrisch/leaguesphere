@@ -22,7 +22,9 @@ Write responses:
   replay must never be pinned);
 - ``409 {"expected_next": N}`` -- the supplied ``seq`` values are not the
   store's next ones;
-- ``409 {"detail": ...}`` -- the game is finished, or another device holds it;
+- ``409 {"detail": ...}`` -- the game is finished, or another device holds it,
+  or the old app owns it (live v1 rows and no v2 event, see
+  ``v1_owned_response``);
 - ``400`` -- invalid/unknown envelope or legacy event name, nothing stored.
 
 Scope note: this endpoint projects into ``TeamLog``, ``GameState`` **and**
@@ -43,6 +45,7 @@ tab is refused the same way whichever endpoint it hits.
 
 from dataclasses import replace
 from http import HTTPStatus
+import uuid
 
 from django.http import HttpResponseNotModified
 from rest_framework.exceptions import NotFound
@@ -61,12 +64,18 @@ from gameevents.service.feed import (
     ProjectionUnavailable,
     etag_matches,
     get_feed,
+    legacy_state,
     state_body,
 )
 from gameevents.service.legacy import from_legacy_entries
 from gameevents.service.projector import GameEventValue, GameStateValue, InvalidEnvelope
-from gamedays.models import Gameinfo, Team
+from gamedays.models import GameLogSubmission, Gameinfo, Team, TeamLog
 from gamedays.service.game_service import GameService
+from gamedays.service.gameday_settings import GAME_END, GAME_START, SECOND_HALF_START
+
+# Lifecycle markers ``GameService`` writes for either app (game start, second
+# half, end): not plays, so they never make a game the old app's.
+_LIFECYCLE_MARKERS = (GAME_START, SECOND_HALF_START, GAME_END)
 
 
 def offline_claim(values, claimed, user):
@@ -219,6 +228,57 @@ class GameFeedAPIView(APIView):
         return after if after >= 0 else None
 
 
+def _v1_submission_applied(game, client_id) -> bool:
+    """A v1 submission id claimed on this game, if the id is a UUID.
+
+    ``GameLogSubmission.client_id`` is a UUID column while an envelope's
+    ``client_id`` is freer text; a non-UUID cannot possibly match a v1 row
+    and must not turn into a database error on the canonical path.
+    """
+
+    try:
+        uuid.UUID(client_id)
+    except (AttributeError, TypeError, ValueError):
+        return False
+    return GameLogSubmission.objects.filter(gameinfo=game, client_id=client_id).exists()
+
+
+V1_OWNED_DETAIL = (
+    "Dieses Spiel wurde in der alten Scorecard begonnen. Bitte dort zu Ende führen."
+)
+
+
+def v1_owned_response(game):
+    """Refuse a canonical write to a game the old app owns.
+
+    One owner per game (ADR-0026): the first write decides. Without the shadow
+    a v1 play has no event, so a game started on the old app and continued
+    here would get a ``GameState`` that replays the v2 events only and silently
+    misses the old-app plays -- and ``check_game_projection`` cannot see it,
+    because it compares the state with a replay of the same events. The
+    reverse direction (a v1 write to a v2-owned game) is already a 409; this
+    is its mirror. Such a game is finished on the old app, which keeps writing
+    rows for it. Replays were answered before this check, so a retried v1
+    submission is still a 200. Rows that are all deleted do not own a game:
+    there is no play left for the state to miss, and neither do the
+    lifecycle markers (``Spiel gestartet`` ...) that starting a game writes
+    for the v2 app too.
+    """
+
+    if GameEvent.objects.filter(game=game, source=GameEvent.Source.V2).exists():
+        return None
+    plays = TeamLog.objects.filter(gameinfo=game, isDeleted=False).exclude(
+        event__in=_LIFECYCLE_MARKERS
+    )
+    if not plays.exists():
+        return None
+    # scorecard_v2 shows a rejected op's detail to the scorer, in German.
+    return Response(
+        {"detail": V1_OWNED_DETAIL},
+        status=HTTPStatus.CONFLICT,
+    )
+
+
 class GameEventsAPIView(APIView):
     def post(self, request, game_id):
         try:
@@ -238,6 +298,15 @@ class GameEventsAPIView(APIView):
 
         if GameEvent.objects.filter(game=game, client_id=parsed.client_id).exists():
             return _response(project_game(game).state, HTTPStatus.OK)
+        # The v1 endpoint claims the same outbox id in GameLogSubmission.
+        # After the shadow removal there is no event to find, so without this
+        # check a retry that switches endpoints writes the play a second time.
+        # Answer with the row-derived state the v1 log would show.
+        if _v1_submission_applied(game, parsed.client_id):
+            return _response(legacy_state(game), HTTPStatus.OK)
+        owned = v1_owned_response(game)
+        if owned is not None:
+            return owned
 
         # The same two refusals as ``POST /api/gamelog/``, in the same order:
         # a finished game is the final word (replays are answered above), and

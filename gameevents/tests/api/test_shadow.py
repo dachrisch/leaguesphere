@@ -1,16 +1,17 @@
-"""Shadow append on ``POST /api/gamelog/<id>`` (T3, transition safety).
+"""The legacy ``POST /api/gamelog/<id>`` after the Phase 2 shadow removal.
 
-The app keeps posting its unchanged payload. The legacy writer keeps writing
-the ``TeamLog`` rows; in the same transaction the endpoint also records the
-events those rows stand for. A failure to record must roll the rows back too:
-the store may never hold events for rows that were not written.
+The v1 endpoint keeps writing ``TeamLog`` rows and answering with its log, but
+it no longer records events: existing shadow events remain append-only audit
+data, and only the canonical endpoint creates new events. The new v2 games
+are read from their event projection; legacy games keep the row-based path.
 """
 
 import pytest
+from django.utils import timezone
 
+from gameevents.api.views import V1_OWNED_DETAIL
 from gameevents.models import GameEvent, GameState
 from gameevents.tests.api.support import (
-    db_row_signatures,
     legacy_body,
     login,
     make_game,
@@ -18,119 +19,16 @@ from gameevents.tests.api.support import (
     post_legacy,
     sub_id,
 )
-from gameevents.tests.golden_cases import GOLDEN_CASES, expected_signature
 from gamedays.models import TeamLog
+from gamedays.service.game_service import GameService
 
-TOUCHDOWN_PAT = next(case for case in GOLDEN_CASES if case.name == "touchdown_pat1")
-# A real outbox id: the legacy endpoint validates ``client_id`` as a UUID now.
 SUB_ID = sub_id(1)
 
 
 @pytest.mark.django_db
-def test_the_shadow_records_the_events_of_the_unchanged_payload(client):
-    game, home, _away = make_game("shadow")
+def test_v1_post_writes_rows_and_no_events(client):
+    game, home, _away = make_game("legacy-no-shadow")
     login(client)
-
-    body = legacy_body(
-        game,
-        home,
-        [
-            {"name": "Touchdown", "player": "7"},
-            {"name": "1-Extra-Punkt", "player": "7"},
-        ],
-        client_id=SUB_ID,
-    )
-    response = post_legacy(client, game, body)
-
-    assert response.status_code == 201
-    # The rows are exactly what the legacy writer produced before the shadow
-    # existed -- the shadow did not write them a second time.
-    assert db_row_signatures(game, home) == expected_signature(TOUCHDOWN_PAT)
-    assert TeamLog.objects.filter(gameinfo=game).count() == 2
-
-    events = list(GameEvent.objects.filter(game=game).order_by("seq"))
-    assert [(e.seq, e.type, e.code, e.side, e.player) for e in events] == [
-        (1, "score", "touchdown", "home", 7),
-        (2, "score", "pat1", "home", 7),
-    ]
-    assert {e.client_id for e in events} == {SUB_ID}
-    assert all(e.source == GameEvent.Source.LEGACY for e in events)
-    assert {e.legacy_sequence for e in events} == {1}
-    # GameState is the event projection, so the feed and reconciliation agree.
-    state = GameState.objects.get(game=game)
-    assert (state.score_home, state.score_away, state.period, state.last_seq) == (
-        7,
-        0,
-        1,
-        2,
-    )
-
-
-@pytest.mark.django_db
-def test_a_replay_of_the_same_submission_writes_neither_rows_nor_events(client):
-    game, home, _away = make_game("shadow-replay")
-    login(client)
-    body = legacy_body(
-        game, home, [{"name": "Touchdown", "player": "7"}], client_id=SUB_ID
-    )
-
-    assert post_legacy(client, game, body).status_code == 201
-    response = post_legacy(client, game, body)
-
-    assert response.status_code == 200
-    assert GameEvent.objects.filter(game=game).count() == 1
-    assert TeamLog.objects.filter(gameinfo=game).count() == 1
-
-
-@pytest.mark.django_db
-def test_a_replay_of_a_submission_the_canonical_endpoint_took_writes_nothing(client):
-    """One outbox, two endpoints: the claim does not live in only one of them.
-
-    A retry can land on ``/api/gamelog/`` after the app switched to
-    ``/api/game/<id>/events``; the submission's rows were written by the
-    projection then, so this endpoint must answer with the log it already has
-    instead of inserting the same play a second time.
-    """
-
-    game, home, _away = make_game("shadow-cross-replay")
-    login(client)
-    body = legacy_body(
-        game, home, [{"name": "Touchdown", "player": "7"}], client_id=SUB_ID
-    )
-
-    assert post_events(client, game, body).status_code == 201
-    response = post_legacy(client, game, body)
-
-    assert response.status_code == 200
-    assert response.json()["home"]["score"] == 6
-    assert TeamLog.objects.filter(gameinfo=game).count() == 1
-    assert GameEvent.objects.filter(game=game).count() == 1
-
-
-@pytest.mark.django_db
-def test_a_payload_without_a_client_id_is_still_recorded(client):
-    game, home, _away = make_game("shadow-anon")
-    login(client)
-
-    response = post_legacy(
-        client, game, legacy_body(game, home, [{"name": "Touchdown", "player": "7"}])
-    )
-
-    assert response.status_code == 201
-    assert GameEvent.objects.filter(game=game).count() == 1
-    assert GameEvent.objects.get(game=game).client_id
-
-
-@pytest.mark.django_db
-def test_an_append_failure_rolls_the_legacy_rows_back(client, monkeypatch):
-    game, home, _away = make_game("shadow-failure")
-    login(client)
-
-    def boom(*args, **kwargs):
-        raise RuntimeError("event store unavailable")
-
-    monkeypatch.setattr("gamedays.api.game_views.shadow_append", boom)
-    client.raise_request_exception = False
 
     response = post_legacy(
         client,
@@ -143,61 +41,259 @@ def test_an_append_failure_rolls_the_legacy_rows_back(client, monkeypatch):
         ),
     )
 
-    assert response.status_code == 500
-    assert TeamLog.objects.filter(gameinfo=game).count() == 0
-    assert GameEvent.objects.filter(game=game).count() == 0
+    assert response.status_code == 201
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert not GameEvent.objects.filter(game=game).exists()
+    # The score still comes from the row the v1 writer stored.
+    assert not GameState.objects.filter(game=game).exists()
 
 
 @pytest.mark.django_db
-def test_an_unknown_event_name_is_rejected_and_nothing_is_written(client):
-    game, home, _away = make_game("shadow-unknown")
+def test_v1_replay_writes_no_more_rows(client):
+    game, home, _away = make_game("legacy-replay")
     login(client)
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=SUB_ID
+    )
+
+    first = post_legacy(client, game, body)
+    second = post_legacy(client, game, body)
+
+    assert first.status_code == 201
+    assert second.status_code == 200
+    assert second.json() == first.json()
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert not GameEvent.objects.filter(game=game).exists()
+
+
+@pytest.mark.django_db
+def test_a_v1_submission_retried_on_the_canonical_endpoint_writes_nothing(client):
+    """One outbox, two endpoints: the claim must not live in only one of them.
+
+    With the shadow gone, ``GameEvent.client_id`` alone cannot see a v1
+    submission. The canonical endpoint must check ``GameLogSubmission`` too or
+    a retry after the app switches endpoints records the same play twice.
+    """
+
+    game, home, _away = make_game("cross-endpoint-replay")
+    login(client)
+    body = legacy_body(
+        game, home, [{"name": "Touchdown", "player": "7"}], client_id=SUB_ID
+    )
+    first = post_legacy(client, game, body)
+    assert first.status_code == 201
+
+    retry = post_events(client, game, body)
+
+    assert retry.status_code == 200
+    assert retry.json()["state"]["score_home"] == 6
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert not GameEvent.objects.filter(game=game).exists()
+
+
+@pytest.mark.django_db
+def test_a_v1_write_to_a_v2_owned_game_is_refused_without_rows(client):
+    game, home, _away = make_game("mixed-v2-first")
+    login(client)
+    assert (
+        post_events(
+            client,
+            game,
+            legacy_body(
+                game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(2)
+            ),
+        ).status_code
+        == 201
+    )
 
     response = post_legacy(
         client,
         game,
-        legacy_body(game, home, [{"name": "Tor"}], client_id=SUB_ID),
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(3)
+        ),
     )
 
-    assert response.status_code == 400
-    assert TeamLog.objects.filter(gameinfo=game).count() == 0
-    assert GameEvent.objects.filter(game=game).count() == 0
+    assert response.status_code == 409
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert GameEvent.objects.filter(game=game).count() == 1
 
 
-@pytest.mark.django_db
-def test_the_gamelog_response_body_is_unchanged(client):
-    # The old app consumes this body; the shadow must not touch it.
-    game, home, _away = make_game("shadow-body")
-    login(client)
-
+def _v1_touchdown(client, game, home, number):
     response = post_legacy(
         client,
         game,
         legacy_body(
             game,
             home,
-            [
-                {"name": "Touchdown", "player": "7"},
-                {"name": "1-Extra-Punkt", "player": "7"},
-            ],
+            [{"name": "Touchdown", "player": 7}],
+            client_id=sub_id(number),
+        ),
+    )
+    assert response.status_code == 201
+    return response
+
+
+@pytest.mark.django_db
+def test_a_canonical_write_to_a_game_started_on_the_old_app_is_refused(client):
+    """Mirror of the v2-owned 409: the old app owns a game it started.
+
+    Without the shadow the v1 play has no event, so accepting the canonical
+    write would leave a ``GameState`` of 6 after two touchdowns, which neither
+    the feed nor ``check_game_projection`` could detect. Refuse it instead;
+    nothing is written and the old app can keep scoring the game.
+    """
+
+    game, home, _away = make_game("mixed-legacy-first")
+    login(client)
+    _v1_touchdown(client, game, home, 2)
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(3)
+        ),
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": V1_OWNED_DETAIL}
+    assert not GameEvent.objects.filter(game=game).exists()
+    assert not GameState.objects.filter(game=game).exists()
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    # The old app still owns the game and keeps writing it.
+    _v1_touchdown(client, game, home, 4)
+    assert sorted(
+        TeamLog.objects.filter(gameinfo=game).values_list("sequence", flat=True)
+    ) == [1, 2]
+
+
+@pytest.mark.django_db
+def test_a_game_with_shadow_events_but_no_v2_event_is_still_old_app_owned(client):
+    """Shadow events from before the removal do not hand a game to v2.
+
+    v1 plays after the deploy have no event, so the shadow log is incomplete
+    from then on; the same refusal applies.
+    """
+
+    game, home, _away = make_game("mixed-shadow-first")
+    login(client)
+    _v1_touchdown(client, game, home, 5)
+    # The audit event the shadow wrote for that play before this release.
+    GameEvent.objects.create(
+        game=game,
+        seq=1,
+        type="score",
+        code="touchdown",
+        side="home",
+        player=7,
+        period=1,
+        payload={},
+        client_id=str(sub_id(5)),
+        source=GameEvent.Source.LEGACY,
+        client_at=timezone.now(),
+    )
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(7)
+        ),
+    )
+
+    assert response.status_code == 409
+    assert not GameEvent.objects.filter(game=game, source="v2").exists()
+
+
+@pytest.mark.django_db
+def test_a_canonical_write_after_only_deleted_v1_rows_does_not_reuse_their_sequence(
+    client,
+):
+    game, home, _away = make_game("mixed-legacy-deleted")
+    login(client)
+    _v1_touchdown(client, game, home, 8)
+    TeamLog.objects.filter(gameinfo=game).update(isDeleted=True)
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(9)
+        ),
+    )
+
+    # A deleted play leaves nothing for the state to miss, so v2 may take the
+    # game -- without colliding with the deleted row's sequence number.
+    assert response.status_code == 201
+    assert GameEvent.objects.get(game=game).seq == 2
+    assert sorted(
+        TeamLog.objects.filter(gameinfo=game).values_list("sequence", flat=True)
+    ) == [1, 2]
+    assert response.json()["state"]["score_home"] == 6
+
+
+@pytest.mark.django_db
+def test_v1_post_without_a_client_id_still_writes_rows(client):
+    game, home, _away = make_game("legacy-no-client-id")
+    login(client)
+
+    response = post_legacy(
+        client,
+        game,
+        legacy_body(game, home, [{"name": "Touchdown", "player": "7"}]),
+    )
+
+    assert response.status_code == 201
+    assert TeamLog.objects.filter(gameinfo=game).count() == 1
+    assert not GameEvent.objects.filter(game=game).exists()
+
+
+@pytest.mark.django_db
+def test_unknown_event_name_is_rejected_without_writing_rows(client):
+    """The v1 endpoint keeps the legacy name table's 400 contract.
+
+    The shadow is gone, but validation is not: the view shares the projector's
+    ``LEGACY_EVENTS`` table, so an unknown name still answers 400 and writes
+    nothing. Removing that would be an undeclared client-visible change.
+    """
+
+    game, home, _away = make_game("legacy-unknown-name")
+    login(client)
+
+    response = post_legacy(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Unknown Play", "player": 7}], client_id=SUB_ID
+        ),
+    )
+
+    assert response.status_code == 400
+    assert not TeamLog.objects.filter(gameinfo=game).exists()
+    assert not GameEvent.objects.filter(game=game).exists()
+
+
+@pytest.mark.django_db
+def test_a_game_started_for_v2_is_not_old_app_owned_by_its_start_marker(client):
+    """Starting a game writes a ``Spiel gestartet`` row for either app.
+
+    That marker is not an old-app play: the v2 app's first canonical write
+    (the opening possession) right after the start must be accepted.
+    """
+
+    game, home, _away = make_game("v2-start-marker")
+    login(client)
+    GameService(game.pk).update_gamestart(game.gameday.author)
+    assert TeamLog.objects.filter(gameinfo=game, event="Spiel gestartet").exists()
+
+    response = post_events(
+        client,
+        game,
+        legacy_body(
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(10)
         ),
     )
 
     assert response.status_code == 201
-    assert response.json()["home"]["score"] == 7
-    assert response.json()["home"]["firsthalf"]["entries"] == [
-        {"pat1": 7, "sequence": 1, "td": 7}
-    ]
-
-
-@pytest.mark.django_db
-def test_the_shadow_needs_authentication(client):
-    game, home, _away = make_game("shadow-anon-denied")
-
-    response = post_legacy(
-        client, game, legacy_body(game, home, [{"name": "Touchdown", "player": "7"}])
-    )
-
-    assert response.status_code in (401, 403)
-    assert GameEvent.objects.count() == 0
-    assert TeamLog.objects.count() == 0
+    assert GameEvent.objects.filter(game=game, source="v2").count() == 1

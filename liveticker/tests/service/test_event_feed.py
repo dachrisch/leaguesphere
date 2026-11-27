@@ -1,4 +1,4 @@
-"""The liveticker behind ``SCORECARD_EVENT_FEED`` (T5).
+"""The liveticker event projection (T5, now the permanent read path).
 
 Flag off, the response is byte-for-byte today's (the characterisation test
 hard-codes the payload). Flag on, an event-sourced game takes its score and
@@ -7,15 +7,16 @@ the widget already reads; a flagged projection falls back to those rows so the
 public widget never shows a 409 or a blank game.
 """
 
+import copy
 import json
 from datetime import UTC, datetime, time
 from unittest.mock import patch
 
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 
-from gameevents.models import GameState
-from gamedays.models import Gameresult, Gameinfo
+from gameevents.models import GameEvent, GameState
+from gamedays.models import Gameresult, Gameinfo, TeamLog
 from gamedays.tests.setup_factories.factories import (
     GamedayFactory,
     GameresultFactory,
@@ -90,7 +91,6 @@ class CharacterisationTest(TestCase):
         return game
 
     @patch("django.utils.timezone.now", return_value=FIXED_NOW)
-    @override_settings(SCORECARD_EVENT_FEED=False)
     def test_flag_off_payload_is_byte_identical(self, _now):
         game = self._legacy_fixture()
 
@@ -167,23 +167,64 @@ class CharacterisationTest(TestCase):
 
         assert json.dumps(payload_for(game.gameday_id)) == json.dumps(expected)
 
-    @override_settings(SCORECARD_EVENT_FEED=False)
-    def test_flag_off_ignores_the_projection_even_when_events_exist(self):
-        game, _home, _away = make_live_game("off-projection")
-        submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
-        Gameresult.objects.filter(gameinfo=game, isHome=True).update(fh=0, sh=0)
-
-        payload = payload_for(game.gameday_id)
-
-        assert payload[0]["home"]["score"] == 0
-        # And the row-based ticks are still the only source.
-        assert payload[0]["ticks"][0]["text"] == "Touchdown: #7"
-
 
 class EventProjectionTest(TestCase):
     """Flag on: score/period from ``GameState``, ticks from projected rows."""
 
-    @override_settings(SCORECARD_EVENT_FEED=True)
+    def _row_derived_twin(self, game):
+        """A second game in the same gameday that owns the same rows, no events.
+
+        Copying the rows the events wrote gives the expected payload a
+        *row-derived* source: it is not hard-coded and it is not produced by
+        the projection being asserted.
+        """
+
+        home_result = Gameresult.objects.get(gameinfo=game, isHome=True)
+        away_result = Gameresult.objects.get(gameinfo=game, isHome=False)
+        home = home_result.team
+        away = away_result.team
+        twin = GameinfoFactory(
+            gameday=game.gameday,
+            status=game.status,
+            standing=game.standing,
+            field=game.field,
+            scheduled=game.scheduled,
+            gameStarted=game.gameStarted,
+            in_possession=game.in_possession,
+        )
+        GameresultFactory(
+            gameinfo=twin,
+            team=home,
+            isHome=True,
+            fh=home_result.fh,
+            sh=home_result.sh,
+            pa=home_result.pa,
+        )
+        GameresultFactory(
+            gameinfo=twin,
+            team=away,
+            isHome=False,
+            fh=away_result.fh,
+            sh=away_result.sh,
+            pa=away_result.pa,
+        )
+        for row in TeamLog.objects.filter(gameinfo=game).order_by("pk"):
+            TeamLogFactory(
+                gameinfo=twin,
+                created_time=row.created_time,
+                event=row.event,
+                team=row.team,
+                player=row.player,
+                input=row.input,
+                value=row.value,
+                half=row.half,
+                sequence=row.sequence,
+                cop=row.cop,
+                author=row.author,
+                isDeleted=row.isDeleted,
+            )
+        return twin
+
     def test_same_game_scores_period_and_last_five_ticks_match_the_row_path(self):
         game, _home, _away = make_live_game("parity")
         submit(
@@ -199,15 +240,20 @@ class EventProjectionTest(TestCase):
             client_id="s1",
         )
 
-        assert len(payload_for(game.gameday_id)[0]["ticks"]) == 5
-        with override_settings(SCORECARD_EVENT_FEED=False):
-            row_based = payload_for(game.gameday_id)
-        with override_settings(SCORECARD_EVENT_FEED=True):
-            projected = payload_for(game.gameday_id)
+        projected = payload_for(game.gameday_id)
+        assert len(projected[0]["ticks"]) == 5
 
-        # Byte-identical: same totals, same period, same five ticks in the
-        # same order with the same text and timestamps.
-        assert json.dumps(projected) == json.dumps(row_based)
+        twin = self._row_derived_twin(game)
+        both = {item["gameId"]: item for item in payload_for(game.gameday_id)}
+        expected = copy.deepcopy(both[twin.pk])
+        expected["gameId"] = game.pk
+        # Byte-for-byte parity against the row-derived payload: same totals,
+        # period, standing, and five ticks in the same order with the same
+        # text and timestamps. The only difference is the id of the twin.
+        assert json.dumps(projected[0]) == json.dumps(expected)
+
+        # The permanent event path produces the same totals, period and five
+        # ticks in the same order with the same text and timestamps.
         assert projected[0]["home"]["score"] == 7
         assert projected[0]["away"]["score"] == 6
         assert projected[0]["status"] == "1. Halbzeit"
@@ -217,7 +263,6 @@ class EventProjectionTest(TestCase):
         assert home_result.fh + home_result.sh == projected[0]["home"]["score"]
         assert away_result.fh + away_result.sh == projected[0]["away"]["score"]
 
-    @override_settings(SCORECARD_EVENT_FEED=True)
     def test_period_comes_from_the_projection_not_the_gameinfo_status(self):
         game, _home, _away = make_live_game("period")
         submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
@@ -233,15 +278,11 @@ class EventProjectionTest(TestCase):
         game.refresh_from_db()
         assert game.status == "1. Halbzeit"
 
-        with override_settings(SCORECARD_EVENT_FEED=False):
-            assert payload_for(game.gameday_id)[0]["status"] == "1. Halbzeit"
-        with override_settings(SCORECARD_EVENT_FEED=True):
-            payload = payload_for(game.gameday_id)
+        payload = payload_for(game.gameday_id)
 
         assert payload[0]["status"] == "2. Halbzeit"
         assert payload[0]["home"]["score"] == 6
 
-    @override_settings(SCORECARD_EVENT_FEED=True)
     def test_projected_score_wins_over_a_stale_result_table(self):
         game, _home, _away = make_live_game("score-source")
         submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
@@ -252,7 +293,26 @@ class EventProjectionTest(TestCase):
 
         assert payload[0]["home"]["score"] == 6
 
-    @override_settings(SCORECARD_EVENT_FEED=True)
+    def test_a_shadow_only_game_is_served_from_the_rows(self):
+        """Ownership is a ``source=v2`` event; shadow events stay audit-only.
+
+        The audit event an earlier deploy's shadow left is built through the
+        canonical service and relabelled ``legacy`` (v1 writes no longer
+        create events). Its projection and the rows then disagree on purpose:
+        the liveticker must read the rows, exactly like a pure legacy game.
+        """
+
+        game, _home, _away = make_live_game("shadow-only")
+        submit(game, [event("score", "touchdown", "home", 7)], client_id="s1")
+        GameEvent.objects.filter(game=game).update(source=GameEvent.Source.LEGACY)
+        # Only the rows' result table moves; a projection read would say 6.
+        Gameresult.objects.filter(gameinfo=game, isHome=True).update(fh=0, sh=0)
+
+        payload = payload_for(game.gameday_id)
+
+        assert payload[0]["home"]["score"] == 0
+        assert payload[0]["ticks"][0]["text"] == "Touchdown: #7"
+
     def test_a_flagged_projection_falls_back_to_the_rows_and_warns_once(self):
         first, _home, _away = make_live_game("flagged-one")
         submit(first, [event("score", "touchdown", "home", 7)], client_id="s1")
@@ -289,7 +349,6 @@ class EventProjectionTest(TestCase):
         assert str(first.pk) in logs.output[0]
         assert str(second.pk) in logs.output[0]
 
-    @override_settings(SCORECARD_EVENT_FEED=True)
     def test_a_mixed_gameday_renders_the_event_sourced_and_the_legacy_game(self):
         gameday = GamedayFactory()
         projected, _home, _away = make_live_game("mixed-projected", gameday=gameday)

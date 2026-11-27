@@ -1,4 +1,4 @@
-"""The liveticker ETag with ``SCORECARD_EVENT_FEED`` on and off (T5).
+"""The liveticker ETag with the permanent event projection (T5).
 
 Flag off the validator covers the rows the widget renders (results, ticks) plus
 the ``Gameinfo`` state (kickoff, field, status, gameday). Flag on it also has to
@@ -8,7 +8,7 @@ and the widget would keep showing the old score for the life of the cache.
 """
 
 from django.core.cache import cache
-from django.test import Client, RequestFactory, TestCase, override_settings
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from gameevents.models import GameState
@@ -36,7 +36,6 @@ class EventFeedEtagTest(TestCase):
         cache.clear()
         return self.client.get(self.url, self.params, **headers)
 
-    @override_settings(SCORECARD_EVENT_FEED=False)
     def test_flag_off_etag_matches_the_generated_validator(self):
         submit(self.game, [event("score", "touchdown", "home", 7)], client_id="s1")
 
@@ -46,16 +45,6 @@ class EventFeedEtagTest(TestCase):
             request_for(self.game.gameday_id)
         )
 
-    @override_settings(SCORECARD_EVENT_FEED=False)
-    def test_flag_off_does_not_see_a_projection_only_event(self):
-        submit(self.game, [event("score", "touchdown", "home", 7)], client_id="s1")
-        before = self.get()["ETag"]
-
-        submit(self.game, [event("possession", "home")], client_id="s2")
-
-        assert self.get()["ETag"] == before
-
-    @override_settings(SCORECARD_EVENT_FEED=True)
     def test_a_new_event_changes_the_etag_even_without_a_new_tick(self):
         submit(self.game, [event("score", "touchdown", "home", 7)], client_id="s1")
         before = self.get()
@@ -71,7 +60,6 @@ class EventFeedEtagTest(TestCase):
         assert response["ETag"] != before["ETag"]
         assert response.json()[0]["home"]["score"] == 6
 
-    @override_settings(SCORECARD_EVENT_FEED=True)
     def test_an_unchanged_game_still_answers_304(self):
         submit(self.game, [event("score", "touchdown", "home", 7)], client_id="s1")
         first = self.get()

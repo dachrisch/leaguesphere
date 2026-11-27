@@ -13,6 +13,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
+from gameevents.models import GameEvent
 from gameevents.service.reconcile import Drift, GameCheck, check_games
 from gameevents.service.report import build_report, legacy_digest
 from gameevents.tests.api.support import (
@@ -223,23 +224,30 @@ def test_report_carries_source_on_drift_and_flagged_entries():
 def test_source_derivation_and_accepted_set_are_db_backed(
     client, tmp_path, django_assert_num_queries
 ):
-    shadow_game, home, _away = make_game("shadow-source")
+    shadow_game, _home, _away = make_game("shadow-source")
     login(client)
-    posted = post_legacy(
+    # After the shadow removal no new legacy-sourced event is written. An
+    # audit-only event left by an earlier deploy still has to classify as
+    # shadow-only, so create one through the canonical path and give it the
+    # legacy source the shadow used to use.
+    posted = post_events(
         client,
         shadow_game,
         legacy_body(
             shadow_game,
-            home,
+            _home,
             [{"name": "Touchdown", "player": 7}],
             client_id=sub_id(11),
         ),
     )
     assert posted.status_code == 201
+    GameEvent.objects.filter(game=shadow_game).update(source=GameEvent.Source.LEGACY)
     v2_game, _home, _away = event_game(client, "v2-source")
     checks = {item.game_id: item for item in check_games([shadow_game.pk, v2_game.pk])}
 
-    assert checks[shadow_game.pk].source == "legacy"
+    # The explicit-id path applies the same v2 discriminator as --all: a
+    # shadow-only game is accepted legacy and skipped, not reconciled.
+    assert checks[shadow_game.pk].legacy is True
     assert checks[v2_game.pk].source == "v2"
 
     destination = tmp_path / "report.json"
@@ -250,12 +258,11 @@ def test_source_derivation_and_accepted_set_are_db_backed(
         )
     payload = json.loads(destination.read_text())
 
-    # stdout keeps its pre-report meaning: the shadow-only game is checked
-    # (it has events) and is not also counted as a skipped legacy game.
+    # --all only reconciles v2 games; the shadow-only game is accepted (in the
+    # report), neither checked nor counted as a game without events.
     assert out.getvalue() == (
-        f"game {shadow_game.pk}: ok (1 events, seq 1)\n"
         f"game {v2_game.pk}: ok (2 events, seq 2)\n"
-        "checked 2 event-sourced game(s); skipped 0 legacy game(s) without events\n"
+        "checked 1 event-sourced game(s); skipped 0 legacy game(s) without events\n"
         "projection matches the event log\n"
     )
     assert payload["legacy_without_events"] == 1
@@ -353,39 +360,49 @@ def test_report_cutoff_filters_the_accepted_set_without_extra_queries(
 
 
 @pytest.mark.django_db
-def test_game_mode_on_a_shadow_only_game_prints_no_legacy_line(client, tmp_path):
-    shadow_game, home, _away = make_game("shadow-game-mode")
+def test_shadow_only_game_is_skipped_by_explicit_check_and_counted(client, tmp_path):
+    game, home, _away = make_game("explicit-shadow-only")
     login(client)
-    posted = post_legacy(
+    # post_legacy writes no event after the shadow removal; build the audit
+    # event an earlier deploy left the way the DB-backed source test does.
+    posted = post_events(
         client,
-        shadow_game,
+        game,
         legacy_body(
-            shadow_game,
-            home,
-            [{"name": "Touchdown", "player": 7}],
-            client_id=sub_id(12),
+            game, home, [{"name": "Touchdown", "player": 7}], client_id=sub_id(31)
         ),
     )
     assert posted.status_code == 201
-    destination = tmp_path / "shadow.json"
+    GameEvent.objects.filter(game=game).update(source=GameEvent.Source.LEGACY)
 
+    checks = check_games([game.pk])
+    assert checks[0].legacy is True
+    assert checks[0].ok is True
+    assert checks[0].event_count == 1
+
+    destination = tmp_path / "shadow.json"
     out = StringIO()
     call_command(
         "check_game_projection",
         "--game",
-        str(shadow_game.pk),
+        str(game.pk),
         "--report",
         str(destination),
         stdout=out,
     )
 
+    # Skipped like --all skips it, but never described as a game without
+    # events: it has an audit event, and it is counted as shadow-only.
     assert out.getvalue() == (
-        f"game {shadow_game.pk}: ok (1 events, seq 1)\n"
+        f"game {game.pk}: skipped (shadow-only, 1 audit events; "
+        "accepted legacy game)\n"
         "projection matches the event log\n"
     )
     payload = json.loads(destination.read_text())
     assert payload["shadow_only"] == 1
     assert payload["legacy_without_events"] == 1
+    assert payload["event_games"] == 0
+    assert list(payload["per_season"]) == [str(game.gameday.season_id)]
 
 
 @pytest.mark.django_db
