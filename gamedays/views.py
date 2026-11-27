@@ -2,7 +2,6 @@ import json
 from datetime import datetime, timedelta
 
 import pandas as pd
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Max
 from django.db.models.functions import ExtractYear
@@ -33,11 +32,8 @@ from .constants import (
     LEAGUE_GAMEDAY_LEAGUE_STATISTICS,
     LEAGUE_TOURNAMENT_DETAIL,
     LEAGUE_GAMEDAY_GAME_DETAIL,
-    LEAGUE_GAMEDAY_CREATE,
-    LEAGUE_SEASON_LIST,
     LEAGUE_SEASON_CREATE,
     LEAGUE_SEASON_UPDATE,
-    LEAGUE_SEASON_LEAGUE_SETUP,
     LEAGUE_SEASON_LEAGUE_COPY,
     LEAGUE_SEASON_LEAGUE_ASSIGN,
 )

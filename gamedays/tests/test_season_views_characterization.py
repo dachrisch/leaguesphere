@@ -18,7 +18,7 @@ from gamedays.constants import (
     LEAGUE_SEASON_LIST,
     LEAGUE_SEASON_UPDATE,
 )
-from gamedays.models import Season
+from gamedays.models import Season, SeasonLeagueTeam
 from gamedays.tests.setup_factories.request_caches import pin_request_path_caches
 from gamedays.tests.setup_factories.factories import (
     LeagueFactory,
@@ -73,20 +73,29 @@ class SeasonRolloverCharacterization(TestCase):
         assert response.status_code == 200
 
     def test_setup_get(self):
-        # A second league/assignment makes the per-league loop run twice: a
-        # dropped prefetch_related("teams") would add a query per row here.
+        # Two leagues with an assignment *for the requested season*: each row
+        # then reads its teams, so the prefetch_related("teams") costs one
+        # query, and dropping it would cost one query per row (11 instead
+        # of 10). Assignments of another season leave every row empty and
+        # would never run the prefetch.
         second_league = LeagueFactory(name="Second Division")
         SeasonLeagueTeamFactory(
-            season=self.previous,
+            season=self.season, league=self.league, teams=[self.team]
+        )
+        SeasonLeagueTeamFactory(
+            season=self.season,
             league=second_league,
             teams=[TeamFactory(name="falcons")],
         )
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(10):
             response = self.client.get(
                 reverse(LEAGUE_SEASON_LEAGUE_SETUP, args=[self.season.pk])
             )
         assert response.status_code == 200
-        assert len(response.context["rows"]) == 2
+        rows = response.context["rows"]
+        assert len(rows) == 2
+        assert all(row["assignment"] is not None for row in rows)
+        assert [len(row["teams"]) for row in rows] == [1, 1]
 
     def test_copy_get_redirects_to_setup(self):
         with self.assertNumQueries(2):
@@ -132,6 +141,18 @@ class SeasonRolloverCharacterization(TestCase):
             LEAGUE_SEASON_LEAGUE_SETUP, args=[self.season.pk]
         )
 
+    def test_copy_post_with_explicit_source(self):
+        with self.assertNumQueries(12):
+            response = self.client.post(
+                self.copy_url(), {"from_season": self.previous.pk}
+            )
+        assert response.status_code == 302
+        assert response.url == reverse(
+            LEAGUE_SEASON_LEAGUE_SETUP, args=[self.season.pk]
+        )
+        copied = SeasonLeagueTeam.objects.get(season=self.season, league=self.league)
+        assert list(copied.teams.all()) == [self.team]
+
     def test_copy_post_with_nonexistent_source_reports_error(self):
         with self.assertNumQueries(13):
             response = self.client.post(
@@ -156,6 +177,20 @@ class SeasonRolloverCharacterization(TestCase):
         assert response.url == reverse(
             LEAGUE_SEASON_LEAGUE_SETUP, args=[self.season.pk]
         )
+
+    def test_assign_post_updates_the_existing_row(self):
+        existing = SeasonLeagueTeamFactory(
+            season=self.season, league=self.league, teams=[]
+        )
+        with self.assertNumQueries(8):
+            response = self.client.post(self.assign_url(), {"teams": [self.team.pk]})
+        assert response.status_code == 302
+        assert response.url == reverse(
+            LEAGUE_SEASON_LEAGUE_SETUP, args=[self.season.pk]
+        )
+        rows = SeasonLeagueTeam.objects.filter(season=self.season, league=self.league)
+        assert [row.pk for row in rows] == [existing.pk]
+        assert list(existing.teams.all()) == [self.team]
 
     def test_assign_post_invalid_form_reports_error(self):
         with self.assertNumQueries(13):
