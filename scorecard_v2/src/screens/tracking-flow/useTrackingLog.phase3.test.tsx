@@ -178,17 +178,26 @@ function useHarness(over: Partial<Over>, initial: GameLog) {
   const [closePat] = useState(() => vi.fn());
   const [reopenPat] = useState(() => vi.fn());
   const [disarm] = useState(() => vi.fn());
+  // Spy on the setters the late async answers drive: after unmount the
+  // `if (active)` guards must keep them untouched. The real setters still run
+  // so the hook's own state stays observable before unmount.
+  const [lateSetters] = useState(() => ({
+    setRoster: vi.fn(setRoster),
+    setSetup: vi.fn(setSetup),
+    setOfficials: vi.fn(setOfficials),
+    setPeople: vi.fn(setPeople),
+  }));
   const args: Over = {
     game: game(),
     session: session as unknown as Over["session"],
     rules,
     setRules,
-    setRoster,
-    setSetup,
+    setRoster: lateSetters.setRoster,
+    setSetup: lateSetters.setSetup,
     setupLoadRef: setupLoadRef as unknown as Over["setupLoadRef"],
-    setOfficials,
+    setOfficials: lateSetters.setOfficials,
     setOfficialsUnavailable,
-    setPeople,
+    setPeople: lateSetters.setPeople,
     possession,
     setPossession,
     setPossessionPending,
@@ -215,6 +224,7 @@ function useHarness(over: Partial<Over>, initial: GameLog) {
     closePat,
     reopenPat,
     disarm,
+    lateSetters,
     refs: { possessionInFlightRef, undoInFlightRef, postInFlightRef },
     state: {
       possession,
@@ -431,20 +441,26 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
     const pause = vi.fn();
     runtimeMock.mockReturnValue({ sync: { pause } });
     h.cachedGetMeta.mockResolvedValue({
-      value: { locked_elsewhere: true, can_release_lock: false },
+      value: { locked_elsewhere: true, can_release_lock: true },
       updatedAt: null,
     });
     const { result } = setup();
     await waitFor(() => expect(pause).toHaveBeenCalledWith("device", 42));
     expect(result.current.state.setup).toBeTruthy();
+    // A live lock answer grants the release right at hook level.
+    expect(result.current.canRelease).toBe(true);
 
     cleanup();
     // A stored answer has no fresh lock: the 409 retry asks the server once.
     h.cachedGetMeta.mockImplementation(() => new Promise<unknown>(() => undefined));
     Object.assign(h.status, { paused: "device", pending: 1 });
-    apiGetMock.mockResolvedValueOnce({ can_release_lock: true });
-    setup();
+    apiGetMock.mockResolvedValueOnce({
+      locked_elsewhere: true,
+      can_release_lock: true,
+    });
+    const retry = setup();
     await waitFor(() => expect(apiGetMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(retry.result.current.canRelease).toBe(true));
     Object.assign(h.status, { paused: null });
   });
 
@@ -469,13 +485,17 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
           resolveSetup = resolve;
         }),
     );
-    const { unmount } = setup();
-    unmount();
+    const first = setup();
+    first.unmount();
     await act(async () => {
       resolveRoster(null);
       resolveSetup({ value: { qbHome: 7 }, updatedAt: null });
       resolveCrew([{ id: 3, name: "Late ref" }]);
     });
+    // Each late answer must be dropped, not written into unmounted state.
+    expect(first.result.current.lateSetters.setRoster).not.toHaveBeenCalled();
+    expect(first.result.current.lateSetters.setSetup).not.toHaveBeenCalled();
+    expect(first.result.current.lateSetters.setOfficials).not.toHaveBeenCalled();
 
     // The same guard applies when a roster read fails after unmount.
     let failRoster: (error: Error) => void = () => undefined;
@@ -491,6 +511,7 @@ describe("useTrackingLog derivation (Phase 3 characterization)", () => {
     await act(async () => {
       failRoster(new Error("offline"));
     });
+    expect(second.result.current.lateSetters.setRoster).not.toHaveBeenCalled();
   });
 
   it("handles a null roster, an unlocked answer, a failed setup read and a late 409 reply", async () => {
