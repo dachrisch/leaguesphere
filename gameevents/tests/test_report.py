@@ -156,6 +156,43 @@ def test_per_season_keys_sort_numerically():
     assert list(payload["per_season"]) == ["1", "2", "10"]
 
 
+def test_unknown_season_sorts_last_instead_of_failing():
+    payload = build_report(
+        checks=[check(1, source="v2", season=2), check(2, legacy=True, season=None)],
+        legacy_games=[(2, None), (3, 10)],
+        generated_at="t",
+        ref_sha="",
+        cand_sha="",
+    )
+
+    assert list(payload["per_season"]) == ["2", "10", "None"]
+
+
+@pytest.mark.django_db
+def test_game_mode_report_on_a_legacy_game_is_written(tmp_path):
+    game = legacy_game("report-game-legacy")
+    destination = tmp_path / "legacy.json"
+
+    out = StringIO()
+    call_command(
+        "check_game_projection",
+        "--game",
+        str(game.pk),
+        "--report",
+        str(destination),
+        stdout=out,
+    )
+
+    assert out.getvalue() == (
+        f"game {game.pk}: skipped (no events, legacy game)\n"
+        f"game {game.pk} has no events; nothing to compare\n"
+        "projection matches the event log\n"
+    )
+    payload = json.loads(destination.read_text())
+    assert payload["legacy_without_events"] == 1
+    assert list(payload["per_season"]) == ["None"]
+
+
 def test_report_carries_source_on_drift_and_flagged_entries():
     payload = build_report(
         checks=[

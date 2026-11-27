@@ -100,7 +100,7 @@ projection matches the event log
 
 `--game <id> --report` is a debugging aid, not the acceptance measurement.
 There `check_games([id])` reports a legacy game without loading its gameday, so
-its season is recorded as `null` in the report's `per_season` map; the `ok`
+its season is recorded under the key `"None"` (sorted last) in the report's `per_season` map; the `ok`
 field counts that skipped legacy check as well. In `--all` mode the season is
 joined in the same query and only reconciled games are in `ok`. Both modes are
 intended; the recorded acceptance numbers above come from `--all`.

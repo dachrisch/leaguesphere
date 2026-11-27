@@ -35,6 +35,17 @@ def legacy_digest(legacy_games) -> str:
     ).hexdigest()
 
 
+def _season_order(item):
+    """Numeric season order; the unknown season (``"None"``) sorts last.
+
+    ``--game`` on a legacy game has no season (``check_games`` does not load
+    its gameday), so its bucket key is ``"None"`` and must not break the sort.
+    """
+
+    key = item[0]
+    return (1, 0) if key == "None" else (0, int(key))
+
+
 def build_report(
     *,
     checks,
@@ -117,5 +128,5 @@ def build_report(
         "shadow_only": len(shadow_only),
         "legacy_cutoff": legacy_cutoff,
         "legacy_without_events_digest": legacy_digest(accepted),
-        "per_season": dict(sorted(per_season.items(), key=lambda item: int(item[0]))),
+        "per_season": dict(sorted(per_season.items(), key=_season_order)),
     }
