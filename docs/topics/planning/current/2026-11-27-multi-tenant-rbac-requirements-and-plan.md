@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Planning — **blocked on the open decisions in [§4](#4-decisions--settled-defaults-and-open-questions)** |
+| **Status** | Planning — **Phase 1 (foundation) can start now** on the settled defaults (D1, D6, D9-library); Phase 2 is gated by D7/D8 and Phase 3 by D2–D4 ([§4](#4-decisions--settled-defaults-and-open-questions)) |
 | **Date** | 2026-11-27 |
 | **Origin** | [2026-02-25 Multi-Tenant RBAC Implementation Proposal](../history/2026-02-25-multi-tenant-rbac-thesis-implementation-proposal.md) — the response to Niklas Just's bachelor thesis *"Entwurf und Implementierung eines multimandantenfähigen Rechtemanagementsystems"* |
 | **Thesis basis** | Bachelorarbeit, Niklas Just (2123394), Feb 2026 — actor/role definitions, tenant grain, library survey, sport-agnostic requirement and Model 3 decision (§3–4); chapters 5–7 contain no implementation or conclusion text, so the detailed requirements below come from the response document |
@@ -89,9 +89,26 @@ gameday's author, an official's own signup).
 Facts B1–B19 were measured on this branch's base commit; B20–B22 come from the thesis. Together
 they are the ground truth the requirements are written against.
 
+**Counting protocol.** Run these from the repo root on the base commit. `rg` honours
+`.gitignore`, so a local virtualenv is never counted; `tests/` directories are excluded except
+where stated. Numbers are **occurrences**, not matching lines.
+
+```bash
+rg -o "is_staff" -g '*.py' -g '!**/tests/**' . --no-filename | wc -l        # 144
+rg -l "is_staff" -g '*.py' -g '!**/tests/**' . | wc -l                       # 30
+rg -l "^class Command\b" -g '*.py' . | wc -l                                 # 14
+rg -c "^class .*\(.*models\.Model" -g '*/models.py' . | awk -F: '{s+=$2} END {print s}'   # 59
+rg -n "admin.site.register" -g '*/admin.py' . | wc -l                        # 24
+rg -n "\.raw\(|cursor\(|connection\.cursor|RawSQL" -g '*.py' -g '!**/tests/**' . | wc -l  # 4
+```
+
+The 30 files include `journey/tests.py` (a test module whose path has no `tests/` segment);
+excluding every path containing `test` gives **137 occurrences in 29 files**. The plan quotes
+**144/30** because that is what the single command produces.
+
 | # | Fact | Where | Why it matters |
 |---|---|---|---|
-| B1 | `is_staff` appears **119 times in 29 non-test Python files** (plus 11 template sites and a frontend `useIsStaff` hook) | `rg is_staff` | The role migration is the largest mechanical part of the work |
+| B1 | `is_staff` appears **144 times in 30 Python files** outside `tests/` directories (137/29 if test modules are also excluded; plus 11 template sites and a frontend `useIsStaff` hook) | Counting protocol above | The role migration is the largest mechanical part of the work |
 | B2 | `Gameday` has `league` **and** `season` FKs; `League` and `Season` are global tables (`slug` unique, no dates) | `gamedays/models.py:31-55,94-109` | Gameday is already tenant-keyed; Season is not, and "before" is string ordering |
 | B3 | `Team` has **no league FK**; `name`/`description` are globally unique; league membership is `SeasonLeagueTeam(season, league, teams M2M)` | `gamedays/models.py:67-92` | A team can move leagues between seasons; a `Team.league` column would be factually wrong |
 | B4 | There is **no uniqueness constraint on `SeasonLeagueTeam(season, league)`** — duplicates are prevented in forms/services only | `gamedays/service/season_rollover_service.py:8-12` | Tenant scoping must tolerate/prevent historic duplicate membership rows |
@@ -106,7 +123,7 @@ they are the ground truth the requirements are written against.
 | B13 | `scripts/check_app_boundaries.py` forbids `gamedays` importing `league_table`, `gameday_designer`, `officials`, `passcheck`, `liveticker` (allowlist may only shrink) | `scripts/check_app_boundaries.py` | The RBAC app must not create a new back-edge |
 | B14 | **59** model classes across 9 apps that own tables; `gamedays` alone has 25 | `rg "^class .*Model"` (measured) | The tenant-key audit is a bounded but non-trivial matrix |
 | B15 | Four raw-SQL sites: migrations (2), DB guard health probe, `reset_demo_database` | `rg "cursor\("` | Small enough to audit exhaustively |
-| B16 | 22 management commands, including projectors (`rebuild_game_projection`, `check_game_projection`) and seeders | `*/management/commands/` | Every command is a tenant-context bypass candidate |
+| B16 | **14 invocable management commands** in 15 modules (22 files once `__init__.py` is included), including projectors (`rebuild_game_projection`, `check_game_projection`) and seeders | Counting protocol above | Every command is a tenant-context bypass candidate |
 | B17 | `gameevents` writes `gamedays` projection tables through a projector boundary (`project_submission`, `project_game`) | `gameevents/service/append.py:212`, `projector.py:675` | Writes can bypass views entirely; the projector must stamp or derive the tenant |
 | B18 | `scorecard_v2` is an offline PWA with an IndexedDB outbox and a device lock on `GameSetup.device_id` | `gamedays/api/game_views.py`, `gamedays/service/device_lock.py` | Offline caches and device locks are cross-tenant state that must be namespaced |
 | B19 | Repo gates: TDD, mandatory query-count assertions, `black .`, `npm run eslint`, scope coverage, app-boundary check, DCO-signed conventional commits | [AGENTS.md](../../../../AGENTS.md) | Every phase's exit criteria must include these |
@@ -129,12 +146,12 @@ document.
 | ID | Requirement | Verified by |
 |---|---|---|
 | **R1** | The tenant entity SHALL be the existing `gamedays.League` row. No parallel tenant table SHALL be introduced; `League.slug` is the tenant key used in URLs, cache keys and audit records. | Migration review; no second tenant table in `sqlmigrate` output |
-| **R2** | `UserRole` SHALL be a single table: `user` FK, `role` (choices), `league` FK nullable, `team` FK nullable, `created_at`, `created_by`, plus a **`scope_key`** CharField (`sys`, `league:<id>`, `team:<id>`) derived in `save()` and covered by `UniqueConstraint(user, role, scope_key)`. This realises the thesis's "Zuordnungstabellen" between users, roles and tenants (§4.3.2): one row per user–tenant–role, with a user holding different roles in different tenants. The derived key is required because **MariaDB has no partial unique indexes and permits duplicate NULLs in a unique index**, so a constraint over the nullable FK columns would not prevent duplicate `SYSTEM_ADMIN` rows. `UserRole` SHALL NOT encode the role in a Django `Group` name. | Model review; DB constraint test inserting duplicate `SYSTEM_ADMIN` and duplicate `LEAGUE_ADMIN` rows |
-| **R3** | Role scope SHALL be expressed by which nullable columns are set, enforced by `CheckConstraint`s: `SYSTEM_ADMIN` → league and team NULL; `LEAGUE_ADMIN` → league set, team NULL; `TEAM_MANAGER` → team set (league derived via `SeasonLeagueTeam`); `REFEREE`/`PLAYER` → identity is global, both scopes NULL. `scope_key` SHALL agree with the populated columns. `Association` is NOT a role scope — see D1. | Constraint tests for every invalid combination, including `scope_key` mismatch |
+| **R2** | `UserRole` SHALL be a single table: `user` FK, `role` (choices), `league` FK nullable, `team` FK nullable, `created_at`, `created_by`, plus a **`scope_key`** CharField (`sys`, `league:<id>`, `team:<id>`, `global`) derived in `save()` and covered by `UniqueConstraint(user, role, scope_key)`. This realises the thesis's "Zuordnungstabellen" between users, roles and tenants (§4.3.2): one row per user–role–scope, so a user can be `LEAGUE_ADMIN` of one league, `TEAM_MANAGER` of two teams and `REFEREE` globally at the same time. The derived key is required because **MariaDB has no partial unique indexes and permits duplicate NULLs in a unique index**, so a constraint over the nullable FK columns would not prevent duplicate `SYSTEM_ADMIN` rows. `UserRole` SHALL NOT encode the role in a Django `Group` name. | Model review; DB constraint test inserting duplicate `SYSTEM_ADMIN` and duplicate `LEAGUE_ADMIN` rows |
+| **R3** | Role scope SHALL be exactly the combinations in [§3.1.2](#312-userrole-scope-combinations), enforced by `CheckConstraint`s on `(league, team)` nullness and by the `scope_key` family; `scope_key` SHALL be the canonical value for the row's role and id. `Association` is NOT a role scope — see D1. | Constraint tests for every invalid combination in §3.1.2, including a mismatched `scope_key` |
 | **R4** | Every tenant-owned root table SHALL carry exactly one tenant key or a deterministic, indexed path to one. The audit table in [§3.1.1](#311-tenant-key-matrix) is the definition of "tenant-owned" and SHALL be updated whenever a model is added. | `scripts/check_tenancy_coverage.py` (new) failing on an unlisted model |
 | **R5** | `Team` SHALL NOT gain a `league` FK. Team read scope SHALL be derived from `SeasonLeagueTeam` membership for the resolved tenant (and the requested season, where supplied). | Isolation test: a team that only ever played in league B is invisible under tenant A; scope test proves the join |
 | **R6** | Team *administration* (create/rename/logo) MAY use a denormalised `Team.home_league` FK if the team-admin UX needs a stable owner; if added, it SHALL be documented as an ownership hint, never used for read isolation. | Decision [D2](#d2-how-team-is-scoped--no-league-fk-seasonal-league-movement); test that hiding a team does not depend on `home_league` |
-| **R7** | `Person.user` and `Official.user` SHALL be nullable FKs with `on_delete=SET_NULL`, a uniqueness rule (one user per person/official), and a documented backfill. | Migration + backfill test on seeded demo data |
+| **R7** | `Person.user` and `Official.user` SHALL be nullable FKs with `on_delete=SET_NULL` and a uniqueness rule. Backfill SHALL begin with a mandatory audit (`audit_identity_links --league <slug>`) reporting matched / ambiguous / unmatched counts per tenant. The **only** permitted mapping sources are (a) `UserProfile.user → Person` matched on first name + last name + year of birth within the same team roster, and (b) an explicitly confirmed official↔user mapping from Moodle `external_id`/email. Username comparisons (B8) SHALL NOT be used as an identity source. Unmatched officials keep `user=NULL`, are administered by `LEAGUE_ADMIN`, and are listed and accepted at the phase exit. | Migration + backfill test on seeded demo data; audit report with zero **ambiguous** rows and a reviewed unmatched list |
 | **R8** | `Gameday.author`, `TeamLog.author`, `GameEvent.author` and `ScheduleTemplate.created_by` SHALL be understood as **object ownership**, not authority; the permission layer SHALL treat ownership as one input alongside role. | Permission matrix tests |
 | **R9** | The legacy `gamedays.Permissions`, `gamedays.UserPermissions` and `UserProfile.check_teammanager()` SHALL be retired in favour of `UserRole`. `UserProfile` SHALL remain only as a player profile (avatar, name, jersey). | Migration removing the two tables; `rg check_teammanager` returns only a compatibility shim |
 | **R10** | Cross-tenant relations SHALL be explicit bridge tables with their own audit columns: existing `EligibilityRule.eligible_in`, `TeamRelationship.additional_teams`, `LeagueSeasonConfig.leagues_for_league_points` are the pattern. A bridge row SHALL require a `granted_by`/`created_at` pair. | Schema review; test that a bridge does not widen default read scope |
@@ -166,6 +183,31 @@ document.
 | `gameday_designer.ScheduleTemplate` | `league` (new, nullable = shared template) | The existing `sharing` choices and `association` FK are *sharing* attributes, not tenancy; association/global templates are deliberately global reads |
 | `scorecard`, `scorecard_v2`, `liveticker`, `teammanager`, `accounts`, `home`, `share`, `matchreport`, `dbaccess` | no owned models (or pure config) | Thin/consumer apps; behaviour covered by API and permission requirements |
 
+#### 3.1.2 `UserRole` scope combinations
+
+Every row must satisfy exactly one line. `league` and `team` are the only scope FKs; `role` and
+`scope_key` must agree with them.
+
+| Role | `league` | `team` | `scope_key` | Meaning |
+|---|---|---|---|---|
+| `SYSTEM_ADMIN` | NULL | NULL | `sys` | Platform actions (league creation, seeds, `dbaccess`); cross-tenant reads need the audited god-mode opt-in (R48) |
+| `LEAGUE_ADMIN` | set | NULL | `league:<id>` | Admin of one tenant (R32 matrix) |
+| `TEAM_MANAGER` | **NULL** | set | `team:<id>` | Own team only; the league is derived per season via `SeasonLeagueTeam` (R36). Storing `league` here would freeze a moving team into one league |
+| `REFEREE` | NULL | NULL | `global` | Identity only; authority comes from assignment rows (R37) |
+| `PLAYER` | NULL | NULL | `global` | Identity only; reads own data (R32 matrix) |
+
+- `CheckConstraint`s on `(league, team)` nullness are the portable part (MariaDB/MySQL enforce
+  them since 8.0.16 / 10.2).
+- The `scope_key` family (`sys`, `league:`, `team:`, `global`) is validated in `save()` and
+  asserted by a constraint test. A DB-level `LIKE` check is added only where the target MariaDB
+  version supports it, because `CHECK` semantics differ across versions.
+- `UniqueConstraint(user, role, scope_key)` makes duplicate `sys`/`global` rows impossible —
+  the case a nullable-FK unique index would miss on MariaDB.
+- `bulk_create()` and `queryset.update()` bypass `save()`: the `UserRole` manager SHALL override
+  both to derive/validate `scope_key`, so the constraint cannot be sidestepped by a batch job.
+- `System-Admin`, `Referee` and `Player` rows are found for **every** tenant; the kernel's tenant
+  lookup must include them explicitly (see [§5.6](#56-authorization-kernel)).
+
 ### 3.2 Tenant context and middleware
 
 The response document proposes three middleware layers. **Layers 1 and 2 are implementable as
@@ -183,7 +225,7 @@ deliberate deviation and the single most important architectural correction in t
 | **R18** | Context SHALL survive Django's sync/async boundary: `sync_to_async`/`async_to_sync` copy the context (asgiref), so `contextvars` is the only correct choice. Streaming responses (SSE liveticker) SHALL re-establish the tenant inside the generator, because middleware `finally` runs before the iterator is consumed. | Streaming test asserting the generator sees the tenant |
 | **R19** | Tenant-aware managers/querysets SHALL be **opt-in per model** (`TenantScopedManager`), not global monkey-patching. When the context is unset, a tenant-aware query SHALL raise `TenantContextMissing` — a loud programming error, not an empty result. | Test asserting the exception (not `[]`, not `DoesNotExist`) |
 | **R20** | `unscoped()` SHALL be the only escape: `Model.objects.unscoped()` (optionally with `reason="..."`), audited at `DEBUG`-and-above in one place. It SHALL be greppable and rare; a new `unscoped()` call site requires a code-review note. | `rg "unscoped\("` inventory reviewed per phase; test that `unscoped()` logs |
-| **R21** | `TenantEnforcementMiddleware` (the corrected layer 3) SHALL, per request, record every model+manager access that bypassed tenant scoping and assert the set is a subset of the route's declared allowlist; a violation SHALL log an `isolation_bypass` event with request id, user and route. | Test: a read-only route that touches `Team.objects.unscoped()` raises/logs |
+| **R21** | `TenantEnforcementMiddleware` (the corrected layer 3) SHALL detect bypasses via **manager hooks** (`TenantScopedManager` / `unscoped()` register into a request-local registry) and **`connection.execute_wrapper`** for every executed statement, then assert the unscoped set against `access/routing.py::ROUTE_TENANT_POLICY`; violations raise `IsolationViolation` under `DEBUG`/`TENANCY_STRICT` and log `isolation_bypass` + a metric in production. Mechanism, timing and cost: [§5.4.1](#541-how-enforcement-detects-a-bypass). | Test that `Team.objects.unscoped()` on a non-allowlisted route raises `IsolationViolation` in DEBUG and logs in strict-off mode; `assertNumQueries` delta is 0 |
 | **R22** | Management commands and projectors SHALL have no implicit tenant. They SHALL accept `--league <slug>` (or iterate explicitly) and use `unscoped()` where they are intentionally global, logging the reason. | Command tests without `--league` fail loudly |
 | **R23** | Raw SQL (`cursor()`, `.raw()`, `RawSQL`) SHALL remain forbidden except in migrations and health probes; the four existing sites (B15) SHALL be reviewed and annotated. | `rg` audit in CI (new check) |
 | **R24** | A request that resolves no tenant and is not on the global manifest SHALL fail with **400 `tenant_required`** for API routes and a redirect to tenant selection for HTML routes — never a fallback to "all data". | Test matrix; no code path returns unfiltered rows |
@@ -225,7 +267,7 @@ organisation tier above federations. `PUBLIC` is the absence of a role, not a ro
 |---|---|---|
 | **R32** | Roles SHALL be exactly `SYSTEM_ADMIN`, `LEAGUE_ADMIN`, `TEAM_MANAGER`, `REFEREE`, `PLAYER`. Adding a new role SHALL require an update to this matrix and an ADR, not a one-off group name. | `UserRole.Role` review; role-set diff against thesis §4.1 |
 | **R33** | Django's per-model permissions (`gamedays.change_gameday`) SHALL **not** be used for tenant authorization. They are global and cannot express "admin of league A"; they MAY be mirrored for the Django admin only. | `rg permission_required` returns only admin/project uses; authorization tests use `UserRole` |
-| **R34** | Authorization SHALL be a two-step check: **tenant membership with role** (row scope) and then **object ownership/relationship** (object scope). A role check that ignores the object SHALL fail review. | Permission matrix tests per role × resource × action |
+| **R34** | Authorization SHALL short-circuit **public-read** actions first (published data only, R15) and then be a two-step check for everything else: **tenant membership with role** (row scope), then **object ownership/relationship** (object scope). A role check that ignores the object SHALL fail review. | Permission matrix tests per role × resource × action, including anonymous published/unpublished cases |
 | **R35** | Effective permissions SHALL be computed by one kernel (`access.policy.can(user, action, tenant, obj=None)`), so API, HTML views, admin and frontend guards cannot drift. | One test suite; `rg "is_staff"` count only in the kernel and deprecated paths |
 | **R36** | `TEAM_MANAGER` SHALL be scoped to a team and derive its league from `SeasonLeagueTeam` for the active season. It SHALL NOT grant rights in another league that the same team plays in during a different season. | Test with a team that changed leagues |
 | **R37** | `REFEREE` SHALL be scoped by assignment (`OfficialGamedaySignup`, `GameOfficial`), not by a league-wide role. | Test: referee sees assigned gamedays, not the league's drafts |
@@ -264,17 +306,17 @@ organisation tier above federations. `PUBLIC` is the absence of a role, not a ro
 | **R41** | Migration SHALL follow **write → shadow-read → enforce-read → enforce-write → deprecate** for `is_staff`; each stage SHALL be independently deployable and reversible. | Stage table in [§6.1](#61-is_staff-write--view--deprecate); one PR per stage |
 | **R42** | Write stage: every place that sets `is_staff` SHALL also create the corresponding `UserRole` (management command + signal + seeders). Reading code is unchanged. | Dual-write test: after seeding, authority and `is_staff` agree for every user |
 | **R43** | Shadow-read stage: the new kernel SHALL be evaluated on every authorization decision, the result compared with `is_staff`, and **disagreements logged** without changing the outcome. Exit criterion: zero disagreements for one full gameday weekend in production. | Log dashboard/report; a disagreement count of 0 |
-| **R44** | Enforce-read stage: tenant filtering SHALL be switched on per app (feature flag), starting with read-only list endpoints; exit criterion per app: isolation suite green, query counts flat. | Per-app flag matrix; query-count assertions |
+| **R44** | Enforce-read stage: tenant filtering SHALL be switched on per app (feature flag), starting with read-only list endpoints; exit criterion per app: isolation suite green and query counts within the R54 budget. | Per-app flag matrix; query-count assertions |
 | **R45** | Enforce-write stage: the permission kernel SHALL replace `is_staff` checks app by app; old checks remain behind a flag for one release, then are deleted. | `rg is_staff` count monotonically decreasing; per-app tests |
-| **R46** | Deprecate stage: legacy `Permissions`/`UserPermissions` tables, `check_teammanager`, and the `is_staff`-based helpers SHALL be removed; `is_staff` MAY remain only as Django-admin gate (documented) or be removed entirely (see [D7](#d7-role-migration-from-119-is_staff-sites)). | Migration dropping tables; `rg` inventory in §10 |
+| **R46** | Deprecate stage: legacy `Permissions`/`UserPermissions` tables, `check_teammanager`, and the `is_staff`-based helpers SHALL be removed; `is_staff` MAY remain only as Django-admin gate (documented) or be removed entirely (see [D7](#d7-role-migration-from-144-is_staff-occurrences)). | Migration dropping tables; `rg` inventory in §10 |
 
 ### 3.6 Security and audit
 
 | ID | Requirement | Verified by |
 |---|---|---|
 | **R47** | Audit SHALL cover **writes and denials**, not reads: role changes, tenant membership changes, cross-tenant bridge changes, 403s, god-mode use, `unscoped()` on a non-global route. Reads are covered by access logs, not a DB table. | Audit model review; events emitted in tests |
-| **R48** | `SYSTEM_ADMIN` ("god mode") SHALL be explicit: a per-request opt-in (header or UI toggle) that is audited, time-bounded to the request, and visible in the UI. It SHALL NOT be the silent default for superusers. | Test: superuser without opt-in gets normal tenant scoping; with opt-in gets audit row |
-| **R49** | Cross-tenant data SHALL NOT be enumerable: object lookups outside the tenant return **404**, list endpoints return empty, and error bodies SHALL NOT reveal existence. | Isolation matrix (§7.1) |
+| **R48** | Cross-tenant "god mode" SHALL be explicit: a per-request opt-in available to `SYSTEM_ADMIN` (header or UI toggle), audited, time-bounded to the request and visible in the UI. It SHALL NOT be the silent default for superusers, and `SYSTEM_ADMIN` without the opt-in stays tenant-filtered ([§5.6](#56-authorization-kernel)). | Test: superuser without opt-in gets normal tenant scoping; with opt-in gets an unscoped read plus an audit row |
+| **R49** | Cross-tenant data SHALL NOT be enumerable **for non-public data**: object lookups outside the tenant return **404**, list endpoints return empty, and error bodies SHALL NOT reveal existence. Public-read routes (R15) are the explicit exception: they may return **published** rows of the tenant named in the URL to anonymous visitors, never drafts, private rosters or another tenant's rows. | Isolation matrix (§7.1), including published/draft public-read cases |
 | **R50** | Tenant-scoped rate limits SHALL exist for expensive aggregations (standings rebuild, snapshot rebuild) so one tenant cannot exhaust another's capacity. | Throttle tests with two tenants |
 | **R51** | A per-tenant export/delete path SHALL exist before tenancy ships, so a league leaving the platform can be extracted without hand-written SQL. | Command test producing a manifest + row counts |
 | **R52** | Secrets and credentials SHALL NOT be tenant-keyed (DB credentials, Knox keys stay global); `dbaccess` grants SHALL be attributed to a tenant where the request concerns one tenant's data. | Config review; `dbaccess` audit test |
@@ -284,7 +326,7 @@ organisation tier above federations. `PUBLIC` is the absence of a role, not a ro
 | ID | Requirement | Verified by |
 |---|---|---|
 | **R53** | Every tenant-aware model SHALL have isolation tests: cross-tenant read → 404/empty, cross-tenant write → 403, unset tenant → loud failure, public endpoint → allowed. | Generated matrix test, one row per model |
-| **R54** | Every modified endpoint SHALL keep its query count constant in result-set size and add **at most one** query for tenant resolution (cached). | `assertNumQueries` in every touched test |
+| **R54** | Every modified endpoint SHALL keep its query count constant in result-set size and add **at most two** cached queries — one tenant resolution, one request role set — neither scaling with the result. | `assertNumQueries` in every touched test; the delta is asserted explicitly |
 | **R55** | A bypass audit SHALL cover raw SQL, management commands, projectors, admin actions, signals and offline replay, each with a named test or an allowlist entry. | Audit checklist in [§7.3](#73-bypass-audit) signed off per phase |
 | **R56** | A load test SHALL simulate ≥3 tenants with skewed traffic and assert p95 latency and error rate do not regress versus the current baseline. The scenario SHALL include a youth-league tenant — the thesis's proposed first scalability exercise (§3.4). | k6 scenario + Grafana comparison |
 | **R57** | The isolation suite SHALL be generative: for each tenant-aware model, create two tenants, one row each, and assert every list/detail route never returns the other's row. | Parametrised test over the R4 matrix |
@@ -425,10 +467,11 @@ written against, and changing it changes the named requirements.
 - **Status**: **Settled: `contextvars`** — no alternative survives async or streaming (R17/R18).
   Recorded, not open.
 
-### D7. Role migration from 119 `is_staff` sites
+### D7. Role migration from 144 `is_staff` occurrences
 
-- **Question**: How do 119 `is_staff` occurrences across 29 Python files (plus 11 template
-  sites and a frontend hook) become roles without a big-bang change?
+- **Question**: How do 144 `is_staff` occurrences across 30 Python files (137/29 if test
+  modules are also excluded; plus 11 template sites and a frontend hook) become roles without a
+  big-bang change?
 - **Recommended default**: **Classify, then migrate per app**, in this order: (1) *kernel*
   sites that become the policy check; (2) *authorization* sites that become
   `can(user, action, tenant, obj)`; (3) *presentation* sites that become permission flags in
@@ -601,13 +644,28 @@ Order in `MIDDLEWARE` (after authentication, before the view):
   observes, it cannot filter. That is a feature — a filter that silently fails is worse than
   an assertion that screams.
 
+#### 5.4.1 How enforcement detects a bypass
+
+| Concern | Decision |
+|---|---|
+| Detection (ORM) | `TenantScopedManager.get_queryset()` registers `(model, "scoped")`; `unscoped(reason=...)` registers `(model, "unscoped", reason)`. The registry is a per-request `contextvar` list — no DB, no global mutable state. |
+| Detection (every statement) | `connection.execute_wrapper` inspects **all** executed statements (ORM and raw); a statement touching a tenant-owned table without any tenant predicate (`league_id`/`team_id` join) records `unscoped_statement`. This also catches a tenant-owned model that forgot `TenantScopedManager`, which is the real reason R4's coverage check exists. |
+| Allowlist | `access/routing.py::ROUTE_TENANT_POLICY`, keyed by **URL name** (not path, so slugs and ids cannot drift). Each entry is `scope` (one of `tenant` / `global`), an optional `unscoped_models` set, and a non-empty `reason`. A model can be listed unscoped only with a reason. |
+| When it runs | In `TenantEnforcementMiddleware`, after `get_response` returns and before the response leaves the middleware; `request.resolver_match.url_name` is available from dispatch time. |
+| Violation, `DEBUG` / `TENANCY_STRICT=True` | Raise `IsolationViolation` → HTTP 500. The whole test suite runs strict, so a bypass fails CI. |
+| Violation, production default | Log `isolation_bypass` at ERROR with request id, user, url name, model and reason; increment `tenancy_isolation_bypass_total`; return the response (availability over fail-closed). Flip `TENANCY_STRICT=True` per environment once the metric is zero. |
+| Cost | In-memory registry + dict lookup: **0 queries** and no per-row work, so R54's budget is untouched. |
+
 ### 5.5 URL and API shape
 
 ```
 /api/leagues/<slug>/gamedays/                 read = public-read; write = LEAGUE_ADMIN
 /api/leagues/<slug>/gamedays/<id>/            read = public-read (published); write = LEAGUE_ADMIN
 /api/leagues/<slug>/gamedays/<id>/publish/    action (LEAGUE_ADMIN)
-/api/leagues/<slug>/teams/                    read = public-read; write = LEAGUE_ADMIN (derived, R5)
+/api/leagues/<slug>/teams/                    list = public-read (published teams);
+                                              create = LEAGUE_ADMIN;
+                                              edit own = TEAM_MANAGER via UserRole(team=...);
+                                              edit any = LEAGUE_ADMIN (derived scope, R5/R36)
 /api/leagues/<slug>/standings/                published standings (public-read, no membership)
 /api/leagues/<slug>/officials/assignments/    LEAGUE_ADMIN
 /api/me/leagues/                              memberships (R27)
@@ -622,18 +680,63 @@ they load (R26).
 
 ```python
 # access/policy.py
+GLOBAL_ROLES = {Role.SYSTEM_ADMIN, Role.REFEREE, Role.PLAYER}   # scope_key sys / global
+
 def can(user, action, tenant, obj=None) -> bool:
-    if not user.is_authenticated:
-        return action.public and obj is None
-    roles = UserRole.objects.for_tenant(tenant).roles_of(user)   # cached per request
-    if Role.SYSTEM_ADMIN in roles:
+    # 1. Public-read short-circuit (R15): anonymous is fine for PUBLISHED data.
+    #    obj is None means a collection endpoint; its queryset is still filtered to published rows.
+    if action.public and is_publicly_readable(obj):
         return True
-    ...
+    if not user.is_authenticated:
+        return False
+    # 2. Roles that apply in this tenant, including global identities (see below).
+    roles = roles_in_tenant(user, tenant)
+    if Role.SYSTEM_ADMIN in roles:
+        if action.platform:                 # league creation, seeds, dbaccess (matrix, §3.4)
+            return True
+        roles |= {Role.LEAGUE_ADMIN}        # in-tenant admin rights, rows stay tenant-filtered
+    # 3. Role + object scope (R34), per the matrix in §3.4.
+    return any(rule.allows(role, action, obj) for role in roles)
 ```
 
+- `is_publicly_readable()` SHALL be an **explicit per-model predicate map** in `access/policy.py`
+  (`Gameday: status == "PUBLISHED"`, `ScheduleTemplate: sharing != PRIVATE`, …),
+  not a bare `getattr`. A draft gameday, a private roster or an unpublished template SHALL
+  return `False`; the sketch above is illustrative, the map is the contract.
+
+```python
+def roles_in_tenant(user, tenant) -> set:
+    rows = (
+        UserRole.objects.filter(user=user)
+        .filter(
+            Q(league=tenant)                                                     # LEAGUE_ADMIN
+            | Q(league__isnull=True, team__isnull=True, role__in=GLOBAL_ROLES)    # sys / global
+            | Q(team__in=SeasonLeagueTeam.teams_for(tenant, active_season()))     # TEAM_MANAGER (new helper)
+        )
+        .values_list("role", flat=True)
+        .distinct()
+    )
+    return set(rows)
+```
+
+- **Global rows must be included by the tenant lookup.** `SYSTEM_ADMIN` (`sys`) and
+  `REFEREE`/`PLAYER` (`global`) carry no tenant (R3); a `league=`-only filter would never find
+  them and the kernel would deny every global role.
+- **`TEAM_MANAGER` rows must be resolved through the team**, because R3 deliberately stores no
+  league on them. `SeasonLeagueTeam.teams_for(tenant, season)` is the same derived scope as R5.
+  Referee/player authority is only identity here: it still needs the assignment/ownership
+  predicates from R37/R34 before any action is allowed.
+- **`SYSTEM_ADMIN` is not a global read bypass.** It passes `action.platform` actions and
+  otherwise acts as a `LEAGUE_ADMIN` inside the resolved tenant; its rows stay tenant-filtered.
+  Cross-tenant reads require the audited god-mode opt-in (R48, D5), implemented at the context
+  layer as an explicit, logged `unscoped()` scope — never as a silent `True` in the kernel.
+- The result is cached per request and invalidated on role change (R40); at most **one** query
+  for the role set (R54's second cached query).
 - `action` is a small enum/constant (`"gameday.publish"`, `"roster.edit"`), not a Django
-  permission string (R33). The matrix in [§3.4](#34-roles-and-the-permission-matrix) is the
-  table it implements.
+  permission string (R33). `action.public` is the same flag the route manifest uses (R16) and
+  `action.platform` is the narrow set the matrix grants to `SYSTEM_ADMIN` only (league creation,
+  seeds, `dbaccess`). The matrix in [§3.4](#34-roles-and-the-permission-matrix) is the table
+  this implements.
 - DRF permission classes are thin adapters over `can()`; HTML views use a mixin over the same
   function; admin uses `has_*_permission` over the same function.
 - Object scope is a separate predicate (`owns`, `team_of`, `assigned_to`) so "role check that
@@ -664,9 +767,9 @@ def can(user, action, tenant, obj=None) -> bool:
 
 ## 6. Phased delivery plan
 
-Seven phases. Each is independently shippable and testable; each has an exit gate that must be
-green before the next starts. Phase numbering is separate from the six phases in the
-2026-02-25 response document (which underestimated testing and frontend and assumed the old
+**Eight phases (P0–P7).** Each is independently shippable and testable; each has an exit gate
+that must be green before the next starts. Phase numbering is separate from the six phases in
+the 2026-02-25 response document (which underestimated testing and frontend and assumed the old
 data model).
 
 ### Phase 0 — Decisions and invariants (no product code)
@@ -676,33 +779,44 @@ data model).
 resolve the open decisions (D2–D5, D7–D9); sign off the permission matrix; write the
 tenant-key matrix (R4) as code (`scripts/check_tenancy_coverage.py`) with every model listed;
 add the boundary entry for `access`.
-**Exit**: every decision records a choice; the coverage script runs and fails on an unlisted
-model; the matrix is reviewed by a second person.
-**Blocked by**: D2, D3, D4, D5, D7, D8, D9 (database platform).
+**Exit (two gates)**:
+- **0a — settled defaults recorded** (D1, D6, D9-library). This is already satisfied by §4 and
+  **unblocks Phase 1**; Phase 1 does not depend on the open decisions.
+- **0b — all decisions recorded** (D2–D5, D7–D8, D9 database platform), the coverage script runs
+  and fails on an unlisted model, and the matrix is reviewed by a second person. **0b gates
+  Phase 3** (read isolation), not Phase 1.
+**Blocked by**: D2, D3, D4, D5, D7, D8, D9 (database platform) — for gate 0b only.
 
 ### Phase 1 — Foundation: `access` app, context, managers, middleware
 
-**Entry**: Phase 0 exit.
+**Entry**: Phase 0 **gate 0a** — D1, D6 and the D9 library half are recorded in §4. Phase 1 is
+independent of the open decisions: D7/D8 gate Phase 2, D2–D4 gate Phase 3, D5 gates Phase 4.
 **Work**: `access/context.py`, `querysets.py`, `models.py` (`UserRole` + audit), middleware
-1/2/3 with the route manifest, `/api/me/leagues/`, `TenantModelAdmin`, feature flags default
-**off**. No model is converted yet.
+1/2/3 with the route manifest, `access/routing.py`, the bypass registry and enforcement
+mechanism (§5.4.1), `/api/me/leagues/`, `TenantModelAdmin`, feature flags default **off**. No
+model is converted yet.
 **Exit**: unit tests for context (nesting, exception, streaming), resolution (precedence,
-404/403/400), and enforcement logging; `black .`; boundary check green; zero behaviour change
-in staging with flags off.
+404/403/400), kernel (anonymous published/unpublished, global roles, team-scoped manager), and
+enforcement (violation strict/log, zero extra queries); `black .`; boundary check green; zero
+behaviour change in staging with flags off.
 
 ### Phase 2 — Identity and role backfill
 
-**Entry**: Phase 1 exit.
-**Work**: `Person.user`, `Official.user` with backfill; `seed_roles_from_is_staff` command;
-dual-write for role changes (R42); fix `SeasonLeagueTeam` uniqueness (D8) after the duplicate
-report is clean; retire `check_teammanager` in favour of `UserRole(team=...)` behind a shim.
-**Exit**: on a prod clone, every `is_staff` user has an equivalent `UserRole`; identity
-backfill covers demo data; `report_duplicate_season_league_teams` returns zero; tests for
-every backfill rule.
+**Entry**: Phase 1 exit, with D7 and D8 recorded. Phase 2 starts with the mandatory
+`audit_identity_links` report; no backfill runs before it exists.
+**Work**: `Person.user`, `Official.user` with the R7 audit and mapping rules;
+`seed_roles_from_is_staff` command; dual-write for role changes (R42); fix `SeasonLeagueTeam` uniqueness (D8) after the
+duplicate report is clean; retire `check_teammanager` in favour of `UserRole(team=...)` behind a
+shim.
+**Exit**: on a prod clone, every authority-holding user (`is_staff` or legacy team-manager
+permission) has an equivalent `UserRole`; `audit_identity_links` reports **zero ambiguous**
+matches, every matched role-holder is linked, and the unmatched-official list is reviewed and
+accepted; `report_duplicate_season_league_teams` returns zero; tests for every mapping rule.
 
 ### Phase 3 — Read isolation, app by app
 
-**Entry**: Phase 2 exit.
+**Entry**: Phase 2 exit **and Phase 0 gate 0b** (D2, D3, D4 recorded — they decide team scope,
+public reads and cross-league behaviour).
 **Work**: convert tenant-aware models in order `gamedays` → `league_table` → `passcheck` →
 `officials` → `journey` → `gameday_designer`; route manifest entries for public reads;
 shadow-read disagreement report (R43) running in production.
@@ -711,7 +825,7 @@ shadow-read disagreements over a gameday weekend, no unlisted `unscoped()` site.
 
 ### Phase 4 — Write authorization
 
-**Entry**: Phase 3 exit for an app.
+**Entry**: Phase 3 exit for an app, with D5 and D7 recorded.
 **Work**: replace `is_staff` write checks with `can(...)`; object-scope predicates; device
 lock release (R39); transfer approval across two teams (R10); projector stamping (R58);
 admin actions.
@@ -720,7 +834,7 @@ tests; bypass audit (R55) signed off.
 
 ### Phase 5 — API surface
 
-**Entry**: Phase 4 exit for the endpoints being moved.
+**Entry**: Phase 4 exit for the endpoints being moved, with D4 recorded.
 **Work**: nested `/api/leagues/<slug>/...` routes; deprecation headers on flat routes;
 `/api/me/permissions/`; error envelope (R28); throttle per tenant (R50); export command
 (R51).
@@ -729,7 +843,7 @@ deprecation plan published.
 
 ### Phase 6 — Frontend and offline
 
-**Entry**: Phase 5 exit.
+**Entry**: Phase 5 exit, with D3 and D5 recorded.
 **Work**: tenant-aware routes/boot payload; permission-driven menus (R63); league switcher
 (R62); cache keying (R61); `scorecard_v2` outbox namespacing and conflict rule (R64);
 remove `useIsStaff` in favour of permissions.
@@ -738,7 +852,8 @@ switch; no `is_staff` reads in frontend code.
 
 ### Phase 7 — Deprecate `is_staff` and legacy permissions
 
-**Entry**: Phase 6 exit; `rg is_staff` remaining sites are only seeds/tests/Django-admin gate.
+**Entry**: Phase 6 exit, with D7 recorded; remaining `is_staff` sites are only
+seeds/tests/Django-admin gate.
 **Work**: delete legacy `Permissions`/`UserPermissions`, `check_teammanager`, the
 `is_staff`-based helpers; decide `is_staff`'s fate (D7); remove flat API routes; security
 audit; load test (R56); documentation + in-app help update.
@@ -755,6 +870,23 @@ within budget; docs updated.
 | **Enforce-write** | `can()` replaces `is_staff` writes | `UserRole` | Flag off per app | Matrix tests + bypass audit |
 | **Deprecate** | Delete legacy tables/helpers, then `is_staff` reads | `UserRole` | Restore from migration | `rg` inventory matches §10 |
 
+### 6.2 Indicative sizing — planning estimates, not commitments
+
+One engineer, order-of-magnitude, to be re-baselined after Phase 1. Parallel work shortens
+elapsed time, not the total.
+
+| Phase | Estimate | Depends on | Notes |
+|---|---|---|---|
+| 0 — Decisions | 1–2 weeks elapsed | — | Workshop + an owner per decision; no code |
+| 1 — Foundation | 3–4 weeks | 0a | `access` app, context, managers, middleware, kernel, enforcement |
+| 2 — Identity/role backfill | 2–3 weeks | 1, D7, D8 | The identity data audit dominates |
+| 3 — Read isolation | 5–8 weeks | 2, 0b, D2–D4 | Six apps, one PR per app |
+| 4 — Write authorization | 4–6 weeks | 3 per app, D5, D7 | Matrix, admin, projectors |
+| 5 — API surface | 3–4 weeks | 4 per endpoint, D4 | Nested routes + deprecation |
+| 6 — Frontend/offline | 3–4 weeks | 5, D3, D5 | Six apps + offline outbox |
+| 7 — Deprecate/audit | 2–3 weeks | 6, D7 | Security audit + load test |
+| **Total** | **≈ 23–34 engineer-weeks** | | Excludes review latency and staging waits |
+
 ---
 
 ## 7. Test strategy
@@ -769,6 +901,9 @@ within budget; docs updated.
 | Cross-tenant relation | Bridge row A→B | Readable only with the bridge grant | row visibility |
 | Unset tenant | Tenant-aware manager, no context | `TenantContextMissing` raised | exception type, not empty list |
 | Public endpoint | `/api/snapshot/`, sitemap | Allowed, global | 200 + cross-tenant rows present |
+| Public-read detail, published | published gameday, anonymous, tenant in URL | 200 | body contains published fields only |
+| Public-read detail, draft | draft gameday, anonymous | 404 | no draft fields in body |
+| Public-read, other tenant's row | published gameday in B via A's detail URL | 404 | R49 exception does not leak across tenants |
 | God mode off | superuser, no opt-in | Tenant-scoped | 404 for other tenant |
 | God mode on | superuser + opt-in | Allowed | 200 + audit row |
 | Unknown tenant | `/api/leagues/nope/` | 404 | audit `tenant_not_found` |
@@ -779,8 +914,8 @@ within budget; docs updated.
 
 - Every touched endpoint keeps `assertNumQueries` and the count must not grow with result
   size (repo policy).
-- Tenant resolution costs **at most one** query per request (session/token role cache) and is
-  cached in the request object; tests assert the delta.
+- Tenant resolution and the role set cost **at most two** queries per request, both cached in
+  the request object; tests assert the delta explicitly (R54).
 - The top ten list views get a scripted `EXPLAIN` review recorded in the phase exit, not a
   unit-test assertion: plan shapes vary across MariaDB versions, and a brittle assertion would
   be disabled the first time it flakes. The review must show the R11 composite index is
@@ -826,7 +961,7 @@ ramp). Per-tenant throttles (R50) are exercised.
 | K11 | Duplicate `SeasonLeagueTeam` rows make scope ambiguous | Medium | Medium | D8: constraint after duplicate report is clean |
 | K12 | The new app recreates the old circular dependency | Low | High | Import rules §5.1, boundary check includes `access` |
 | K13 | Audit logging becomes a write bottleneck on gameday | Medium | Medium | Writes/denials only (R47), async/batched, no read audit |
-| K14 | Plan stalls on decisions and never ships | High | Medium | Phase 0 exit requires recorded decisions; D1/D6 are settled and the remaining defaults are cheap |
+| K14 | Plan stalls on decisions and never ships | High | Medium | Run a decision workshop with the league administrators; assign an **owner and due date for each** of D2–D5, D7, D8 and D9-DB; start Phase 1 in parallel on the settled grain/context so the programme is never fully blocked |
 
 ---
 
@@ -834,8 +969,8 @@ ramp). Per-tenant throttles (R50) are exercised.
 
 | Phase | State | Blocking decisions | Notes |
 |---|---|---|---|
-| 0 — Decisions & invariants | **In progress — open decisions** | D2–D5, D7, D8, D9 (database platform) | D1, D6 and the D9 library half are settled and recorded |
-| 1 — Foundation (`access`, context, middleware) | Planning | none (D1, D6 settled) | Design in §5; flags off by default |
+| 0 — Decisions & invariants | **0a done; 0b in progress** | 0b: D2–D5, D7, D8, D9 (database platform) | D1, D6 and the D9 library half are settled and recorded |
+| 1 — Foundation (`access`, context, middleware) | **Ready to start** | none — gate 0a satisfied | Design in §5; flags off by default; independent of 0b |
 | 2 — Identity & role backfill | Planning | D7, D8 | `Person.user`, `Official.user`, `UserRole` seed |
 | 3 — Read isolation | Planning | D2, D3, D4 | App order: gamedays → league_table → passcheck → officials → journey → designer |
 | 4 — Write authorization | Planning | D5, D7 | Kernel replaces `is_staff` writes |
@@ -843,10 +978,11 @@ ramp). Per-tenant throttles (R50) are exercised.
 | 6 — Frontend & offline | Planning | D3, D5 | Cache keys, permissions payload, outbox |
 | 7 — Deprecate `is_staff` | Planning | D7 | Security audit + load test gate |
 
-**Current state**: `Planning` — no implementation branch, no code. The only artefacts are this
-document and its tracking issue.
-**Next action**: resolve D2/D3/D4/D5/D7/D8 and confirm the D9 database platform; Phase 1 can
-start on the thesis-settled grain (D1) and context (D6) in parallel.
+**Current state**: `Planning` — no implementation branch, no code. Phase 0 gate 0a is satisfied;
+gate 0b is open. The only artefacts are this document and its tracking issue.
+**Next action**: start Phase 1 on the thesis-settled grain (D1) and context (D6) now; run the
+decision workshop with an owner per decision (D2–D5, D7, D8, D9-DB) and close gate 0b before
+Phase 3.
 
 ---
 
