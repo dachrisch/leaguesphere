@@ -92,7 +92,7 @@ export interface Licence {
   label: string;
 }
 
-export const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** `2026-03-04` → `04.03.2026`; anything else is shown as-is. */
 export function formatLicenceDate(value: string): string {
