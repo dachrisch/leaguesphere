@@ -1,12 +1,12 @@
 """Tracking journey: real play/undo, PAT, halftime and the panel states."""
 
 from . import fixture
-from .common import id_tokens, optional, press, role_view, run_steps
+from .common import click, id_tokens, optional, press, role_view, run_steps
 
-
-def _sheet_save(page, absent):
-    """Save the open sheet, or record the absent state for comparison."""
-    optional(".sheet .sheetfoot button.startbtn")(page, absent)
+# Every write below is a required click: a missing control raises, run_steps
+# records the step as skipped and the runner fails, so a "0 diffs" report can
+# no longer come from two sides that both wrote nothing.
+_sheet_save = click(".sheet .sheetfoot button.startbtn")
 
 
 def run(context, run_id, credentials):
@@ -29,11 +29,11 @@ def run(context, run_id, credentials):
             ("series-close", press("Escape")),
             # A real write: the touchdown sheet's save posts the event and
             # opens the extra-point sheet, which the next step writes too.
-            ("play-td", optional(".tdbtn")),
+            ("play-td", click(".tdbtn")),
             ("play-save", _sheet_save),
             ("pat-save", _sheet_save),
-            ("play-undo", optional('button:has-text("Rückgängig")')),
-            ("halftime-open", optional(".halfbtn")),
+            ("play-undo", click('button:has-text("Rückgängig")')),
+            ("halftime-open", click(".halfbtn")),
             ("halftime-write", _sheet_save),
             ("series-tile", optional('.action:has-text("1st Down")')),
             ("panels", optional('button:has-text("Feldposition")')),

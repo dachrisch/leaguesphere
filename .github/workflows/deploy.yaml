@@ -185,8 +185,8 @@ jobs:
             org.opencontainers.image.version=${{ inputs.agent_tag }}
           build-args: |
             GIT_SHA=${{ steps.ref.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=agent-backend
+          cache-to: type=gha,mode=max,scope=agent-backend
 
       # Phase 3 Layer 1 (#2539): the agent stage used to run the backend image
       # only, so every `/static/…` request 404'd and no frontend journey could
@@ -210,8 +210,8 @@ jobs:
             org.opencontainers.image.version=${{ inputs.agent_tag }}
           build-args: |
             GIT_SHA=${{ steps.ref.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=agent-frontend
+          cache-to: type=gha,mode=max,scope=agent-frontend
 
       - name: Build and push the agent frontend image (candidate)
         id: build_frontend_candidate
@@ -227,8 +227,8 @@ jobs:
             org.opencontainers.image.version=${{ inputs.agent_tag }}
           build-args: |
             GIT_SHA=${{ steps.ref.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=agent-frontend
+          cache-to: type=gha,mode=max,scope=agent-frontend
 
       - name: Prove the agent frontend serves every built bundle
         run: |

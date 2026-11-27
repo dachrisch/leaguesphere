@@ -149,6 +149,21 @@ def _load_intended(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def _run_journey(journey, name, side, context, run_id, credentials, errors):
+    """Run one journey on one side; a crash is a harness error, not an abort.
+
+    A fixture or browser failure on one side must not stop the remaining
+    journeys or skip the report and the context cleanup: the error is listed
+    under "Harness errors" (which fails the run) and the side counts as having
+    captured nothing.
+    """
+    try:
+        return journey(context, run_id, credentials)
+    except Exception as error:  # noqa: BLE001 -- reported, never swallowed
+        errors.append(f"{name}:{side}: {type(error).__name__}: {error}")
+        return {}, []
+
+
 def run(args, deps):
     """Execute the selected journeys on both sides and render their diff."""
     errors = []
@@ -172,11 +187,17 @@ def run(args, deps):
     min_steps = getattr(args, "min_steps", 2)
     for name in selected:
         journey = deps["journeys"][name]
-        left_steps, left_skipped = journey(
-            contexts["ref"], f"{run_id}-ref", credentials
+        left_steps, left_skipped = _run_journey(
+            journey, name, "ref", contexts["ref"], f"{run_id}-ref", credentials, errors
         )
-        right_steps, right_skipped = journey(
-            contexts["cand"], f"{run_id}-cand", credentials
+        right_steps, right_skipped = _run_journey(
+            journey,
+            name,
+            "cand",
+            contexts["cand"],
+            f"{run_id}-cand",
+            credentials,
+            errors,
         )
         found = compare_steps(left_steps, right_steps, name)
         if found:
