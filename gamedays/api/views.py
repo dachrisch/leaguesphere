@@ -679,12 +679,17 @@ class GameResultUpdateAPIView(APIView):
             # show the entered result, not the last scorecard score.
             try:
                 record_result_correction(game, author=request.user)
-            except InvalidEnvelope as error:
+            except InvalidEnvelope:
                 # e.g. a negative score: roll the whole edit back, the result
-                # and the log must not disagree.
+                # and the log must not disagree. A fixed message: the
+                # exception text is internal (CodeQL py/stack-trace-exposure).
                 transaction.set_rollback(True)
                 return Response(
-                    {"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST
+                    {
+                        "detail": "The result cannot be recorded: each team's "
+                        "score must be a non-negative number."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
             # Mirror the result onto the designer canvas node so its scores
