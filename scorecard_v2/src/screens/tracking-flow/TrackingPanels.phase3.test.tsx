@@ -275,9 +275,15 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
   } as NonNullable<TrackingPanelsProps["editing"]>;
 
   it("renders a null drive spot without a spot suffix", () => {
-    draw({ drive: { ...firstAndTen(), ballOn: null } });
-    expect(screen.getByRole("button", { name: /Touchdown/ })).toBeTruthy();
+    const { container } = draw({ drive: { ...firstAndTen(), ballOn: null } });
+    const line = container.querySelector(".driveline");
+    expect(line?.textContent).toBe("1st & M");
+    expect(line?.textContent).not.toContain("·");
     cleanup();
+    const spotted = draw({ drive: { ...firstAndTen(), ballOn: 5 } });
+    expect(spotted.container.querySelector(".driveline")?.textContent).toBe(
+      "1st & M · A5",
+    );
   });
 
   it("shows every error, hint, armed and timeout-count state", () => {
@@ -356,9 +362,21 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
     });
     expect(screen.getByText(/Speichern/)).toBeTruthy();
     cleanup();
-    draw({ pendingPat: { team: "Ravens", jersey: 7 }, patTry: null, patDefense: false });
-    const defense = screen.getByText("Gegner +2");
-    fireEvent.click(defense);
+    const setDefense = vi.fn();
+    const setDefenseJersey = vi.fn();
+    const setPatError = vi.fn();
+    draw({
+      pendingPat: { team: "Ravens", jersey: 7 },
+      patTry: null,
+      patDefense: false,
+      setPatDefense: setDefense,
+      setPatDefenseJersey: setDefenseJersey,
+      setPatError: setPatError,
+    });
+    fireEvent.click(screen.getByText("Gegner +2"));
+    expect(setDefense).toHaveBeenCalledWith(true);
+    expect(setDefenseJersey).toHaveBeenCalledWith(null);
+    expect(setPatError).toHaveBeenCalledWith(null);
     cleanup();
   });
 
@@ -377,9 +395,16 @@ describe("TrackingPanels branch characterization (Phase 3)", () => {
       screen.getByRole("dialog", { name: "Extrapunkt Ravens · nicht verwandelt" }),
     ).toBeTruthy();
     cleanup();
-    for (const team of ["Ravens", "Wolves", null]) {
+    // The row's team decides the printed side label: the away team is named
+    // as-is, a missing team falls back to the dash.
+    for (const [team, label] of [
+      ["Ravens", "Ravens"],
+      ["Wolves", "Wolves"],
+      [null, "–"],
+    ] as const) {
       draw({ editing: { ...row, team } });
       expect(screen.getByRole("dialog", { name: "First Down ändern" })).toBeTruthy();
+      expect(screen.getByText(`${label} · 1. Halbzeit`)).toBeTruthy();
       cleanup();
     }
   });
