@@ -1,5 +1,40 @@
 # Changelog
 
+## [5.30.0](https://github.com/dachrisch/leaguesphere/compare/v5.29.0...v5.30.0) (2026-11-27)
+
+
+### Features
+
+* add ordered schedule strategy and designer hook registries ([90f47d2](https://github.com/dachrisch/leaguesphere/commit/90f47d2d97c179727dc6d9040db80a5ecfc96bd5))
+* add phase 1 guardrails, hook registry and branch-coverage gate ([8804673](https://github.com/dachrisch/leaguesphere/commit/880467390872aa5bd1c303ee0dd42f10eafb054b))
+
+
+### Bug Fixes
+
+* build the legacy equivalence gameday through the wizard ([56c42af](https://github.com/dachrisch/leaguesphere/commit/56c42afd10bb5dc93eb51af4e3404de3783ebc92))
+* capture scenario ids and exercise all three finalise paths ([51cf370](https://github.com/dachrisch/leaguesphere/commit/51cf370a991ec18eb938f5df280283e54538f8de))
+* catch bare dynamic imports in boundary checker ([06c919d](https://github.com/dachrisch/leaguesphere/commit/06c919d02d34f4fbc55fe6c1154d2f5eca404a2a))
+* create the verification user in the passcheck test ([c4b6750](https://github.com/dachrisch/leaguesphere/commit/c4b675069d99c34e9551acddac91980222f50a22))
+* fail loudly on deleted groups and pin group choices ([9a0edf3](https://github.com/dachrisch/leaguesphere/commit/9a0edf3f18f2cfd6dfa7d367148c2a7523932316))
+* guard schedule predicates and keep designer hook required ([f210d41](https://github.com/dachrisch/leaguesphere/commit/f210d41245c061a64dd0da59bef55410ae00e70c))
+* guard season_settings hook and restore characterization ([9d04528](https://github.com/dachrisch/leaguesphere/commit/9d045282f9689cde0427cd0a7575cc18be4f88b2))
+* keep raw qualify table for officials membership check ([471b840](https://github.com/dachrisch/leaguesphere/commit/471b840997ba524ec65d201b7a00350a0fbe91e3))
+* keep wizard redirect visible and fail at the capture step ([652b242](https://github.com/dachrisch/leaguesphere/commit/652b242483c8fd830328c60b51786b061d9b99da))
+* make registry owners and replacement rules explicit ([cc78d15](https://github.com/dachrisch/leaguesphere/commit/cc78d15ee8a99318cb6039371f957f8d495a2083))
+* make the legacy scenario executable on real HTTP ([7887441](https://github.com/dachrisch/leaguesphere/commit/7887441ea714e2980df3fd3403158b858d92cd3a))
+* normalise scenario result ids from the games payload ([5e83d2b](https://github.com/dachrisch/leaguesphere/commit/5e83d2b2c61e63bf70a69349b787b8fa2ea7d254))
+* run equivalence harness tests in the python-cross shard ([93c5399](https://github.com/dachrisch/leaguesphere/commit/93c5399f10651467e3d75bde96f860a59056caef))
+* scope coverage gate on real coverage.py JSON ([5417de4](https://github.com/dachrisch/leaguesphere/commit/5417de41dedc99b7c7b170f1eb2f0963e52b283e))
+
+
+### Documentation
+
+* align Phase 1 plan with review decisions ([64b7b0a](https://github.com/dachrisch/leaguesphere/commit/64b7b0a4c46e0b284407bf220ec80c2124ed7f93))
+* correct the .coveragerc omit section reference ([2d804c4](https://github.com/dachrisch/leaguesphere/commit/2d804c4aaed875b1b153ed49349be82c26eec0cb))
+* diff the Phase 1 branch gate against origin/master ([0f8c60a](https://github.com/dachrisch/leaguesphere/commit/0f8c60a50cae668c4a74f04356388537bf354391))
+* list the template and wizard-built legacy equivalence scenarios ([f3c43a4](https://github.com/dachrisch/leaguesphere/commit/f3c43a463b00973516ca333c7d031e798ea79337))
+* record agreed Phase 1 plan ([e4b9abe](https://github.com/dachrisch/leaguesphere/commit/e4b9abe0333814202b47b68c2014243c42cbd4a5))
+
 ## [5.29.0](https://github.com/dachrisch/leaguesphere/compare/v5.28.3...v5.29.0) (2026-11-27)
 
 
