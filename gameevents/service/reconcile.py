@@ -97,6 +97,10 @@ class GameCheck:
     last_seq: int
     drift: Optional[Drift] = None
     legacy: bool = False
+    # Phase 2: carried from the already-loaded events so the reconciliation
+    # report can classify v2 vs shadow/staff games without another query.
+    source: str = ""
+    season_id: Optional[int] = None
 
     @property
     def ok(self) -> bool:
@@ -253,12 +257,20 @@ def _replay(game_events) -> Replay:
     return replay_events(values_from_rows(game_events))
 
 
+# A game is owned by the strongest source present in its log: a single v2
+# event makes it v2 even if shadow events are also present. Ordered lookup, so
+# there is no branch to leave uncovered.
+_SOURCE_RANK = {"staff": 0, "legacy": 1, "v2": 2}
+
+
 def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
     """Check every game with events (``None``) or the given ids.
 
     Five queries in total, however many games or events: the event stream is
     loaded once and grouped in Python. An id with no events is reported as a
-    skipped legacy game (never a failure).
+    skipped legacy game (never a failure). The event query also joins the game
+    and its gameday so the Phase 2 report can read source and season without a
+    sixth query.
     """
 
     if game_ids is None:
@@ -271,8 +283,10 @@ def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
         requested = list(dict.fromkeys(game_ids))
 
     events_by_game: dict[int, list] = defaultdict(list)
-    for event in GameEvent.objects.filter(game_id__in=requested).order_by(
-        "game_id", "seq"
+    for event in (
+        GameEvent.objects.filter(game_id__in=requested)
+        .select_related("game__gameday")
+        .order_by("game_id", "seq")
     ):
         events_by_game[event.game_id].append(event)
     states = {
@@ -292,6 +306,12 @@ def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
         if not game_events:
             checks.append(GameCheck(game_id, 0, 0, legacy=True))
             continue
+        source = max(
+            (event.source for event in game_events),
+            key=lambda value: _SOURCE_RANK.get(value, -1),
+            default="",
+        )
+        season_id = game_events[0].game.gameday.season_id
         try:
             replay = _replay(game_events)
         except InvalidEnvelope as error:
@@ -301,6 +321,8 @@ def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
                     len(game_events),
                     0,
                     drift=Drift(None, "log", str(error)),
+                    source=source,
+                    season_id=season_id,
                 )
             )
             continue
@@ -315,6 +337,8 @@ def check_games(game_ids: Optional[Iterable[int]] = None) -> list[GameCheck]:
                     rows_by_game.get(game_id, []),
                     sides.get(game_id, {}),
                 ),
+                source=source,
+                season_id=season_id,
             )
         )
     return checks

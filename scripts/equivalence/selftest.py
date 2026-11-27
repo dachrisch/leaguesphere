@@ -37,6 +37,7 @@ def run_selftest(args):
         return 1
 
     gamedays = probe_mod.discover(sessions["anonymous"], manifest)
+    gamedays = probe_mod.discover_games(sessions["anonymous"], manifest, gamedays)
     probes = probe_mod.expand_probes(manifest, gamedays)
     first_run, first_skipped = probe_mod.run_probes(sessions, manifest, probes)
     second_run, second_skipped = probe_mod.run_probes(sessions, manifest, probes)

@@ -127,6 +127,31 @@ is maintained by the write path, not derived from the log.
 Run `check_game_projection --game <id>` after a rebuild to confirm; the
 command is idempotent.
 
+## Accepted legacy set
+
+`check_game_projection --all --report <path>` writes a JSON record of the
+reconciliation state without changing the command's stdout, exit status or
+six-query budget. Games are classified by `GameEvent.source`: only a game with
+a `source=v2` event must reconcile; shadow-only (`source=legacy`) games and
+games with rows but no events are the **accepted legacy set** and keep the
+row-based read path. There is no `Gameinfo.event_source` field, so no migration
+is involved.
+
+The accepted set is recorded by count, SHA-256 digest of its sorted ids, a
+`shadow_only` breakdown, per-season counts and an id cutoff (`--legacy-cutoff`)
+that makes the digest reproducible — **not** by storing the raw ids in a public
+repository. The accepted set and `--legacy-cutoff` shape the report only: stdout
+keeps the pre-report meaning, so `skipped N legacy game(s) without events`
+counts games with no events at all, and a shadow-only game is counted under
+`checked`, never under `skipped`. Every drift/flagged entry carries its `source`; the gate reads
+`v2_drift == 0` and `v2_flagged == 0`, not the exit code alone. The agent-stage
+measurement (6,369 games; zero drift; zero flagged v2 games) and the
+regeneration command are in
+[the Phase 2 acceptance record](../planning/current/2026-11-25-phase2-legacy-acceptance.md).
+**No backfill is performed**: those games are not rewritten or event-sourced.
+A flagged v2 game is repaired with a data-only
+`rebuild_game_projection --game <id>`, never a code change.
+
 ## Where the flag has to be set (and where it cannot)
 
 `SCORECARD_EVENT_FEED` is read from the process environment
@@ -136,8 +161,11 @@ effect: the container's environment comes from the host, not the build.
 - **Local dev**: `.env_template` / your shell.
 - **Staging/demo**: the env file Ansible renders from
   `deployed/ls.env.staging.template` (and the demo equivalent). That template
-  does **not** carry the variable yet, so flipping the flag on stage needs a
-  change there on `master` plus the Ansible sync — the same gate as
+  already carries `SCORECARD_EVENT_FEED=false` (see
+  `deployed/ls.env.staging.template:33`), so the default is off without any
+  extra edit. Flipping the flag on stage is a host-environment change applied
+  through Ansible in `dachrisch/servyy-container` — not something an image or
+  a repo-only change can do — the same gate as
   `container/nginx.staging.conf`, which staging mounts from the host jail.
 
 Consequence: a release candidate can be *validated* against the event path

@@ -43,8 +43,41 @@ python3 scripts/equivalence/runner.py \
   credentials in `LS_AGENT_STAFF_*`, `LS_AGENT_TEAM_MANAGER_*`,
   `LS_AGENT_OFFICIAL_*`; without them those probes are reported as *skipped*,
   never faked.
+- Phase 2 adds liveticker HTML/JSON probes, a per-game feed probe and their
+  `If-None-Match` revalidation probes (the SSE `/api/liveticker/stream/`
+  endpoint is deliberately not diffed). Three write scenarios exercise the
+  v2 event write, the legacy v1 shadow write and the reconciliation flag; a
+  fourth creates a gameday through the legacy wizard with a compact legacy
+  JSON schedule and finalises its game. Client ids are run-id-derived UUIDs
+  and normalised.
 - The officials sign-up flow is Moodle-gated (`MOODLE_LOGGED_IN_USER`), so
   with harness accounts the scenario only exercises the guard redirect.
+
+## Flag-ON comparison (Phase 2)
+
+On servyy-test the flag is turned on for `cand` only through the
+`ls_agent_stage` role's `ls_agent_stage_cand_env` (a Compose `environment`
+entry overrides the `false` inherited from the stage env file). `ref` is never
+touched. The infra branch is `dachrisch/servyy-container`
+`agent-stage-phase2-cand-env` and is applied by the coordinator, not the agent:
+
+```bash
+./servyy-test.sh --tags ls.agent.stage \
+  -e '{"ls_agent_stage_cand_env": {"SCORECARD_EVENT_FEED": "true"}}'
+```
+
+After confirming both baked SHAs via `/health/version/`, run the same
+`runner.py` command as the flag-OFF report with the two tunnel URLs. The stage
+is a prod clone with no event-sourced games, so the event path is exercised by
+the `v2-events-write`, `v1-shadow-write` and `reconciliation-flag` scenarios.
+Restore the flag-off baseline before any later flag-OFF run:
+
+```bash
+./servyy-test.sh --tags ls.agent.stage -e '{"ls_agent_stage_cand_env": {}}'
+```
+
+See [the Phase 2 flag-on report](../../../docs/topics/planning/current/2026-11-25-phase2-flag-on-report.md)
+for the recorded result.
 
 ## Redaction
 
@@ -62,8 +95,17 @@ JSON file and passes it with `--intended`:
 {"snapshot-api": ["$.schema_version"]}
 ```
 
-Matching diffs are reported separately as intended; anything else is
-unexplained and fails the run.
+Scenario diffs use the same file with `<scenario>:<step>` keys, e.g.
+`{"v1-shadow-write:read-feed": ["$.events[]"]}`. Matching diffs are reported
+separately as intended; anything else is unexplained and fails the run. The
+revalidation probes assert the 200↔304 contract; literal ETag values stay
+normalised noise. Each revalidation probe resolves its **own** expanded source
+(`base#category:id`), and a probe that never receives a 304 is listed in the
+report instead of silently passing. Liveticker reads are scoped with
+`?gameday={gameday_id}` so scenario-created games reach the projection path.
+The `reconciliation-flag` scenario writes a real sequence-0 penalty before its
+delete, and the harness asserts `409 {"needs_reconciliation": true}` on both
+sides — a delete that names no row is a no-op, not evidence of the flag path.
 
 ## Files
 

@@ -59,9 +59,14 @@ def render_report(
     scenario_runs,
     scenario_diffs,
     errors,
+    verified_contracts=(),
+    etag_revalidation_misses=(),
 ):
     intended_diffs, unexplained = split_intended(diffs, intended)
-    all_diffs = {**unexplained, **scenario_diffs}
+    # Phase 2: scenario diffs are keyed ``<scenario>:<step>`` and may be
+    # declared intended exactly like probe diffs. Unexplained ones fail the run.
+    intended_scenarios, unexplained_scenarios = split_intended(scenario_diffs, intended)
+    all_diffs = {**unexplained, **unexplained_scenarios}
     counts = summarise([item for found in all_diffs.values() for item in found])
 
     lines = [
@@ -86,21 +91,26 @@ def render_report(
         lines.append("")
 
     lines += ["### Unexplained diffs", ""]
-    if unexplained:
-        lines += _format_diffs(unexplained)
+    if all_diffs:
+        lines += _format_diffs(all_diffs)
     else:
         lines.append("None.")
     lines.append("")
 
-    if intended_diffs:
+    if intended_diffs or intended_scenarios:
         lines += ["### Intended diffs (declared by this phase)", ""]
-        lines += _format_diffs(intended_diffs)
+        lines += _format_diffs({**intended_diffs, **intended_scenarios})
         lines.append("")
 
     lines += ["### Write scenarios", ""]
     if scenario_runs:
         for run in scenario_runs:
-            status = "diff" if run in scenario_diffs else "clean"
+            # Scenario diffs are keyed ``<scenario>:<step>`` since Layer 3.
+            status = (
+                "diff"
+                if any(key.startswith(run + ":") for key in scenario_diffs)
+                else "clean"
+            )
             lines.append(
                 f"- `{run}`: {status}"
                 + (
@@ -116,6 +126,19 @@ def render_report(
     if scenario_diffs:
         lines += ["### Scenario diffs", ""]
         lines += _format_diffs(scenario_diffs)
+        lines.append("")
+
+    if verified_contracts:
+        lines += ["### Verified per-side contracts", ""]
+        lines += [
+            f"- `{name}`: needs_reconciliation on both sides"
+            for name in verified_contracts
+        ]
+        lines.append("")
+
+    if etag_revalidation_misses:
+        lines += ["### ETag revalidation without a 304", ""]
+        lines += [f"- `{name}`" for name in etag_revalidation_misses]
         lines.append("")
 
     if skipped_probes:

@@ -6,6 +6,8 @@
 
 **Companion:** `2026-10-27-scorecard-ideas.md` §5 (`I5.1`, `I9.2`, `I9.3`) and the open question `Q1` (event sourcing yes/no — still Leon's call for the write model of record).
 
+> **Q1 is closed.** [ADR-0026](../../architecture/adr/0026-event-store-ownership.md) records the owner as the maintainer (Accepted 2026-11-26) — the "Leon" of the historical Q1 wording above owned the scorecard scope and his outstanding sign-off is no longer required. The old "default in force" text below is kept for traceability but is superseded; events are truth for v2 games, the accepted legacy games stay on the legacy path with no backfill, and the flag/shadow writes are removed only after a gameday rehearsal on the agent stage (no prod soak).
+
 ---
 
 ## Why
@@ -140,11 +142,15 @@ Sport definitions and the template-driven UI (that is `I4.x`), async workers, mu
 
 ## Decisions
 
-Taken 2026-10-28 on the proposals below. Q1 is the only one still open, and its
-**default is in force** until Leon answers: slice 1 does not depend on the answer,
-because `Gameinfo.event_source` names the owner per game.
+Taken 2026-10-28 on the proposals below. Q1 was the only one still open at the
+time and its **default was in force** until Leon answered; that historical
+wording is retained here but is now superseded by
+[ADR-0026](../../architecture/adr/0026-event-store-ownership.md). Note that the
+`Gameinfo.event_source` field mentioned below was never added; the per-game
+discriminator is the existing `GameEvent.source` (`v2`/`legacy`/`staff`), so the
+cutover needs no schema migration.
 
-### Q1 — Is the event log the record of record, or an audit beside `TeamLog`? *(Leon — default in force)*
+### Q1 — Is the event log the record of record, or an audit beside `TeamLog`? *(Leon — default in force; now closed by ADR-0026)*
 
 It decides whether anything is rebuildable. Audit-only means every consumer keeps
 reading `TeamLog`, drift is tolerated, and replay, statistics and sport templates
@@ -155,6 +161,13 @@ the old path, and the old app gets a written sunset criterion so the global answ
 follows. `Gameinfo.event_source` expresses this per game, so the choice is a data
 decision later, not a schema one. If Leon says "audit only", the store still earns
 its keep as an audit log and a channel; nothing in slice 1 is wasted.
+
+> **Superseded by [ADR-0026](../../architecture/adr/0026-event-store-ownership.md).**
+> Q1 is closed: the owner is the maintainer (ADR-0026, Accepted 2026-11-26).
+> Events are truth for v2 games; the legacy games stay on the legacy path with
+> no backfill. The per-game discriminator is `GameEvent.source`, not a new
+> `event_source` column, and the shadow write plus the global flag are removed
+> only after a gameday rehearsal on the agent stage — there is no prod soak.
 
 ### Q2 — Can a correction target any earlier event, or only the last?
 

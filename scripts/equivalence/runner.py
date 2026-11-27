@@ -99,6 +99,7 @@ def run(args):
     cand_sha = baked_sha(cand_sessions["anonymous"])
 
     gamedays = probe_mod.discover(ref_sessions["anonymous"], manifest)
+    gamedays = probe_mod.discover_games(ref_sessions["anonymous"], manifest, gamedays)
     probes = probe_mod.expand_probes(manifest, gamedays)
     ref_results, ref_skipped = probe_mod.run_probes(ref_sessions, manifest, probes)
     cand_results, cand_skipped = probe_mod.run_probes(cand_sessions, manifest, probes)
@@ -107,6 +108,10 @@ def run(args):
     for name in probe_mod.only_left(ref_results, cand_results):
         diffs.setdefault(name, []).append(Diff("$", "missing"))
 
+    etag_revalidation_misses = sorted(
+        set(probe_mod.revalidation_misses(ref_results, probes))
+        | set(probe_mod.revalidation_misses(cand_results, probes))
+    )
     scenario_runs = {}
     scenario_diffs = {}
     context = scenario_context(gamedays)
@@ -118,6 +123,10 @@ def run(args):
         if team_ids:
             context["wizard_team_ids"] = team_ids
         context.update(scenario_mod.discover_template_context(ref_sessions))
+        # The Phase 2 wizard scenario needs two real team ids.
+        pair = scenario_mod.discover_pair_team_ids(ref_sessions["anonymous"])
+        context["team_id"] = pair[0] if pair else None
+        context["team_id_away"] = pair[1] if len(pair) > 1 else None
         for name in scenario_mod.SCENARIOS:
             if args.scenarios and name not in args.scenarios:
                 continue
@@ -133,11 +142,17 @@ def run(args):
                 continue
             scenario_runs[name] = sorted(set(ref_run.skipped) | set(cand_run.skipped))
             found = compare_scenario_runs(ref_run, cand_run)
-            if found:
-                scenario_diffs[name] = [
-                    item for step_diffs in found.values() for item in step_diffs
-                ]
+            # Keep the ``<scenario>:<step>`` keys so ``--intended`` can declare
+            # a single deliberate step diff (Phase 2, PROVISIONAL P4).
+            scenario_diffs.update(found)
 
+    verified_contracts = sorted(
+        f"{name}:{step.name}"
+        for name, steps in scenario_mod.SCENARIOS.items()
+        if name in scenario_runs
+        for step in steps
+        if step.expect_body
+    )
     text = report_mod.render_report(
         run_id=run_id,
         ref_sha=ref_sha,
@@ -149,6 +164,8 @@ def run(args):
         scenario_runs=scenario_runs,
         scenario_diffs=scenario_diffs,
         errors=errors,
+        verified_contracts=verified_contracts,
+        etag_revalidation_misses=etag_revalidation_misses,
     )
 
     if args.report:
@@ -161,7 +178,14 @@ def run(args):
             check=False,
         )
 
-    return 1 if scenario_diffs or _has_unexplained(diffs, args.intended) else 0
+    # Fail on unexplained probe OR scenario diffs; declared scenario diffs are
+    # rendered in the Intended diffs section and do not fail the run.
+    return (
+        1
+        if _has_unexplained(diffs, args.intended)
+        or _has_unexplained(scenario_diffs, args.intended)
+        else 0
+    )
 
 
 def _load_intended(path):

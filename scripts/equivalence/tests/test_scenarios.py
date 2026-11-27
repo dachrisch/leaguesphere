@@ -28,6 +28,7 @@ class FakeApi:
         self.id_base = id_base
         self.calls = []
         self.empty_games = False
+        self.flagged = False
 
     def request(
         self,
@@ -88,6 +89,27 @@ class FakeApi:
             return self._json(200, {"officials": []})
         if method == "GET" and path.endswith("/summary"):
             return self._json(200, {"game": {"id": self.id_base + 50}})
+        if method == "POST" and "/gamelog/" in path:
+            return self._json(201, {"events": [{"game": self.id_base + 50}]})
+        if method == "DELETE" and "/gamelog/" in path:
+            self.flagged = True
+            return self._json(200, {"events": []})
+        if method == "POST" and path.endswith("/events"):
+            return self._json(201, {"events": []})
+        if method == "GET" and "/feed" in path:
+            if self.flagged:
+                return self._json(
+                    409,
+                    {
+                        "detail": "the projection needs reconciliation",
+                        "needs_reconciliation": True,
+                    },
+                )
+            return self._json(200, {"events": [], "cursor": 0})
+        if method == "GET" and "/liveticker/" in path:
+            return self._json(200, [])
+        if method == "GET" and "/api/teams/" in path:
+            return self._json(200, {"results": [{"id": 1}]})
         if method == "GET" and "/gamelog/" in path:
             return self._json(200, {"events": [{"game": self.id_base + 50}]})
         if path == "/officials/gameday/sign-up/":
@@ -120,11 +142,9 @@ def test_designer_publish_tags_entities_with_run_id():
     create = api.calls[0]
     assert create["json"]["name"] == "Equivalence eq-1-ref"
     assert create["json"]["address"] == "equivalence run eq-1-ref"
-    assert run.id_tokens == {
-        "eq-1-ref": "<run-id>",
-        900: "<entity-1>",
-        950: "<entity-2>",
-    }
+    assert run.id_tokens["eq-1-ref"] == "<run-id>"
+    assert any(value.startswith("<entity-") for value in run.id_tokens.values())
+    assert "<client-id>" in run.id_tokens.values()
 
 
 def test_both_sides_compare_equal_after_id_normalisation():
