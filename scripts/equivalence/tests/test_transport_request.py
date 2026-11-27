@@ -138,3 +138,13 @@ def test_recorded_session_accepts_the_new_multipart_call():
     )
     assert result.status == 200
     assert recorded.requests[0]["files"] is not None
+
+
+def test_recorded_session_rejects_an_unrecorded_request():
+    recorded = transport.RecordedSession({})
+    try:
+        recorded.request("/api/not-recorded")
+    except AssertionError as error:
+        assert "unexpected request GET /api/not-recorded" in str(error)
+    else:
+        raise AssertionError("an unrecorded request must fail loudly")
