@@ -164,6 +164,43 @@ def test_log_appends_an_event():
     assert list(access_request.events.values_list("action", flat=True)) == ["requested"]
 
 
+@pytest.mark.django_db
+def test_db_user_is_assigned_at_creation_and_is_unique_per_request():
+    """The owner of the row owns exactly one account, from birth to drop."""
+    from dbaccess.accounts import db_user_for
+
+    first = _request(person="5eradmin")
+    second = _request(person="5eradmin")
+
+    assert first.db_user == db_user_for("5eradmin", first.pk)
+    assert second.db_user == db_user_for("5eradmin", second.pk)
+    assert first.db_user != second.db_user
+
+
+@pytest.mark.django_db
+def test_a_re_mint_keeps_the_same_account_name():
+    """Resetting a credential must not rename the account: the ledger row is
+    the identity, so a new name would orphan the reaper's session attribution
+    again (the 2026-11-27 incident).
+    """
+    access_request = _request(person="chrisd")
+    original = access_request.db_user
+
+    access_request.state = AccessRequest.State.APPROVED
+    access_request.save(update_fields=["state", "updated_at"])
+    access_request.refresh_from_db()
+
+    assert access_request.db_user == original
+
+
+@pytest.mark.django_db
+def test_db_user_is_searchable_and_pinned_to_one_row():
+    """The sidecar and the reaper both look rows up by this exact value."""
+    access_request = _request(person="chrisd")
+
+    assert AccessRequest.objects.filter(db_user=access_request.db_user).count() == 1
+
+
 def test_table_names_match_the_sidecar_sql():
     """`deployed/dba/tick.sh` writes these two tables with hand-written SQL.
 

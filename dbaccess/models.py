@@ -17,9 +17,9 @@ from __future__ import annotations
 
 import datetime as dt
 import re
-import string
 
 from cryptography.fernet import Fernet
+from dbaccess.accounts import HANDLE_ALPHABET, HANDLE_LENGTH, access_handle, db_user_for
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ImproperlyConfigured
@@ -31,35 +31,8 @@ from django.utils import timezone
 # on the host with no knowledge of this file.
 TTL_CAP_HOURS = 8
 
-# `tick.sh` builds the account name as `dbeaver_prod_<person>` and
-# `AccessRequest.db_user` is 32 characters wide, so the handle has 19.
-HANDLE_LENGTH = 32 - len("dbeaver_prod_")
-
-
-# The alphabet `deployed/dba/tick.sh` accepts for a `person` (it validates the
-# row before minting, and the account name is interpolated into hand-written
-# SQL). ASCII on purpose: `str.isalnum()` also accepts `ü`, so a login like
-# `Müller` used to keep its umlaut and every mint was parked as `failed` -
-# after a second person had already approved the request.
-HANDLE_ALPHABET = frozenset(string.ascii_lowercase + string.digits)
-
-
-def access_handle(username: str) -> str:
-    """The handle a request is filed under: the requester's login, sanitised.
-
-    Nobody types this any more - it is derived from the account that is asking,
-    so every temporary MySQL user traces back to exactly one named human.
-
-    A leading digit is kept: the login may be `5erAdmin` and the account name it
-    derives (`dbeaver_prod_5eradmin`) is a legal MariaDB user either way, so
-    rewriting the handle would only hide who it belongs to. Unlike the leading
-    character, the alphabet has to match the sidecar exactly - a handle it
-    refuses fails the request *after* approval, which wastes the decision.
-    """
-    return "".join(ch for ch in (username or "").lower() if ch in HANDLE_ALPHABET)[
-        :HANDLE_LENGTH
-    ]
-
+# The naming helpers are imported above and re-exported here because the rest
+# of the app (and older tests) import them from the model module.
 
 # How many table names a surface shows before it says "+N more". The audit trail
 # can afford fewer than the request itself, but neither should print fifteen.
@@ -137,7 +110,7 @@ class AccessRequest(models.Model):
     )
     person = models.CharField(
         max_length=21,
-        help_text="Handle the MySQL account is derived from: dbeaver_prod_<person>",
+        help_text="Login this request belongs to; the account also carries its request id",
     )
     purpose = models.TextField()
     ticket_url = models.URLField(blank=True)
@@ -161,6 +134,9 @@ class AccessRequest(models.Model):
     )
     failure_reason = models.TextField(blank=True)
 
+    # One row, one account: assigned at creation from this row's id and kept
+    # for life (including after the drop). The sidecar reads it instead of
+    # deriving a per-person name, so a re-mint reuses the same identity.
     db_user = models.CharField(max_length=32, blank=True, null=True)
     grant_host = models.CharField(max_length=32, blank=True, null=True)
     # Plaintext only until the first reveal; then it lives encrypted in
@@ -207,6 +183,19 @@ class AccessRequest(models.Model):
 
     def __str__(self):
         return f"{self.person} ({self.state})"
+
+    def save(self, *args, **kwargs):
+        """Give a new row its account name once the primary key exists.
+
+        The id is assigned by the first insert, so the name cannot be computed
+        before it. Explicit values are respected (the data migration writes
+        them directly), and a re-mint never changes an existing name.
+        """
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.db_user and self.person:
+            self.db_user = db_user_for(self.person, self.pk)
+            super().save(update_fields=["db_user", "updated_at"])
 
     # --- derived ----------------------------------------------------------
     def tables(self) -> list[str]:

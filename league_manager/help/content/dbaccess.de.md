@@ -16,8 +16,11 @@ erlischt spätestens nach acht Stunden von selbst.
    **INSERT** erlaubt neue Zeilen, **DELETE** erlaubt das Löschen von Zeilen –
    jeweils nur in den ausgewählten Tabellen. Ohne Haken bleibt es bei
    **Lesen + UPDATE**, wie bisher.
-4. Klicke **Submit for approval**. Den Kontonamen `dbeaver_prod_<dein Login>`
-   vergibt LeagueSphere automatisch.
+4. Klicke **Submit for approval**. LeagueSphere vergibt automatisch einen
+   Kontonamen der Form `dbeaver_prod_<dein Login>_r<Anfrage-Nummer>`: die
+   Anfrage-Nummer macht ihn zu **dieser** Anfrage. Eine zweite Anfrage von dir
+   bekommt einen anderen Benutzer und ein anderes Passwort. Den genauen Namen
+   zeigt **Show password**, sobald die Anfrage aktiv ist.
 5. Üblicherweise öffnet eine andere Person mit der Berechtigung
    `dbaccess.approve_requests` die Anfrage und klickt **Approve**. Sie sieht
    dabei die volle Rechte-Menge („Lesen + UPDATE“, „+ INSERT“, „+ DELETE“) –
@@ -42,7 +45,9 @@ Im Reiter **Main** der Verbindung:
 
 - URL `jdbc:mariadb://127.0.0.1:33063/<datenbank>`
 - Server Host `127.0.0.1`, Port `33063`, Database aus den Verbindungsdetails
-- Username `dbeaver_prod_<dein Login>`, Password aus **Show password**
+- Username und Password aus **Show password** – der Benutzer
+  `dbeaver_prod_<dein Login>_r<Anfrage-Nummer>` gehört nur zu dieser Anfrage;
+  gespeicherte Zugangsdaten einer früheren Sitzung funktionieren hier nicht.
 
 <figure class="help-figure">
   <img src="/static/help/img/dbaccess-dbeaver-main.png" alt="DBeaver-Verbindungsfenster, Reiter Main, mit der JDBC-URL für 127.0.0.1:33063">
