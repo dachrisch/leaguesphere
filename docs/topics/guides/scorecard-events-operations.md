@@ -55,6 +55,31 @@ game. The liveticker ETag always includes the projection's `last_seq`, so an
 event that writes no tick (a plain possession change) still invalidates a
 cached response.
 
+## Manual result edits on a v2 game
+
+`PATCH /api/gameinfo/<id>/result/` (the designer's result entry) writes
+`Gameresult`. On a v2-owned game it also appends one `correction` event with
+`code: "result"` and `source: "staff"`, in the same transaction:
+
+```json
+{"seq": 9, "type": "correction", "code": "result", "side": null,
+ "payload": {"home": 21, "away": 3, "before": {"home": 6, "away": 0}},
+ "undo_of": null, "source": "staff"}
+```
+
+- The projector sets `GameState` to `payload.home`/`payload.away`; later
+  events add to that score. No `TeamLog` row is written or marked: the rows
+  stay the recorded play-by-play, the corrected total is the result's.
+- The score comes from the `Gameresult` rows after the edit (`fh + sh` per
+  side). If it already equals the projected score (a repeated PATCH, a
+  halftime edit that leaves the total alone) nothing is recorded.
+- Games without a `source=v2` event (legacy, shadow-only, unscored) keep the
+  old behaviour: only `Gameresult` changes, no event, no `GameState`.
+- The scorecard cannot send `correction/result` (400), and a
+  `correction/undo` naming one is a 400: edit the result again instead.
+- `check_game_projection` and `rebuild_game_projection` replay the
+  correction like any other event, so they agree with the edited score.
+
 ## `check_game_projection`
 
 ```bash

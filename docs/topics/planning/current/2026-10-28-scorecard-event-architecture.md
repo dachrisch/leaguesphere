@@ -97,6 +97,7 @@ class GameState(models.Model):
 
 - **`Gameinfo.event_source`**: `v2` (events are the record, `TeamLog` is its projection), `legacy` (the old scorecard or the designer owns `TeamLog`; the feed is derived from rows, events are read-only history), `null` (unknown → legacy). Set on the first event append.
 - **Manual result edits** (`GameResultUpdateAPIView`) and old-scorecard writes: while a game is `v2`, they must emit `correction` events; while it is `legacy`, the feed reads `TeamLog` as today. No third mode.
+  *Implemented (Phase 2 Layer 6):* a manual result edit on a v2-owned game appends `correction/result` (`source=staff`, payload `{home, away, before}`), which sets the projected score; see ADR-0026 and the [operations guide](../../guides/scorecard-events-operations.md#manual-result-edits-on-a-v2-game). Old-scorecard writes to a v2 game are refused (409) instead.
 - **Reconciliation**: `manage.py check_game_projection --game <id>` compares projection ↔ `TeamLog` and exits non-zero on drift; CI runs it over the e2e fixture, and the live path logs a mismatch rather than silently diverging.
 
 ### Failure modes the design must answer

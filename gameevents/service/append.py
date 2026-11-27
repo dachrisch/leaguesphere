@@ -62,6 +62,7 @@ from gameevents.models import GameEvent, GameState
 from gameevents.service.projector import (
     GameEventValue,
     GameStateValue,
+    RESULT_CORRECTION_CODE,
     InvalidEnvelope,
     Projection,
     project_submission,
@@ -231,7 +232,7 @@ def _attach_undo_targets(assigned, stored_rows, stored_values):
     values = []
     target_ids = []
     for value in assigned:
-        if value.type != "correction":
+        if value.type != "correction" or value.code == RESULT_CORRECTION_CODE:
             values.append(value)
             target_ids.append(None)
             continue

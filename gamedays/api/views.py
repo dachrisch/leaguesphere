@@ -36,6 +36,8 @@ from gamedays.api.serializers import (
     LeagueSerializer,
     TeamSerializer,
 )
+from gameevents.service.projector import InvalidEnvelope
+from gameevents.service.result import record_result_correction
 from gamedays.models import (
     Gameday,
     Gameinfo,
@@ -671,6 +673,19 @@ class GameResultUpdateAPIView(APIView):
                 )
 
             game.save()
+
+            # A v2-owned game is served from its event projection (ADR-0026):
+            # record the edit as a correction so the liveticker and the feed
+            # show the entered result, not the last scorecard score.
+            try:
+                record_result_correction(game, author=request.user)
+            except InvalidEnvelope as error:
+                # e.g. a negative score: roll the whole edit back, the result
+                # and the log must not disagree.
+                transaction.set_rollback(True)
+                return Response(
+                    {"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Mirror the result onto the designer canvas node so its scores
             # survive a reload without the client PUTting the whole state.

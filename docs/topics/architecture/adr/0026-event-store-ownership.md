@@ -57,6 +57,14 @@ backfill. This ADR records that decision and makes it discoverable.
   the legacy set is explicitly accepted and documented" — not "all games are
   event-sourced". A shadow-only game (`source=legacy`) is legacy for reads even
   though its events are retained as an append-only audit record.
+- **Manual result edits on a v2 game are events.** `PATCH
+  /api/gameinfo/<id>/result/` on a v2-owned game appends a
+  `correction/result` event with `source=staff` (the existing
+  `GameEvent.Source.STAFF`; `v2` stays reserved for the canonical endpoint and
+  `legacy` for the old scorecard). It carries the entered total and the score
+  it replaced (`payload.before`) and sets the projected score; it writes no
+  `TeamLog` row. A `staff` event never makes a game v2-owned, and games that
+  are not v2-owned keep writing `Gameresult` only.
 - **No per-game schema field.** The discriminator is the existing
   `GameEvent.source` column, so no migration and no second database copy are
   needed.
