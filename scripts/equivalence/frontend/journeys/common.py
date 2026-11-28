@@ -151,7 +151,6 @@ def wait_for_dom_quiet(page, timeout_ms=4000, quiet_ms=600):
         if stable >= quiet_ms:
             break
         last = current
->>>>>>> 0ebc29264 (fix: capture frontend steps after the DOM settles)
 
 
 def run_steps(
