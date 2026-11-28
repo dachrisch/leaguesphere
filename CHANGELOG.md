@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.1.1](https://github.com/dachrisch/leaguesphere/compare/v6.1.0...v6.1.1) (2026-11-28)
+
+
+### Bug Fixes
+
+* **deps:** update dependency uvicorn to v0.55.0 ([1588917](https://github.com/dachrisch/leaguesphere/commit/15889175e66d0449a84da61695c20fb6a82d7b82))
+
 ## [6.1.0](https://github.com/dachrisch/leaguesphere/compare/v6.0.0...v6.1.0) (2026-11-28)
 
 
