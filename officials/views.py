@@ -164,25 +164,21 @@ class OfficialsTeamListView(View):
         # someone in the middle of the separate Moodle-officials-login
         # session flow (MOODLE_LOGGED_IN_USER) - no team-account matching,
         # no staff exclusion. The (comparatively expensive - see
-        # officiated_games_service's module docstring) query work only runs
+        # matchreport/service/officiated_games_service.py's module docstring) query work only runs
         # when the section will actually be shown.
         context["show_officiated_games"] = (
             request.user.is_authenticated
             and not request.session.get(MOODLE_LOGGED_IN_USER)
         )
         if context["show_officiated_games"]:
-            from matchreport.constants import REPORT_TABLE_RENDER_CONFIG
-            from officials.service.officiated_games_service import (
-                get_team_officiated_games,
-            )
+            from officials.service.officiated_games import team_officiated_games
 
             # Only staff get the renderer's claim/unassign "Aktion" column,
             # and its ?next= points back at this exact team-list URL (which
             # may or may not carry a season) so confirm/cancel return here.
-            context["officiated_games"] = get_team_officiated_games(
+            context["officiated_games"] = team_officiated_games(
                 team_id,
                 year,
-                REPORT_TABLE_RENDER_CONFIG,
                 include_official_actions=request.user.is_staff,
                 next_path=request.path,
             )

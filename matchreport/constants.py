@@ -14,7 +14,7 @@ MATCHREPORT_GAMEDAY_LIST_CSV_DOWNLOAD_AND_LEAGUE = (
 # Shared pandas .to_html() kwargs for every rendered report table (gameday
 # detail's passcheck/officials/flags tables). Extracted so other apps that
 # reuse MachtreportModelWrapper.get_gameday_match_report() directly (e.g.
-# officials/service/officiated_games_service.py) render with identical
+# matchreport/service/officiated_games_service.py) render with identical
 # styling instead of drifting from a second copy of this dict.
 REPORT_TABLE_RENDER_CONFIG = {
     "index": False,

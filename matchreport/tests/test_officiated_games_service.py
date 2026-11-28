@@ -13,7 +13,7 @@ from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )
 from matchreport.constants import REPORT_TABLE_RENDER_CONFIG
-from officials.service.officiated_games_service import (
+from matchreport.service.officiated_games_service import (
     get_officiated_gameinfo_ids,
     get_team_officiated_games,
 )

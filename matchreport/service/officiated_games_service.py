@@ -2,6 +2,11 @@
 compliance check - the data behind the "officiated games" section on
 `/officials/team/<pk>/list/<year>/` (officials/views.py::OfficialsTeamListView).
 
+Lives in ``matchreport`` because it renders through the match report;
+``officials`` reaches it only through its port
+``officials.service.officiated_games``, registered in
+``MatchreportConfig.ready()``.
+
 This is a different concern from that page's main roster listing
 (OfficialService.get_all_officials_with_team_infos): that lists the
 officials who *belong* to a team's roster (Official.team); this module
@@ -9,7 +14,7 @@ answers "which games did team X actually officiate" - scoped purely by the
 coarse Gameinfo.officials assignment on the game itself, not by which team
 any individually-recorded official happens to belong to.
 
-Reuses matchreport.service.model_wrapper.MachtreportModelWrapper (one
+Reuses MachtreportModelWrapper (one
 instance per distinct gameday the team officiated) rather than a leaner,
 O(1) bulk query, so the officials table (license level, expiry note,
 hyperlinked license number) renders byte-identical to the match report
@@ -23,6 +28,7 @@ team self-service page.
 from collections import defaultdict
 
 from gamedays.models import Gameday, Gameinfo
+from matchreport.constants import REPORT_TABLE_RENDER_CONFIG
 from matchreport.service.model_wrapper import MachtreportModelWrapper
 from officials.service.officials_compliance_service import (
     compute_gameday_officials_compliance,
@@ -107,3 +113,19 @@ def get_team_officiated_games(
         key=lambda game: (game["date"], game["scheduled"] is None, game["scheduled"])
     )
     return games
+
+
+def officiated_games_for_team(
+    team_id: int,
+    season: int,
+    include_official_actions: bool = False,
+    next_path=None,
+) -> list:
+    """The officials port's implementation: the match report's own styling."""
+    return get_team_officiated_games(
+        team_id,
+        season,
+        REPORT_TABLE_RENDER_CONFIG,
+        include_official_actions=include_official_actions,
+        next_path=next_path,
+    )

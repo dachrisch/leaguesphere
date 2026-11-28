@@ -23,7 +23,7 @@ from gamedays.tests.setup_factories.factories import (
 )
 from matchreport.constants import REPORT_TABLE_RENDER_CONFIG
 from matchreport.service.model_wrapper import MachtreportModelWrapper
-from officials.service.officiated_games_service import get_team_officiated_games
+from matchreport.service.officiated_games_service import get_team_officiated_games
 from officials.tests.setup_factories.factories_officials import OfficialFactory
 from officials.urls import OFFICIALS_LIST_FOR_TEAM_AND_YEAR
 
