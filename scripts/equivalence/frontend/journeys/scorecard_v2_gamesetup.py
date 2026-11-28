@@ -14,6 +14,15 @@ from .common import (
 
 OFFICIAL_SLOT = 'button[aria-label*="Offiziellen wählen"]'
 OFFICIAL_SEARCH = 'input[aria-label*="Person suchen"]'
+OFFICIAL_SEARCH_TIMEOUT_MS = 4000  # PersonPicker debounces by 250 ms
+
+
+def _is_official_search(response):
+    """The free-text picker's debounced directory lookup, GET only."""
+    return (
+        "/api/officials/search/list" in response.url
+        and response.request.method == "GET"
+    )
 
 
 def _assign_officials(page, absent):
@@ -21,11 +30,19 @@ def _assign_officials(page, absent):
 
     The league requires four officials; without them the start button stays
     disabled ("Angaben fehlen") and the journey would record a skipped write.
+    Wait for the picker's debounced lookup before taking the free-text option:
+    clicking early left the request unfired on one side only, which made a
+    ref-vs-ref noise floor differ in captured request counts.
     """
     del absent
     for index in range(4):
         required_click(page, f"{OFFICIAL_SLOT} >> nth={index}")
-        page.locator(OFFICIAL_SEARCH).first.fill(f"Equivalence Official {index + 1}")
+        with page.expect_response(
+            _is_official_search, timeout=OFFICIAL_SEARCH_TIMEOUT_MS
+        ):
+            page.locator(OFFICIAL_SEARCH).first.fill(
+                f"Equivalence Official {index + 1}"
+            )
         required_click(page, "button.ppfree")
 
 

@@ -13,6 +13,52 @@ for part in ("scripts/equivalence", "scripts/equivalence/frontend"):
 from journeys import scorecard_v2_gamesetup as setup  # noqa: E402
 
 
+def test_assign_officials_waits_for_every_debounced_search():
+    # PersonPicker debounces its search by 250 ms. Clicking the free-text
+    # button immediately after `fill` lets some searches fire and others not,
+    # so two runs of the same side captured different API request lists.
+    class Waiter:
+        def __init__(self, page):
+            self.page = page
+
+        def __enter__(self):
+            self.page.waits.append("search")
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    class Page:
+        def __init__(self):
+            self.waits = []
+            self.filled = []
+
+        def locator(self, selector):
+            if selector == setup.OFFICIAL_SEARCH:
+                return types.SimpleNamespace(
+                    first=types.SimpleNamespace(
+                        fill=lambda value: self.filled.append(value)
+                    )
+                )
+            return types.SimpleNamespace(
+                count=lambda: 1,
+                first=types.SimpleNamespace(click=lambda **kwargs: None),
+            )
+
+        def expect_response(self, predicate, timeout):
+            response = types.SimpleNamespace(
+                url="https://stage/api/officials/search/list?name=x",
+                request=types.SimpleNamespace(method="GET"),
+            )
+            assert predicate(response)
+            return Waiter(self)
+
+    page = Page()
+    setup._assign_officials(page, [])
+    assert page.waits == ["search"] * 4
+    assert page.filled == [f"Equivalence Official {index}" for index in range(1, 5)]
+
+
 def test_gamesetup_selects_toss_possession_and_direction(monkeypatch):
     seen = []
 
