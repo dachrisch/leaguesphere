@@ -64,7 +64,7 @@ Deliberately kept separate from the always-on `useFlowValidation`/`FlowValidatio
   simulator over `winner`/`loser`/`rank`/`groupRank` `TeamReference`s, distinguishing
   `basis: 'actual'` (already happened) from `basis: 'projected'` (hypothetical, e.g. "if the home
   team wins"). Its stage-standings tiebreak (win points, then point diff, then points-for) is
-  copied from `gamedays/service/canvas_progression_service.py::_compute_stage_standings` — keep
+  copied from `gameday_designer/service/canvas_progression_service.py::_compute_stage_standings` — keep
   the two in sync if that backend logic changes.
 - **Hook**: `useProgressionInspection.ts`, wired into `useDesignerController.ts` as a value fully
   separate from `validation` (different return type, never merged) — this is what makes the

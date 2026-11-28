@@ -25,7 +25,7 @@ This is where the real logic lives — read it before changing behavior:
 - `gameday_service.py`, `game_service.py`, `gameday_form_service.py` — gameday/game orchestration.
 - `schedule_resolution_service.py`, `bracket_resolution.py`, `placeholder_service.py` —
   tournament progression + playoff placeholder resolution (see root AGENTS.md § placeholder teams).
-- `canvas_progression_service.py`, `canvas_publish_service.py` — designer-canvas integration.
+- Designer canvas: `gamedays` keeps the `GamedayDesignerState` model but reads no canvas schema; publish, progression, validation, auto-assign and result mirroring live in `gameday_designer/service/` and are called through `service/designer_hooks.py`.
 - `league_statistics_service.py`, `model_statistics_wrapper.py` — aggregate stats.
 - `model_wrapper.py`, `model_helper.py`, `wrapper/` — read-model wrappers over the ORM.
 - `team_repository_service.py`, `builders.py`, `gamelog.py`, `signals.py`, `gameday_settings.py`.

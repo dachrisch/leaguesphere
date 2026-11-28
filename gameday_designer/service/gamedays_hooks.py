@@ -15,6 +15,17 @@ from gameday_designer.models import (
     TemplateSlot,
     TemplateUpdateRule,
 )
+from gameday_designer.service.auto_assign_officials_service import (
+    AutoAssignOfficialsService,
+)
+from gameday_designer.service.canvas_progression_service import (
+    CanvasBracketProgressionService,
+)
+from gameday_designer.service.canvas_progression_validation_service import (
+    validate_progression_for_gameday,
+)
+from gameday_designer.service.canvas_publish_service import CanvasPublishService
+from gameday_designer.service.canvas_scores import sync_canvas_node_scores
 from gamedays.service import registry
 from gamedays.service.schedule_resolution_service import (
     GamedayScheduleResolutionService,
@@ -68,6 +79,18 @@ def has_template_application(gameday):
     return TemplateApplication.objects.filter(gameday=gameday).exists()
 
 
+def canvas_progression(gameinfo):
+    CanvasBracketProgressionService(gameinfo).apply()
+
+
+def publish_canvas(gameday):
+    CanvasPublishService(gameday).apply()
+
+
+def auto_assign_officials(gameday_id):
+    return AutoAssignOfficialsService(gameday_id).assign()
+
+
 def strategy_applies(instance):
     # The predicate is a required hook, so an installed designer without it
     # fails phase1.E001 at check time and fails loudly here at call time.
@@ -91,5 +114,18 @@ def register():
     registry.register("update_rule_for_slot", update_rule_for_slot, "gameday_designer")
     registry.register(
         "has_template_application", has_template_application, "gameday_designer"
+    )
+    registry.register("canvas_progression", canvas_progression, "gameday_designer")
+    registry.register(
+        "validate_canvas_progression",
+        validate_progression_for_gameday,
+        "gameday_designer",
+    )
+    registry.register("publish_canvas", publish_canvas, "gameday_designer")
+    registry.register(
+        "auto_assign_officials", auto_assign_officials, "gameday_designer"
+    )
+    registry.register(
+        "sync_canvas_node_scores", sync_canvas_node_scores, "gameday_designer"
     )
     register_strategy(10, "designer-template", strategy_applies, strategy_resolve)

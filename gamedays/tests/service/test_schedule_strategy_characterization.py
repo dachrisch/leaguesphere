@@ -53,7 +53,7 @@ class ScheduleStrategyCharacterization(TestCase):
 
     @patch.object(ScheduleUpdate, "update")
     @patch(
-        "gamedays.service.canvas_progression_service.CanvasBracketProgressionService.apply"
+        "gameday_designer.service.canvas_progression_service.CanvasBracketProgressionService.apply"
     )
     def test_canvas_wins_over_legacy_without_template(self, canvas_apply, legacy):
         GamedayDesignerState.objects.create(gameday=self.gameday, state_data={})
@@ -65,7 +65,7 @@ class ScheduleStrategyCharacterization(TestCase):
 
     @patch.object(ScheduleUpdate, "update")
     @patch(
-        "gamedays.service.canvas_progression_service.CanvasBracketProgressionService.apply"
+        "gameday_designer.service.canvas_progression_service.CanvasBracketProgressionService.apply"
     )
     def test_legacy_is_the_last_fallback(self, canvas_apply, legacy):
         self._finish()

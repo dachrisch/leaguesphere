@@ -34,7 +34,7 @@ from gamedays.models import (
     Gameresult,
     Team,
 )
-from gamedays.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
+from gameday_designer.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
 from gamedays.service.swiss_constants import SWISS_NODE_PREFIX, SWISS_STAGE
 from gameday_designer.service.swiss_round_resolver import (
     SwissRoundResolver,

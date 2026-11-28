@@ -10,7 +10,7 @@ from gamedays.models import (
     League,
     Team,
 )
-from gamedays.service.auto_assign_officials_service import (
+from gameday_designer.service.auto_assign_officials_service import (
     AutoAssignOfficialsError,
     AutoAssignOfficialsService,
 )

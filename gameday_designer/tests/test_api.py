@@ -14,7 +14,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from gamedays.models import Association, Gameday, Gameinfo, Team, Season, League
-from gamedays.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
+from gameday_designer.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
 from gameday_designer.models import (
     ScheduleTemplate,
     TemplateSlot,

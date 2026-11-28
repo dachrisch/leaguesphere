@@ -28,3 +28,38 @@ def update_rule_for_slot(slot):
 
 def has_template_application(gameday):
     return get("has_template_application")(gameday)
+
+
+# --- designer canvas (architecture scan 2026-11-28, N3) -------------------
+# The canvas schema (GamedayDesignerState.state_data nodes) is the designer's
+# concern; gamedays orchestrates publish/result/finalise and asks through
+# these hooks.
+
+
+class AutoAssignOfficialsError(Exception):
+    """Raised by the designer's auto-assign hook; gamedays maps it to a 400."""
+
+
+def canvas_progression(gameinfo):
+    """Advance the canvas bracket after ``gameinfo`` finished."""
+    return get("canvas_progression")(gameinfo)
+
+
+def validate_canvas_progression(gameday):
+    """Issues (``code``, ``message``, ``node_ids``) blocking a publish."""
+    return get("validate_canvas_progression")(gameday)
+
+
+def publish_canvas(gameday):
+    """Materialise the canvas into Gameinfo/Gameresult rows."""
+    return get("publish_canvas")(gameday)
+
+
+def auto_assign_officials(gameday_id):
+    """Assignments made; raises ``AutoAssignOfficialsError``."""
+    return get("auto_assign_officials")(gameday_id)
+
+
+def sync_canvas_node_scores(game, halftime_score, final_score):
+    """Mirror a game result into its canvas node."""
+    return get("sync_canvas_node_scores")(game, halftime_score, final_score)

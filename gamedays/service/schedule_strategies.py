@@ -13,7 +13,7 @@ import logging
 
 from gamedays.management.schedule_update import ScheduleUpdate
 from gamedays.models import GamedayDesignerState
-from gamedays.service.canvas_progression_service import CanvasBracketProgressionService
+from gamedays.service import designer_hooks
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def register_builtins():
         lambda instance: GamedayDesignerState.objects.filter(
             gameday=instance.gameday
         ).exists(),
-        lambda instance: CanvasBracketProgressionService(instance).apply(),
+        lambda instance: designer_hooks.canvas_progression(instance),
     )
     register(
         30,

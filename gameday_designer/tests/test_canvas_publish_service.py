@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from gamedays.models import GamedayDesignerState, Gameinfo, Team
-from gamedays.service.canvas_publish_service import (
+from gameday_designer.service.canvas_publish_service import (
     OFFICIALS_PLACEHOLDER,
     CanvasPublishService,
 )

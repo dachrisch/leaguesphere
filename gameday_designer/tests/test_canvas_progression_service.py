@@ -12,8 +12,10 @@ from gamedays.models import (
     Season,
     Team,
 )
-from gamedays.service.canvas_progression_service import CanvasBracketProgressionService
-from gamedays.service.canvas_publish_service import CanvasPublishService
+from gameday_designer.service.canvas_progression_service import (
+    CanvasBracketProgressionService,
+)
+from gameday_designer.service.canvas_publish_service import CanvasPublishService
 
 
 def _stage_node(node_id, field_id, name, category="preliminary"):

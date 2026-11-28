@@ -2,9 +2,9 @@ from collections import defaultdict
 
 from gamedays.models import Gameday, GamedayDesignerState, Gameinfo
 
-
-class AutoAssignOfficialsError(Exception):
-    pass
+# The error type is part of the gamedays hook contract, so the gamedays view
+# can catch it without importing this app.
+from gamedays.service.designer_hooks import AutoAssignOfficialsError
 
 
 class AutoAssignOfficialsService:
