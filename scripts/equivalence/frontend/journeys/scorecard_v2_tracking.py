@@ -31,8 +31,18 @@ def run(context, run_id, credentials):
             # opens the extra-point sheet, which the next step writes too.
             ("play-td", click(".tdbtn")),
             ("play-save", _sheet_save),
-            ("pat-save", _sheet_save),
-            ("play-undo", click('button:has-text("Rückgängig")')),
+            ("pat-save", click('.patbar button.choice:has-text("+1")')),
+            # +1 opens the PAT detail sheet; it must be saved before the
+            # log's undo control is rendered.
+            ("pat-confirm", click('.sheet button:has-text("Speichern")')),
+            ("play-undo", press("Control+z")),
+            # Undo removes the last entry (the PAT) and reopens its choice
+            # bar. Answer and save it again so the halftime control is enabled.
+            (
+                "pat-reanswer",
+                click('.patbar button.choice:has-text("+1")'),
+            ),
+            ("pat-reconfirm", click('.sheet button:has-text("Speichern")')),
             ("halftime-open", click(".halfbtn")),
             ("halftime-write", _sheet_save),
             ("series-tile", optional('.action:has-text("1st Down")')),

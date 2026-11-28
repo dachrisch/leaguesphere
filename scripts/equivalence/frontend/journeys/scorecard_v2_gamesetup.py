@@ -1,7 +1,32 @@
 """GameSetup journey: crew selection, a real start and the saved-setup state."""
 
 from . import fixture
-from .common import click, id_tokens, optional, press, role_view, run_steps
+from .common import (
+    click,
+    id_tokens,
+    no_op,
+    optional,
+    press,
+    required_click,
+    role_view,
+    run_steps,
+)
+
+OFFICIAL_SLOT = 'button[aria-label*="Offiziellen wählen"]'
+OFFICIAL_SEARCH = 'input[aria-label*="Person suchen"]'
+
+
+def _assign_officials(page, absent):
+    """Fill every required crew slot with a real free-text entry via the UI.
+
+    The league requires four officials; without them the start button stays
+    disabled ("Angaben fehlen") and the journey would record a skipped write.
+    """
+    del absent
+    for index in range(4):
+        required_click(page, f"{OFFICIAL_SLOT} >> nth={index}")
+        page.locator(OFFICIAL_SEARCH).first.fill(f"Equivalence Official {index + 1}")
+        required_click(page, "button.ppfree")
 
 
 def run(context, run_id, credentials):
@@ -22,6 +47,22 @@ def run(context, run_id, credentials):
             ("crew-open", click('button[aria-label*="Offiziellen wählen"]')),
             ("crew-option", optional('[role="option"]:not([aria-disabled="true"])')),
             ("crew-close", press("Escape")),
+            ("officials", _assign_officials),
+            # The start button is disabled until the three required setup
+            # choices are made in the UI. Pick the first option of each group;
+            # these are real writes/choices, not a bypass of the start gate.
+            (
+                "toss",
+                click('div[aria-label="Münzwurf gewonnen von"] button:first-child'),
+            ),
+            (
+                "possession",
+                click('div[aria-label="Erster Ballbesitz"] button:first-child'),
+            ),
+            (
+                "direction",
+                click('div[aria-label="Spielrichtung"] button:first-child'),
+            ),
             # First tap opens the confirmation; the sheet's button writes the
             # crew and setup and starts the game. Both are required writes: an
             # absent control must fail the journey, not yield an "absent"-only

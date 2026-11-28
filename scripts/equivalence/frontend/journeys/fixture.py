@@ -63,7 +63,14 @@ def _find_run(session, run_id):
 
 
 def create(
-    context, run_id, *, started=False, finished=False, locked=False, publish=True
+    context,
+    run_id,
+    *,
+    started=False,
+    finished=False,
+    locked=False,
+    publish=True,
+    canvas=None,
 ):
     """Create one gameday/game and optionally start or finish its game.
 
@@ -87,7 +94,19 @@ def create(
     fixture_context["gameday_id"] = gameday_id
     steps = scenarios._publish_steps_with_teams()
     if not publish:
-        steps = [step for step in steps if step.method == "PUT"]
+        if canvas is not None:
+            # A journey that edits the canvas needs its own team pool: the
+            # shared two-team fixture leaves no selectable option.
+            steps = [
+                scenarios.Step(
+                    name="save-designer-canvas",
+                    method="PUT",
+                    path="/api/gamedays/{gameday_id}/designer-state/",
+                    json={"state_data": canvas},
+                )
+            ]
+        else:
+            steps = [step for step in steps if step.method == "PUT"]
         for step in steps:
             _run_step(session, step, fixture_context)
         return {

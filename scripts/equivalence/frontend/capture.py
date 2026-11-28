@@ -34,16 +34,18 @@ VOLATILE_NODES = (
     (r"\bgerade eben\b", "<time>", "relative clock label"),
     (r"\[(?:focused|active)\]", "", "focus state of the last clicked control"),
     (r"\b(?:fade|slide|transition)-(?:in|out)\b", "", "CSS transition state"),
-    # The event log renders its wall clock as a bare `HH:MM` (EventLog.tsx
-    # `formatLogTime`); runs a minute apart otherwise disagree on identical
-    # rows. Tokenise only a line that is *nothing but* a clock (optionally with
-    # an ARIA label), in place: the row stays, and scores/times in prose still
-    # diff. This cannot be tokenised via `id_tokens` — the clock is created by
-    # the browser at capture time, not by the fixture.
+    # The stage server stamps fixture writes with its wall clock, so two runs
+    # of the *same* side differ by a minute ("Spiel gestartet 10:48" vs
+    # "10:49"). Only a line that is nothing but a clock is volatile: a real
+    # game time ("10:00 · Feld 1", "- button: 10:00 starten") is kept.
+    (r"^\s*\d{1,2}:\d{2}\s*$", "<time>", "server event wall clock"),
+    (r"^(\s*- time: )\d{1,2}:\d{2}\s*$", r"\1<time>", "ARIA event wall clock"),
+    # A live countdown (e.g. "Restliche Pause") advances while the two sides
+    # are visited; the label is behaviour, the remaining value is not.
     (
-        r"^([ \t]*(?:-[ \t]+[A-Za-zÄÖÜäöüß][\wÄÖÜäöüß-]*:[ \t]+)?)(?:[01]\d|2[0-3]):[0-5]\d[ \t]*$",
+        r'^(\s*- timer "[^"]+": )\d{1,2}:\d{2}(?::\d{2})?\s*$',
         r"\1<time>",
-        "event-log wall-clock row (HH:MM) rendered at capture time",
+        "live ARIA countdown",
     ),
 )
 

@@ -129,3 +129,19 @@ def test_locked_fixture_stays_stranded_without_possession(monkeypatch):
 
     assert not _calls(session, "/device")
     assert not _calls(session, "/possession")
+
+
+def test_designer_fixture_keeps_an_unassigned_team_for_a_real_swap():
+    """The designer's team select must offer a spare, selectable option."""
+    from journeys import designer_gametable
+
+    canvas = designer_gametable.DESIGNER_CANVAS
+    teams = canvas["globalTeams"]
+    assert len(teams) >= 3
+    # buildGroupedTeamOptions drops teams without ``groupId is None``.
+    assert all("groupId" in team and team["groupId"] is None for team in teams)
+    assigned = set()
+    for node in canvas["nodes"]:
+        assigned.add(node["data"].get("homeTeamId"))
+        assigned.add(node["data"].get("awayTeamId"))
+    assert [t["id"] for t in teams if t["id"] not in assigned]
