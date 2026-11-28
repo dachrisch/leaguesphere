@@ -20,7 +20,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from gamedays.models import Gameday, Gameinfo
-from league_manager.utils.url_service import UrlService
+from core.url_service import UrlService
 from liveticker.constants import LIVETICKER_HOME, LIVETICKER_V2_HOME
 from liveticker.service.liveticker_service import LIVE_STATUSES
 from liveticker.urls import gameday_ticker_url

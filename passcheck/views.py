@@ -15,9 +15,10 @@ from django.views.generic import (
 )
 
 from gamedays.models import Team
-from league_manager.utils.decorators import get_user_request_permission
-from league_manager.utils.serializer_utils import Obfuscator
-from league_manager.utils.view_utils import PermissionHelper
+from gamedays.service.team_repository_service import TeamRepositoryService
+from gamedays.service.team_permission_decorators import get_user_request_permission
+from core.serializer_utils import Obfuscator
+from gamedays.service.team_permission import PermissionHelper
 from .forms import PlayerlistCreateForm, PlayerlistUpdateForm, PlayerlistTransferForm
 from .models import Playerlist, PlayerlistTransfer
 from .service.passcheck_service import PasscheckService
@@ -267,3 +268,17 @@ class TransferListView(ListView):
 
 class PasscheckView(TemplateView):
     template_name = "passcheck/index.html"
+
+
+class AllTeamListView(View):
+    """Team picker for passcheck (``passcheck/team/all/list/``)."""
+
+    template_name = "team/all_teams_list.html"
+
+    def get(self, request, **kwargs):
+        all_teams = TeamRepositoryService.get_all_teams()
+        context = {
+            "object_list": all_teams,
+            "app": kwargs.get("app"),
+        }
+        return render(request, self.template_name, context)

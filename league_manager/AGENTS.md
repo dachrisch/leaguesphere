@@ -4,7 +4,8 @@
 
 ## Purpose
 The Django **project package** — not a feature app. Holds global settings, the root URL
-dispatcher, middleware, shared utilities, and site-wide templates/menus. When an agent needs
+dispatcher, middleware, and site-wide templates. It is the **composition root**: it may import
+every app, and **no app imports it** (the shared kernel lives in [`core/`](../core/__init__.py)). When an agent needs
 "where is X configured" or "how is the site wired together," it starts here.
 
 ## Role in the system
@@ -20,16 +21,20 @@ here and applies globally.
 - `urls.py` — root URL dispatcher; `include()`s each app. Add a new app's routes here.
 - `middleware/` — custom request/response middleware.
 - `context_processors.py` — variables injected into every template.
-- `base_menu.py` / `constants.py` — global navigation and shared constants.
+- `constants.py` — shared constants. The menu base class is `core/base_menu.py`.
 - `signals.py`, `sitemaps.py` — project-wide signal wiring and sitemap definitions.
-- `utils/` — helpers shared across apps (import from here rather than duplicating).
+- `utils/utils.py` — menu discovery for the context processor. Helpers shared by apps
+  (`etag`, `html`, `serializer_utils`, `url_service`, `base_menu`) live in `core/`; team
+  permission helpers live in `gamedays/service/team_permission*.py`.
 - `asgi.py` / `wsgi.py` — server entrypoints.
 
 ## Conventions & gotchas
 - Choose the settings module via the `league_manager` env var; there is no single `settings.py`.
 - New apps must be added to `INSTALLED_APPS` **and** wired into the root `urls.py`.
 - Auth is **Knox token-based** (see [accounts](../accounts/AGENTS.md)); auth config lives in settings here.
-- Prefer extending `utils/` over adding one-off helpers inside feature apps.
+- Put a helper every app needs into `core/` (no app imports there), not into this package:
+  an app importing `league_manager` re-creates the import cycle the architecture scan removed
+  (import-linter checks it).
 
 ## Tests
 ```bash

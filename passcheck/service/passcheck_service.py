@@ -6,7 +6,7 @@ from django.db.models import Count, Q, Value, OuterRef, Exists, Subquery, Intege
 from gamedays.api.serializers import GamedayInfoSerializer
 from gamedays.models import Team, Gameinfo, Gameday
 from gamedays.service.model_helper import GameresultHelper
-from league_manager.utils.view_utils import UserRequestPermission
+from gamedays.service.team_permission import UserRequestPermission
 from passcheck.api.serializers import (
     PasscheckGamesListSerializer,
     RosterSerializer,

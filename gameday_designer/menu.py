@@ -5,7 +5,7 @@ Adds designer entries to the staff "Orga" menu. The non-staff read-only link
 lives in the "Spieltage" dropdown owned by gamedays/menu.py.
 """
 
-from league_manager.base_menu import BaseMenu, MenuItem
+from core.base_menu import BaseMenu, MenuItem
 from gamedays.menu import GamedaysMenuAdmin
 
 

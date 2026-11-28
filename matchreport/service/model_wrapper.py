@@ -7,7 +7,7 @@ from django.utils.html import escape, format_html
 from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 
-from league_manager.utils.html import escape_cell
+from core.html import escape_cell
 
 from gamedays.models import (
     Gameinfo,

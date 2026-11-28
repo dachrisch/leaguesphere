@@ -9,7 +9,7 @@ from rest_framework.fields import (
 from rest_framework.serializers import Serializer
 
 from gamedays.service.placeholder_service import GamedayPlaceholderService
-from league_manager.utils.serializer_utils import ObfuscatorSerializer, ObfuscateField
+from core.serializer_utils import ObfuscatorSerializer, ObfuscateField
 from passcheck.service.eligibility_validation import (
     EligibilityValidator,
     ValidationError,

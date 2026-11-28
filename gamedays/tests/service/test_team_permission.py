@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from django.test import TestCase
 
 from gamedays.models import Team
-from league_manager.utils.view_utils import PermissionHelper
+from gamedays.service.team_permission import PermissionHelper
 
 
 class PermissionHelperTests(TestCase):

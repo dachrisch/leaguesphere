@@ -36,7 +36,7 @@ from gameevents.models import GameEvent, GameState
 from gameevents.service.projector import GameStateValue
 from gamedays.models import Gameresult, TeamLog
 from gamedays.service.gamelog import GameLog
-from league_manager.utils.etag import build_etag
+from core.etag import build_etag
 
 
 class ProjectionUnavailable(Exception):

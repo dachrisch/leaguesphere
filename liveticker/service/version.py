@@ -10,7 +10,7 @@ from django.db.models import Count, Max, Min, Sum
 
 from gameevents.models import GameState
 from gamedays.models import Gameresult, Gameinfo, TeamLog
-from league_manager.utils.etag import build_etag
+from core.etag import build_etag
 from liveticker.service.liveticker_service import resolve_gameday_ids
 
 

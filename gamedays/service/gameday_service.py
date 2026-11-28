@@ -4,11 +4,11 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from django.utils.html import escape, format_html
 
-from league_manager.utils.html import escape_cell
+from core.html import escape_cell
 
 from gamedays.constants import LEAGUE_GAMEDAY_GAME_DETAIL
 from gamedays.service.placeholder_service import GamedayPlaceholderService
-from league_manager.utils.url_service import UrlService
+from core.url_service import UrlService
 
 logger = logging.getLogger(__name__)
 

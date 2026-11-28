@@ -1,7 +1,7 @@
 from django.db.models import Max, Q, Sum
 
 from gamedays.models import Gameresult
-from league_manager.utils.etag import build_etag
+from core.etag import build_etag
 from league_table.models import LeagueSeasonConfig, TeamPointAdjustments
 
 

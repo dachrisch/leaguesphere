@@ -1,8 +1,8 @@
 from django.urls import path
 from django.views.generic import TemplateView
 
-from league_manager.views import AllTeamListView
 from .views import (
+    AllTeamListView,
     PasscheckPlayerGamesList,
     PlayerlistCreateView,
     RosterView,

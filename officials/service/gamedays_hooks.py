@@ -6,7 +6,7 @@ from gamedays.service import registry, detail_context
 from officials.service.game_official_licenses import resolve_current_licenses
 from officials.service.signup_service import OfficialSignupService
 from officials.urls import OFFICIALS_PROFILE_LICENSE, OFFICIALS_SIGN_UP_LIST
-from league_manager.utils.url_service import UrlService
+from core.url_service import UrlService
 
 
 def current_licenses(official_ids):

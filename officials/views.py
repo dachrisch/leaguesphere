@@ -19,8 +19,8 @@ from django.views.decorators.cache import cache_page
 
 from gamedays.constants import LEAGUE_GAMEDAY_DETAIL
 from gamedays.models import Team, Gameinfo, GameOfficial, Gameresult
-from league_manager.utils.serializer_utils import Obfuscator
-from league_manager.utils.view_utils import PermissionHelper
+from core.serializer_utils import Obfuscator
+from gamedays.service.team_permission import PermissionHelper
 from officials.api.serializers import (
     GameOfficialAllInfoSerializer,
     OfficialSerializer,

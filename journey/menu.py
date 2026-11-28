@@ -1,4 +1,4 @@
-from league_manager.base_menu import BaseMenu, MenuItem
+from core.base_menu import BaseMenu, MenuItem
 
 
 class JourneyMenu(BaseMenu):

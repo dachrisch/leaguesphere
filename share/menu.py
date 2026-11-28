@@ -5,7 +5,7 @@ find the embed code without knowing the URL. The menu system discovers this
 class automatically via ``<AppName>Menu`` naming.
 """
 
-from league_manager.base_menu import BaseMenu, MenuItem
+from core.base_menu import BaseMenu, MenuItem
 
 TEAM_MENU_NAME = "Team"
 

@@ -1,6 +1,6 @@
 from gamedays.constants import LEAGUE_GAMEDAY_CREATE
 from gamedays.menu import GamedaysMenuAdmin
-from league_manager.base_menu import BaseMenu, MenuItem
+from core.base_menu import BaseMenu, MenuItem
 
 from .constants import MATCHREPORT_GAMEDAY_LIST
 

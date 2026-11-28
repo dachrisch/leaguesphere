@@ -39,7 +39,7 @@ OWNERS = (
     (("officials", "teammanager", "accounts"), "python-officials"),
     (("liveticker", "scorecard", "scorecard_v2"), "python-live"),
     (("passcheck", "gameday_designer", "journey", "matchreport"), "python-designer"),
-    (("league_manager", "home", "dbaccess", "share"), "python-core"),
+    (("league_manager", "core", "home", "dbaccess", "share"), "python-core"),
     (("scripts", "tests"), "python-cross"),
 )
 PRAGMA = re.compile(r"#\s*pragma:\s*(no branch|no cover)\b(?P<reason>.*)$", re.I)
