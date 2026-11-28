@@ -19,7 +19,7 @@ on subsequent `/api/` calls. It has **no models of its own** — it builds on Dj
 
 ## Routes (`urls.py`)
 - `knox-auth/` — Knox token auth endpoint.
-- `auth/register/`, `auth/login/`, `auth/logout/`, `auth/user/`.
+- `auth/register/` (staff only, password validators apply), `auth/login/`, `auth/logout/`, `auth/user/`.
 
 ## Conventions & gotchas
 - Auth is **token-based (Knox)**, not session cookies — new authenticated endpoints elsewhere
@@ -29,10 +29,10 @@ on subsequent `/api/` calls. It has **no models of its own** — it builds on Dj
 
 ## Tests
 ```bash
-cd leaguesphere && pytest accounts/tests.py -v
+cd leaguesphere && pytest accounts/tests/ -v
 ```
 
 
 ## CI scope (scoped CI)
 
-Changes here run: **python-officials shard scope (accounts has only an empty tests stub).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).
+Changes here run: **python-officials shard scope (`accounts/tests/` runs in that shard).** Scoping details: [Scoped CI](../docs/topics/deployment/scoped-ci.md).
