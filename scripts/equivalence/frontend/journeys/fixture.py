@@ -35,6 +35,21 @@ def _run_step(session, step, context):
     return response
 
 
+def _possession_team(game):
+    """A team value the possession API accepts, from the game's own results.
+
+    The games list carries each Gameresult's ``team_name`` (its Team.name) and
+    ``team_id``; the possession endpoint accepts either the name or the pk.
+    Never fall back to an empty string — that silently leaves the scorecard's
+    play controls disabled.
+    """
+    for result in game.get("results") or []:
+        team = result.get("team_name") or result.get("team_id")
+        if team:
+            return str(team)
+    raise LookupError("fixture game has no team for the possession PUT")
+
+
 def _find_run(session, run_id):
     response = session.request(f"/api/gamedays/?search={run_id}&page_size=50")
     if response.status != 200:
@@ -109,6 +124,15 @@ def create(
         # fixture deliberately keeps it to exercise the stranded/read-only UI.
         if not locked:
             session.request(f"/api/game/{game['id']}/device", method="DELETE")
+            # The browser cannot play until a team holds possession. PUT after
+            # the device DELETE: the possession endpoint checks the same lock.
+            response = session.request(
+                f"/api/game/{game['id']}/possession",
+                method="PUT",
+                json_body={"team": _possession_team(game)},
+            )
+            if response.status >= 400:
+                raise RuntimeError(f"fixture possession: HTTP {response.status}")
     if finished:
         response = session.request(
             f"/api/game/{game['id']}/finalize", method="PUT", json_body={}

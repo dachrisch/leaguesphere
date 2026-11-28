@@ -23,12 +23,14 @@ class FakeLocator:
     def __init__(self, count):
         self._count = count
         self.clicked = 0
+        self.timeouts = []
 
     def count(self):
         return self._count
 
     def click(self, **kwargs):
         self.clicked += 1
+        self.timeouts.append(kwargs.get("timeout"))
 
     @property
     def first(self):
@@ -56,6 +58,14 @@ def test_required_click_fails_when_selector_is_absent():
     present = FakePage("[id^='team-']")
     common.required_click(present, "[id^='team-']")
     assert present.locator_result.clicked == 1
+
+
+def test_required_click_uses_a_bounded_timeout():
+    # An enabled-looking but disabled/absent control must fail in seconds,
+    # not tie up both sides of the harness for Playwright's 30 s default.
+    page = FakePage("[id^='team-']")
+    common.required_click(page, "[id^='team-']")
+    assert page.locator_result.timeouts == [3000]
 
 
 def test_optional_click_records_absence_instead_of_faking_a_click():

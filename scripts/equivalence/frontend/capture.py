@@ -34,6 +34,17 @@ VOLATILE_NODES = (
     (r"\bgerade eben\b", "<time>", "relative clock label"),
     (r"\[(?:focused|active)\]", "", "focus state of the last clicked control"),
     (r"\b(?:fade|slide|transition)-(?:in|out)\b", "", "CSS transition state"),
+    # The event log renders its wall clock as a bare `HH:MM` (EventLog.tsx
+    # `formatLogTime`); runs a minute apart otherwise disagree on identical
+    # rows. Tokenise only a line that is *nothing but* a clock (optionally with
+    # an ARIA label), in place: the row stays, and scores/times in prose still
+    # diff. This cannot be tokenised via `id_tokens` — the clock is created by
+    # the browser at capture time, not by the fixture.
+    (
+        r"^([ \t]*(?:-[ \t]+[A-Za-zÄÖÜäöüß][\wÄÖÜäöüß-]*:[ \t]+)?)(?:[01]\d|2[0-3]):[0-5]\d[ \t]*$",
+        r"\1<time>",
+        "event-log wall-clock row (HH:MM) rendered at capture time",
+    ),
 )
 
 

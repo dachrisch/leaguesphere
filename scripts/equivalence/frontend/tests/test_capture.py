@@ -117,6 +117,33 @@ def test_normalise_dom_filters_volatile_nodes_and_scrubs_values():
     assert "fade-in" in unfiltered
 
 
+def test_normalise_dom_tokenises_bare_event_log_clocks_in_place():
+    # The event log renders its wall clock as a bare `HH:MM` (`EventLog.tsx`
+    # `formatLogTime`), so two runs a minute apart disagree on otherwise
+    # identical rows. Replace the clock token, keep every line and all context.
+    text = "\n".join(
+        [
+            "14:03",
+            "- time: 14:04",
+            "  - text: 14:05",
+            "Spielstand 12:7",
+            "Kickoff 10:00 Uhr",
+            "Zwischenstand 12:12",
+        ]
+    )
+    result = capture.normalise_dom(text)
+    lines = result.splitlines()
+    assert len(lines) == 6  # never drop a row to hide a real diff
+    assert lines[:3] == ["<time>", "- time: <time>", "  - text: <time>"]
+    # The rule is scoped to a whole clock line: scores and times in prose keep
+    # their values, so a wrong kickoff or score still shows up as a diff.
+    assert lines[3:] == [
+        "Spielstand 12:7",
+        "Kickoff 10:00 Uhr",
+        "Zwischenstand 12:12",
+    ]
+
+
 def test_step_capture_records_only_api_requests_except_sse():
     collector = capture.StepCapture()
     collector.record({"url": "/static/app.js", "method": "GET"})

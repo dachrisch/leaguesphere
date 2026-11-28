@@ -493,3 +493,14 @@ def test_discover_template_context_tolerates_bad_json():
         200, {}, "not json", "", "GET"
     )
     assert scenarios.discover_template_context(sessions) == {}
+
+
+def test_designer_fixture_teams_are_visible_ungrouped_options():
+    # GameTable's buildGroupedTeamOptions() lists only teams with an explicit
+    # `groupId: null` and sorts them by `order`. Without those fields the
+    # designer journey's "pick another team" click has no enabled option.
+    teams = scenarios.CANVAS_WITH_TEAMS["globalTeams"]
+    assert len(teams) >= 2
+    for team in teams:
+        assert team["groupId"] is None
+        assert isinstance(team["order"], int)

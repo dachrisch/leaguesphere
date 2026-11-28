@@ -169,12 +169,20 @@ def run_steps(
         page.close()
 
 
+REQUIRED_CLICK_TIMEOUT_MS = 3000  # fail fast on a disabled/absent write control
+
+
 def required_click(page, selector):
-    """Click a selector that must exist; absence fails the journey loudly."""
+    """Click a selector that must exist; absence fails the journey loudly.
+
+    Playwright's 30 s default made two sides that both stalled on a disabled
+    control burn a minute before failing; a bounded timeout keeps the harness
+    usable while still failing the journey loudly.
+    """
     locator = page.locator(selector)
     if not locator.count():
         raise LookupError(f"required selector absent: {selector}")
-    locator.first.click()
+    locator.first.click(timeout=REQUIRED_CLICK_TIMEOUT_MS)
 
 
 def optional_click(page, selector, absent):
