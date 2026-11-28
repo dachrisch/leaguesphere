@@ -133,6 +133,11 @@ class PlayerlistTransferForm(PlayerlistCreateForm):
             self.fields.pop("note")
 
     def save(self, commit=True):
+        # The form edits no Playerlist field (they are all disabled): saving
+        # means starting/approving/rejecting a transfer, so commit=False must
+        # not touch the database.
+        if not commit:
+            return self.instance
         new_team = self.cleaned_data.get("new_team")
         note = self.cleaned_data.get("note")
         transfer_service = TransferService(self.instance, new_team, self.user, note)
