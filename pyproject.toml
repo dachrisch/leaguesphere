@@ -49,7 +49,7 @@ test = [
 prod = [
     "gunicorn>=22.0.0",
     # ASGI worker for the liveticker-stream service (deployed/*.yaml).
-    "uvicorn==0.54.0",
+    "uvicorn==0.55.0",
 ]
 
 [tool.setuptools.package-data]
