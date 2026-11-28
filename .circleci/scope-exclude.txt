@@ -22,6 +22,8 @@ scripts/run_scorecard_scenarios\.sh
 \.opencode/.*
 (.*/)?\.gitignore
 \.git-blame-ignore-revs
+# read by the always-on scope_coverage job (lint-imports), no scoped job
+\.importlinter
 \.pre-commit-config\.yaml
 \.codecov\.yml
 renovate\.json

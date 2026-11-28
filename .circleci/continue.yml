@@ -1163,6 +1163,14 @@ jobs:
             # stdlib only.
             python3 scripts/check_app_boundaries.py --root .
       - run:
+          name: Check app layer contracts (import-linter)
+          command: |
+            # Also always-on (architecture scan 2026-11-28, N2): the app
+            # graph is a DAG -- league_manager composes, core is the kernel,
+            # gamedays <-> gameevents is the one declared two-way boundary.
+            # Static analysis only; no project deps are needed.
+            pip install import-linter==2.17 && lint-imports
+      - run:
           name: Check Python formatting
           command: |
             # Also always-on (Phase 0b, issue #2536): the whole tree is black
