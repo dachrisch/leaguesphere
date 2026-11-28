@@ -1,5 +1,61 @@
 # Changelog
 
+## [6.1.0](https://github.com/dachrisch/leaguesphere/compare/v6.0.0...v6.1.0) (2026-11-28)
+
+
+### Features
+
+* add frontend equivalence harness and agent images ([b675bc7](https://github.com/dachrisch/leaguesphere/commit/b675bc724ded2efe639c124c1634d8ef45302b5a))
+
+
+### Bug Fixes
+
+* capture frontend steps after the DOM settles ([85332ed](https://github.com/dachrisch/leaguesphere/commit/85332ede604713aca02599ad3fd8ce5343fed24e))
+* capture frontend steps only after the network is quiet ([8309c10](https://github.com/dachrisch/leaguesphere/commit/8309c101dbe05414cbc1da3e2bff1b22f8bbbf11))
+* **cross:** keep both gate call signatures after stack restack ([18d7888](https://github.com/dachrisch/leaguesphere/commit/18d78886b170293f4d4236b7ef299c15b921b6b1))
+* **cross:** make forced files bypass coverage omissions ([7895f1e](https://github.com/dachrisch/leaguesphere/commit/7895f1eccb32f8155e7ed3c0a6d3b0d92d9efa1b))
+* **deps:** update dependency @babel/plugin-transform-private-property-in-object to v8.1.4 ([#2608](https://github.com/dachrisch/leaguesphere/issues/2608)) ([a4ff29b](https://github.com/dachrisch/leaguesphere/commit/a4ff29b21db1a7b548fa153422a10512a4fc36fb))
+* **deps:** update dependency eslint to v10.16.0 ([#2606](https://github.com/dachrisch/leaguesphere/issues/2606)) ([4770604](https://github.com/dachrisch/leaguesphere/commit/4770604c6dd4f232ee16b190dee763db9c890406))
+* **equivalence:** accept follow_redirects in the capture-many fake session ([b0beb4d](https://github.com/dachrisch/leaguesphere/commit/b0beb4dbf449894eee661e2f135d6fae635df311))
+* **equivalence:** keep both request signatures in scenario test doubles ([b97d5ca](https://github.com/dachrisch/leaguesphere/commit/b97d5cab38fa31d6a70aeae71e45e743f06c0e22))
+* **equivalence:** keep both waits after restack conflict ([7a50869](https://github.com/dachrisch/leaguesphere/commit/7a50869489ee4ffd9910d405cc8c1368486f48f0))
+* **equivalence:** keep every body shape and fail on skipped steps ([c7aab56](https://github.com/dachrisch/leaguesphere/commit/c7aab566d56d06b2a2f7c370e7d6024ef2d38bcd))
+* **equivalence:** keep repeated form fields as lists when stringifying ([7f51236](https://github.com/dachrisch/leaguesphere/commit/7f512364ae60c1af99ab35b87c14d4b57d166c4f))
+* **equivalence:** make journeys write and fail on absent selectors ([2e58706](https://github.com/dachrisch/leaguesphere/commit/2e587065d16aaa7af2359b698367d59a02ea5d23))
+* **equivalence:** make the frontend journeys write or fail ([c409c7a](https://github.com/dachrisch/leaguesphere/commit/c409c7a14629076bc8cb83a115d4d1e52c1e5233))
+* **equivalence:** make the frontend noise floor green ([64126f9](https://github.com/dachrisch/leaguesphere/commit/64126f908ea9689429c4fed90e646f9959921c11))
+* **equivalence:** repair frontend harness noise-floor defects ([d498bc6](https://github.com/dachrisch/leaguesphere/commit/d498bc67f492f462d02bfd9b166dc4684f9fd70b))
+* **equivalence:** require both GameSetup start writes ([8e0da98](https://github.com/dachrisch/leaguesphere/commit/8e0da981b6081cb83f0841c05ccfee660428ea42))
+* **equivalence:** resolve the fixture gameday before publishing ([2f0ef59](https://github.com/dachrisch/leaguesphere/commit/2f0ef590803b15ee0fc1295d966658d58d05f55a))
+* **equivalence:** stabilise journeys and normalise volatile clock tokens ([eff4ddd](https://github.com/dachrisch/leaguesphere/commit/eff4ddd4d1eb1e8d24b061425703d3083e4763c0))
+* **equivalence:** submit wizard form values as strings ([3c37249](https://github.com/dachrisch/leaguesphere/commit/3c37249d0f4bd680e718df9fc60200072c36869e))
+* **equivalence:** wait for designer data before capture ([98f2b6f](https://github.com/dachrisch/leaguesphere/commit/98f2b6fe73b48a9a2d883b7c1a62bb4b1f7b9695))
+* **equivalence:** wait for each debounced official search ([b3b8749](https://github.com/dachrisch/leaguesphere/commit/b3b8749fbf82ab15625f93808ad659c2985e3639))
+* **gamedays:** characterize real device conflicts and probe moved views ([5630ff3](https://github.com/dachrisch/leaguesphere/commit/5630ff3871886348a5582d41a870cc44f4f0b9a2))
+* **gamedays:** trim game_device_views imports and send a real device header ([0d204cc](https://github.com/dachrisch/leaguesphere/commit/0d204cc29e3a8eb5578eb2ba39dc2f49313b773a))
+* give frontend journeys the side URL for API setup ([d80e160](https://github.com/dachrisch/leaguesphere/commit/d80e16053d9bc392e1f65a8f26969500baba0517))
+* handle list-shaped games responses in journey discovery ([d17f222](https://github.com/dachrisch/leaguesphere/commit/d17f22235efc3b6a2ab56a34f90d0ea97a4a8879))
+* keep harness probes inside the anonymous throttle budget ([48cc33d](https://github.com/dachrisch/leaguesphere/commit/48cc33d62fc91553ccc9fca3b788184c636f0779))
+* leave the frontend harness to its own branch gate ([3fcfcf5](https://github.com/dachrisch/leaguesphere/commit/3fcfcf54f16f5c12e16ad4136df17f33a512b9e4))
+* make frontend journeys reach the split scorecard screens ([35c4fee](https://github.com/dachrisch/leaguesphere/commit/35c4feecb25e59a46caa41622c8a98ffa3a07ce9))
+* make frontend journeys trustworthy on the agent stage ([c37790c](https://github.com/dachrisch/leaguesphere/commit/c37790c515e98c98eb5141c2c80a5e4470bcacd0))
+* **nav:** add flat Spieltage link to the gameday list ([67c3844](https://github.com/dachrisch/leaguesphere/commit/67c3844e2e9f94c547bb6a76d0ca428501d00289))
+* **nav:** add flat Spieltage link to the gameday list ([d9b93f5](https://github.com/dachrisch/leaguesphere/commit/d9b93f5b000058d3020036a7354ba71a15a22926))
+* **officials:** probe import POST paths and drop dead imports ([b7c3cd2](https://github.com/dachrisch/leaguesphere/commit/b7c3cd2d179e4836e1041d27eb49b8b7f49401cc))
+* **scorecard-v2:** accumulate the phase3 coverage gate ([109364f](https://github.com/dachrisch/leaguesphere/commit/109364fa0d683ac6a4a31df8a657a7ecd84be295))
+* **scorecard-v2:** pin the forced retry on a read-only screen, restore rationale ([7896dc6](https://github.com/dachrisch/leaguesphere/commit/7896dc640e87d9b9359e51608ec90cc435379f15))
+* **scorecard-v2:** satisfy lint/type gates in start characterization ([c7e4226](https://github.com/dachrisch/leaguesphere/commit/c7e4226ce46df4fc72741ff1d7e1daad7d822e3a))
+
+
+### Documentation
+
+* base the Phase 3 stack on master and re-measure the targets ([80563e5](https://github.com/dachrisch/leaguesphere/commit/80563e53051c03e3e01573b614432aa1bde0a0c1))
+* **plan:** flag stale equivalence facts in section 1.4 ([d990d06](https://github.com/dachrisch/leaguesphere/commit/d990d06a22d46e82c3af55d158c320d2f1c54794))
+* **plan:** record the re-baselined zero-diff reports ([ace9299](https://github.com/dachrisch/leaguesphere/commit/ace92992c51e42019e7d4ef93ef10d5584e4fe00))
+* **plan:** record the unresolved equivalence re-baseline ([892bbbf](https://github.com/dachrisch/leaguesphere/commit/892bbbfcd975b6c912b821551b7bb5546fe985f5))
+* record Phase 3 plan (provisional decisions pending user review) ([73cff82](https://github.com/dachrisch/leaguesphere/commit/73cff82320ca6a32179ee67ab65c8f1cd575bf21))
+* record the journey fixture cleanup as the one stage-delete exception ([35af4c5](https://github.com/dachrisch/leaguesphere/commit/35af4c5e2f5f79b3a3fa90cba1a0ad938d73508d))
+
 ## [6.0.0](https://github.com/dachrisch/leaguesphere/compare/v5.30.1...v6.0.0) (2026-11-27)
 
 
