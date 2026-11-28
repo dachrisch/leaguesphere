@@ -253,9 +253,13 @@ MINIMAL_CANVAS = {
 # projector and the shadow writer both resolve a side to a Team row. The
 # canvas publish path creates them from ``globalTeams`` labels.
 CANVAS_WITH_TEAMS = copy.deepcopy(MINIMAL_CANVAS)
+# GameTable's buildGroupedTeamOptions() only lists teams with an explicit
+# `groupId: null` (the ungrouped section) and sorts them by `order`. Leaving
+# those fields out made the designer journey's "pick another team" click fail
+# on both sides with no enabled option to choose.
 CANVAS_WITH_TEAMS["globalTeams"] = [
-    {"id": "eq-home", "label": "Equivalence Home"},
-    {"id": "eq-away", "label": "Equivalence Away"},
+    {"id": "eq-home", "label": "Equivalence Home", "groupId": None, "order": 0},
+    {"id": "eq-away", "label": "Equivalence Away", "groupId": None, "order": 1},
 ]
 for _node in CANVAS_WITH_TEAMS["nodes"]:
     if _node["type"] == "game":

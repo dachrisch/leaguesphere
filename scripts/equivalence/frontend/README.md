@@ -61,8 +61,9 @@ stream can never pin a side's worker.
 | `\bvor \d+\s*(?:s\|sek\|min\|h)\b`, `\bgerade eben\b` → `<time>` | Relative clock labels change while a step runs. Unanchored (`capture.py` `VOLATILE_NODES`): the label is replaced in place inside its line, the rest of the line is kept. |
 | `\[(focused\|active)\]` → removed token | Focus state depends on the last clicked control; the rest of the line is kept. |
 | `\b(fade\|slide\|transition)-(in\|out)\b` → removed token | CSS transition state is timing-dependent; the rest of the line is kept. |
+| A whole line that is only `HH:MM` (optionally prefixed by an ARIA label such as `- time:`) → `<time>` | The scorecard event log renders wall clocks as bare `HH:MM` (`EventLog.tsx` `formatLogTime`); two runs a minute apart otherwise disagree on identical rows. In-place, line-preserving, and narrow: scores (`12:7`) and times inside prose (`Kickoff 10:00 Uhr`) keep their values, so a real kickoff/score change still diffs. Not tokenisable with `id_tokens`: the clock is created by the browser at capture time, not by the fixture. |
 
-Relative clock labels become `<time>` rather than dropping the line.
+Relative clock labels and event-log clocks become `<time>` rather than dropping the line.
 
 ## Journeys
 
