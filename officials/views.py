@@ -52,6 +52,7 @@ from officials.service.signup_service import (
     MaxSignupError,
 )
 from officials.service.remember_me import RememberMeService, REMEMBER_ME_MAX_AGE
+from officials.identity import sign_in_official, sign_out_official
 from officials.selfservice import (
     ADD_ASSIGNMENT_URL_NAME,
     CLAIM_URL_NAME,
@@ -167,8 +168,7 @@ class OfficialsTeamListView(View):
         # matchreport/service/officiated_games_service.py's module docstring) query work only runs
         # when the section will actually be shown.
         context["show_officiated_games"] = (
-            request.user.is_authenticated
-            and not request.session.get(MOODLE_LOGGED_IN_USER)
+            request.user.is_authenticated and acting_official_id(request) is None
         )
         if context["show_officiated_games"]:
             from officials.service.officiated_games import team_officiated_games
@@ -209,7 +209,7 @@ class GameOfficialListView(View):
         # banner/buttons can never be stored and served to another.
         if (
             request.user.is_authenticated
-            or request.session.get(MOODLE_LOGGED_IN_USER)
+            or acting_official_id(request)
             or request.COOKIES.get(MOODLE_REMEMBER_COOKIE)
         ):
             return self._render(request, **kwargs)
@@ -740,8 +740,7 @@ class MoodleLoginView(View):
                 official_id = moodle_service.login(username, password)
                 # Privilege boundary: drop the pre-auth session key so a
                 # fixated anonymous session cannot become this logged-in one.
-                request.session.cycle_key()
-                request.session[MOODLE_LOGGED_IN_USER] = official_id
+                sign_in_official(request, official_id)
 
                 response = redirect(safe_next(request))
                 if form.cleaned_data.get("remember_me"):
@@ -769,7 +768,7 @@ class OfficialSignUpListView(View):
     def get(self, request, *args, **kwargs):
         from officials.urls import OFFICIALS_MOODLE_LOGIN
 
-        official_id = request.session.get(MOODLE_LOGGED_IN_USER)
+        official_id = acting_official_id(request)
         restored_cookie = None
         if official_id is None:
             restored = restore_moodle_session(request)
@@ -814,7 +813,7 @@ class OfficialSignOutView(View):
         # path survive alongside the current one and would silently restore
         # the session after logout.
         RememberMeService.revoke_all_from_cookie_header(request.META.get("HTTP_COOKIE"))
-        request.session.pop(MOODLE_LOGGED_IN_USER, None)
+        sign_out_official(request)
         messages.success(request, "Du wurdest abgemeldet.")
 
         from officials.urls import OFFICIALS_MOODLE_LOGIN
@@ -826,7 +825,7 @@ class OfficialSignOutView(View):
 
 class CheckMoodleSessionMixin:
     def get_official_id(self, request):
-        official_id = request.session.get(MOODLE_LOGGED_IN_USER)
+        official_id = acting_official_id(request)
         if official_id is None:
             messages.error(
                 request,

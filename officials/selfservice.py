@@ -23,9 +23,9 @@ from django.views import View
 
 from gamedays.models import Gameinfo, GameOfficial
 from league_manager.utils.serializer_utils import Obfuscator
+from officials.identity import acting_official_id, sign_in_official
 from officials.constants import (
     LEGACY_REMEMBER_COOKIE_PATH,
-    MOODLE_LOGGED_IN_USER,
     MOODLE_REMEMBER_COOKIE,
     REMEMBER_COOKIE_PATH,
 )
@@ -74,11 +74,6 @@ def delete_remember_cookie(response) -> None:
 
 
 RECLAIM_ERROR = "Dieser Eintrag wurde bereits zugeordnet."
-
-
-def acting_official_id(request) -> int | None:
-    """The Official the Moodle session is logged in as, if any."""
-    return request.session.get(MOODLE_LOGGED_IN_USER)
 
 
 def _tokens(value: str | None) -> set:
@@ -152,8 +147,7 @@ def restore_moodle_session(request) -> RestoreResult:
     if result.official_id is not None:
         # The cookie elevates an anonymous visitor to a logged-in official,
         # so rotate the key here as well as after a Moodle password login.
-        request.session.cycle_key()
-        request.session[MOODLE_LOGGED_IN_USER] = result.official_id
+        sign_in_official(request, result.official_id)
     return result
 
 
@@ -238,7 +232,7 @@ class SelfServiceWriteMixin:
         if acting_official_id(request) is None:
             restored = restore_moodle_session(request)
             if restored.official_id is not None:
-                request.session[MOODLE_LOGGED_IN_USER] = restored.official_id
+                sign_in_official(request, restored.official_id, rotate_session=False)
         if acting_official_id(request) is None:
             response = redirect(login_url_for(request))
         elif self.staff_only:

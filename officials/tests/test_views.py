@@ -878,6 +878,43 @@ class TestOfficialSignUpListView(WebTest):
         assert response.cookies[MOODLE_REMEMBER_COOKIE].value == ""
 
 
+class TestOfficialSignUpListSessionPaths(TestCase):
+    """Branches touched by moving the session key into officials.identity."""
+
+    def _signed_in_client(self):
+        DbSetupOfficials().create_officials_and_team()
+        official = Official.objects.first()
+        client = Client()
+        session = client.session
+        session[MOODLE_LOGGED_IN_USER] = official.pk
+        session.save()
+        return client, official
+
+    def test_signed_in_official_sees_the_list_without_a_cookie(self):
+        client, official = self._signed_in_client()
+        response = client.get(reverse(OFFICIALS_SIGN_UP_LIST))
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["official_id"] == official.pk
+        assert MOODLE_REMEMBER_COOKIE not in response.cookies
+        assert client.session.get_expiry_age() == 600
+
+    def test_debug_keeps_the_session_longer(self):
+        client, _ = self._signed_in_client()
+        with self.settings(DEBUG=True):
+            response = client.get(reverse(OFFICIALS_SIGN_UP_LIST))
+        assert response.status_code == HTTPStatus.OK
+        assert client.session.get_expiry_age() == 600000
+
+
+class TestMoodleLoginInvalidForm(TestCase):
+    def test_invalid_form_re_renders_without_signing_in(self):
+        client = Client()
+        response = client.post(reverse(OFFICIALS_MOODLE_LOGIN), {"username": ""})
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["form"].errors
+        assert client.session.get(MOODLE_LOGGED_IN_USER) is None
+
+
 class TestOfficialSignOutView(TestCase):
     def test_logout_revokes_token_and_clears_cookie_and_session(self):
         DbSetupOfficials().create_officials_and_team()
