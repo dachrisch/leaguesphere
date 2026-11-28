@@ -28,6 +28,12 @@ HOOK_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         # An installed designer without it fails phase1.E001 (no silent
         # fallback to canvas/legacy for a gameday with a TemplateApplication).
         "has_template_application",
+        # Designer canvas (N3): gamedays no longer reads the canvas schema.
+        "canvas_progression",
+        "validate_canvas_progression",
+        "publish_canvas",
+        "auto_assign_officials",
+        "sync_canvas_node_scores",
     ),
     "league_table": (
         "season_settings",

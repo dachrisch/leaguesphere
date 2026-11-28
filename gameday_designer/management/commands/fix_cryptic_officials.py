@@ -48,7 +48,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from gamedays.models import Gameday, GamedayDesignerState, Gameinfo, Team
-from gamedays.service.canvas_publish_service import CanvasPublishService
+from gameday_designer.service.canvas_publish_service import CanvasPublishService
 
 CRYPTIC_RE = re.compile(r"^(winner|loser):game-([0-9a-f-]+)$")
 

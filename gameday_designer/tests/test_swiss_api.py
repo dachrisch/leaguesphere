@@ -412,7 +412,9 @@ class TestSwissResetEndpoint:
         game_ids = list(generated.data["game_ids"])
         for game_id in game_ids:
             complete_game(Gameinfo.objects.get(pk=game_id), home_score=10, away_score=5)
-        from gamedays.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
+        from gameday_designer.service.canvas_publish_service import (
+            OFFICIALS_PLACEHOLDER,
+        )
 
         officials = Team.objects.get(name=OFFICIALS_PLACEHOLDER)
         other_game = Gameinfo.objects.create(

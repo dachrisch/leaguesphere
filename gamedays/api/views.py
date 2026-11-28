@@ -53,10 +53,8 @@ from gamedays.serializers.game_results import (
     GameResultsUpdateSerializer,
     GameInfoSerializer,
 )
-from gamedays.service.auto_assign_officials_service import (
-    AutoAssignOfficialsError,
-    AutoAssignOfficialsService,
-)
+from gamedays.service import designer_hooks
+from gamedays.service.designer_hooks import AutoAssignOfficialsError
 from gamedays.service.gameday_service import (
     GamedayService,
     TABLE_HEADERS,
@@ -261,12 +259,8 @@ class GamedayViewSet(viewsets.ModelViewSet):
             )
 
         from django.utils import timezone
-        from gamedays.service.canvas_publish_service import CanvasPublishService
-        from gamedays.service.canvas_progression_validation_service import (
-            validate_progression_for_gameday,
-        )
 
-        issues = validate_progression_for_gameday(gameday)
+        issues = designer_hooks.validate_canvas_progression(gameday)
         if issues:
             return Response(
                 {
@@ -290,7 +284,7 @@ class GamedayViewSet(viewsets.ModelViewSet):
         gameday.published_at = timezone.now()
         gameday.save()
 
-        CanvasPublishService(gameday).apply()
+        designer_hooks.publish_canvas(gameday)
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
 
@@ -544,11 +538,7 @@ class GamedayPublishAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        from gamedays.service.canvas_progression_validation_service import (
-            validate_progression_for_gameday,
-        )
-
-        issues = validate_progression_for_gameday(gameday)
+        issues = designer_hooks.validate_canvas_progression(gameday)
         if issues:
             return Response(
                 {
@@ -573,42 +563,6 @@ class GamedayPublishAPIView(APIView):
         gameday.save()
 
         return Response(GamedaySerializer(gameday).data, status=status.HTTP_200_OK)
-
-
-def _sync_designer_node_scores(game, halftime_score, final_score):
-    """Mirror a game result into its designer canvas node (server-side).
-
-    The canvas stores each game's scores in the node ``data``. On a locked
-    (published) gameday the client may not PUT the whole ``state_data`` blob,
-    so the result endpoint owns this single-node sync. The node is resolved
-    via ``Gameinfo.designer_node_id`` (set by CanvasPublishService); rows
-    without one (e.g. Swiss games) are skipped.
-    """
-    node_id = game.designer_node_id
-    if not node_id:
-        return
-    try:
-        state = GamedayDesignerState.objects.select_for_update().get(
-            gameday_id=game.gameday_id
-        )
-    except GamedayDesignerState.DoesNotExist:
-        return
-    state_data = dict(state.state_data or {})
-    nodes = state_data.get("nodes")
-    if not isinstance(nodes, list):
-        return
-    for node in nodes:
-        if node.get("id") != node_id:
-            continue
-        data = dict(node.get("data") or {})
-        if halftime_score is not None:
-            data["halftime_score"] = halftime_score
-        if final_score is not None:
-            data["final_score"] = final_score
-        node["data"] = data
-        state.state_data = state_data
-        state.save(update_fields=["state_data"])
-        return
 
 
 class GameResultUpdateAPIView(APIView):
@@ -718,7 +672,7 @@ class GameResultUpdateAPIView(APIView):
 
             # Mirror the result onto the designer canvas node so its scores
             # survive a reload without the client PUTting the whole state.
-            _sync_designer_node_scores(game, halftime_score, final_score)
+            designer_hooks.sync_canvas_node_scores(game, halftime_score, final_score)
 
             # Update gameday status
             gameday = game.gameday
@@ -802,8 +756,7 @@ class AutoAssignOfficialsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            service = AutoAssignOfficialsService(pk)
-            assignments = service.assign()
+            assignments = designer_hooks.auto_assign_officials(pk)
             return Response(
                 {"assigned_count": len(assignments), "assignments": assignments}
             )

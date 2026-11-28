@@ -1,4 +1,4 @@
-from gamedays.service.canvas_progression_validation_service import (
+from gameday_designer.service.canvas_progression_validation_service import (
     CanvasProgressionValidator,
 )
 

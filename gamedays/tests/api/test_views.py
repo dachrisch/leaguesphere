@@ -16,7 +16,7 @@ from gamedays.constants import (
     API_GAME_OFFICIALS,
 )
 from gamedays.models import Team, Gameday, Gameinfo
-from gamedays.service.auto_assign_officials_service import AutoAssignOfficialsError
+from gamedays.service.designer_hooks import AutoAssignOfficialsError
 from gamedays.service.gameday_service import EmptySchedule, EmptyQualifyTable
 from gamedays.tests.setup_factories.db_setup import DBSetup
 from league_table.tests.setup_factories.db_setup_leaguetable import (
@@ -312,6 +312,56 @@ class TestStandaloneViewPermissions(WebTest):
         gameday.refresh_from_db()
         assert gameday.status == "PUBLISHED"
 
+    def _published_gameday(self, username):
+        author, gameday = self._create_gameday_with_author(username, is_staff=True)
+        gameday.status = "PUBLISHED"
+        gameday.save()
+        return author, gameday
+
+    def test_publishing_a_published_gameday_is_refused_on_both_endpoints(self):
+        author, gameday = self._published_gameday("pub_again")
+        for url in (
+            reverse("api-gameday-publish", kwargs={"pk": gameday.pk}),
+            reverse("api-gamedays-publish", kwargs={"pk": gameday.pk}),
+        ):
+            response = self.app.post(
+                url,
+                headers=DBSetup().get_token_header(user=author),
+                expect_errors=True,
+            )
+            assert response.status_code == 400, url
+
+    def test_invalid_progression_blocks_the_legacy_publish(self):
+        from types import SimpleNamespace
+
+        author, gameday = self._create_gameday_with_author("pub_invalid", True)
+        issue = SimpleNamespace(code="cycle", message="Loop", node_ids=["n1"])
+        with patch(
+            "gamedays.service.designer_hooks.validate_canvas_progression",
+            return_value=[issue],
+        ):
+            response = self.app.post(
+                reverse("api-gameday-publish", kwargs={"pk": gameday.pk}),
+                headers=DBSetup().get_token_header(user=author),
+                expect_errors=True,
+            )
+        assert response.status_code == 400
+        assert response.json["issues"] == [
+            {"code": "cycle", "message": "Loop", "node_ids": ["n1"]}
+        ]
+        gameday.refresh_from_db()
+        assert gameday.status == "DRAFT"
+
+    def test_auto_assign_on_a_published_gameday_is_refused(self):
+        author, gameday = self._published_gameday("aa_published")
+        response = self.app.post(
+            reverse("api-gameday-auto-assign-officials", kwargs={"pk": gameday.pk}),
+            headers=DBSetup().get_token_header(user=author),
+            expect_errors=True,
+        )
+        assert response.status_code == 400
+        assert response.json == {"error": "Gameday must be in DRAFT status"}
+
     # ── GameinfoUpdateAPIView (PATCH /api/gameinfo/{id}/) ──
 
     def test_anonymous_cannot_update_gameinfo(self):
@@ -467,7 +517,7 @@ class TestStandaloneViewPermissions(WebTest):
         sensitive_detail = "internal detail: /srv/leaguesphere/secret_config.py line 42"
 
         with patch(
-            "gamedays.api.views.AutoAssignOfficialsService.assign",
+            "gameday_designer.service.auto_assign_officials_service.AutoAssignOfficialsService.assign",
             side_effect=AutoAssignOfficialsError(sensitive_detail),
         ):
             with self.assertLogs("gamedays.api.views", level="WARNING") as logs:

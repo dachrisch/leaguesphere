@@ -16,7 +16,7 @@ from django.db import transaction
 from django.contrib.auth.models import User
 
 from gamedays.models import Gameday, Team, Gameinfo, Gameresult
-from gamedays.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
+from gameday_designer.service.canvas_publish_service import OFFICIALS_PLACEHOLDER
 from gameday_designer.models import ScheduleTemplate, TemplateSlot, TemplateApplication
 from gameday_designer.service.time_service import TimeService
 
