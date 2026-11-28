@@ -79,6 +79,88 @@ def test_optional_click_records_absence_instead_of_faking_a_click():
     assert absent == ["Fortsetzen"]
 
 
+def test_wait_until_polls_until_ready_and_times_out():
+    # A network-quiet heuristic can fire before a page has rendered its data;
+    # the harness must wait for the observable condition instead.
+    class Page:
+        def __init__(self, ready_after):
+            self.polls = 0
+            self.ready_after = ready_after
+
+        def wait_for_timeout(self, ms):
+            self.polls += 1
+
+    ready = Page(2)
+    common.wait_until(ready, lambda page: page.polls >= 2, timeout_ms=1000)
+    assert ready.polls == 2
+
+    never = Page(0)
+    try:
+        common.wait_until(never, lambda page: False, timeout_ms=200)
+    except TimeoutError:
+        pass
+    else:
+        raise AssertionError("a page that never becomes ready must fail")
+
+
+def test_designer_ready_waits_for_a_filled_gameday_name():
+    from journeys.designer_gametable import _designer_loaded
+
+    class Page:
+        def __init__(self, value):
+            self.value = value
+
+        def locator(self, selector):
+            assert selector == "#gamedayName"
+            return types.SimpleNamespace(
+                count=lambda: 1,
+                first=types.SimpleNamespace(input_value=lambda: self.value),
+            )
+
+    assert _designer_loaded(Page("Equivalence fe-designer")) is True
+    assert _designer_loaded(Page("   ")) is False
+
+
+def test_run_steps_waits_for_ready_before_capturing_open():
+    calls = []
+
+    def ready(page):
+        calls.append("ready")
+        return True
+
+    class Page:
+        def route(self, *args, **kwargs):
+            pass
+
+        def on(self, *args, **kwargs):
+            pass
+
+        def goto(self, path, wait_until=None):
+            calls.append("goto")
+
+        def wait_for_timeout(self, ms):
+            pass
+
+        def evaluate(self, script):
+            calls.append("capture")
+            return "text"
+
+        def locator(self, selector):
+            return types.SimpleNamespace(aria_snapshot=lambda: "aria")
+
+        def close(self):
+            pass
+
+    common.run_steps(
+        types.SimpleNamespace(new_page=lambda: Page()),
+        "/designer/",
+        {},
+        [],
+        ready=ready,
+    )
+    assert calls == ["goto", "ready", "capture"]
+
+
 def test_run_steps_records_each_steps_absent_selectors():
     calls = []
 
