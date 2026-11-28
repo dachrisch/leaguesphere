@@ -4,10 +4,6 @@ import {
   SET_SELECTED_GAME,
   GET_GAME_LOG,
   GET_GAME_OFFICIALS, GET_GAME_SETUP} from '../actions/types.js';
-// import {GAME_LOG_COMPLETE_GAME} from '../__tests__/testdata/gameLogData.js';
-import {GAME_LOG_ONLY_FIRSTHALF} from '../__tests__/testdata/gameLogData.js';
-
-const isDebug = process.env.NODE_ENV === 'development';
 const EMPTY_GAMELOG = {
   'isFirstHalf': true,
   'home': {
@@ -37,7 +33,7 @@ const EMPTY_GAMELOG = {
 };
 const initialState = {
   games: [],
-  gameLog: isDebug ? GAME_LOG_ONLY_FIRSTHALF : EMPTY_GAMELOG,
+  gameLog: EMPTY_GAMELOG,
   deleteEntry: {__html: '<td colspan="4"></td>'},
   gameSetupOfficials: [],
   gameSetup: {

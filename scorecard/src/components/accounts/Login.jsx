@@ -1,11 +1,9 @@
 import React, {useState} from 'react';
 import {Navigate} from 'react-router-dom';
-import {connect, useDispatch} from 'react-redux';
+import {connect} from 'react-redux';
 import PropTypes from 'prop-types';
 import {loginUser} from '../../actions/auth';
-// import {setSelectedGame} from '../../actions/games';
 import {ROOT_URL} from '../common/urls';
-import {GAME_LOG_COMPLETE_GAME} from '../../__tests__/testdata/gameLogData';
 
 const Login = (props) => {
   const [username, setUsername] = useState('');
@@ -14,37 +12,8 @@ const Login = (props) => {
     e.preventDefault();
     props.loginUser(username, password);
   };
-  const ENTRY_FROM_START = true;
-  // ENTRY_FROM_START = false;
   if (props.isAuthenticated) {
-    if (process.env.NODE_ENV === 'production' || ENTRY_FROM_START) {
-      return <Navigate to={ROOT_URL} />;
-    } else {
-      // props.setSelectedGame({
-      //   'scheduled': '18:10:00',
-      //   'field': 1,
-      //   'officials': 'Rooks',
-      //   'officialsId': 23,
-      //   'stage': 'Finalrunde',
-      //   'standing': 'P1',
-      //   'home': 'Sparr',
-      //   'points_home': 27,
-      //   'points_away': 26,
-      //   'away': 'Spatz',
-      //   'status': 'geplant',
-      //   'id_home': 117,
-      //   'id_away': 118,
-      //   'id': 59,
-      // });
-      // return <Navigate to="/officials" />;
-      const dispatch = useDispatch();
-      dispatch({
-        type: 'GET_GAME_LOG',
-        payload: GAME_LOG_COMPLETE_GAME,
-      });
-
-      return <Navigate to='/finalize' />;
-    }
+    return <Navigate to={ROOT_URL} />;
   }
 
   return (
@@ -98,6 +67,4 @@ Login.propTypes = {
   isAuthenticated: PropTypes.bool,
 };
 
-export default connect(mapStateToProps, {loginUser /* , setSelectedGame*/})(
-  Login
-);
+export default connect(mapStateToProps, {loginUser})(Login);
