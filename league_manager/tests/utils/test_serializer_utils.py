@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from league_manager.utils.serializer_utils import (
+from core.serializer_utils import (
     Obfuscator,
     ObfuscatorSerializer,
     ObfuscateField,

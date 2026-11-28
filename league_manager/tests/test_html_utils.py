@@ -3,7 +3,7 @@ import math
 import pandas as pd
 import pytest
 
-from league_manager.utils.html import escape_cell
+from core.html import escape_cell
 
 
 @pytest.mark.parametrize("empty", [None, math.nan, pd.NA, pd.NaT])

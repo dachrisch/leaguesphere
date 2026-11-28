@@ -2,7 +2,7 @@ from functools import wraps
 
 from django.views import View
 
-from league_manager.utils.view_utils import PermissionHelper
+from gamedays.service.team_permission import PermissionHelper
 
 
 def get_user_request_permission(view_func):

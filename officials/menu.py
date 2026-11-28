@@ -1,4 +1,4 @@
-from league_manager.base_menu import BaseMenu, MenuItem, MenuDivider
+from core.base_menu import BaseMenu, MenuItem, MenuDivider
 from officials.urls import (
     OFFICIALS_LIST_FOR_ALL_TEAMS,
     OFFICIALS_STATISTICS,

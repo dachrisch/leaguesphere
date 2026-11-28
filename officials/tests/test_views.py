@@ -18,7 +18,7 @@ from webtest import Upload
 
 from gamedays.models import Gameinfo, GameOfficial
 from gamedays.tests.setup_factories.db_setup import DBSetup
-from league_manager.utils.serializer_utils import Obfuscator
+from core.serializer_utils import Obfuscator
 from league_table.tests.setup_factories.factories_leaguetable import (
     LeagueSeasonConfigFactory,
 )

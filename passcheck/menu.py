@@ -1,5 +1,5 @@
 from gamedays.menu import GamedaysMenuAdmin
-from league_manager.base_menu import BaseMenu, MenuItem, MenuDivider
+from core.base_menu import BaseMenu, MenuItem, MenuDivider
 from liveticker.constants import LIVETICKER_V2_HOME
 from passcheck.urls import (
     PASSCHECK_PLAYER_CREATE,

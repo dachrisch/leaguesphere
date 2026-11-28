@@ -7,7 +7,7 @@ from rest_framework.fields import (
 )
 from rest_framework.serializers import Serializer
 
-from league_manager.utils.serializer_utils import ObfuscatorSerializer, ObfuscateField
+from core.serializer_utils import ObfuscatorSerializer, ObfuscateField
 
 
 class OfficialGamedaySignupSerializer(Serializer):

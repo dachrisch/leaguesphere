@@ -1,5 +1,5 @@
 from gamedays.constants import LEAGUE_GAMEDAY_CREATE_CHOOSER, LEAGUE_GAMEDAY_LIST
-from league_manager.base_menu import BaseMenu, MenuItem
+from core.base_menu import BaseMenu, MenuItem
 
 
 class GamedaysMenu(BaseMenu):

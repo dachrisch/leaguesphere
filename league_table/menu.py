@@ -1,4 +1,4 @@
-from league_manager.base_menu import BaseMenu, MenuItem
+from core.base_menu import BaseMenu, MenuItem
 from league_table.constants import (
     LEAGUE_TABLE_OVERALL_TABLE_BY_LEAGUE,
 )

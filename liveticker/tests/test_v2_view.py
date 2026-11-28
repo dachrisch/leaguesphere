@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from gamedays.models import Gameday, Gameinfo, League, Season, Team
-from league_manager.utils.url_service import UrlService
+from core.url_service import UrlService
 from liveticker.constants import (
     LIVETICKER_V2_GAMEDAY,
     LIVETICKER_V2_GAME,

@@ -44,6 +44,9 @@
 # --- league_manager (project config/urls/middleware): core + image ---
 league_manager/.* run-python-core true
 league_manager/.* run-images true
+# --- core (shared kernel, imported by every app): core + image ---
+core/.* run-python-core true
+core/.* run-images true
 
 # --- home (personal home page): presentation only, core shard + image ---
 home/.* run-python-core true

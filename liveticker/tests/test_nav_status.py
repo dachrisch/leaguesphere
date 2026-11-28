@@ -22,7 +22,7 @@ from django.utils import timezone
 from gamedays.constants import LEAGUE_GAMEDAY_LIST
 from gamedays.models import Gameday, Gameinfo
 from gamedays.tests.setup_factories.factories import GameinfoFactory, GamedayFactory
-from league_manager.utils.url_service import UrlService
+from core.url_service import UrlService
 from league_manager.utils.utils import get_menu_items
 from liveticker.constants import (
     LIVETICKER_HOME,

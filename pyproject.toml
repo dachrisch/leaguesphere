@@ -60,6 +60,7 @@ gameevents = ["sport/*.json"]
 [tool.setuptools.packages.find]
 include = [
     "accounts*",
+    "core*",
     "gameevents*",
     "gameday_designer*",
     "gamedays*",

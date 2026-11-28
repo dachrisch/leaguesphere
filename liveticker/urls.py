@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.urls import path
 
-from league_manager.utils.url_service import UrlService
+from core.url_service import UrlService
 from liveticker.constants import (
     LIVETICKER_HOME,
     LIVETICKER_STATUS,

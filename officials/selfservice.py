@@ -22,7 +22,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
 from gamedays.models import Gameinfo, GameOfficial
-from league_manager.utils.serializer_utils import Obfuscator
+from core.serializer_utils import Obfuscator
 from officials.identity import acting_official_id, sign_in_official
 from officials.constants import (
     LEGACY_REMEMBER_COOKIE_PATH,

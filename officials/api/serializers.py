@@ -11,7 +11,7 @@ from rest_framework.fields import (
 from rest_framework.serializers import ModelSerializer, Serializer
 
 from gamedays.models import GameOfficial
-from league_manager.utils.serializer_utils import Obfuscator
+from core.serializer_utils import Obfuscator
 from officials.models import (
     Official,
     OfficialLicenseHistory,

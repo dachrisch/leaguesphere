@@ -5,8 +5,8 @@ from rest_framework.exceptions import PermissionDenied, NotFound, ValidationErro
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from league_manager.utils.decorators import get_user_request_permission
-from league_manager.utils.view_utils import UserRequestPermission
+from gamedays.service.team_permission_decorators import get_user_request_permission
+from gamedays.service.team_permission import UserRequestPermission
 from passcheck.service.passcheck_service import (
     PasscheckService,
     PasscheckServicePlayers,
