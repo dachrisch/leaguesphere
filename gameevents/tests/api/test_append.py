@@ -634,7 +634,7 @@ def test_game_state_equals_a_replay_of_the_stored_log(client):
 
 @pytest.mark.django_db
 def test_the_device_lock_of_the_gamelog_view_is_reused(client, monkeypatch):
-    from gamedays.api import game_views
+    from gamedays.api import write_guards
 
     game, _home, _away = make_game("canonical-lock")
     login(client)
@@ -644,7 +644,7 @@ def test_the_device_lock_of_the_gamelog_view_is_reused(client, monkeypatch):
         seen["game_id"] = game_id
         return Response({"detail": "other device"}, status=409)
 
-    monkeypatch.setattr(game_views, "_device_lock_response", lock, raising=False)
+    monkeypatch.setattr(write_guards, "device_lock_response", lock)
 
     response = post_events(
         client, game, {"events": [envelope()], "client_id": sub_id(1)}
@@ -659,7 +659,7 @@ def test_the_device_lock_of_the_gamelog_view_is_reused(client, monkeypatch):
 
 @pytest.mark.django_db
 def test_a_replay_is_answered_before_the_device_lock(client, monkeypatch):
-    from gamedays.api import game_views
+    from gamedays.api import write_guards
 
     game, _home, _away = make_game("canonical-lock-replay")
     login(client)
@@ -667,10 +667,9 @@ def test_a_replay_is_answered_before_the_device_lock(client, monkeypatch):
     assert post_events(client, game, body).status_code == 201
 
     monkeypatch.setattr(
-        game_views,
-        "_device_lock_response",
+        write_guards,
+        "device_lock_response",
         lambda request, game_id, data=None: Response({"detail": "lock"}, status=409),
-        raising=False,
     )
     response = post_events(client, game, body)
 

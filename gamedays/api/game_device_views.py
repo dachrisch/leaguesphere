@@ -5,77 +5,21 @@ from http import HTTPStatus
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.generics import UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from gameevents.models import GameEvent
 from gameevents.service.rules import load_rules, penalty_catalogue
 from gamedays.api.serializers import GameFinalizer
+from gamedays.api.write_guards import device_lock_response
 from gamedays.models import Gameinfo, GameSetup, GameLogSubmission
-from gamedays.service.device_lock import release_device_lock, stored_device
+from gamedays.service.device_lock import release_device_lock
 from gamedays.service.game_service import GameService
 from gamedays.service.wrapper.gameinfo_wrapper import IllegalGameTransition
 
 # Keep the historical logger name: L3 preserved `officials.views` for the
 # same kind of move, and log queries must keep matching the old emitter.
 logger = logging.getLogger("gamedays.api.game_views")
-
-DEVICE_LOCK_DETAIL = "Dieses Spiel läuft auf einem anderen Gerät."
-GAME_FINISHED_DETAIL = "Dieses Spiel ist beendet."
-
-
-def _finished_game_response(game) -> Response | None:
-    """409 once a game is `beendet`, ``None`` while it is still open.
-
-    A finished game is the final word: the old app navigates away from the
-    scorecard after the result, and v2 must not append to (or undo) a log the
-    result already covers. Clients replay their queue, so this is the guard
-    that a stale tab or a late flush runs into — not a silent extra row.
-    """
-    if str(getattr(game, "status", "") or "").strip().lower() == "beendet":
-        return Response(
-            {"detail": GAME_FINISHED_DETAIL},
-            status=HTTPStatus.CONFLICT,
-        )
-    return None
-
-
-def _device_conflict(stored: str, incoming: str):
-    """409 when ``incoming`` may not write, ``None`` when it may.
-
-    An empty ``incoming`` is the old app (it sends no device at all) and is
-    always allowed; the first non-empty id wins and only staff can release it.
-    """
-    if incoming and stored and incoming != stored:
-        return Response(
-            {"detail": DEVICE_LOCK_DETAIL, "device_id": stored},
-            status=HTTPStatus.CONFLICT,
-        )
-    return None
-
-
-def _requested_device(request: Request, data) -> str:
-    """The device a write claims: the header first, then the body.
-
-    The v2 client sends both (`X-Scorecard-Device` on every request and
-    ``device_id`` in the setup payload); the old app sends neither.
-    """
-    device = request.headers.get("X-Scorecard-Device") or data.get("device_id")
-    return str(device).strip() if device else ""
-
-
-def _device_lock_response(request: Request, game_id, data=None):
-    """409 when the calling device may not write this game, else ``None``.
-
-    Every write to a game goes through this: a stale second tab must not be
-    able to undo, start the second half, set possession or finalize a game
-    that another device holds. A missing device id is still allowed (old app).
-    """
-    return _device_conflict(
-        stored_device(game_id),
-        _requested_device(request, request.data if data is None else data),
-    )
 
 
 def _client_id(raw):
@@ -108,28 +52,6 @@ def _submission_already_applied(game, client_id) -> bool:
     return GameEvent.objects.filter(game=game, client_id=str(client_id)).exists()
 
 
-def _validate_gamelog_payload(data):
-    """Reject malformed gamelog write payloads with a 400 instead of a 500.
-
-    The scorecard posts ``event`` as a list of ``{name, player?, input?}``
-    objects and ``half`` as ``1``/``2``. Anything else (e.g. a bare-string
-    event that ``GameLogCreator`` would iterate char-by-char, or a half that
-    cannot be stored) is client error, not server failure (#1980 F1).
-    """
-    event = data.get("event")
-    half = data.get("half")
-    if not isinstance(event, list) or not event:
-        raise ValidationError({"event": "must be a non-empty list of event objects"})
-    for entry in event:
-        if not isinstance(entry, dict):
-            raise ValidationError({"event": "each entry must be an object"})
-        name = entry.get("name")
-        if not isinstance(name, str) or not name:
-            raise ValidationError({"event": "each entry must have a non-empty 'name'"})
-    if half not in (1, 2):
-        raise ValidationError({"half": "must be 1 or 2"})
-
-
 class GameHalftimeAPIView(APIView):
     def put(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
@@ -137,7 +59,7 @@ class GameHalftimeAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        conflict = _device_lock_response(request, pk)
+        conflict = device_lock_response(request, pk)
         if conflict is not None:
             return conflict
         try:
@@ -163,7 +85,7 @@ class GameFinalizeUpdateView(UpdateAPIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        conflict = _device_lock_response(request, pk)
+        conflict = device_lock_response(request, pk)
         if conflict is not None:
             return conflict
         try:

@@ -24,12 +24,14 @@ from gamedays.api.game_device_views import (
     GameFinalizeUpdateView,
     GameHalftimeAPIView,
     _client_id,
-    _device_conflict,
-    _device_lock_response,
-    _finished_game_response,
-    _requested_device,
     _submission_already_applied,
-    _validate_gamelog_payload,
+)
+from gamedays.api.write_guards import (
+    device_conflict,
+    device_lock_response,
+    finished_game_response,
+    requested_device,
+    validate_gamelog_payload,
 )
 from gamedays.models import GameLogSubmission, GameSetup
 from gamedays.service.wrapper.gameinfo_wrapper import (
@@ -41,33 +43,33 @@ from gamedays.tests.setup_factories.factories import GameinfoFactory, UserFactor
 
 class DeviceHelperCharacterization(TestCase):
     def test_finished_game_response(self):
-        conflict = _finished_game_response(SimpleNamespace(status="beendet"))
+        conflict = finished_game_response(SimpleNamespace(status="beendet"))
         assert conflict.status_code == HTTPStatus.CONFLICT
         assert conflict.data["detail"] == "Dieses Spiel ist beendet."
-        assert _finished_game_response(SimpleNamespace(status="Geplant")) is None
-        assert _finished_game_response(SimpleNamespace()) is None
+        assert finished_game_response(SimpleNamespace(status="Geplant")) is None
+        assert finished_game_response(SimpleNamespace()) is None
 
     def test_device_conflict_and_requested_device(self):
-        assert _device_conflict("abc", "abc") is None
-        assert _device_conflict("abc", "") is None
-        conflict = _device_conflict("abc", "other")
+        assert device_conflict("abc", "abc") is None
+        assert device_conflict("abc", "") is None
+        conflict = device_conflict("abc", "other")
         assert conflict.status_code == HTTPStatus.CONFLICT
         assert conflict.data["device_id"] == "abc"
         assert conflict.data["detail"] == "Dieses Spiel läuft auf einem anderen Gerät."
         request = APIRequestFactory().post("/", HTTP_X_SCORECARD_DEVICE="  phone-a  ")
-        assert _requested_device(request, {"device_id": "phone-b"}) == "phone-a"
+        assert requested_device(request, {"device_id": "phone-b"}) == "phone-a"
         request = APIRequestFactory().post("/")
-        assert _requested_device(request, {"device_id": "phone-b"}) == "phone-b"
-        assert _requested_device(request, {}) == ""
+        assert requested_device(request, {"device_id": "phone-b"}) == "phone-b"
+        assert requested_device(request, {}) == ""
 
     def test_device_lock_response_reads_the_stored_device_from_the_db(self):
         """A real stored device must short-circuit both views (no mock)."""
         game = GameinfoFactory()
         request = APIRequestFactory().post("/", HTTP_X_SCORECARD_DEVICE="other")
-        assert _device_lock_response(request, game.pk, {"device_id": "other"}) is None
+        assert device_lock_response(request, game.pk, {"device_id": "other"}) is None
         GameSetup.objects.create(gameinfo=game, device_id="stored-a")
         with self.assertNumQueries(1):
-            conflict = _device_lock_response(request, game.pk, {"device_id": "other"})
+            conflict = device_lock_response(request, game.pk, {"device_id": "other"})
         assert conflict.status_code == HTTPStatus.CONFLICT
         assert conflict.data == {
             "detail": "Dieses Spiel läuft auf einem anderen Gerät.",
@@ -104,7 +106,7 @@ class DeviceHelperCharacterization(TestCase):
 
     def test_gamelog_payload_validation(self):
         valid = {"event": [{"name": "touchdown"}], "half": 1}
-        assert _validate_gamelog_payload(valid) is None
+        assert validate_gamelog_payload(valid) is None
         for payload in (
             {},
             {"event": "touchdown", "half": 1},
@@ -115,7 +117,7 @@ class DeviceHelperCharacterization(TestCase):
             {"event": [{"name": "touchdown"}], "half": 3},
         ):
             with self.assertRaises(ValidationError):
-                _validate_gamelog_payload(payload)
+                validate_gamelog_payload(payload)
 
 
 class DeviceViewCharacterization(TestCase):

@@ -20,6 +20,13 @@ from gameevents.service.log_payload import (
 )
 from gameevents.service.projector import InvalidEnvelope
 from gameevents.service.undo import record_legacy_undo
+from gamedays.api.write_guards import (
+    device_conflict,
+    device_lock_response,
+    finished_game_response,
+    requested_device,
+    validate_gamelog_payload,
+)
 from gamedays.api.serializers import (
     GamedaySerializer,
     GameSetupSerializer,
@@ -44,15 +51,8 @@ logger = logging.getLogger(__name__)
 # Phase 3 Layer 4: device-lock/finalize/config orchestration lives in its own
 # module; re-exported so ``api/urls.py`` and internal callers stay unchanged.
 from .game_device_views import (  # noqa: F401
-    DEVICE_LOCK_DETAIL,
-    GAME_FINISHED_DETAIL,
-    _finished_game_response,
-    _device_conflict,
-    _requested_device,
-    _device_lock_response,
     _client_id,
     _submission_already_applied,
-    _validate_gamelog_payload,
     GameHalftimeAPIView,
     GameFinalizeUpdateView,
     GameDeviceLockAPIView,
@@ -158,7 +158,7 @@ class GameLogAPIView(APIView):
     def post(self, request, *args, **kwargs):
         try:
             data = request.data
-            _validate_gamelog_payload(data)
+            validate_gamelog_payload(data)
             client_id = _client_id(data.get("client_id"))
             with transaction.atomic():
                 # Rows and events are one unit. Locking the game row before the
@@ -195,10 +195,10 @@ class GameLogAPIView(APIView):
                         },
                         status=HTTPStatus.CONFLICT,
                     )
-                finished = _finished_game_response(game)
+                finished = finished_game_response(game)
                 if finished is not None:
                     return finished
-                conflict = _device_lock_response(request, game.pk, data)
+                conflict = device_lock_response(request, game.pk, data)
                 if conflict is not None:
                     return conflict
                 # The v1 name table is still a client contract: an unknown
@@ -264,12 +264,12 @@ class GameLogAPIView(APIView):
                     detail=f"Could not delete team logs ... gameId {game_id} not found"
                 )
             # A finished game cannot be undone: the result already covers the log.
-            finished = _finished_game_response(game)
+            finished = finished_game_response(game)
             if finished is not None:
                 return finished
             # Undo is a write like any other: a stale second tab must not delete
             # entries of a game another device holds.
-            conflict = _device_lock_response(request, game.pk)
+            conflict = device_lock_response(request, game.pk)
             if conflict is not None:
                 return conflict
             game_service = GameService(game_id)
@@ -351,13 +351,13 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
             return Response(data={}, status=HTTPStatus.OK)
         serializer = GameSetupSerializer(game_setup)
         data = dict(serializer.data)
-        device = _requested_device(request, {})
+        device = requested_device(request, {})
         if device:
             # A v2 device learns on open that another device holds the game,
             # not on its first write. The stored id stays write-only, and the
             # v1 client (no device header) keeps its body unchanged.
             data["locked_elsewhere"] = (
-                _device_conflict(game_setup.device_id, device) is not None
+                device_conflict(game_setup.device_id, device) is not None
             )
             # Whether this user may lift the lock (``DELETE .../device``):
             # the screen only offers "Spiel übernehmen" then; the endpoint
@@ -387,8 +387,8 @@ class GameSetupCreateOrUpdateView(RetrieveUpdateAPIView):
                 if not serializer.is_valid():
                     return Response(serializer.errors, status=HTTPStatus.BAD_REQUEST)
 
-                incoming_device = _requested_device(request, serializer.validated_data)
-                conflict = _device_conflict(
+                incoming_device = requested_device(request, serializer.validated_data)
+                conflict = device_conflict(
                     game_setup.device_id if game_setup is not None else "",
                     incoming_device,
                 )
@@ -591,7 +591,7 @@ class GamePossessionAPIView(APIView):
             game_service = GameService(pk)
         except Gameinfo.DoesNotExist:
             raise NotFound(detail=f"No game found for gameId {pk}")
-        conflict = _device_lock_response(request, pk)
+        conflict = device_lock_response(request, pk)
         if conflict is not None:
             return conflict
         team = request.data.get("team")

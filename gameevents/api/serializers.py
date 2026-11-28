@@ -19,6 +19,7 @@ from typing import Optional
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from gamedays.api.write_guards import validate_gamelog_payload
 from gameevents.service.append import normalise_client_id
 from gameevents.service.projector import RESULT_CORRECTION_CODE
 
@@ -101,9 +102,7 @@ def parse_event_request(data) -> EventRequest:
     if has_legacy:
         # The canonical endpoint accepts the app's payload unchanged, so it
         # uses the same payload validation as the gamelog view.
-        from gamedays.api.game_views import _validate_gamelog_payload
-
-        _validate_gamelog_payload(data)
+        validate_gamelog_payload(data)
         if data.get("team") in (None, ""):
             raise ValidationError({"team": "is required for a legacy payload"})
         return EventRequest(
