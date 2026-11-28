@@ -120,6 +120,25 @@ def wait_for_quiet(page, capture, timeout_ms=4000, quiet_ms=600):
         last = current
 
 
+def wait_until(page, predicate, timeout_ms=8000, poll_ms=100):
+    """Poll a page condition until it holds, or fail loudly on timeout.
+
+    Network quiescence alone is not a readiness proof: a page can be quiet
+    before its first data fetch starts, so one side captures an empty form
+    while the other captures the loaded fixture. Callers pass the observable
+    condition that marks their screen as ready.
+    """
+    deadline = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < deadline:
+        try:
+            if predicate(page):
+                return
+        except Exception:  # a selector missing while still loading
+            pass
+        page.wait_for_timeout(poll_ms)
+    raise TimeoutError("page did not reach the expected ready state")
+
+
 def run_steps(
     context,
     path,
@@ -129,6 +148,7 @@ def run_steps(
     wait="domcontentloaded",
     tokens=None,
     prefix="",
+    ready=None,
 ):
     """Open ``path``, apply each ``(name, action)`` and capture the state."""
     page = context.new_page()
@@ -149,6 +169,10 @@ def run_steps(
     step_name = "open"
     try:
         page.goto(path, wait_until=wait)
+        # Condition first, quiet second: a screen that has not rendered its
+        # data yet can look network-quiet and compare as a different state.
+        if ready is not None:
+            wait_until(page, ready)
         wait_for_quiet(page, capture)
         opening = capture_step(page, capture=capture, tokens=tokens)
         opening["absent"] = []

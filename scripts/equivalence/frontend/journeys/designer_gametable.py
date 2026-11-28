@@ -1,9 +1,18 @@
 """Designer journey: edit a team cell and capture the autosave PUT."""
 
 from . import fixture
-from .common import click, id_tokens, no_op, press, required_click, role_view, run_steps
+from .common import (
+    click,
+    id_tokens,
+    no_op,
+    press,
+    required_click,
+    role_view,
+    run_steps,
+)
 
 TEAM_SELECT = ".react-select__control"
+GAMEDAY_NAME_FIELD = "#gamedayName"
 TEAM_OPTION = (
     ".react-select__option"
     ":not(.react-select__option--is-disabled)"
@@ -14,6 +23,18 @@ AUTOSAVE_TIMEOUT_MS = 8000  # the designer debounces its autosave by 1.5 s
 
 def _is_designer_save(response):
     return "/designer-state/" in response.url and response.request.method == "PUT"
+
+
+def _designer_loaded(page):
+    """The gameday name input is filled only after the designer fetched it.
+
+    An empty form with a "Loading..." hint looks network-quiet, so comparing
+    it against a loaded fixture produced false DOM/ARIA diffs on ref-vs-ref.
+    Waiting for this field is the observable readiness condition, not a
+    volatile-text exception.
+    """
+    field = page.locator(GAMEDAY_NAME_FIELD)
+    return field.count() > 0 and bool(field.first.input_value().strip())
 
 
 def _pick_team_and_save(page, absent):
@@ -44,7 +65,15 @@ def run(context, run_id, credentials):
             ("after-save", no_op),
         ]
         url = f"/gamedays/gameday/design/designer/{game['gameday_id']}"
-        run_steps(view, url, steps, skipped, actions=actions, tokens=tokens)
+        run_steps(
+            view,
+            url,
+            steps,
+            skipped,
+            actions=actions,
+            tokens=tokens,
+            ready=_designer_loaded,
+        )
     finally:
         fixture.cleanup(view, game)
     return steps, skipped
