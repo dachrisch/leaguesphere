@@ -4,6 +4,7 @@
     "config:recommended"
   ],
   "forkProcessing": "enabled",
+  "forkProcessing": "enabled",
   "prHourlyLimit": 0,
   "prConcurrentLimit": 12,
   "rebaseWhen": "auto",
