@@ -1,5 +1,12 @@
 """Designer journey: edit a team cell and capture the autosave PUT."""
 
+import copy
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import scenarios  # noqa: E402
+
 from . import fixture
 from .common import (
     click,
@@ -19,6 +26,22 @@ TEAM_OPTION = (
     ":not(.react-select__option--is-selected)"
 )
 AUTOSAVE_TIMEOUT_MS = 8000  # the designer debounces its autosave by 1.5 s
+
+# buildGroupedTeamOptions only offers teams with ``groupId is None``; the bare
+# {id, label} teams in the shared backend fixture are silently dropped by the
+# designer. Give every team the real GlobalTeam shape and keep one unassigned.
+DESIGNER_CANVAS = copy.deepcopy(scenarios.CANVAS_WITH_TEAMS)
+for _index, _team in enumerate(DESIGNER_CANVAS["globalTeams"]):
+    _team.update(groupId=None, order=_index, color="#6c757d")
+DESIGNER_CANVAS["globalTeams"].append(
+    {
+        "id": "eq-spare",
+        "label": "Equivalence Spare",
+        "groupId": None,
+        "order": 3,
+        "color": "#6c757d",
+    }
+)
 
 
 def _is_designer_save(response):
@@ -55,7 +78,9 @@ def run(context, run_id, credentials):
         return {}, ["designer:staff-login-unavailable"]
     steps, skipped = {}, []
     # A DRAFT gameday: a published one is locked and its cells are read-only.
-    game = fixture.create(view, f"fe-designer-{run_id}", publish=False)
+    game = fixture.create(
+        view, f"fe-designer-{run_id}", publish=False, canvas=DESIGNER_CANVAS
+    )
     try:
         tokens = id_tokens({game["gameday_id"]: "<entity-1>"}, run_id)
         actions = [

@@ -117,33 +117,6 @@ def test_normalise_dom_filters_volatile_nodes_and_scrubs_values():
     assert "fade-in" in unfiltered
 
 
-def test_normalise_dom_tokenises_bare_event_log_clocks_in_place():
-    # The event log renders its wall clock as a bare `HH:MM` (`EventLog.tsx`
-    # `formatLogTime`), so two runs a minute apart disagree on otherwise
-    # identical rows. Replace the clock token, keep every line and all context.
-    text = "\n".join(
-        [
-            "14:03",
-            "- time: 14:04",
-            "  - text: 14:05",
-            "Spielstand 12:7",
-            "Kickoff 10:00 Uhr",
-            "Zwischenstand 12:12",
-        ]
-    )
-    result = capture.normalise_dom(text)
-    lines = result.splitlines()
-    assert len(lines) == 6  # never drop a row to hide a real diff
-    assert lines[:3] == ["<time>", "- time: <time>", "  - text: <time>"]
-    # The rule is scoped to a whole clock line: scores and times in prose keep
-    # their values, so a wrong kickoff or score still shows up as a diff.
-    assert lines[3:] == [
-        "Spielstand 12:7",
-        "Kickoff 10:00 Uhr",
-        "Zwischenstand 12:12",
-    ]
-
-
 def test_step_capture_records_only_api_requests_except_sse():
     collector = capture.StepCapture()
     collector.record({"url": "/static/app.js", "method": "GET"})
@@ -219,3 +192,32 @@ def test_compare_steps_reports_line_numbers_and_optional_state():
     assert not any(
         item.path.startswith("$.requests") for item in diffs["tracking:step"]
     )
+
+
+def test_normalise_dom_redacts_only_standalone_event_clock_lines():
+    """Fixture event timestamps differ by the minutes a run takes.
+
+    A line that is *only* ``HH:MM`` (or an ARIA ``time:`` line) is the server's
+    wall clock for ``Spiel gestartet`` / ``Spiel beendet``. A real game time
+    such as ``10:00 · Feld 1`` must stay untouched: it is behaviour, not noise.
+    """
+    text = (
+        "Spiel gestartet\n10:48\nSpiel beendet\n10:49\n"
+        "Anstoß\n10:00 · Feld 1\n"
+        "- time: 10:49\n- button: 10:00 starten"
+    )
+    result = capture.normalise_dom(text)
+    assert "10:48" not in result
+    assert "10:49" not in result
+    assert "<time>" in result
+    assert "10:00 · Feld 1" in result
+    assert "- button: 10:00 starten" in result
+
+
+def test_normalise_dom_redacts_live_timer_values_but_keeps_labels():
+    """A countdown advances between two runs of the same side."""
+    text = '- timer "Restliche Pause": 01:55\n- timer "Spielzeit": 12:03'
+    result = capture.normalise_dom(text)
+    assert "01:55" not in result and "12:03" not in result
+    assert '- timer "Restliche Pause": <time>' in result
+    assert '- timer "Spielzeit": <time>' in result
