@@ -238,9 +238,9 @@ class GamedayForm(forms.ModelForm):
         if last_season:
             self.fields["season"].initial = last_season.id
 
-    def save(self, user=None):
+    def save(self, commit=True):
         is_new = self.instance.pk is None
-        gameday = super(GamedayForm, self).save(commit=False)
+        gameday = super().save(commit=False)
         gameday.author = self.context.author
         if self.context.init_format:
             gameday.format = "INITIAL_EMPTY"
@@ -251,7 +251,8 @@ class GamedayForm(forms.ModelForm):
             # inheriting the model's DRAFT default.
             gameday.status = Gameday.STATUS_PUBLISHED
             gameday.published_at = timezone.now()
-        gameday.save()
+        if commit:
+            gameday.save()
         return gameday
 
 

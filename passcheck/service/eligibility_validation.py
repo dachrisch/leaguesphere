@@ -30,25 +30,23 @@ class EligibilityValidator:
         self.validators.append(validator)
 
     def validate(self, player):
-        if self._is_youth_player(player) or self._is_female_player(player):
-            return True
+        """Return ``True`` or raise ``ValidationError`` with the roster message.
+
+        An exempt player (youth or, where the rule allows it, female) skips
+        every rule except the finals minimum.
+        """
+        if self._is_exempt(player):
+            return self.final_validator.check(player)
         for validator in self.validators:
-            if not validator.check(player):
-                return False
+            validator.check(player)
         return True
 
-    def _is_youth_player(self, player):
-        youth_player_validator = YouthPlayerValidator(self.rule.ignore_player_age_until)
-        youth_player_validator.set_next_validator(self.final_validator)
-        return youth_player_validator.check(player)
-
-    def _is_female_player(self, player):
-        woman_player_validator = WomanPlayerValidator(self.rule.except_for_women)
-        woman_player_validator.set_next_validator(self.final_validator)
-        return woman_player_validator.check(player)
-
-    def _check_for_finals(self, player):
-        return self.final_validator.is_valid(player)
+    def _is_exempt(self, player):
+        exemptions = (
+            YouthPlayerExemption(self.rule.ignore_player_age_until),
+            WomanPlayerExemption(self.rule.except_for_women),
+        )
+        return any(exemption.applies(player) for exemption in exemptions)
 
     def get_max_subs(self):
         if self.rule.max_subs_in_other_leagues < 0:
@@ -67,6 +65,14 @@ class EligibilityValidator:
 
 
 class BaseValidator:
+    """An eligibility rule.
+
+    Contract: ``is_valid`` returns ``True`` when the player may play and
+    raises ``ValidationError`` (with the message the roster shows) when not.
+    It never returns ``False``; a yes/no question about a player is a
+    ``PlayerExemption`` instead.
+    """
+
     def __init__(self):
         self.next_validator = None
 
@@ -74,8 +80,7 @@ class BaseValidator:
         self.next_validator = next_validator
 
     def check(self, player):
-        if not self.is_valid(player):
-            return False
+        self.is_valid(player)
         if self.next_validator:
             return self.next_validator.check(player)
         return True
@@ -135,24 +140,34 @@ class FinalsValidator(BaseValidator):
         return True
 
 
-class YouthPlayerValidator(BaseValidator):
+class PlayerExemption:
+    """A yes/no question that exempts a player from the regular rules.
+
+    Contract: ``applies`` returns a ``bool`` and never raises.
+    """
+
+    def applies(self, player) -> bool:
+        raise NotImplementedError("Subclasses must implement applies.")
+
+
+class YouthPlayerExemption(PlayerExemption):
     def __init__(self, ignore_player_age_until):
-        super().__init__()
         self.ignore_player_age_until = ignore_player_age_until
 
-    def is_valid(self, player):
+    def applies(self, player) -> bool:
         from passcheck.api.serializers import RosterSerializer
 
         player_age = datetime.today().year - player[RosterSerializer.YEAR_OF_BIRTH_C]
         return player_age < self.ignore_player_age_until
 
 
-class WomanPlayerValidator(BaseValidator):
+class WomanPlayerExemption(PlayerExemption):
     def __init__(self, except_for_women):
-        super().__init__()
         self.except_for_women = except_for_women
 
-    def is_valid(self, player):
+    def applies(self, player) -> bool:
         from passcheck.api.serializers import RosterSerializer
 
-        return self.except_for_women and player[RosterSerializer.SEX_C] == Person.FEMALE
+        return bool(
+            self.except_for_women and player[RosterSerializer.SEX_C] == Person.FEMALE
+        )

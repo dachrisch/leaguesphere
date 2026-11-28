@@ -246,3 +246,38 @@ def test_get_formset_creates_correct_number_of_forms():
         needed_teams_list=[0, 0],
     )
     assert len(formset.forms) == 2
+
+
+class TestGamedayFormSaveContract(TestCase):
+    """`GamedayForm.save` honours the `ModelForm.save(commit)` contract (LSP)."""
+
+    def _form(self):
+        user = UserFactory(username="LeagueOrgCommit")
+        data = {
+            "name": "Commit Gameday",
+            "season": SeasonFactory(name="2027").id,
+            "league": LeagueFactory(name="League Commit").id,
+            "date": date.today(),
+            "start": time(10, 0),
+            "address": "Field",
+        }
+        form = GamedayForm(
+            data=data, context=GamedayFormContext(user, init_format=True)
+        )
+        assert form.is_valid(), form.errors
+        return form, user
+
+    def test_save_commit_false_does_not_persist(self):
+        form, user = self._form()
+        gameday = form.save(commit=False)
+        assert gameday.pk is None
+        assert Gameday.objects.count() == 0
+        assert gameday.author == user
+        assert gameday.format == "INITIAL_EMPTY"
+        assert gameday.status == Gameday.STATUS_PUBLISHED
+
+    def test_save_commit_false_then_save_persists(self):
+        form, _ = self._form()
+        gameday = form.save(commit=False)
+        gameday.save()
+        assert Gameday.objects.count() == 1

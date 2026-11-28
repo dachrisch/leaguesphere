@@ -126,6 +126,18 @@ class TestValidators(TestCase):
         )
         assert str(exception.value) == expected_error_message
 
+    def test_regular_player_within_limits_passes(self):
+        prime_league, _, _, season, team = DbSetupPasscheck.create_eligibility_rules()
+        season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(teams=team)
+        prime_gameday = GamedayFactory(season=season, league=prime_league)
+        ev = EligibilityValidator(season_league.league, prime_gameday)
+        senior_player = {
+            RosterSerializer.YEAR_OF_BIRTH_C: 1982,
+            f"{prime_gameday.league.pk}": 1,
+            RosterSerializer.SEX_C: Person.MALE,
+        }
+        assert ev.validate(senior_player) is True
+
     def test_validate_final_gameday(self):
         prime_league, _, _, season, team = DbSetupPasscheck.create_eligibility_rules()
         season_league: SeasonLeagueTeam = SeasonLeagueTeam.objects.get(teams=team)
