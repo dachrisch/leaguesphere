@@ -81,6 +81,7 @@ class Session:
         form=None,
         headers=None,
         follow_redirects=True,
+        files=None,
     ):
         data = None
         request_headers = {"Accept": "application/json, text/html;q=0.9"}
@@ -106,6 +107,37 @@ class Session:
         if json_body is not None:
             data = jsonlib.dumps(json_body).encode("utf-8")
             request_headers["Content-Type"] = "application/json"
+        elif files is not None:
+            # A fixed boundary keeps the request deterministic on both sides;
+            # the harness never sends personal data (the CSV is a throwaway
+            # harness row built from a discovered id).
+            boundary = "----ls-equivalence-boundary"
+            chunks = []
+            for key, value in (form or {}).items():
+                chunks.append(
+                    f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    f"{value}\r\n"
+                )
+            for key, (filename, content, content_type) in files.items():
+                if isinstance(content, str):
+                    content = content.encode("utf-8")
+                chunks.append(
+                    f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="{key}"; '
+                    f'filename="{filename}"\r\n'
+                    f"Content-Type: {content_type}\r\n\r\n"
+                )
+                chunks.append(content)
+                chunks.append(b"\r\n")
+            chunks.append(f"--{boundary}--\r\n")
+            data = b"".join(
+                part.encode("utf-8") if isinstance(part, str) else part
+                for part in chunks
+            )
+            request_headers["Content-Type"] = (
+                f"multipart/form-data; boundary={boundary}"
+            )
         elif form is not None:
             data = urllib.parse.urlencode(form, doseq=True).encode("utf-8")
             request_headers["Content-Type"] = "application/x-www-form-urlencoded"
@@ -174,9 +206,16 @@ class RecordedSession:
         form=None,
         headers=None,
         follow_redirects=True,
+        files=None,
     ):
         self.requests.append(
-            {"path": path, "method": method, "json": json_body, "form": form}
+            {
+                "path": path,
+                "method": method,
+                "json": json_body,
+                "form": form,
+                "files": files,
+            }
         )
         key = (method, path)
         if key not in self.responses:

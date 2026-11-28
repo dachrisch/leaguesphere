@@ -227,6 +227,42 @@ def test_line_outside_any_function_is_ignored(gate, tmp_path, capsys):
     assert "0 functions in scope" in capsys.readouterr().out
 
 
+def test_frontend_omission_mirrors_coveragerc(gate):
+    """The harness omission is documented in .coveragerc, not an ad-hoc rule."""
+    coveragerc = (Path(__file__).resolve().parents[2] / ".coveragerc").read_text(
+        encoding="utf-8"
+    )
+    assert "scripts/equivalence/frontend/*" in coveragerc
+    assert gate.is_omitted("scripts/equivalence/frontend/capture.py")
+    assert not gate.is_omitted("scripts/equivalence/probes.py")
+
+
+def test_forced_files_bypass_omission(gate, tmp_path, capsys):
+    """--require-file wins over an omission so the harness's own gate is real."""
+    frontend = "scripts/equivalence/frontend/capture.py"
+    assert not gate.is_omitted(frontend, forced=(frontend,))
+
+    repo = make_repo(
+        tmp_path,
+        base={frontend: "def f():\n    return 1\n"},
+        head={frontend: "def f():\n    return 1\n"},
+    )
+    coverage = write_coverage(
+        tmp_path,
+        {
+            frontend: {
+                "functions": {
+                    "f": function("f", executed=[2], missing_branches=[[2, 3]]),
+                }
+            }
+        },
+    )
+    assert invoke(gate, repo, coverage, "--require-file", frontend) == 1
+    assert "capture.py: f: missing branch" in capsys.readouterr().out
+    assert invoke(gate, repo, coverage) == 0
+    assert "0 functions in scope" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize(
     "name",
     [

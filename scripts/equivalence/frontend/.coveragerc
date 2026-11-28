@@ -1,0 +1,8 @@
+# The frontend harness has its own coverage run, so it deliberately does not
+# inherit the root .coveragerc omission for scripts/equivalence/frontend/*.
+[run]
+branch = True
+source = scripts/equivalence/frontend
+
+[report]
+show_missing = True

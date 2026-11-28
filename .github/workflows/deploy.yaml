@@ -169,6 +169,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build and push the agent image
+        id: build_backend
         uses: docker/build-push-action@v7
         with:
           # Build the ref this job checked out. Without `context: .` the action
@@ -184,5 +185,90 @@ jobs:
             org.opencontainers.image.version=${{ inputs.agent_tag }}
           build-args: |
             GIT_SHA=${{ steps.ref.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=agent-backend
+          cache-to: type=gha,mode=max,scope=agent-backend
+
+      # Phase 3 Layer 1 (#2539): the agent stage used to run the backend image
+      # only, so every `/static/…` request 404'd and no frontend journey could
+      # be compared. Build the frontend image from the SAME resolved full SHA,
+      # with the same context/cache/labels as the backend, in this same job.
+      # Only the tag selected by `agent_tag` is built by a dispatch: the ref
+      # baseline is built from the phase base SHA, each candidate from a layer
+      # head. The two mutually exclusive steps below keep both tag derivations
+      # explicit and atomic with the backend build.
+      - name: Build and push the agent frontend image (ref baseline)
+        id: build_frontend_ref
+        if: inputs.agent_tag == 'agent-ref'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: container/nginx.Dockerfile
+          push: true
+          tags: docker.io/leaguesphere/frontend:agent-ref
+          labels: |
+            org.opencontainers.image.revision=${{ steps.ref.outputs.sha }}
+            org.opencontainers.image.version=${{ inputs.agent_tag }}
+          build-args: |
+            GIT_SHA=${{ steps.ref.outputs.sha }}
+          cache-from: type=gha,scope=agent-frontend
+          cache-to: type=gha,mode=max,scope=agent-frontend
+
+      - name: Build and push the agent frontend image (candidate)
+        id: build_frontend_candidate
+        if: inputs.agent_tag == 'agent-candidate'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: container/nginx.Dockerfile
+          push: true
+          tags: docker.io/leaguesphere/frontend:agent-candidate
+          labels: |
+            org.opencontainers.image.revision=${{ steps.ref.outputs.sha }}
+            org.opencontainers.image.version=${{ inputs.agent_tag }}
+          build-args: |
+            GIT_SHA=${{ steps.ref.outputs.sha }}
+          cache-from: type=gha,scope=agent-frontend
+          cache-to: type=gha,mode=max,scope=agent-frontend
+
+      - name: Prove the agent frontend serves every built bundle
+        run: |
+          set -euo pipefail
+          # Pin the proof to the image this job actually built, not to the
+          # mutable tag another dispatch may overwrite in between.
+          digest="${{ steps.build_frontend_ref.outputs.digest }}${{ steps.build_frontend_candidate.outputs.digest }}"
+          test -n "$digest"
+          image="docker.io/leaguesphere/frontend@${digest}"
+          name="ls-agent-static-proof-$$"
+          docker run -d --rm --name "$name" -p 127.0.0.1::80 "$image" >/dev/null
+          trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
+          port="$(docker port "$name" 80/tcp | head -n 1 | awk -F: '{print $NF}')"
+          for _ in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:$port/static/league_manager/js/live_nav.js" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          # This is the exact probe that failed on the backend-only stage.
+          body="$(curl -fsS "http://127.0.0.1:$port/static/league_manager/js/live_nav.js")"
+          test -n "$body"
+          # Assert the exact built entries the Django templates request; an
+          # arbitrary .js chunk under /static/$app is not sufficient proof.
+          for bundle in \
+            scorecard_v2/js/scorecard_v2.js \
+            gameday_designer/js/index.js \
+            passcheck/js/passcheck.js \
+            liveticker/js/liveticker.js \
+            liveticker/v2/js/liveticker-v2.js; do
+            body="$(curl -fsS "http://127.0.0.1:$port/static/$bundle")"
+            test -n "$body"
+          done
+          echo "static proof passed for $image"
+
+      - name: Summarise agent images
+        run: |
+          echo "### Agent images (Phase 3 Layer 1)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| image | tag | full SHA | digest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| backend | \`${{ inputs.agent_tag }}\` | \`${{ steps.ref.outputs.sha }}\` | \`${{ steps.build_backend.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| frontend | \`${{ inputs.agent_tag }}\` | \`${{ steps.ref.outputs.sha }}\` | \`${{ steps.build_frontend_ref.outputs.digest }}${{ steps.build_frontend_candidate.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"

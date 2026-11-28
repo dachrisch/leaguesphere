@@ -38,6 +38,7 @@ class FakeApi:
         form=None,
         headers=None,
         follow_redirects=True,
+        files=None,
     ):
         self.calls.append(
             {
@@ -214,6 +215,7 @@ def test_non_text_payload_is_kept_without_normalisation(monkeypatch):
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             return Response(200, {}, b"raw", path, method)
 
@@ -270,7 +272,7 @@ def test_finalize_legacy_captures_a_real_game_id():
         and call["method"] == "POST"
         and "gameday-format-0-group" in (call["form"] or {})
     )
-    assert wizard_post["form"]["gameday-format-0-group"] == [11, 12, 13]
+    assert wizard_post["form"]["gameday-format-0-group"] == ["11", "12", "13"]
 
 
 def test_finalize_legacy_requires_a_captured_game_id():
@@ -306,6 +308,27 @@ def test_wizard_format_requires_an_unfollowed_redirect():
         if call["path"].endswith("/gameinfos/wizard/") and call["method"] == "POST"
     ]
     assert wizard_calls[-1]["follow_redirects"] is False
+
+
+def test_form_values_are_text_and_repeated_fields_stay_lists():
+    """A list-valued form field (doseq) must not collapse into "[11, 12]"."""
+    api = FakeApi(id_base=901)
+    scenarios.run_scenario(
+        "finalize-legacy",
+        {"staff": api, "anonymous": api},
+        {**CONTEXT, "wizard_team_ids": [11, 12, 13]},
+        "eq-form-text",
+    )
+    format_call = next(
+        call
+        for call in api.calls
+        if call["form"] and "gameday-format-0-group" in call["form"]
+    )
+    assert format_call["form"]["gameday-format-0-group"] == ["11", "12", "13"]
+    assert scenarios._form_text({"id": 7, "ids": [1, 2]}) == {
+        "id": "7",
+        "ids": ["1", "2"],
+    }
 
 
 def test_finalize_canvas_has_a_downstream_reference():
@@ -391,6 +414,7 @@ class FakeSession:
         form=None,
         headers=None,
         follow_redirects=True,
+        files=None,
     ):
         return self.responses.get(path, Response(404, {}, "", "", method))
 
@@ -493,3 +517,14 @@ def test_discover_template_context_tolerates_bad_json():
         200, {}, "not json", "", "GET"
     )
     assert scenarios.discover_template_context(sessions) == {}
+
+
+def test_designer_fixture_teams_are_visible_ungrouped_options():
+    # GameTable's buildGroupedTeamOptions() lists only teams with an explicit
+    # `groupId: null` and sorts them by `order`. Without those fields the
+    # designer journey's "pick another team" click has no enabled option.
+    teams = scenarios.CANVAS_WITH_TEAMS["globalTeams"]
+    assert len(teams) >= 2
+    for team in teams:
+        assert team["groupId"] is None
+        assert isinstance(team["order"], int)

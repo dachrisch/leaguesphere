@@ -97,7 +97,16 @@ def test_etag_revalidation_resolves_exact_prefix_and_missing_sources():
         def __init__(self):
             self.sent = []
 
-        def request(self, path, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            files=None,
+        ):
+            del method, json_body, form, files
             self.sent.append(headers)
             return Response(
                 status=200,
@@ -237,10 +246,13 @@ def test_run_scenario_rejects_a_missing_flag_contract():
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             if method == "GET" and "/feed" in path:
                 return self._json(409, {"detail": "flagged for another reason"})
-            return super().request(path, method, json_body, form, headers)
+            return super().request(
+                path, method, json_body, form, headers, follow_redirects, files
+            )
 
     with pytest.raises(RuntimeError, match="needs_reconciliation"):
         scenarios.run_scenario(
@@ -519,6 +531,7 @@ def test_wizard_capture_from_url_is_normalised():
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             if method == "POST" and path == "/gamedays/gameday/new/":
                 return Response(200, {}, "{}", self.url, method=method)
@@ -568,6 +581,7 @@ def test_capture_regex_without_a_match_is_tolerated(monkeypatch):
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             return Response(200, {}, "<p>no digits</p>", path, method=method)
 
@@ -607,6 +621,7 @@ def test_capture_regex_with_a_match_is_normalised(monkeypatch):
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             return Response(200, {}, "<td>42</td>", path, method=method)
 

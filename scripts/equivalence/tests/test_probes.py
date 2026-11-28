@@ -86,6 +86,38 @@ def discovery_session(body=None):
     )
 
 
+def test_discover_games_only_enriches_the_sampled_gamedays():
+    # The stage can hold hundreds of gamedays; querying every games endpoint
+    # burns the anonymous throttle budget (120/min) before the probes start.
+    session = RecordedSession(
+        {
+            ("GET", "/api/gamedays/11/games/"): (200, [{"id": 45}]),
+            ("GET", "/api/gamedays/12/games/"): (200, [{"id": 46}]),
+        }
+    )
+    enriched = probes.discover_games(session, MANIFEST, GAMEDAYS)
+    assert [item["path"] for item in session.requests] == [
+        "/api/gamedays/11/games/",
+        "/api/gamedays/12/games/",
+    ]
+    assert enriched[0]["game_id"] == 45
+    assert enriched[1]["game_id"] == 46
+    assert "game_id" not in enriched[2]
+    assert "game_id" not in enriched[3]
+
+
+def test_discover_games_tolerates_empty_sample_and_empty_games():
+    session = RecordedSession({("GET", "/api/gamedays/11/games/"): (200, [])})
+    manifest = dict(MANIFEST, categories=[])
+    enriched = probes.discover_games(session, manifest, GAMEDAYS)
+    assert session.requests == []
+    assert all("game_id" not in item for item in enriched)
+
+    session = RecordedSession({("GET", "/api/gamedays/11/games/"): (200, [])})
+    enriched = probes.discover_games(session, MANIFEST, GAMEDAYS[:1])
+    assert enriched[0].get("game_id", "") == ""
+
+
 def test_select_sample_respects_category_and_limit():
     sample = probes.select_sample(MANIFEST, GAMEDAYS)
 
@@ -182,7 +214,15 @@ def test_etag_probe_expands_and_revalidates():
         def __init__(self):
             self.headers_seen = []
 
-        def request(self, path, method="GET", json_body=None, form=None, headers=None):
+        def request(
+            self,
+            path,
+            method="GET",
+            json_body=None,
+            form=None,
+            headers=None,
+            files=None,
+        ):
             self.headers_seen.append(dict(headers or {}))
             if any(
                 key.lower() == "if-none-match" and value

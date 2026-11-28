@@ -375,6 +375,7 @@ def test_characterization_scalar_scenario_payload_is_kept():
             form=None,
             headers=None,
             follow_redirects=True,
+            files=None,
         ):
             return Response(status=200, headers={}, body="42", url="", method=method)
 

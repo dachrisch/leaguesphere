@@ -2,13 +2,11 @@ import {
   Fragment,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 
-import { ApiError, apiGet, apiPost, apiPut, setDeviceId } from "../api/client";
+import { ApiError, apiGet } from "../api/client";
 import type {
   CrewPosition,
   Game,
@@ -25,21 +23,35 @@ import DirectionText, {
 import Screen from "../components/Screen";
 import PersonPicker from "../components/PersonPicker";
 import JerseyPicker from "../components/JerseyPicker";
-import { errorMessage } from "../components/sheets/errors";
-import StartConfirmation, {
-  startBlockers,
-  type StartCrewLine,
-} from "../components/sheets/StartConfirmation";
+import StartConfirmation, { startBlockers } from "../components/sheets/StartConfirmation";
 import TeamLogo from "../components/TeamLogo";
 import { ChevronRight, SwapArrows, Whistle } from "../components/icons";
 import { initials } from "../components/initials";
 import { getDeviceId } from "../device";
-import { rememberQuarterback } from "../app/quarterback";
 import { cachedGet, cachedGetMeta, snapshotKey } from "../offline/snapshot";
-import { newOpId } from "../session/ids";
-import { lockFrom, takeOver, type LockAnswer } from "../session/lock";
+import { lockFrom } from "../session/lock";
 import { formatGameTime } from "./GameList";
-import { useArmed } from "./useArmed";
+import {
+  crewProgress,
+  startLabel as computeStartLabel,
+  startReady,
+  startState,
+} from "./game-setup/start";
+import { useGameStart } from "./game-setup/useGameStart";
+import {
+  LICENCE_TONE,
+  Segmented,
+  hasSavedSetup,
+  normaliseSide,
+  normaliseToss,
+  rowDisplayName,
+  slotHasValue,
+  slotsFromCrew,
+  teamLabel,
+  type CrewSlot,
+  type Side,
+} from "./game-setup/crew";
+import { useCrewSetup } from "./game-setup/useCrewSetup";
 
 interface GameSetupScreenProps {
   game: Game;
@@ -48,329 +60,6 @@ interface GameSetupScreenProps {
   /** Header chrome owned by the flow. */
   onBack?: () => void;
   onLogout?: () => void;
-}
-
-type Side = "home" | "away";
-
-interface CrewSlot {
-  /** Exact stored position; sent back verbatim when the slot is saved. */
-  position: string;
-  /** The league's display name for the position, or the raw position. */
-  label: string;
-  /** Whether an empty slot counts against the completeness counter. */
-  required: boolean;
-  /** All stored rows for this position; more than one is a data problem. */
-  rows: Official[];
-  /** First row, editable in place. Unknown and duplicate slots stay read-only. */
-  official: number | null;
-  name: string | null;
-  known: boolean;
-  duplicate: boolean;
-  /**
-   * Licence facts from the crew read, or from the person the picker took.
-   * `null` means the screen has no data and must say "unbekannt" instead of
-   * claiming a licence problem.
-   */
-  licence: CrewLicence | null;
-}
-
-/** The licence facts a crew row, a search result or a picked person carries. */
-interface CrewLicence {
-  license: string | null;
-  validUntil: string | null;
-  isValid: boolean;
-}
-
-function licenceOfRow(row: Official | undefined): CrewLicence | null {
-  if (row === undefined) {
-    return null;
-  }
-  if (
-    row.license === undefined &&
-    row.valid_until === undefined &&
-    row.is_valid === undefined
-  ) {
-    return null;
-  }
-  return {
-    license: row.license ?? null,
-    validUntil: row.valid_until ?? null,
-    isValid: row.is_valid === true,
-  };
-}
-
-function licenceOfPerson(
-  person: TeamOfficial | undefined,
-): CrewLicence | null {
-  if (person === undefined) {
-    return null;
-  }
-  return {
-    license: person.license,
-    validUntil: person.valid_until,
-    isValid: person.is_valid,
-  };
-}
-
-/** Body of `PUT /api/game/<pk>/officials` (`GameOfficialSerializer`). */
-interface CrewWrite {
-  position: string;
-  official: number | null;
-  name: string | null;
-}
-
-type LicenceState = "valid" | "expired" | "missing" | "unknown" | "empty";
-
-const LICENCE_TONE: Record<LicenceState, string> = {
-  valid: "ok",
-  expired: "warn",
-  missing: "missing",
-  unknown: "unknown",
-  empty: "empty",
-};
-
-interface Licence {
-  state: LicenceState;
-  label: string;
-}
-
-const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** `2026-03-04` → `04.03.2026`; anything else is shown as-is. */
-export function formatLicenceDate(value: string): string {
-  const match = DATE.exec(value);
-  if (match === null) {
-    return value;
-  }
-  return `${match[3]}.${match[2]}.${match[1]}`;
-}
-
-function teamLabel(name: string | null): string {
-  return name !== null && name.trim() !== "" ? name : "–";
-}
-
-function personName(person: TeamOfficial): string {
-  return `${person.first_name} ${person.last_name}`.trim();
-}
-
-function rowDisplayName(
-  row: Pick<Official, "official" | "name">,
-  team: Map<number, TeamOfficial>,
-): string | null {
-  if (row.official !== null) {
-    const person = team.get(row.official);
-    if (person !== undefined) {
-      return personName(person);
-    }
-  }
-  return row.name?.trim() || null;
-}
-
-/**
- * One slot per configured position plus one read-only slot per unknown one.
- *
- * The slots come from the league's configuration merged onto the server's
- * defaults (`GET /api/officials/crew-positions/game/<id>`), already in display
- * order:
- * associations name and order their crew differently, and only the league
- * knows which slots make a crew complete. `position` stays the exact wire
- * value — the API upserts by that string, so a "clever" alias would leave the
- * stored row untouched and create a second one. Unknown positions are kept and
- * shown; duplicate positions are marked so the screen can refuse to write them
- * (the backend's `get_or_create` would raise `MultipleObjectsReturned`).
- */
-function slotsFromCrew(
-  crew: Official[],
-  positions: CrewPosition[],
-): CrewSlot[] {
-  const byPosition = new Map<string, Official[]>();
-  for (const row of crew) {
-    const rows = byPosition.get(row.position);
-    if (rows === undefined) {
-      byPosition.set(row.position, [row]);
-    } else {
-      rows.push(row);
-    }
-  }
-
-  const slots: CrewSlot[] = positions.map((slot) => {
-    const rows = byPosition.get(slot.position) ?? [];
-    byPosition.delete(slot.position);
-    return {
-      position: slot.position,
-      label: slot.label,
-      required: slot.required,
-      rows,
-      official: rows[0]?.official ?? null,
-      name: rows[0]?.name ?? null,
-      known: true,
-      duplicate: rows.length > 1,
-      licence: licenceOfRow(rows[0]),
-    };
-  });
-
-  for (const [position, rows] of byPosition) {
-    slots.push({
-      position,
-      label: position.trim() === "" ? "Ohne Position" : position,
-      // A position the league does not configure is a data problem, not a
-      // slot: it is shown read-only and never counts as required.
-      required: false,
-      rows,
-      official: rows[0]?.official ?? null,
-      name: rows[0]?.name ?? null,
-      known: false,
-      duplicate: rows.length > 1,
-      licence: licenceOfRow(rows[0]),
-    });
-  }
-
-  return slots;
-}
-
-/** `{}` means "not prepared yet"; a single filled field makes it a resume. */
-function hasSavedSetup(setup: GameSetupPayload): boolean {
-  return [setup.ctResult, setup.direction, setup.fhPossession].some(
-    (value) => typeof value === "string" && value.trim() !== "",
-  );
-}
-
-/** A slot counts as staffed when it links somebody or stores a free-text name. */
-function slotHasValue(slot: CrewSlot): boolean {
-  return (
-    slot.official !== null ||
-    (slot.name ?? "").trim() !== "" ||
-    slot.rows.length > 0
-  );
-}
-
-/**
- * Read a saved side back into v2's `home`/`away`. Older games stored the team
- * *name*; anything unrecognised falls back to the home side.
- */
-function normaliseSide(
-  value: string | undefined,
-  home: string | null,
-  away: string | null,
-): Side {
-  const token = (value ?? "").trim().toLowerCase();
-  if (token === "away") {
-    return "away";
-  }
-  if (token === "home") {
-    return "home";
-  }
-  if (home !== null && token === home.trim().toLowerCase()) {
-    return "home";
-  }
-  if (away !== null && token === away.trim().toLowerCase()) {
-    return "away";
-  }
-  return "home";
-}
-
-/**
- * The old app's coin toss was recorded relative to the *away* side ("Münzwahl
- * hat: away" plus Gewonnen/Verloren), so `gewonnen` means the away team won.
- */
-function normaliseToss(
-  value: string | undefined,
-  home: string | null,
-  away: string | null,
-): Side {
-  const token = (value ?? "").trim().toLowerCase();
-  if (token === "gewonnen" || token === "won") {
-    return "away";
-  }
-  if (token === "verloren" || token === "lost") {
-    return "home";
-  }
-  return normaliseSide(value, home, away);
-}
-
-/** The server sends `device_id` alongside the detail when it holds the lock. */
-function carriesDeviceId(body: unknown): boolean {
-  if (typeof body !== "object" || body === null) {
-    return false;
-  }
-  const value = (body as { device_id?: unknown }).device_id;
-  return typeof value === "string" ? value.trim() !== "" : value != null;
-}
-
-function describeStartError(error: unknown): {
-  message: string;
-  readOnly: boolean;
-} {
-  const detail =
-    error instanceof ApiError && typeof error.detail === "string"
-      ? error.detail.trim()
-      : "";
-  if (error instanceof ApiError && error.status === 409) {
-    const deviceLock =
-      carriesDeviceId(error.body) || detail.includes("anderen Gerät");
-    if (deviceLock) {
-      return {
-        message: detail || "Dieses Spiel läuft auf einem anderen Gerät.",
-        readOnly: true,
-      };
-    }
-    return {
-      message: detail || "Dieser Spielstatus erlaubt keinen Spielstart.",
-      readOnly: false,
-    };
-  }
-  return {
-    message: detail || "Der Start ist fehlgeschlagen. Bitte erneut versuchen.",
-    readOnly: false,
-  };
-}
-
-interface SegmentedProps {
-  label: string;
-  /** `null` while nothing was chosen: an unset field is refused, not defaulted. */
-  value: string | null;
-  options: { value: string; label: ReactNode; tone?: Side }[];
-  disabled: boolean;
-  onChange: (value: string) => void;
-  /** One line under the switch, e.g. who calls the coin toss. */
-  hint?: ReactNode;
-}
-
-/** Two-option switch in the mock's `.seg` language. */
-function Segmented({
-  label,
-  value,
-  options,
-  disabled,
-  onChange,
-  hint,
-}: SegmentedProps) {
-  return (
-    <section className="segfield">
-      <h3 className="segtitle">{label}</h3>
-      <div aria-label={label} className="seg" role="group">
-        {options.map((option) => {
-          const classes = [
-            option.value === value ? "sel" : null,
-            option.tone === undefined ? null : `seg-${option.tone}`,
-          ].filter((name): name is string => name !== null);
-          return (
-            <button
-              aria-pressed={option.value === value}
-              className={classes.length === 0 ? undefined : classes.join(" ")}
-              disabled={disabled}
-              key={option.value}
-              onClick={() => onChange(option.value)}
-              type="button"
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
-      {hint === undefined ? null : <p className="setupnote">{hint}</p>}
-    </section>
-  );
 }
 
 /**
@@ -428,9 +117,6 @@ export default function GameSetupScreen({
   const [canRelease, setCanRelease] = useState(false);
   const [takingOver, setTakingOver] = useState(false);
   const [takeOverError, setTakeOverError] = useState<string | null>(null);
-  // Taking a game over locks the other device out: the button asks once more.
-  const { armed, arm, disarm } = useArmed<"takeover">();
-  const confirming = armed === "takeover";
 
   const [toss, setToss] = useState<Side | null>(null);
   const [possession, setPossession] = useState<Side | null>(null);
@@ -554,433 +240,72 @@ export default function GameSetupScreen({
     void load();
   };
 
-  const teamByOfficial = useMemo(
-    () => new Map(teamOfficials.map((person) => [person.id, person])),
-    [teamOfficials],
-  );
+  const {
+    teamByOfficial,
+    displayName,
+    licenceOf,
+    licenceIssues,
+    licenceWarns,
+    requiredSlots,
+    requiredFilled,
+    orderedSlots,
+    pickPerson,
+    enterFreeText,
+    clearSlot,
+    crewPayload,
+    crewLines,
+    takenByOthers,
+  } = useCrewSetup({ slots, setSlots, teamOfficials, setDirty });
 
-  const displayName = useCallback(
-    (slot: CrewSlot): string | null =>
-      rowDisplayName(
-        { official: slot.official, name: slot.name },
-        teamByOfficial,
-      ),
-    [teamByOfficial],
-  );
-
-  /**
-   * Licence validity is the server's verdict for **today** (`is_valid` on the
-   * team list), not a forecast for the gameday date. A game weeks ahead can
-   * therefore show a licence as valid now even though it may lapse before
-   * kickoff, and the other way round.
-   */
-  const licenceOf = useCallback(
-    (slot: CrewSlot): Licence => {
-      if (slot.official === null) {
-        // An empty slot has no licence to judge: "fehlt" says what it is, a
-        // missing-licence claim would be about nobody.
-        return (slot.name ?? "").trim() === ""
-          ? { state: "empty", label: "fehlt" }
-          : { state: "missing", label: "keine Lizenz" };
-      }
-      // The crew read answers the licence itself (it travels with the person
-      // from the picker too), so a guest official from another team and a
-      // freshly created person do not fall back to "unknown". The team
-      // directory stays as the fallback for an older server.
-      const licence =
-        slot.licence ?? licenceOfPerson(teamByOfficial.get(slot.official));
-      if (licence === null) {
-        return { state: "unknown", label: "Lizenz unbekannt" };
-      }
-      if (licence.license === null) {
-        return { state: "missing", label: "keine Lizenz" };
-      }
-      if (licence.isValid) {
-        return { state: "valid", label: `${licence.license} gültig` };
-      }
-      return {
-        state: "expired",
-        label:
-          licence.validUntil === null
-            ? `${licence.license} abgelaufen`
-            : `${licence.license} abgelaufen seit ${formatLicenceDate(
-                licence.validUntil,
-              )}`,
-      };
-    },
-    [teamByOfficial],
-  );
-
-  /**
-   * One warning for the whole crew. Free-text crew rows, officials from
-   * another team and unknown positions cannot be judged here, so only linked
-   * team licences count.
-   */
-  const licenceIssues = useMemo(
-    () =>
-      slots
-        .filter((slot) => {
-          if (slot.official === null) {
-            return false;
-          }
-          const state = licenceOf(slot).state;
-          return state === "expired" || state === "missing";
-        })
-        .map((slot) => ({
-          name: displayName(slot) ?? "Unbekannt",
-          role: slot.label,
-        })),
-    [slots, licenceOf, displayName],
-  );
-
-  /**
-   * Whether this row carries an invalid licence that the sheet will warn about.
-   * The row says so inline ("Start trotzdem möglich") instead of the screen
-   * printing a second, global paragraph.
-   */
-  const licenceWarns = useCallback(
-    (slot: CrewSlot): boolean => {
-      if (slot.official === null) {
-        return false;
-      }
-      const state = licenceOf(slot).state;
-      return state === "expired" || state === "missing";
-    },
-    [licenceOf],
-  );
-
-  /**
-   * Completeness is the league's decision (`required` per slot), not a fixed
-   * set of positions. Duplicate rows never count: they cannot be written.
-   */
-  const requiredSlots = slots.filter((slot) => slot.required);
-  const requiredFilled = requiredSlots.filter(
-    (slot) =>
-      !slot.duplicate &&
-      (slot.official !== null || (slot.name ?? "").trim() !== ""),
-  ).length;
-
-  /**
-   * Presentation order, not wire order: the league's required positions first,
-   * an optional slot with somebody in it next, then the optional slots still
-   * waiting for a name (rendered as one compact "hinzufügen" row each). A
-   * stored position the league does not configure is a data problem and stays
-   * at the bottom, read-only. Each entry keeps its index into `slots` so the
-   * picker edits the right row and the save keeps the server's order.
-   */
-  const orderedSlots = useMemo(
-    () =>
-      [
-        ...slots.filter((slot) => slot.required),
-        ...slots.filter(
-          (slot) => !slot.required && slot.known && slotHasValue(slot),
-        ),
-        ...slots.filter(
-          (slot) => !slot.required && slot.known && !slotHasValue(slot),
-        ),
-        ...slots.filter((slot) => !slot.known),
-      ].map((slot) => ({ slot, index: slots.indexOf(slot) })),
-    [slots],
-  );
-
-  const pickPerson = (index: number, person: TeamOfficial): void => {
-    setSlots((current) =>
-      current.map((slot, position) =>
-        position === index
-          ? {
-              ...slot,
-              official: person.id,
-              name: personName(person),
-              // The search result already carries the licence. Keeping it means
-              // a freshly created or guest official shows the right badge even
-              // though the team directory loaded before they existed (and even
-              // though they belong to another team).
-              licence: licenceOfPerson(person),
-            }
-          : slot,
-      ),
-    );
-    setDirty(true);
-  };
-
-  /**
-   * A guest official who is not in the directory: stored as a name, never as a
-   * link. `PersonPicker` only offers this when nothing matched and both names
-   * are present, so a resolvable person is not replaced by free text.
-   */
-  const enterFreeText = (index: number, name: string): void => {
-    setSlots((current) =>
-      current.map((slot, position) =>
-        position === index
-          ? { ...slot, official: null, name, licence: null }
-          : slot,
-      ),
-    );
-    setDirty(true);
-  };
-
-  const clearSlot = (index: number): void => {
-    setSlots((current) =>
-      current.map((slot, position) =>
-        position === index
-          ? { ...slot, official: null, name: null, licence: null }
-          : slot,
-      ),
-    );
-    setDirty(true);
-  };
-
-  /** Change a start field after the setup was accepted → send it again. */
-  const resetStartPhases = (): void => {
-    setSetupAccepted(false);
-    setPossessionSent(false);
-  };
-
-  // Duplicate rows are never written: the backend upserts by position and its
-  // `get_or_create` raises when two rows share one. Unknown positions are kept
-  // verbatim so they survive the save untouched.
-  const crewPayload: CrewWrite[] = slots
-    .filter((slot) => !slot.duplicate)
-    .map((slot) => ({
-      position: slot.position,
-      official: slot.official,
-      name:
-        slot.official === null
-          ? slot.name?.trim() || null
-          : (displayName(slot) ?? slot.name),
-    }));
-
-  const sideTeam = (side: Side): string | null => (side === "home" ? home : away);
-
-  /**
-   * What the confirmation restates, in the sheet's own shape.
-   *
-   * `filled` is the slot's own state, not the resolved display name: the team
-   * list can fail, or a stored row can carry no name, and a linked official then
-   * has no name while the slot is clearly staffed (the picker says "Offizieller
-   * 99" and the completeness chip counts it). `editable` mirrors the picker: a
-   * duplicate row or a position the league does not configure is shown but
-   * cannot be fixed here, so it never becomes the reason a start is refused.
-   */
-  const crewLines: StartCrewLine[] = slots.map((slot) => {
-    const name = displayName(slot);
-    return {
-      label: slot.label,
-      name,
-      filled: slot.official !== null || (slot.name ?? "").trim() !== "",
-      freetext: slot.official === null && name !== null,
-      required: slot.required,
-      editable: slot.known && !slot.duplicate,
-      duplicate: slot.duplicate,
-    };
+  const {
+    confirming,
+    arm,
+    resetStartPhases,
+    tossTeam,
+    possessionTeam,
+    openConfirmation,
+    confirmStart,
+    runTakeOver,
+    retryStart,
+  } = useGameStart({
+    id,
+    setupPath,
+    logPath,
+    eventsPath,
+    crewPath,
+    inFlightRef: inFlight,
+    loading,
+    finished,
+    offline,
+    readOnly,
+    dirty,
+    setupAccepted,
+    possessionSent,
+    toss,
+    possession,
+    direction,
+    qbHome,
+    qbAway,
+    home,
+    away,
+    crewLines,
+    crewPayload,
+    setSaving,
+    setError,
+    setHasSetup,
+    setSetupAccepted,
+    setDirty,
+    setPossessionSent,
+    setLockedElsewhere,
+    setCanRelease,
+    setReadOnly,
+    setTakingOver,
+    setTakeOverError,
+    setConfirmOpen,
+    onStarted,
   });
 
-  const tossTeam = toss === null ? null : teamLabel(sideTeam(toss));
-  const possessionTeam =
-    possession === null ? null : teamLabel(sideTeam(possession));
-
-  const openConfirmation = (): void => {
-    if (inFlight.current || loading || finished || offline || readOnly) {
-      return;
-    }
-    setConfirmOpen(true);
-  };
-
-  /**
-   * Second tap: the sheet closes first, so a rejected write behaves exactly as
-   * it did without a sheet — the failure and the read-only switch are the
-   * screen's, not a modal's.
-   */
-  const confirmStart = (): void => {
-    setConfirmOpen(false);
-    void runStart();
-  };
-
-  /** Officials used by another row, so one person cannot fill two slots. */
-  const takenByOthers = (index: number): Set<number> => {
-    const taken = new Set<number>();
-    slots.forEach((slot, otherIndex) => {
-      if (otherIndex === index) {
-        return;
-      }
-      for (const row of slot.rows) {
-        if (row.official !== null) {
-          taken.add(row.official);
-        }
-      }
-      if (slot.official !== null) {
-        taken.add(slot.official);
-      }
-    });
-    return taken;
-  };
-
-  /**
-   * Re-read the live lock after a start was refused for it. The read at load
-   * can predate the other device's start, and only a fresh answer carries
-   * `can_release_lock` — without it the warning shows no take-over.
-   */
-  const refreshLock = async (): Promise<void> => {
-    try {
-      const answer = await apiGet<GameSetupPayload & LockAnswer>(setupPath, {
-        deviceId: getDeviceId(),
-      });
-      const lock = lockFrom(answer);
-      if (lock !== null) {
-        setLockedElsewhere(lock.lockedElsewhere);
-        setCanRelease(lock.canRelease);
-      }
-    } catch {
-      // Offline: the plain "läuft auf einem anderen Gerät" message stands.
-    }
-  };
-
-  const runStart = async (force = false): Promise<void> => {
-    if (inFlight.current || loading || finished) {
-      return;
-    }
-    if (offline) {
-      setError(
-        "Das Spiel kann nur mit Verbindung gestartet werden. Bitte Netz suchen und erneut versuchen.",
-      );
-      return;
-    }
-    if (!force && readOnly) {
-      return;
-    }
-    // Belt and braces: the sheet disables its button while a reason is listed,
-    // and the retry after a released device lock re-enters here without it.
-    if (
-      startBlockers({ crew: crewLines, tossTeam, possessionTeam, direction })
-        .length > 0 ||
-      toss === null ||
-      possession === null ||
-      direction === null
-    ) {
-      return;
-    }
-    inFlight.current = true;
-    setSaving(true);
-    setError(null);
-    try {
-      if (dirty) {
-        await apiPut<Official[]>(crewPath, crewPayload);
-        setDirty(false);
-      }
-      if (!setupAccepted) {
-        const deviceId = getDeviceId();
-        await apiPut<GameSetupPayload>(setupPath, {
-          ctResult: toss,
-          direction,
-          fhPossession: possession,
-          // Always sent (null clears a stored number): the setup row is the
-          // one place every device reads the pre-game quarterback from.
-          qbHome,
-          qbAway,
-          device_id: deviceId,
-        });
-        setHasSetup(true);
-        setSetupAccepted(true);
-        // The device that starts the game remembers the pre-game quarterbacks
-        // at once: its own setup read may still answer the pre-start snapshot.
-        if (qbHome !== null) {
-          rememberQuarterback(id, "home", qbHome);
-        }
-        if (qbAway !== null) {
-          rememberQuarterback(id, "away", qbAway);
-        }
-        // Only claim the session once the server accepted the start: a device
-        // that lost the lock must not start stamping its id on later requests.
-        setDeviceId(deviceId);
-      }
-      // The log is read before the opening possession is written, not after:
-      // the possession event names a *side*, but the screen shows the team
-      // *name* (`Team.name`), and the log is the payload that carries it.
-      const log = await cachedGet<GameLog>(snapshotKey.log(id), logPath);
-      let inPossession = log.inPossession ?? null;
-      if (!possessionSent) {
-        const team = possession === "home" ? log.home?.name : log.away?.name;
-        if (team !== null && team !== undefined && team.trim() !== "") {
-          // The opening possession is an event like every other in-game write;
-          // `PUT /setup` only stores the toss/direction and the device lock.
-          await apiPost(eventsPath, {
-            events: [{ type: "possession", code: possession, side: possession }],
-            client_id: newOpId(),
-          });
-          // The log above predates the write and cannot carry the marker yet.
-          // The server accepted exactly this side; the next payload replaces
-          // it anyway.
-          inPossession = team;
-        }
-        setPossessionSent(true);
-      }
-      inFlight.current = false;
-      setSaving(false);
-      onStarted({ ...log, inPossession });
-    } catch (startFailure) {
-      inFlight.current = false;
-      setSaving(false);
-      const described = describeStartError(startFailure);
-      setError(described.message);
-      if (described.readOnly) {
-        setReadOnly(true);
-        void refreshLock();
-      }
-    }
-  };
-
-  /**
-   * Staff take-over before kickoff: lift the lock, then claim the game for
-   * this device (the first id written after a release wins). The start itself
-   * stays a separate, confirmed step — this only makes it possible.
-   */
-  const runTakeOver = async (): Promise<void> => {
-    if (inFlight.current) {
-      return;
-    }
-    inFlight.current = true;
-    setTakingOver(true);
-    setTakeOverError(null);
-    try {
-      await takeOver(id);
-      setLockedElsewhere(false);
-      setCanRelease(false);
-      setReadOnly(false);
-      setError(null);
-    } catch (takeOverFailure) {
-      setTakeOverError(
-        errorMessage(
-          takeOverFailure,
-          "Übernehmen hat nicht geklappt. Bitte erneut versuchen.",
-        ),
-      );
-    } finally {
-      inFlight.current = false;
-      setTakingOver(false);
-      disarm();
-    }
-  };
-
-  /** A staff release of the device lock may make the same start work again. */
-  const retryStart = (): void => {
-    setReadOnly(false);
-    setError(null);
-    void runStart(true);
-  };
-
-  let startLabel: string;
-  if (readOnly) {
-    startLabel = "Nur lesen";
-  } else if (offline) {
-    startLabel = "Start nur online";
-  } else if (saving) {
-    startLabel = "Startet …";
-  } else if (hasSetup) {
-    startLabel = "Fortsetzen";
-  } else {
-    startLabel = `Spiel starten · ${formatGameTime(scheduled)}`;
-  }
-
+  const startLabel = computeStartLabel(readOnly, offline, saving, hasSetup, scheduled);
   // One source of truth for "may this start?": the banner and the confirmation
   // sheet both read `startBlockers`, so they cannot drift apart.
   const blockers = startBlockers({
@@ -989,67 +314,25 @@ export default function GameSetupScreen({
     possessionTeam,
     direction,
   });
-  const ready = blockers.length === 0;
-  /**
-   * A crew with every required slot staffed, every licence valid and nothing
-   * to clean up needs no attention: it folds into one row. Anything off keeps
-   * the rows open, so the problem is never hidden behind "ändern".
-   */
-  const crewComplete =
-    requiredSlots.length > 0 &&
-    requiredFilled === requiredSlots.length &&
-    licenceIssues.length === 0 &&
-    !slots.some((slot) => slot.duplicate || !slot.known) &&
-    !crewLines.some((line) => line.freetext);
-  const crewFolded = crewComplete && !crewOpen;
-  const crewNames = requiredSlots
-    .map((slot) => displayName(slot))
-    .filter((value): value is string => value !== null && value.trim() !== "");
+  const ready = startReady(blockers);
+  const { crewFolded, crewNames, counter } = crewProgress({
+    requiredSlots,
+    requiredFilled,
+    licenceIssues,
+    slots,
+    crewLines,
+    crewOpen,
+    displayName,
+  });
   const officialsSectionId = "prep-officials";
   const configSectionId = "prep-config";
-  const counter =
-    requiredSlots.length === 0
-      ? "keine Pflichtposition"
-      : `${requiredFilled}/${requiredSlots.length} besetzt`;
-
-  // The banner and the start bar must say the same thing: a complete setup is
-  // only "ready" when the bar is not disabled by the device lock or the
-  // missing connection. Otherwise the banner names that reason instead of
-  // claiming green. Missing input still comes from the same blockers array the
-  // confirmation sheet uses.
-  const banner = readOnly
-    ? {
-        tone: "miss" as const,
-        title: "Nur lesen",
-        lines: [error ?? "Dieses Spiel läuft auf einem anderen Gerät."],
-      }
-    : offline
-      ? {
-          tone: "miss" as const,
-          title: "Start nur online",
-          lines: ["Das Spiel kann nur mit Verbindung gestartet werden."],
-        }
-      : ready
-        ? {
-            tone: "ok" as const,
-            title: "Bereit zum Starten",
-            lines: ["Alle Pflichtangaben sind gesetzt."],
-          }
-        : {
-            tone: "miss" as const,
-            title: "Angaben fehlen",
-            lines: blockers,
-          };
-
-  // The banner can scroll under the sticky start bar, so the bar repeats the
-  // first open item: the reason the start is refused is never out of view.
-  const openItems = !readOnly && !offline ? blockers : [];
-  const startWhy =
-    openItems.length === 0
-      ? null
-      : `Noch offen: ${openItems[0]}${
-          openItems.length > 1 ? ` (+${openItems.length - 1} weitere)` : ""
-        }`;
+  const { banner, startWhy } = startState({
+    readOnly,
+    error,
+    offline,
+    ready,
+    blockers,
+  });
 
   return (
     <Screen

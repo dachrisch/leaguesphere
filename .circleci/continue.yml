@@ -389,6 +389,18 @@ jobs:
                 paths: "tests/ scripts/tests/ scripts/equivalence/tests/"
                 junit: "test-results-cross.xml"
                 cov_flag: "python-cross"
+            - run:
+                name: Frontend journey harness branch gate (python-cross)
+                command: |
+                  uv run coverage run --rcfile=scripts/equivalence/frontend/.coveragerc \
+                    -m pytest --confcutdir=scripts/equivalence/frontend/tests \
+                    scripts/equivalence/frontend/tests -q
+                  uv run coverage json -o coverage-frontend.json
+                  python3 scripts/check_branch_coverage.py \
+                    --coverage coverage-frontend.json --base origin/master \
+                    --root . \
+                    --require-file scripts/equivalence/frontend/capture.py \
+                    --require-file scripts/equivalence/frontend/runner.py
 
   scorecard_js:
     parameters:
@@ -444,6 +456,9 @@ jobs:
             - run:
                 name: "JavaScript Test Suite"
                 command: npm --prefix scorecard_v2/ run test:run
+            - run:
+                name: "Phase 3 branch-coverage gate (scorecard_v2)"
+                command: npm --prefix scorecard_v2/ run test:phase3
             - codecov/upload:
                 dir: scorecard_v2/coverage
                 flags: scorecard-v2
@@ -559,6 +574,9 @@ jobs:
             - run:
                 name: "JavaScript Test Suite"
                 command: npm --prefix gameday_designer/ run test:run
+            - run:
+                name: "Phase 3 branch-coverage gate (designer)"
+                command: npm --prefix gameday_designer/ run test:phase3
             - codecov/upload:
                 dir: gameday_designer/coverage
                 flags: gameday_designer

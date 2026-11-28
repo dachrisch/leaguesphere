@@ -91,14 +91,33 @@ def omit_patterns(root):
     return patterns
 
 
-def is_omitted(root, path):
+def is_omitted(root, path=None, forced=()):
     """Mirror all .coveragerc omissions; ignore root files and .claude/**.
 
-    Repo-root ``*.py`` and ``.claude/**.py`` have no shard owner — a PR
-    touching conftest.py or a skill script must not fail every shard's gate.
+    Called as ``is_omitted(root, path, forced)`` by the shard gate and as
+    ``is_omitted(path, forced=...)`` by the Phase 3 frontend-harness tests;
+    both spellings must keep working after the two stacks are combined.
+    The frontend journey harness is judged by its own pytest run and branch
+    gate (scripts/equivalence/frontend/README.md), not by a Python shard.
+    An explicitly forced file (``--require-file``) always wins over an
+    omission, otherwise that harness's own gate would silently check nothing.
     """
+    if path is None:
+        root, path = None, root
+    if path in forced:
+        return False
     if path.startswith(".claude/") or "/" not in path:
         return True
+    # The Phase 3 frontend journey harness is judged by its own pytest run and
+    # branch gate (scripts/equivalence/frontend/README.md), not by a Python shard.
+    if pathlib.PurePosixPath(path).parts[:3] == (
+        "scripts",
+        "equivalence",
+        "frontend",
+    ):
+        return True
+    if root is None:
+        root = pathlib.Path(__file__).resolve().parents[1]
     return any(fnmatch.fnmatch(path, pattern) for pattern in omit_patterns(root))
 
 
@@ -242,7 +261,7 @@ def main(argv=None):
     scope = {}
     forced = set(args.require_file)
     for path in sorted(changed | new | forced):
-        if not path.endswith(".py") or is_omitted(root, path):
+        if not path.endswith(".py") or is_omitted(root, path, forced):
             continue
         shard = owner_for(path)
         if shard is None:

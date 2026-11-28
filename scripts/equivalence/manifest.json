@@ -26,22 +26,31 @@
     {
       "name": "designer-template",
       "description": "draft or published gameday with a designer canvas",
-      "where": {"has_designer_state": true}
+      "where": {
+        "has_designer_state": true
+      }
     },
     {
       "name": "canvas-published",
       "description": "published gameday without a designer state (legacy/canvas output)",
-      "where": {"status": "PUBLISHED", "has_designer_state": false}
+      "where": {
+        "status": "PUBLISHED",
+        "has_designer_state": false
+      }
     },
     {
       "name": "completed",
       "description": "finished gameday with entered results",
-      "where": {"status": "COMPLETED"}
+      "where": {
+        "status": "COMPLETED"
+      }
     },
     {
       "name": "upcoming",
       "description": "published gameday that has not started",
-      "where": {"status": "PUBLISHED"}
+      "where": {
+        "status": "PUBLISHED"
+      }
     }
   ],
   "sample_per_category": 2,
@@ -58,6 +67,10 @@
     {"name": "snapshot-invalid", "path": "/api/snapshot/?include=bogus", "kind": "json", "role": "anonymous"},
     {"name": "health", "path": "/health/", "kind": "json", "role": "anonymous"},
     {"name": "season-page", "path": "/gamedays/{season_id}/", "kind": "html", "role": "anonymous", "categories": ["upcoming"]},
+    {"name": "season-list-staff", "path": "/gamedays/seasons/", "kind": "html", "role": "staff"},
+    {"name": "season-new-staff", "path": "/gamedays/seasons/new/", "kind": "html", "role": "staff"},
+    {"name": "season-update-staff", "path": "/gamedays/seasons/{season_id}/update/", "kind": "html", "role": "staff", "categories": ["upcoming"]},
+    {"name": "season-leagues-staff", "path": "/gamedays/seasons/{season_id}/leagues/", "kind": "html", "role": "staff", "categories": ["upcoming"]},
     {"name": "statistics-page", "path": "/gamedays/{season_id}/{league_id}/statistics", "kind": "html", "role": "anonymous", "categories": ["completed"]},
     {"name": "gameday-page", "path": "/gamedays/gameday/{gameday_id}/", "kind": "html", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
     {"name": "gameday-page-staff", "path": "/gamedays/gameday/{gameday_id}/", "kind": "html", "role": "staff", "categories": ["designer-template", "canvas-published", "completed"]},
@@ -74,6 +87,10 @@
     {"name": "liveticker-page", "path": "/liveticker/?gameday={gameday_id}", "kind": "html", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
     {"name": "liveticker-etag-revalidation", "path": "/api/liveticker/?gameday={gameday_id}", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:{source}"}},
     {"name": "game-feed", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"]},
-    {"name": "feed-etag-revalidation", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:{source}"}}
+    {"name": "feed-etag-revalidation", "path": "/api/game/{game_id}/feed", "kind": "json", "role": "anonymous", "categories": ["designer-template", "canvas-published", "completed"], "headers": {"If-None-Match": "@etag:{source}"}},
+    {"name": "officials-import-upload-staff", "path": "/officials/gameofficial/import/upload/", "kind": "html", "role": "staff"},
+    {"name": "officials-import-confirm-staff", "path": "/officials/gameofficial/import/confirm/", "kind": "html", "role": "staff"},
+    {"name": "config-penalties-api", "path": "/api/config/scorecard/penalties", "kind": "json", "role": "anonymous"},
+    {"name": "config-rules-api", "path": "/api/config/scorecard/rules", "kind": "json", "role": "anonymous"}
   ]
 }

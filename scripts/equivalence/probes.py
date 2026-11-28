@@ -79,17 +79,27 @@ def discover_games(session, manifest, gamedays):
     template = manifest.get("game_discovery", {}).get(
         "path", "/api/gamedays/{gameday_id}/games/"
     )
+    # Only the sampled gamedays can reach a game-id placeholder. Querying all
+    # gamedays burns the 120/min anonymous throttle budget on a large stage
+    # before the probes even start, which turns into 429 noise in the report.
+    sample = select_sample(manifest, gamedays)
+    sampled_ids = {sampled.get("id") for group in sample.values() for sampled in group}
     enriched = []
     for gameday in gamedays:
         item = dict(gameday)
-        response = session.request(_fill(template, gameday))
-        if response.status == 200:
-            try:
-                games = response.json()
-            except ValueError:
-                games = []
-            if games and isinstance(games[0], dict) and games[0].get("id") is not None:
-                item["game_id"] = games[0]["id"]
+        if gameday.get("id") in sampled_ids:
+            response = session.request(_fill(template, gameday))
+            if response.status == 200:
+                try:
+                    games = response.json()
+                except ValueError:
+                    games = []
+                if (
+                    games
+                    and isinstance(games[0], dict)
+                    and games[0].get("id") is not None
+                ):
+                    item["game_id"] = games[0]["id"]
         enriched.append(item)
     return enriched
 
