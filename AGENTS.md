@@ -258,6 +258,7 @@ Before marking a task complete (reviewers: see [.claude/skills/reviewing-prs/SKI
 5. ✅ Lint frontend: `npm run eslint` (ZERO errors)
 6. ✅ Scoped CI coverage passes: `python3 scripts/check_scope_coverage.py` (update `.circleci/scope-mapping.txt`/`scope-exclude.txt` when adding files or CI rules — see [Scoped CI](docs/topics/deployment/scoped-ci.md))
 7. ✅ Dependency boundary passes: `python3 scripts/check_app_boundaries.py --root .` (`gamedays` must not import its consumer apps; the allowlist may only shrink — see [Phase 0 plan](docs/topics/planning/current/2026-11-25-phase0-plan.md))
+7a. ✅ App layer contracts pass: `pip install import-linter==2.17 && lint-imports` (contracts in `.importlinter`: `league_manager` is the composition root no app imports, `core` is the kernel that imports no app, and only `gamedays` <-> `gameevents` may import each other)
 8. ✅ Branch coverage of changed functions passes: `python3 scripts/check_branch_coverage.py --coverage coverage.json --base origin/master --shard <shard>` (100% of branches in every created, changed or moved function; pragmas need an inline reason — see [Phase 1 plan](docs/topics/planning/current/2026-11-25-phase1-plan.md))
 9. ✅ Verify on staging: `./container/deploy.sh stage`, then test at [stage.leaguesphere.app](https://stage.leaguesphere.app)
 

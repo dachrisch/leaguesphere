@@ -1,0 +1,50 @@
+# Architecture contracts for the Django apps (architecture scan 2026-11-28, N2).
+#
+# Run:  pip install import-linter==2.17 && lint-imports
+# CI runs it in the scope_coverage job next to scripts/check_app_boundaries.py.
+#
+# Reading the layers: a package may import packages in lower layers only.
+# "a | b" are independent siblings (they must not import each other);
+# "a : b" are siblings that may (the declared gamedays <-> gameevents
+# projector boundary from the remediation roadmap). Tests are exempt: they
+# import fixtures across apps freely.
+
+[importlinter]
+root_packages =
+    accounts
+    core
+    dbaccess
+    gameday_designer
+    gamedays
+    gameevents
+    home
+    journey
+    league_manager
+    league_table
+    liveticker
+    matchreport
+    officials
+    passcheck
+    scorecard
+    scorecard_v2
+    share
+    teammanager
+include_external_packages = False
+
+[importlinter:contract:layers]
+name = App layers: composition root on top, shared kernel at the bottom
+type = layers
+layers =
+    league_manager
+    home | matchreport | journey | teammanager | share | scorecard | scorecard_v2 | accounts | dbaccess
+    passcheck | officials
+    liveticker
+    league_table | gameday_designer
+    gamedays : gameevents
+    core
+ignore_imports =
+    **.tests -> **
+    **.tests.** -> **
+    **.conftest -> **
+    # The release version lives in league_manager/__init__.py (release-please owns it).
+    scorecard_v2.views -> league_manager
