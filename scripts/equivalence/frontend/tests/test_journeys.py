@@ -158,7 +158,12 @@ def test_run_steps_waits_for_ready_before_capturing_open():
         [],
         ready=ready,
     )
-    assert calls == ["goto", "ready", "capture"]
+    # A layer that also waits for DOM stability adds extra capture calls;
+    # what matters is that readiness precedes the first capture.
+    assert calls[0] == "goto"
+    assert calls[1] == "ready"
+    assert "capture" in calls
+    assert calls.index("ready") < calls.index("capture")
 
 
 def test_run_steps_records_each_steps_absent_selectors():
