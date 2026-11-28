@@ -12,15 +12,15 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Officials log in through Moodle, not Django: the only link between a
-        # signed-in person and an Official row is this session key
-        # (officials/views.py:57). There is no User -> Official relation.
-        from officials.views import MOODLE_LOGGED_IN_USER
+        # Officials log in through Moodle, not Django: officials.identity owns
+        # the session key that links a visitor to an Official row. There is no
+        # User -> Official relation.
+        from officials.identity import acting_official_id
 
         context.update(
             build_context(
                 self.request.user,
-                official_id=self.request.session.get(MOODLE_LOGGED_IN_USER),
+                official_id=acting_official_id(self.request),
             )
         )
         return context
