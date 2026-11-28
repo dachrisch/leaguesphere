@@ -26,6 +26,7 @@ See [current/](./current/) for active planning work.
 - [2026-11-25 Phase 2 Accepted Legacy Set](./current/2026-11-25-phase2-legacy-acceptance.md): measured 6,369-game legacy set, SHA-256 digest and per-season counts, with the no-backfill statement and regeneration command
 - [2026-11-25 Phase 2 Flag-ON Report](./current/2026-11-25-phase2-flag-on-report.md): cand-only `SCORECARD_EVENT_FEED=true` comparison on servyy-test: 0 unexplained diffs on 31 probes and 9 scenarios, with what that run could not prove, baked SHAs and the revert step
 - [2026-11-25 Phase 3 Implementation Plan](./current/2026-11-25-phase3-plan.md): provisional brief for splitting the orchestration god-modules — frontend equivalence journeys/images/infra, backend view extractions and staged screen splits, a plan-docs PR plus twelve `gh stack` layers based on `master` (Phase 1 and Phase 2 merged)
+- [2026-11-28 SOLID and Architecture Scan: Proposal](./current/2026-11-28-solid-architecture-scan.md): post-Phase-3 scan of backend and frontends. Findings table with evidence and severity, mapping onto #2540/#2541/#2594, and five proposed follow-up issues (quick wins, acyclic app graph, designer canvas home, split wave 3b, shared domain contract). Proposal only, nothing filed.
 
 ### Completed Plans
 See [history/](./history/) for completed and archived plans.
