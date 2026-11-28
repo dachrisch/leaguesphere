@@ -7,6 +7,9 @@ from accounts.serializers import UserSerializer, RegisterSerializer, LoginSerial
 
 
 class RegisterAPI(generics.GenericAPIView):
+    # Staff only: creating accounts is an administrative act. The DRF default
+    # (IsAuthenticatedOrReadOnly) let any logged-in user create accounts.
+    permission_classes = (permissions.IsAdminUser,)
     serializer_class = RegisterSerializer
 
     def post(self, request, *args, **kwargs):
