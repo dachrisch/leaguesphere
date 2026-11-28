@@ -36,8 +36,8 @@ live list, the league table and the finalisation keep working.
 
 Write guards: the two refusals of the scorecard's write surface are **the
 gamelog view's, delegated, never reimplemented here** --
-``_device_lock_response`` (``GameSetup.device_id`` + ``X-Scorecard-Device``)
-and ``_finished_game_response`` ("beendet"). Both are called in the same order
+``device_lock_response`` (``GameSetup.device_id`` + ``X-Scorecard-Device``)
+and ``finished_game_response`` ("beendet") from ``gamedays.api.write_guards``. Both are called in the same order
 as in ``POST /api/gamelog``: replay first, then finished, then lock. Keep them
 delegated: one lock and one refusal message for both write paths, so a stale
 tab is refused the same way whichever endpoint it hits.
@@ -52,6 +52,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from gamedays.api import write_guards
 from gameevents.api.serializers import parse_event_request
 from gameevents.models import GameEvent
 from gameevents.service.append import (
@@ -125,17 +126,10 @@ def device_lock_response(request, game_id, data=None):
     """The gamelog view's device lock, reused -- never a second lock.
 
     The lock (``GameSetup.device_id`` + ``X-Scorecard-Device``) belongs to the
-    scorecard's write surface; this endpoint is its second caller. On a
-    baseline that does not carry the lock yet no helper exists and every
-    device may write, exactly as ``POST /api/gamelog`` behaves there.
+    scorecard's write surface; this endpoint is its second caller. Resolved
+    through the module at call time so both endpoints always share one lock.
     """
-
-    from gamedays.api import game_views
-
-    helper = getattr(game_views, "_device_lock_response", None)
-    if helper is None:
-        return None
-    return helper(request, game_id, data)
+    return write_guards.device_lock_response(request, game_id, data)
 
 
 def finished_game_response(game):
@@ -143,16 +137,9 @@ def finished_game_response(game):
 
     A finished game ("beendet") is the final word on both write paths: the
     legacy view refuses the append, so the canonical endpoint must too, or the
-    same client would get a 409 there and a silent extra row here. Delegated
-    for the same reason as the lock: one status, one message.
+    same client would get a 409 there and a silent extra row here.
     """
-
-    from gamedays.api import game_views
-
-    helper = getattr(game_views, "_finished_game_response", None)
-    if helper is None:
-        return None
-    return helper(game)
+    return write_guards.finished_game_response(game)
 
 
 def _response(state: GameStateValue, status: int) -> Response:
