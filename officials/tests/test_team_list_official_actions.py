@@ -21,7 +21,7 @@ from gamedays.tests.setup_factories.factories import (
     TeamFactory,
 )
 from matchreport.constants import REPORT_TABLE_RENDER_CONFIG
-from officials.service.officiated_games_service import get_team_officiated_games
+from matchreport.service.officiated_games_service import get_team_officiated_games
 from officials.urls import OFFICIALS_LIST_FOR_TEAM
 from officials.tests.setup_factories.factories_officials import OfficialFactory
 
